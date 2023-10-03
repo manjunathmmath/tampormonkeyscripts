@@ -1,0 +1,13 @@
+.io-status {
+    font-weight: bolder;
+    float: right;
+    width: 3rem;
+}
+
+.io-prev-value {
+    font-weight: bold;
+    float: left;
+    display: inline-flex;
+    font-size: xx-small;
+    width: 3rem;
+}

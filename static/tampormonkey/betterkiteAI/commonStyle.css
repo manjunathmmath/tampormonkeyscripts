@@ -1,0 +1,38 @@
+#ai-modal-container #bank-nifty-images-bull-plus img, #ai-modal-container #bank-nifty-remark-plus img,
+#ai-modal-container #bank-nifty-images-bull-minus img, #ai-modal-container #bank-nifty-remark-minus img {
+    width: 30px !important;
+    height: 30px !important;
+}
+
+#ai-modal-container #nifty-images-bull-plus img, #ai-modal-container #nifty-remark-plus img,
+#ai-modal-container #nifty-images-bull-minus img, #ai-modal-container #nifty-remark-minus img {
+    width: 30px !important;
+    height: 30px !important;
+}
+
+#ai-modal-container .refresh-action {
+    text-align: right;
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+#ai-modal-container #market-trend-container p {
+    font-size: .7rem;
+    font-weight: bold;
+}
+
+#ai-modal-container #nifty-price-calculation .col-md-2, #ai-modal-container #bank-nifty-price-calculation .col-md-2 {
+    width: 13.666667%;
+}
+
+#ai-modal-container .custom-col-width{
+    width: 20% !important;
+}
+
+#ai-modal-container .show-snapshot-container{
+    display: none;
+}
+
+#ai-modal-container .list-group-item{
+    padding: 0rem 1rem !important;
+}
