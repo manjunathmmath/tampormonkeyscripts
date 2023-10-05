@@ -48,15 +48,23 @@ const PREVIOUS_DAY_DATE = g_config.get('previousDayDate');
 var PREVIOUS_DATE_NIFTY_FUT;
 var PREVIOUS_DATE_BANK_NIFTY_FUT;
 var PREVIOUS_DATE_CURRENCY_FUT;
-sendPlaceNewOrderRequest()
 var refreshIntervalThirteen = null;
+
+jQ(document).ready(function(){
+    setTimeout(function(){
+        sendPlaceNewOrderRequest()
+    },2000)
+
+})
+
 function sendPlaceNewOrderRequest() {
 
     var html = '';
-    html += '<button style="position: fixed;top: 0.8rem;z-index: 999;left: 35rem;" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">'
-    html += 'Trade AI'
+    html += '<a data-bs-toggle="modal" data-bs-target="#exampleModal">'
+    html += 'AI'
     html += '</button>'
-
+    jQ('body').first().find(".app-nav").append(html);
+    html = ''
     html += '<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">'
     html += '<div class="modal-dialog modal-xl" style="max-width: 1500px !important; width: 1500px !important;">'
     html += '<div class="modal-content">'
@@ -74,14 +82,31 @@ function sendPlaceNewOrderRequest() {
     html += '</div>'
     html += '</div>'
 
-    jQ('body').append(html);
-    jQ.when(getHistoricalFutureData(NIFTY_50_CURRENT_FUTURE, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE),
-        getHistoricalFutureData(BANK_NIFTY_CURRENT_FUTURE, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE),
-        getHistoricalFutureData(USD_INR_CURRENT_FUTURE, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (resOne, resTwo,resThree) {
-        PREVIOUS_DATE_NIFTY_FUT = resOne[0]
-        PREVIOUS_DATE_BANK_NIFTY_FUT = resTwo[0]
-        PREVIOUS_DATE_CURRENCY_FUT = resThree[0]
-    });
+    jQ('body').first().append(html);
+    if(!sessionStorage.getItem("PREVIOUS_DATE_NIFTY_FUT")){
+        jQ.when(getHistoricalFutureData(NIFTY_50_CURRENT_FUTURE, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (resOne) {
+            sessionStorage.setItem("PREVIOUS_DATE_NIFTY_FUT", JSON.stringify(resOne));
+        });
+    }else{
+        PREVIOUS_DATE_NIFTY_FUT = JSON.parse(sessionStorage.getItem("PREVIOUS_DATE_NIFTY_FUT"));
+    }
+
+    if(!sessionStorage.getItem("PREVIOUS_DATE_BANK_NIFTY_FUT")){
+        jQ.when(getHistoricalFutureData(BANK_NIFTY_CURRENT_FUTURE, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (resOne) {
+            sessionStorage.setItem("PREVIOUS_DATE_BANK_NIFTY_FUT", JSON.stringify(resOne));
+        });
+    }else{
+        PREVIOUS_DATE_BANK_NIFTY_FUT = JSON.parse(sessionStorage.getItem("PREVIOUS_DATE_BANK_NIFTY_FUT"));
+    }
+
+
+    if(!sessionStorage.getItem("PREVIOUS_DATE_CURRENCY_FUT")){
+        jQ.when(getHistoricalFutureData(USD_INR_CURRENT_FUTURE, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (resOne) {
+            sessionStorage.setItem("PREVIOUS_DATE_CURRENCY_FUT", JSON.stringify(resOne));
+        });
+    }else{
+        PREVIOUS_DATE_CURRENCY_FUT = JSON.parse(sessionStorage.getItem("PREVIOUS_DATE_CURRENCY_FUT"));
+    }
 
     var myModal = document.getElementById('exampleModal')
     myModal.addEventListener('shown.bs.modal', function () {
@@ -97,8 +122,8 @@ function commonBankNiftyAndNiftyAI(instance){
     var instruments=["NSE:NIFTY BANK","NSE:NIFTY 50","NFO:NIFTY23OCTFUT","NFO:BANKNIFTY23OCTFUT","CDS:USDINR23OCTFUT"]
     clearInterval(refreshIntervalThirteen)
     jQ("#ai-modal-container").html(bullVersesBear())
+    jQ("#ai-modal-container").append(showAdrMarkup())
     jQ.when(getInstrumentQuotes(instruments)).done(function (res) {
-        console.log(res)
         if (instance) {
             instance.attr("disabled", false)
         }
@@ -109,6 +134,476 @@ function commonBankNiftyAndNiftyAI(instance){
         bankNiftyFutures(PREVIOUS_DATE_BANK_NIFTY_FUT,res)
         currencyFutures(PREVIOUS_DATE_CURRENCY_FUT,res)
     });
+    setTimeout(function () {
+        getNifty50Adr()
+        getNiftyBankAdr()
+        getNiftyITAdr()
+        getNiftyMetalAdr()
+        getNiftyFinanceAdr()
+    }, 1000)
+}
+
+function showAdrMarkup() {
+    var html = ''
+    html = `<div class="row" id="market-trend-container">
+    <div class="col-md-2">
+        <div class="card" id="nifty-card" >
+            <div class="card-body">
+                <h5 class="card-title">Nifty 50</h5>
+                <p id="nifty-trend"></p>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Total Stocks
+                        </div>
+                        <div class="col-md-1 text-primary"><i class="bi bi-megaphone"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-primary" id="nifty-stocks"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Positive(+)
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-hand-thumbs-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="nifty-positive"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Negative(-)
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="nifty-negative"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Unchanged
+                        </div>
+                        <div class="col-md-1 text-warning"><i class="bi bi-hand-index-thumb"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-warning" id="nifty-unchanged"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall ADR
+                        </div>
+                        <div class="col-md-1 text-info"><i class="bi bi-arrow-left-right"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-info" id="nifty-adr"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bulls
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-graph-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="nifty-bulls"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bears
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-graph-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="nifty-bears"></span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card"  id="bank-nifty-card">
+            <div class="card-body">
+                <h5 class="card-title">Bank Nifty</h5>
+                <p id="bank-nifty-trend"></p>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Total Stocks
+                        </div>
+                        <div class="col-md-1 text-primary"><i class="bi bi-megaphone"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-primary" id="bank-nifty-stocks"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Positive(+)
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-hand-thumbs-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="bank-nifty-positive"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Negative(-)
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="bank-nifty-negative"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Unchanged
+                        </div>
+                        <div class="col-md-1 text-warning"><i class="bi bi-hand-index-thumb"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-warning" id="bank-nifty-unchanged"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall ADR
+                        </div>
+                        <div class="col-md-1 text-info"><i class="bi bi-arrow-left-right"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-info" id="bank-nifty-adr"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bulls
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-graph-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="bank-nifty-bulls"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bears
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-graph-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="bank-nifty-bears"></span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card"  id="it-nifty-card">
+            <div class="card-body">
+                <h5 class="card-title">Nifty IT</h5>
+                <p id="it-nifty-trend"></p>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Total Stocks
+                        </div>
+                        <div class="col-md-1 text-primary"><i class="bi bi-megaphone"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-primary" id="it-nifty-stocks"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Positive(+)
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-hand-thumbs-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="it-nifty-positive"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Negative(-)
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="it-nifty-negative"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Unchanged
+                        </div>
+                        <div class="col-md-1 text-warning"><i class="bi bi-hand-index-thumb"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-warning" id="it-nifty-unchanged"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall ADR
+                        </div>
+                        <div class="col-md-1 text-info"><i class="bi bi-arrow-left-right"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-info" id="it-nifty-adr"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bulls
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-graph-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="it-nifty-bulls"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bears
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-graph-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="it-nifty-bears"></span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card"  id="metal-nifty-card">
+            <div class="card-body">
+                <h5 class="card-title">Nifty Metal</h5>
+                <p id="metal-nifty-trend"></p>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Total Stocks
+                        </div>
+                        <div class="col-md-1 text-primary"><i class="bi bi-megaphone"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-primary" id="metal-nifty-stocks"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Positive(+)
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-hand-thumbs-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="metal-nifty-positive"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Negative(-)
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="metal-nifty-negative"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Unchanged
+                        </div>
+                        <div class="col-md-1 text-warning"><i class="bi bi-hand-index-thumb"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-warning" id="metal-nifty-unchanged"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall ADR
+                        </div>
+                        <div class="col-md-1 text-info"><i class="bi bi-arrow-left-right"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-info" id="metal-nifty-adr"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bulls
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-graph-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="metal-nifty-bulls"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bears
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-graph-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="metal-nifty-bears"></span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card"  id="finance-nifty-card">
+            <div class="card-body">
+                <h5 class="card-title">Nifty Finance</h5>
+                <p id="finance-nifty-trend"></p>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Total Stocks
+                        </div>
+                        <div class="col-md-1 text-primary"><i class="bi bi-megaphone"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-primary" id="finance-nifty-stocks"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Positive(+)
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-hand-thumbs-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="finance-nifty-positive"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Negative(-)
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="finance-nifty-negative"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Unchanged
+                        </div>
+                        <div class="col-md-1 text-warning"><i class="bi bi-hand-index-thumb"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-warning" id="finance-nifty-unchanged"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall ADR
+                        </div>
+                        <div class="col-md-1 text-info"><i class="bi bi-arrow-left-right"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-info" id="finance-nifty-adr"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bulls
+                        </div>
+                        <div class="col-md-1 text-success"><i class="bi bi-graph-up"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success" id="finance-nifty-bulls"></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-7">
+                            Overall Bears
+                        </div>
+                        <div class="col-md-1 text-danger"><i class="bi bi-graph-down"></i></div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger" id="finance-nifty-bears"></span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>`
+
+    html +=`<div class="row">
+    <div class="col-md-12">
+        <div class="bd-callout bd-callout-info shadow-sm p-3 mb-5 bg-body rounded">
+            <div>
+                <i class="bi bi-info-square-fill"></i> Advance/Decline Ratio ADR #if ADR>=1.25 then
+                <span class="badge bg-success">+ve(Bullish)</span> Otherwise
+                <span class="badge bg-danger"> -ve(Bearish)</span>
+            </div>
+
+
+            <div>
+                <i class="bi bi-info-square-fill"></i>
+                Low IndiaVIX <span id="india-vix-info">21.0650</span> indicates stability in the market while higher
+                value indicated
+                <span class="badge bg-danger">stress, fear and anxiety.</span>
+            </div>
+        </div>
+    </div>
+</div>`
+
+    return html;
 }
 
 function bullVersesBear() {
@@ -1254,9 +1749,8 @@ function getHistoricalFutureData(code, fromDate, toDate) {
 
 function getInstrumentQuotes(quotes) {
     var params = ''
-    console.log(quotes.length-1)
     jQ.each(quotes,function(index,item){
-        params +="i="+item
+        params +="i="+encodeURIComponent(item)
         if(index < (quotes.length-1)){
             params +="&"
         }

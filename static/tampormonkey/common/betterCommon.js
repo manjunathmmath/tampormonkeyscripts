@@ -30,13 +30,13 @@ const D_LEVEL_NONE = 100;
 const log = function (level, logInfo) {
     switch (level) {
         case D_LEVEL_DEBUG:
-            console.debug(logInfo);
+            //console.debug(logInfo);
             break;
         case D_LEVEL_INFO:
-            console.info(logInfo);
+            //console.info(logInfo);
             break;
         default:
-            console.log(logInfo);
+            //console.log(logInfo);
     }
 }
 const debug = function (logInfo) {
@@ -68,4 +68,13 @@ const getFunctionName = function () {
     // me = me.substr('function '.length);
     // me = me.substr(0, me.indexOf('('));
     return getFunctionName.caller.name;
+}
+
+
+function sleep(milliseconds) {
+    const date = Date.now();
+    let currentDate = null;
+    do {
+        currentDate = Date.now();
+    } while (currentDate - date < milliseconds);
 }
