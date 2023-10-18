@@ -55,6 +55,7 @@ getNifty50ComponentsPreviousDay()
 function getNifty50ComponentsPreviousDay() {
     if(!sessionStorage.getItem("nifty50ComponentsPreviousDay")){
         jQ.when(getInstrumentQuotes(nifty50Instruments)).done(function (res) {
+            console.log(res)
             jQ.each(res.data, function (index, item) {
                 sleep(1000);
                 jQ.when(getHistoricalFutureData(item.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (r) {
@@ -78,10 +79,10 @@ function getNifty50Adr() {
     console.log(nifty50ComponentsPreviousDay)
     jQ.when(getInstrumentQuotes(nifty50Instruments)).done(function (res) {
         jQ.each(res.data, function (index, item) {
+            console.log(index,item.instrument_token)
             var previousClose = nifty50ComponentsPreviousDay[index]['data']['candles'][0][4]
             var pChange = ((item.last_price - previousClose) / previousClose) * 100
             var change = (item.last_price - previousClose)
-            console.log(pChange, index)
             if (pChange > 0) {
                 advances++;
             } else if (pChange < 0) {

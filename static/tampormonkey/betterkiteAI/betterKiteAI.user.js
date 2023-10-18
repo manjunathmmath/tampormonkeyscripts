@@ -30,7 +30,10 @@
 // @require      http://localhost:3000/tampormonkey/common/toastify-js.js
 // @resource     TOASTIFY_CSS http://localhost:3000/tampormonkey/common/toastify.min.css
 // @require      http://localhost:3000/tampormonkey/common/betterCommon.js
+// @require      http://localhost:3000/tampormonkey/betterkiteAI/nifty50Prediction.js
+// @require      http://localhost:3000/tampormonkey/betterkiteAI/bankNiftyPrediction.js
 // @require      http://localhost:3000/tampormonkey/betterkiteAI/script.js
+// @require      http://localhost:3000/tampormonkey/betterkiteAI/stockPrediction.js
 // @require      http://localhost:3000/tampormonkey/betterkiteAI/nifty50Adr.js
 // @require      http://localhost:3000/tampormonkey/betterkiteAI/niftyBankAdr.js
 // @require      http://localhost:3000/tampormonkey/betterkiteAI/niftyITAdr.js
