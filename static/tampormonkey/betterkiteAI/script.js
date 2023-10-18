@@ -36,6 +36,12 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: moment().subtract(1, "days").format("YYYY-MM-DD")
         },
+        enableAPIFetch: {
+            type: 'select',
+            choices: ['Yes', 'No'],
+            values: ['Yes', 'No',],
+            default: 'No'
+        },
         refreshTime: {
             type: 'text',
             default: 60
@@ -57,6 +63,16 @@ var currentYearAndMonth = moment().format("YY")
 currentYearAndMonth +=moment().format("MMM")
 currentYearAndMonth = currentYearAndMonth.toString().toUpperCase()
 var instruments=["NSE:NIFTY BANK","NSE:NIFTY 50","NFO:NIFTY"+currentYearAndMonth+"FUT","NFO:BANKNIFTY"+currentYearAndMonth+"FUT","CDS:USDINR"+currentYearAndMonth+"FUT"]
+if(g_config.get('enableAPIFetch') == "No"){
+    sessionStorage.setItem("PREVIOUS_DATE_NIFTY_FUT", "{}");
+    sessionStorage.setItem("PREVIOUS_DATE_BANK_NIFTY_FUT", "{}");
+    sessionStorage.setItem("PREVIOUS_DATE_CURRENCY_FUT", "{}");
+    sessionStorage.setItem("nifty50ComponentsPreviousDay", "{}");
+    sessionStorage.setItem("niftyBankComponentsPreviousDay", "{}");
+    sessionStorage.setItem("niftyFinanceComponentsPreviousDay", "{}");
+    sessionStorage.setItem("niftyITComponentsPreviousDay", "{}");
+    sessionStorage.setItem("niftyMetalComponentsPreviousDay", "{}");
+}
 jQ(document).ready(function(){
     setTimeout(function(){
         showAI()
