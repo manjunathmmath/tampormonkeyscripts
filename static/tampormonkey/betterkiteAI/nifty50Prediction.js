@@ -84,7 +84,6 @@ function niftyFutures(previousDay, currentDay) {
 
     jQ("#nifty-future-signal").html(futureTrend)
     jQ("#nifty-future-signal-type-direction").html(futureDirection)
-    jQ("#nifty-vwap-signal").html(futureTrend)
 
 
     var price = ''

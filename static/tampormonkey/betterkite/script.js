@@ -173,6 +173,36 @@ const BASE_PNL_REPORT = "#app > div.wrapper > div > div > h1";
 
 main();
 
+jQ(document).ready(function(){
+    setTimeout(function(){
+        getEntoken()
+    },2000)
+
+})
+
+
+function getEntoken() {
+
+    var html = '';
+    html += '<a id="get-entoken">'
+    html += 'EN TOKEN'
+    html += '</a>'
+    jQ('body').first().find(".app-nav").append(html);
+}
+
+jQ(document).on("click", "#get-entoken", function (e) {
+    e.preventDefault();
+    navigator.clipboard.writeText(getCookie('enctoken'));
+    saveToken()
+});
+
+function saveToken() {
+    return jQ.ajax({
+        type: 'POST',
+        url: 'http://localhost:9080/saveToken',
+        data: {token:getCookie('enctoken')},
+    });
+}
 
 
 function showSuccessToast(msg) {
