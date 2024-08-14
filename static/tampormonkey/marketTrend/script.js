@@ -421,14 +421,14 @@ let FOLIST_TWO = [
     'BSOFT'
 ]
 
-function callAddToWatchList(){
-    for(let i=0;i<FOLIST_TWO.length;i++){
-        addToWatchList("NSE",FOLIST_TWO[i],(i+1),7)
+function callAddToWatchList() {
+    for (let i = 0; i < FOLIST_TWO.length; i++) {
+        addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 7)
         callSleepForAWhile(1000)
     }
 }
 
-function addToWatchList(segment,tradingsymbol,weight,watch_id) {
+function addToWatchList(segment, tradingsymbol, weight, watch_id) {
     jQ.ajaxSetup({
         headers: {
             'x-csrftoken': `${getCookie('public_token')}`
@@ -451,15 +451,15 @@ jQ(document).ready(function () {
     setTimeout(function () {
         makeUIChanges();
         saveVixQuote()
-        
+
     }, 2000)
 
 });
 
 function saveVixQuote() {
-    if (!sessionStorage.getItem("VIX_QUOTE")) {
+    if (!localStorage.getItem("VIX_QUOTE")) {
         jQ.when(getHistoricalData(264969, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (res) {
-            sessionStorage.setItem("VIX_QUOTE", JSON.stringify(res));
+            localStorage.setItem("VIX_QUOTE", JSON.stringify(res));
         })
     }
 }
@@ -469,6 +469,9 @@ function makeUIChanges() {
     html += '<a href="#" id="get-entoken">'
     html += 'Token'
     html += '</a>'
+    html += '<a href="#" id="clean-storage">'
+    html += 'Clean'
+    html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
 }
 
@@ -477,6 +480,11 @@ jQ(document).on("click", "#get-entoken", function (e) {
     navigator.clipboard.writeText(getCookie('enctoken'));
     saveToken();
     /*callAddToWatchList();*/
+});
+
+jQ(document).on("click", "#clean-storage", function (e) {
+    e.preventDefault();
+    clearLocalStorage()
 });
 
 function saveToken() {
@@ -509,7 +517,7 @@ async function generateTrend() {
     jQ.each(tabs, function (index, item) {
         if (jQ(item).hasClass("selected")) {
             instrumentsMap = {}
-            if (!sessionStorage.getItem("INSTRUMENT_LIST_" + index)) {
+            if (!localStorage.getItem("INSTRUMENT_LIST_" + index)) {
                 if (instruments.length > 0) {
                     jQ(instruments).each(function (iindex, iitem) {
                         let name = jQ(this).find(".symbol").find(".nice-name").html();
@@ -523,10 +531,10 @@ async function generateTrend() {
                         insMap['prevPrice'] = parseFloat(prevPrice).toFixed(2);
                         instrumentsMap[name] = insMap;
                     });
-                    sessionStorage.setItem("INSTRUMENT_LIST_" + index, JSON.stringify(instrumentsMap));
+                    localStorage.setItem("INSTRUMENT_LIST_" + index, JSON.stringify(instrumentsMap));
                 }
             } else {
-                instrumentsMap = JSON.parse(sessionStorage.getItem("INSTRUMENT_LIST_" + index));
+                instrumentsMap = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_" + index));
             }
             let bulls = 0;
             let bears = 0;
@@ -607,7 +615,7 @@ jQ(document).on("click", ".draw-points", function () {
     let trend = jQ(this).attr("data-trend");
     let strikeData = getStrikeDetails(instrumentsMap[name], name);
 
-    let vixQuote = JSON.parse(sessionStorage.getItem("VIX_QUOTE")).data['candles'][0];
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
 
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
 
@@ -673,7 +681,7 @@ jQ(document).on("click", ".trend-class", function () {
     let name = jQ(this).attr("data-name");
     let data = getStrikeDetails(instrumentsMap[name], name);
 
-    let vixQuote = JSON.parse(sessionStorage.getItem("VIX_QUOTE")).data['candles'][0];
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
 
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
 
@@ -720,7 +728,19 @@ jQ(document).on("click", ".trend-class", function () {
     toolTip += '</table>'
 
     showTippy(this, toolTip)
-})
+});
+
+
+function clearLocalStorage() {
+    localStorage.removeItem("VIX_QUOTE");
+    localStorage.removeItem("INSTRUMENT_LIST_0");
+    localStorage.removeItem("INSTRUMENT_LIST_1");
+    localStorage.removeItem("INSTRUMENT_LIST_2");
+    localStorage.removeItem("INSTRUMENT_LIST_3");
+    localStorage.removeItem("INSTRUMENT_LIST_4");
+    localStorage.removeItem("INSTRUMENT_LIST_5");
+    localStorage.removeItem("INSTRUMENT_LIST_6");
+}
 
 
 function getStrikeDetails(item, instrument) {
@@ -794,7 +814,7 @@ function getHistoricalData(code, fromDate, toDate) {
 }
 
 function getTrend(item) {
-    let vixQuote = JSON.parse(sessionStorage.getItem("VIX_QUOTE")).data['candles'][0];
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
 
     var vix = getVixRange(parseFloat(item.prevPrice), parseFloat(vixQuote[4]))
 
