@@ -234,10 +234,224 @@ let nseStrikeDiff = {
 }
 
 
+let FOLIST_ONE = [
+    'AUBANK',
+    'AXISBANK',
+    'BANDHANBNK',
+    'BANKBARODA',
+    'FEDERALBNK',
+    'HDFCBANK',
+    'ICICIBANK',
+    'IDFCFIRSTB',
+    'INDUSINDBK',
+    'KOTAKBANK',
+    'PNB',
+    'SBIN',
+    'ADANIENT',
+    'ADANIPORTS',
+    'APOLLOHOSP',
+    'ASIANPAINT',
+    'BAJAJ-AUTO',
+    'BAJFINANCE',
+    'BAJAJFINSV',
+    'BPCL',
+    'BHARTIARTL',
+    'BRITANNIA',
+    'CIPLA',
+    'COALINDIA',
+    'DIVISLAB',
+    'DRREDDY',
+    'EICHERMOT',
+    'GRASIM',
+    'HCLTECH',
+    'HDFCLIFE',
+    'HEROMOTOCO',
+    'HINDALCO',
+    'HINDUNILVR',
+    'ITC',
+    'INFY',
+    'JSWSTEEL',
+    'LTIM',
+    'LT',
+    'M&M',
+    'MARUTI',
+    'NTPC',
+    'NESTLEIND',
+    'ONGC',
+    'POWERGRID',
+    'RELIANCE',
+    'SBILIFE',
+    'SUNPHARMA',
+    'TCS',
+    'TATACONSUM',
+    'TATAMOTORS',
+    'TATASTEEL',
+    'TECHM',
+    'TITAN',
+    'UPL',
+    'ULTRACEMCO',
+    'WIPRO',
+    'CHOLAFIN',
+    'HDFCAMC',
+    'ICICIGI',
+    'ICICIPRULI',
+    'IEX',
+    'LICHSGFIN',
+    'MUTHOOTFIN',
+    'PFC',
+    'RECLTD',
+    'SBICARD',
+    'SHRIRAMFIN',
+    'ABBOTINDIA',
+    'ASHOKLEY',
+    'ASTRAL',
+    'AUROPHARMA',
+    'BALKRISIND',
+    'BHARATFORG',
+    'COFORGE',
+    'CONCOR',
+    'CUMMINSIND',
+    'GODREJPROP',
+    'HINDPETRO',
+    'INDHOTEL',
+    'JUBLFOOD',
+    'MRF',
+    'MPHASIS',
+    'PAGEIND',
+    'PERSISTENT',
+    'POLYCAB',
+    'VOLTAS',
+]
+
+let FOLIST_TWO = [
+    'NAUKRI',
+    'INDIACEM',
+    'GRANULES',
+    'PEL',
+    'GUJGASLTD',
+    'MGL',
+    'UNITDSPR',
+    'ZYDUSLIFE',
+    'ALKEM',
+    'CANFINHOME',
+    'TORNTPHARM',
+    'IDEA',
+    'DEEPAKNTR',
+    'COROMANDEL',
+    'CHAMBLFERT',
+    'BIOCON',
+    'PIDILITIND',
+    'SUNTV',
+    'GLENMARK',
+    'LUPIN',
+    'MFSL',
+    'RAMCOCEM',
+    'LTF',
+    'LALPATHLAB',
+    'BATAINDIA',
+    'UBL',
+    'COLPAL',
+    'DIXON',
+    'IPCALAB',
+    'LTTS',
+    'IGL',
+    'BALRAMCHIN',
+    'METROPOLIS',
+    'AARTIIND',
+    'EXIDEIND',
+    'ABFRL',
+    'ATUL',
+    'M&MFIN',
+    'TVSMOTOR',
+    'LAURUSLABS',
+    'DALBHARAT',
+    'BERGEPAINT',
+    'TATAPOWER',
+    'GAIL',
+    'TATACOMM',
+    'SYNGENE',
+    'MCX',
+    'GODREJCP',
+    'HAVELLS',
+    'IRCTC',
+    'AMBUJACEM',
+    'TATACHEM',
+    'PETRONET',
+    'IOC',
+    'MARICO',
+    'PVRINOX',
+    'MOTHERSON',
+    'BOSCHLTD',
+    'MANAPPURAM',
+    'IDFC',
+    'INDUSTOWER',
+    'SIEMENS',
+    'ACC',
+    'RBLBANK',
+    'CANBK',
+    'SHREECEM',
+    'INDIGO',
+    'INDIAMART',
+    'BHEL',
+    'HAL',
+    'NAVINFLUOR',
+    'ABB',
+    'DABUR',
+    'BEL',
+    'JINDALSTEL',
+    'APOLLOTYRE',
+    'SAIL',
+    'NMDC',
+    'CUB',
+    'CROMPTON',
+    'HINDCOPPER',
+    'VEDL',
+    'GNFC',
+    'GMRINFRA',
+    'PIIND',
+    'OBEROIRLTY',
+    'DLF',
+    'SRF',
+    'JKCEMENT',
+    'NATIONALUM',
+    'ABCAPITAL',
+    'TRENT',
+    'OFSS',
+    'ESCORTS',
+    'BSOFT'
+]
+
+function callAddToWatchList(){
+    for(let i=0;i<FOLIST_TWO.length;i++){
+        addToWatchList("NSE",FOLIST_TWO[i],(i+1),7)
+        callSleepForAWhile(1000)
+    }
+}
+
+function addToWatchList(segment,tradingsymbol,weight,watch_id) {
+    jQ.ajaxSetup({
+        headers: {
+            'x-csrftoken': `${getCookie('public_token')}`
+        }
+    });
+    return jQ.ajax({
+        url: BASE_URL + `/api/marketwatch/${watch_id}/items`,
+        type: 'POST',
+        data: {
+            segment: segment,
+            tradingsymbol: tradingsymbol,
+            weight: weight,
+            watch_id: watch_id
+        }
+    });
+}
+
+
 jQ(document).ready(function () {
     setTimeout(function () {
         makeUIChanges();
         saveVixQuote()
+        
     }, 2000)
 
 });
@@ -261,7 +475,8 @@ function makeUIChanges() {
 jQ(document).on("click", "#get-entoken", function (e) {
     e.preventDefault();
     navigator.clipboard.writeText(getCookie('enctoken'));
-    saveToken()
+    saveToken();
+    /*callAddToWatchList();*/
 });
 
 function saveToken() {
@@ -273,11 +488,11 @@ function saveToken() {
 }
 
 
-function callSleepForAWhile() {
+function callSleepForAWhile(times) {
     return new Promise((resolve, reject) => {
         setTimeout(function () {
             resolve();
-        }, 2000)
+        }, times)
     });
 }
 
@@ -286,7 +501,7 @@ let instrumentsMap = {}
 
 
 async function generateTrend() {
-    await callSleepForAWhile();
+    await callSleepForAWhile(2000);
     let marketWatchSideBar = jQ(".marketwatch-sidebar");
     let tabs = marketWatchSideBar.find(".marketwatch-selector a.item");
     let instrumentsWrapper = jQ(".instruments");
@@ -323,6 +538,7 @@ async function generateTrend() {
                     that.find(".symbol").find(".trend-class").remove();
                     that.find(".symbol").find(".draw-points").remove();
                     that.find(".symbol").find(".add-to-basket").remove();
+                    that.find(".symbol").find(".script-weight").remove();
                     let trendMap = getTrend(instrumentsMap[name])
                     if (trendMap['trend'] == "OIBS") {
                         bulls++;
@@ -332,9 +548,22 @@ async function generateTrend() {
                     that.find(".symbol").prepend(trendMap['openedTrend']);
                     that.find(".symbol").find(".trend-class").attr("data-name", name);
                     let draw = '<span data-trend="' + trendMap['trend'] + '" data-name="' + name + '" class="badge bg-secondary draw-points">Draw</span>'
-                    let add = '<span data-price="' + price + '" data-trend="' + trendMap['trend'] + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</span>'
+                    let add = '<span data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + trendMap['trend'] + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</span>'
                     that.find(".symbol").prepend(draw);
-                    that.find(".symbol").prepend(add);
+
+                    if (index != 0) {
+                        that.find(".symbol").prepend(add);
+                    }
+                    if (index == 1 || index == 2) {
+                        let indexType = "NIFTY 50"
+                        if (index == 2) {
+                            indexType = "NIFTY BANK"
+                        }
+                        let weight = '<span class="badge bg-dark script-weight">' + getWeightAge(indexType, name, true) + '</span>'
+                        that.find(".symbol").append(weight);
+                    }
+
+
                 }
             });
 
@@ -550,8 +779,6 @@ const hideOnEsc = {
 };
 
 
-
-
 function getHistoricalData(code, fromDate, toDate) {
     jQ.ajaxSetup({
         headers: {
@@ -675,7 +902,7 @@ function getVixPointsSupportAndResistance(vixLowerRange, vixUpperRange, range) {
         lastLRange = (parseFloat(lastLRange) + parseFloat(minRange)).toFixed(2)
         points.push(parseFloat(lastLRange));
     }
-    points.sort()
+    points.sort(function (a, b) { return a - b })
     return points;
 }
 
@@ -732,4 +959,56 @@ function addToBasket(tradingsymbol, exchange, weight, params) {
             params: JSON.stringify(params)
         }
     });
+}
+
+function getWeightAge(index, companyName, onlyWeight) {
+    var nifty50WeightAge = {
+        "HDFCBANK": 13.52,
+        "RELIANCE": 9.20,
+        "ICICIBANK": 7.36,
+        "INFY": 5.80,
+        "LT": 4.39,
+        "ITC": 4.31,
+        "TCS": 4.05,
+        "AXISBANK": 3.22,
+        "KOTAKBANK": 2.95,
+        "BHARTIARTL": 2.75
+    }
+
+    var niftyBankWeightAge = {
+        "HDFCBANK": 29.39,
+        "ICICIBANK": 22.57,
+        "KOTAKBANK": 9.92,
+        "AXISBANK": 9.88,
+        "SBIN": 9.87,
+        "INDUSINDBK": 6.43,
+        "BANKBARODA": 2.62,
+        "AUBANK": 2.30,
+        "FEDERALBNK": 2.13,
+        "IDFCFIRSTB": 2.06,
+    }
+
+
+    var html = ''
+    var weightAge = ''
+    if (index == "NIFTY 50") {
+        weightAge = nifty50WeightAge
+    }
+
+    if (index == "NIFTY BANK") {
+        weightAge = niftyBankWeightAge
+    }
+
+    if (onlyWeight) {
+        if (weightAge[companyName]) {
+            return weightAge[companyName]
+        }
+    } else {
+        if (weightAge[companyName]) {
+            html += '<span class="text-end float-end text-warning">'
+            html += weightAge[companyName] + " %";
+            html += '</span>'
+        }
+    }
+    return html;
 }

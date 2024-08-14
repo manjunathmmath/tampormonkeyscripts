@@ -25,10 +25,14 @@ span.bullsVersesBears {
 
 .badge {
     display: inline-block;
-    padding: 0.35em 0.45em;
+    font-size: 0.65em;
 }
 
 .add-to-basket{
     cursor: pointer;
     margin: .3rem;
+}
+
+.marketwatch-sidebar .instruments .instrument .info{
+    --min-price-width:unset;
 }
