@@ -5,7 +5,7 @@ const popup_window_css = GM_getResourceText("POPUP_WINDOW_CSS");
 
 
 GM_addStyle(my_css);
-GM_addStyle(boot_css);
+/*GM_addStyle(boot_css);*/
 GM_addStyle(common_css);
 GM_addStyle(popup_window_css);
 
@@ -421,6 +421,7 @@ let FOLIST_TWO = [
     'BSOFT'
 ]
 
+
 function callAddToWatchList() {
     for (let i = 0; i < FOLIST_TWO.length; i++) {
         addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 7)
@@ -451,7 +452,6 @@ jQ(document).ready(function () {
     setTimeout(function () {
         makeUIChanges();
         saveVixQuote()
-
     }, 2000)
 
 });
@@ -567,22 +567,73 @@ async function generateTrend() {
                         if (index == 2) {
                             indexType = "NIFTY BANK"
                         }
-                        let weight = '<span class="badge bg-dark script-weight">' + getWeightAge(indexType, name, true) + '</span>'
-                        that.find(".symbol").append(weight);
+                        if(getWeightAge(indexType, name, true)){
+                            let weight = '<span class="badge bg-dark script-weight">' + getWeightAge(indexType, name, true) + '</span>'
+                            that.find(".symbol").append(weight);
+                        }
                     }
-
-
                 }
             });
 
             jQ(item).find(".bullsVersesBears").remove();
+            jQ(item).find(".add-all-scripts").remove();
             let countMaprkup = ''
             countMaprkup += '<span class="bullsVersesBears bg-success">' + bulls + '</span>'
             countMaprkup += '<span class="bullsVersesBears bg-danger">' + bears + '</span>'
+            let addAll = ''
+            addAll += '<span class="bg-warning add-all-scripts">Add</span>'
+
             jQ(item).append(countMaprkup)
+            jQ(item).append(addAll)
         }
     })
 }
+
+jQ(document).on("click", ".add-all-scripts", function () {
+    addAllToBasket()
+});
+
+let baskets = [26184477,26185846,26185849]
+async function addAllToBasket() {
+    let instrumentsWrapper = jQ(".instruments");
+    let instruments = instrumentsWrapper.find(".vddl-list .instrument");
+    weightIndex = [];
+    for (let i = 0; i < instruments.length; i++) {
+        let that = jQ(instruments[i]);
+        let add = that.find(".symbol").find(".add-to-basket");
+        let name = add.attr("data-name");
+        let trend = add.attr("data-trend");
+        let price = add.attr("data-price");
+        let transaction_type = "SELL"
+        if (trend == "OIBS") {
+            transaction_type = "BUY"
+        }
+        let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+        let params = { "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
+        let tradingsymbol = name
+        let exchange = "NSE"
+        let weight = (weightIndex.length + 1)
+
+        if(i <=19){
+            addToBasket(tradingsymbol, exchange, weight, params,baskets[0])
+            weightIndex = [];
+        }
+        if(i >19 && i <=39){
+            addToBasket(tradingsymbol, exchange, weight, params,baskets[1])
+            weightIndex = [];
+        }
+
+        if(i >39 && i <59){
+            addToBasket(tradingsymbol, exchange, weight, params,baskets[2])
+            weightIndex = [];
+        }
+        
+        weightIndex.push(name)
+        await callSleepForAWhile(1000)
+    }
+    alert("Added all scripts to the Basket.")
+}
+
 
 
 jQ(document).on("click", ".add-to-basket", function () {
@@ -598,7 +649,7 @@ jQ(document).on("click", ".add-to-basket", function () {
     let tradingsymbol = name
     let exchange = "NSE"
     let weight = (weightIndex.length + 1)
-    addToBasket(tradingsymbol, exchange, weight, params)
+    addToBasket(tradingsymbol, exchange, weight, params,BASKET)
     weightIndex.push(name)
 });
 
@@ -963,14 +1014,14 @@ function getStrikeDiff(instrument) {
 }
 
 
-function addToBasket(tradingsymbol, exchange, weight, params) {
+function addToBasket(tradingsymbol, exchange, weight, params,basket) {
     jQ.ajaxSetup({
         headers: {
             'x-csrftoken': `${getCookie('public_token')}`
         }
     });
     return jQ.ajax({
-        url: BASE_URL + `/api/baskets/${BASKET}/items`,
+        url: BASE_URL + `/api/baskets/${basket}/items`,
         type: 'POST',
         data: {
             tradingsymbol: tradingsymbol,
