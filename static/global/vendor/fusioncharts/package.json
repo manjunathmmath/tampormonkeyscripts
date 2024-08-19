@@ -1,0 +1,49 @@
+{
+  "name": "fusioncharts",
+  "main": "fusioncharts.js",
+  "bugs": {
+    "url": "http://www.fusioncharts.com/contact-support/"
+  },
+  "description": "FusionCharts JavaScript charting framework",
+  "license": "http://www.fusioncharts.com/buy/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fusioncharts/fusioncharts-dist.git"
+  },
+  "author": "FusionCharts, Inc. <support@fusioncharts.com>",
+  "version": "3.23.0",
+  "homepage": "http://www.fusioncharts.com/",
+  "keywords": [
+    "fusioncharts",
+    "charts",
+    "dataviz",
+    "graphs",
+    "visualization",
+    "js-charts",
+    "javascript-charts",
+    "dashboards",
+    "data-stories",
+    "bar-charts",
+    "pie-charts",
+    "line-charts",
+    "area-charts",
+    "column-charts",
+    "gantt-chart"
+  ],
+  "dependencies": {
+    "@babel/runtime": "7.9.2",
+    "@fusioncharts/accessibility": "1.9.0",
+    "@fusioncharts/charts": "3.23.0",
+    "@fusioncharts/constructor": "1.9.0",
+    "@fusioncharts/core": "1.9.0",
+    "@fusioncharts/datatable": "1.9.0",
+    "@fusioncharts/features": "1.9.0",
+    "@fusioncharts/fusiontime": "2.9.0",
+    "@fusioncharts/maps": "3.23.0",
+    "@fusioncharts/powercharts": "3.23.0",
+    "@fusioncharts/utils": "1.9.0",
+    "@fusioncharts/widgets": "3.23.0",
+    "mutationobserver-shim": "0.3.5",
+    "promise-polyfill": "8.1.3"
+  }
+}

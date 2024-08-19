@@ -20,6 +20,10 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: moment().subtract(1, "days").format("YYYY-MM-DD")
         },
+        currentDayDate: {
+            type: 'text',
+            default: moment().format("YYYY-MM-DD")
+        },
         basket: {
             type: 'text',
             default: 26157565
@@ -39,6 +43,7 @@ const g_config = new MonkeyConfig({
 const VERSION = "v1.0";
 const BASE_URL = "https://kite.zerodha.com";
 const PREVIOUS_DAY_DATE = g_config.get('previousDayDate');
+const CURRENT_DAY = g_config.get('currentDayDate');
 const D_LEVEL = g_config.get('logging');
 let date = new Date().toJSON().slice(0, 10);
 const BASKET = g_config.get('basket');
@@ -422,6 +427,210 @@ let FOLIST_TWO = [
 ]
 
 
+let instrumentTokens = {
+    'AARTIIND': 1793,
+    'ABB': 3329,
+    'ACC': 5633,
+    'ADANIENT': 6401,
+    'APOLLOHOSP': 40193,
+    'APOLLOTYRE': 41729,
+    'ASHOKLEY': 54273,
+    'IEX': 56321,
+    'ASIANPAINT': 60417,
+    'ATUL': 67329,
+    'AUROPHARMA': 70401,
+    'BAJFINANCE': 81153,
+    'BALKRISIND': 85761,
+    'BALRAMCHIN': 87297,
+    'BATAINDIA': 94977,
+    'BEL': 98049,
+    'BERGEPAINT': 103425,
+    'BHARATFORG': 108033,
+    'BHEL': 112129,
+    'HDFCLIFE': 119553,
+    'BPCL': 134657,
+    'BRITANNIA': 140033,
+    'CANFINHOME': 149249,
+    'CHAMBLFERT': 163073,
+    'EXIDEIND': 173057,
+    'CHOLAFIN': 175361,
+    'CIPLA': 177665,
+    'COROMANDEL': 189185,
+    'DABUR': 197633,
+    'DRREDDY': 225537,
+    'EICHERMOT': 232961,
+    'ESCORTS': 245249,
+    'FEDERALBNK': 261889,
+    'GNFC': 300545,
+    'GRASIM': 315393,
+    'AMBUJACEM': 325121,
+    'HDFCBANK': 341249,
+    'HEROMOTOCO': 345089,
+    'HINDALCO': 348929,
+    'HINDUNILVR': 356865,
+    'HINDPETRO': 359937,
+    'INDHOTEL': 387073,
+    'INDIACEM': 387841,
+    'INFY': 408065,
+    'IOC': 415745,
+    'IPCALAB': 418049,
+    'ITC': 424961,
+    'CUMMINSIND': 486657,
+    'KOTAKBANK': 492033,
+    'TRENT': 502785,
+    'LICHSGFIN': 511233,
+    'M&M': 519937,
+    'RAMCOCEM': 523009,
+    'MFSL': 548353,
+    'BOSCHLTD': 558337,
+    'BANDHANBNK': 579329,
+    'MRF': 582913,
+    'HAL': 589569,
+    'PEL': 617473,
+    'ONGC': 633601,
+    'PIDILITIND': 681985,
+    'RELIANCE': 738561,
+    'SAIL': 758529,
+    'SBIN': 779521,
+    'VEDL': 784129,
+    'SHREECEM': 794369,
+    'SIEMENS': 806401,
+    'SRF': 837889,
+    'SUNPHARMA': 857857,
+    'TATACHEM': 871681,
+    'TATAPOWER': 877057,
+    'TATACONSUM': 878593,
+    'TATAMOTORS': 884737,
+    'TATASTEEL': 895745,
+    'TITAN': 897537,
+    'TORNTPHARM': 900609,
+    'VOLTAS': 951809,
+    'TATACOMM': 952577,
+    'WIPRO': 969473,
+    'MARICO': 1041153,
+    'MOTHERSON': 1076225,
+    'HDFCAMC': 1086465,
+    'SHRIRAMFIN': 1102337,
+    'MPHASIS': 1152769,
+    'BANKBARODA': 1195009,
+    'GAIL': 1207553,
+    'CONCOR': 1215745,
+    'ICICIBANK': 1270529,
+    'INDUSINDBK': 1346049,
+    'CUB': 1459457,
+    'AXISBANK': 1510401,
+    'NATIONALUM': 1629185,
+    'JINDALSTEL': 1723649,
+    'BSOFT': 1790465,
+    'HCLTECH': 1850625,
+    'GLENMARK': 1895937,
+    'ZYDUSLIFE': 2029825,
+    'DALBHARAT': 2067201,
+    'TVSMOTOR': 2170625,
+    'METROPOLIS': 2452737,
+    'POLYCAB': 2455041,
+    'HAVELLS': 2513665,
+    'GODREJCP': 2585345,
+    'SYNGENE': 2622209,
+    'LUPIN': 2672641,
+    'UNITDSPR': 2674433,
+    'GUJGASLTD': 2713345,
+    'BHARTIARTL': 2714625,
+    'PNB': 2730497,
+    'INDIAMART': 2745857,
+    'OFSS': 2748929,
+    'CANBK': 2763265,
+    'DIVISLAB': 2800641,
+    'MARUTI': 2815745,
+    'IDFCFIRSTB': 2863105,
+    'INDIGO': 2865921,
+    'IGL': 2883073,
+    'UPL': 2889473,
+    'PETRONET': 2905857,
+    'BIOCON': 2911489,
+    'LT': 2939649,
+    'ULTRACEMCO': 2952193,
+    'TCS': 2953217,
+    'COFORGE': 2955009,
+    'NTPC': 2977281,
+    'LALPATHLAB': 2983425,
+    'ALKEM': 2995969,
+    'JSWSTEEL': 3001089,
+    'GRANULES': 3039233,
+    'IDFC': 3060993,
+    'PVRINOX': 3365633,
+    'JKCEMENT': 3397121,
+    'M&MFIN': 3400961,
+    'SUNTV': 3431425,
+    'GMRINFRA': 3463169,
+    'TECHM': 3465729,
+    'IRCTC': 3484417,
+    'NAUKRI': 3520257,
+    'PFC': 3660545,
+    'IDEA': 3677697,
+    'PAGEIND': 3689729,
+    'ASTRAL': 3691009,
+    'NAVINFLUOR': 3756033,
+    'DLF': 3771393,
+    'POWERGRID': 3834113,
+    'ADANIPORTS': 3861249,
+    'COLPAL': 3876097,
+    'NMDC': 3924993,
+    'RECLTD': 3930881,
+    'BAJAJ-AUTO': 4267265,
+    'BAJAJFINSV': 4268801,
+    'UBL': 4278529,
+    'CROMPTON': 4376065,
+    'MGL': 4488705,
+    'LTIM': 4561409,
+    'GODREJPROP': 4576001,
+    'ABBOTINDIA': 4583169,
+    'HINDCOPPER': 4592385,
+    'NESTLEIND': 4598529,
+    'SBICARD': 4600577,
+    'JUBLFOOD': 4632577,
+    'PERSISTENT': 4701441,
+    'RBLBANK': 4708097,
+    'LTTS': 4752385,
+    'ICICIPRULI': 4774913,
+    'MANAPPURAM': 4879617,
+    'LAURUSLABS': 4923905,
+    'DEEPAKNTR': 5105409,
+    'OBEROIRLTY': 5181953,
+    'COALINDIA': 5215745,
+    'AUBANK': 5436929,
+    'ABCAPITAL': 5533185,
+    'DIXON': 5552641,
+    'ICICIGI': 5573121,
+    'SBILIFE': 5582849,
+    'MUTHOOTFIN': 6054401,
+    'PIIND': 6191105,
+    'LTF': 6386689,
+    'INDUSTOWER': 7458561,
+    'ABFRL': 7707649,
+    'MCX': 7982337,
+    'NIFTY 50': 256265,
+    'SENSEX': 265,
+    'NIFTY MIDCAP 100': 256777,
+    'NIFTY BANK': 260105,
+    'NIFTY 100': 260617,
+    'NIFTY FIN SERVICE': 257801,
+    'NIFTY IT': 259849,
+    'NIFTY MIDCAP 50': 260873,
+    'NIFTY PHARMA': 262409,
+    'NIFTY AUTO': 263433,
+    'NIFTY METAL': 263689,
+    'NIFTY 200': 264457,
+    'NIFTY MIDCAP 150': 266249,
+    'NIFTY SMLCAP 250': 267273,
+    'NIFTY NEXT 50': 270857,
+    'NIFTY MID SELECT': 288009,
+}
+
+
+
+
+
 function callAddToWatchList() {
     for (let i = 0; i < FOLIST_TWO.length; i++) {
         addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 7)
@@ -458,7 +667,7 @@ jQ(document).ready(function () {
 
 function saveVixQuote() {
     if (!localStorage.getItem("VIX_QUOTE")) {
-        jQ.when(getHistoricalData(264969, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE)).done(function (res) {
+        jQ.when(getHistoricalData(264969, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (res) {
             localStorage.setItem("VIX_QUOTE", JSON.stringify(res));
         })
     }
@@ -504,7 +713,7 @@ function callSleepForAWhile(times) {
     });
 }
 
-window.jQ = jQuery.noConflict(true);
+
 let instrumentsMap = {}
 
 
@@ -555,6 +764,7 @@ async function generateTrend() {
                     }
                     that.find(".symbol").prepend(trendMap['openedTrend']);
                     that.find(".symbol").find(".trend-class").attr("data-name", name);
+                    that.find(".symbol").find(".trend-class").attr("data-trend", trendMap['trend']);
                     let draw = '<span data-trend="' + trendMap['trend'] + '" data-name="' + name + '" class="badge bg-secondary draw-points">Draw</span>'
                     let add = '<span data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + trendMap['trend'] + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</span>'
                     that.find(".symbol").prepend(draw);
@@ -567,7 +777,7 @@ async function generateTrend() {
                         if (index == 2) {
                             indexType = "NIFTY BANK"
                         }
-                        if(getWeightAge(indexType, name, true)){
+                        if (getWeightAge(indexType, name, true)) {
                             let weight = '<span class="badge bg-dark script-weight">' + getWeightAge(indexType, name, true) + '</span>'
                             that.find(".symbol").append(weight);
                         }
@@ -581,10 +791,12 @@ async function generateTrend() {
             countMaprkup += '<span class="bullsVersesBears bg-success">' + bulls + '</span>'
             countMaprkup += '<span class="bullsVersesBears bg-danger">' + bears + '</span>'
             let addAll = ''
-            addAll += '<span class="bg-warning add-all-scripts">Add</span>'
+            addAll += '<span class="bg-warning add-all-scripts">+</span>'
 
             jQ(item).append(countMaprkup)
-            jQ(item).append(addAll)
+            if (index != 0) {
+                jQ(item).append(addAll)
+            }
         }
     })
 }
@@ -593,7 +805,7 @@ jQ(document).on("click", ".add-all-scripts", function () {
     addAllToBasket()
 });
 
-let baskets = [26184477,26185846,26185849]
+let baskets = [26184477, 26185846, 26185849]
 async function addAllToBasket() {
     let instrumentsWrapper = jQ(".instruments");
     let instruments = instrumentsWrapper.find(".vddl-list .instrument");
@@ -614,20 +826,20 @@ async function addAllToBasket() {
         let exchange = "NSE"
         let weight = (weightIndex.length + 1)
 
-        if(i <=19){
-            addToBasket(tradingsymbol, exchange, weight, params,baskets[0])
+        if (i <= 19) {
+            addToBasket(tradingsymbol, exchange, weight, params, baskets[0])
             weightIndex = [];
         }
-        if(i >19 && i <=39){
-            addToBasket(tradingsymbol, exchange, weight, params,baskets[1])
+        if (i > 19 && i <= 39) {
+            addToBasket(tradingsymbol, exchange, weight, params, baskets[1])
             weightIndex = [];
         }
 
-        if(i >39 && i <59){
-            addToBasket(tradingsymbol, exchange, weight, params,baskets[2])
+        if (i > 39 && i < 59) {
+            addToBasket(tradingsymbol, exchange, weight, params, baskets[2])
             weightIndex = [];
         }
-        
+
         weightIndex.push(name)
         await callSleepForAWhile(1000)
     }
@@ -649,7 +861,7 @@ jQ(document).on("click", ".add-to-basket", function () {
     let tradingsymbol = name
     let exchange = "NSE"
     let weight = (weightIndex.length + 1)
-    addToBasket(tradingsymbol, exchange, weight, params,BASKET)
+    addToBasket(tradingsymbol, exchange, weight, params, BASKET)
     weightIndex.push(name)
 });
 
@@ -730,8 +942,9 @@ function handleKiteCall(coordinates) {
 
 jQ(document).on("click", ".trend-class", function () {
     let name = jQ(this).attr("data-name");
+    let trend = jQ(this).attr("data-trend");
     let data = getStrikeDetails(instrumentsMap[name], name);
-
+    let chartId = 'chart-' + name.replaceAll(" ", "-") + '-' + trend;
     let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
 
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
@@ -768,18 +981,151 @@ jQ(document).on("click", ".trend-class", function () {
     matrixTable += '<tr class="bg-danger">'
     matrixTable += '<th >VIX UPPER RANGE</th>'
     matrixTable += '<td>' + vixUpperRange + '</td>'
+    matrixTable += '<tr rowspan="2">'
+    matrixTable += '<td colspan="2" id="' + chartId + '"></td>'
     matrixTable += '</tr>'
 
 
     let toolTip = ''
-    toolTip += ''
 
     toolTip += '<table id="instrument-matrix-table" class="table table-striped table-bordered dt-responsive nowrap">'
     toolTip += '<tbody>' + matrixTable + '</tbody>'
     toolTip += '</table>'
 
-    showTippy(this, toolTip)
+    showTippy(this, toolTip, chartId);
+    showChart(chartId, name, vixLowerRange, vixUpperRange,data)
+
 });
+
+
+function showChart(chartId, name, vixLowerRange, vixUpperRange,data) {
+    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, 'minute')).done(function (res) {
+        let quote = []
+        $.each(res.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = item[0]
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            quote.push(map);
+        })
+
+        let categoryList = []
+
+        let dateIndex = 0
+        $.each(quote, function (index, item) {
+            let map = {}
+            map.label = item.date;
+            map.x = dateIndex;
+            categoryList.push(map)
+            dateIndex++;
+        });
+
+        let dataList = []
+        let min = 0
+        let max = 0
+        dateIndex = 0
+
+        $.each(quote, function (index, item) {
+            let map = {}
+            map.open = item.open
+            map.high = item.high
+            map.low = item.low
+            map.close = item.close
+            map.x = dateIndex
+
+            if (index == 0) {
+                min = item.high
+                max = item.high
+            }
+
+            if (item.high < min) {
+                min = item.high
+            }
+
+            if (item.high > max) {
+                max = item.high
+            }
+            dataList.push(map);
+            dateIndex++;
+        });
+
+        let lines = [];
+    let line = {};
+
+    line.color = "#8be73a";
+    line.startvalue = vixLowerRange;
+    line.displayvalue = 'Vix lower range ' + vixLowerRange;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = vixUpperRange;
+    line.displayvalue = 'Vix upper range ' + vixUpperRange;
+    lines.push(line);
+
+
+
+    line = {};
+    line.color = "#403ae7";
+    line.startvalue = data.bstrikeOne;
+    line.displayvalue = 'Bearish below/Bullish above ' + data.bstrikeOne;
+    lines.push(line);
+
+    line = {};
+    line.color = "#403ae7";
+    line.startvalue = data.ustrikeOne;
+    line.displayvalue = 'Bullish above/Bearish below' + data.ustrikeOne;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = data.bstrikeTwo;
+    line.displayvalue = data.bstrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = data.ustrikeTwo;
+    line.displayvalue = data.ustrikeTwo;
+    lines.push(line);
+
+
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "500",
+        height: "300",
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                "pYAxisMinValue": min,
+                "pYAxisMaxValue": max,
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
+
+
+    })
+    
+}
 
 
 function clearLocalStorage() {
@@ -813,7 +1159,7 @@ function getStrikeDetails(item, instrument) {
 
 }
 
-function showTippy(target, msg) {
+function showTippy(target, msg, chartId) {
     var t = tippy(target, {
         content: msg,
         allowHTML: true,
@@ -826,6 +1172,8 @@ function showTippy(target, msg) {
             instance.destroy();
         },
     });
+
+
 }
 
 const hideOnEsc = {
@@ -850,14 +1198,14 @@ const hideOnEsc = {
 };
 
 
-function getHistoricalData(code, fromDate, toDate) {
+function getHistoricalData(code, fromDate, toDate, interval) {
     jQ.ajaxSetup({
         headers: {
             'Authorization': `enctoken ${getCookie('enctoken')}`
         }
     });
     return jQ.ajax({
-        url: BASE_URL + `/oms/instruments/historical/${code}/day?user_id=HY8031&oi=1&from=${fromDate}&to=${toDate}`,
+        url: BASE_URL + `/oms/instruments/historical/${code}/${interval}?user_id=HY8031&oi=1&from=${fromDate}&to=${toDate}`,
         type: 'GET',
         async: true,
         cache: false,
@@ -1014,7 +1362,7 @@ function getStrikeDiff(instrument) {
 }
 
 
-function addToBasket(tradingsymbol, exchange, weight, params,basket) {
+function addToBasket(tradingsymbol, exchange, weight, params, basket) {
     jQ.ajaxSetup({
         headers: {
             'x-csrftoken': `${getCookie('public_token')}`
