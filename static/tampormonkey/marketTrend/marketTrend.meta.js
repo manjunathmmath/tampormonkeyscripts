@@ -34,8 +34,11 @@
 // @require      http://localhost:3000/tampormonkey/common/sweetalert2@11.js
 // @require      http://localhost:3000/tampormonkey/common/toastify-js.js
 // @resource     TOASTIFY_CSS http://localhost:3000/tampormonkey/common/toastify.min.css
+// @resource     SACKBAR_CSS http://localhost:3000/tampormonkey/common/sackbar/js-snackbar.min.css
+// @require      http://localhost:3000/tampormonkey/common/sackbar/js-snackbar.min.js
 // @resource     COMMON_CSS http://localhost:3000/tampormonkey/marketTrend/commonStyle.css
 // @require      http://localhost:3000/tampormonkey/common/betterCommon.js
+// @require      http://localhost:3000/tampormonkey/marketTrend/alertSound.js
 // @require      http://localhost:3000/tampormonkey/marketTrend/script.js
 
 // @downloadURL  http://localhost:3000/tampormonkey/marketTrend/marketTrend.user.js

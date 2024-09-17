@@ -103,3 +103,23 @@ span.bullsVersesBears {
   .bg-gradient {
     background-image: var(--bs-gradient) !important;
   }
+
+  .info-wrapper .badge{
+    margin-right:.2rem ;
+  }
+
+  .above-strike-one{
+    background-color: #e8cf13 !important;
+  }
+
+  .above-strike-two{
+    background-color: #e86231 !important;
+  }
+
+  .below-strike-one{
+    background-color: #c0f56b !important;
+  }
+
+  .below-strike-two{
+    background-color: #48ed27 !important;
+  }
