@@ -15,7 +15,6 @@
 // @resource     BOOTSTRAP_CSS http://localhost:3000/dist/css/bootstrap.css
 // @resource     POPUP_WINDOW_CSS http://localhost:3000/tampormonkey/common/popupwindow/popupwindow.css
 // @require      http://localhost:3000/global/vendor/jquery/jquery.js
-
 // @require      http://localhost:3000/dist/js/bootstrap.js
 // @require      http://localhost:3000/tampormonkey/common/toastify-js.js
 // @require      http://localhost:3000/tampormonkey/common/popupwindow/popupwindow.js
@@ -39,8 +38,8 @@
 // @resource     COMMON_CSS http://localhost:3000/tampormonkey/marketTrend/commonStyle.css
 // @require      http://localhost:3000/tampormonkey/common/betterCommon.js
 // @require      http://localhost:3000/tampormonkey/marketTrend/alertSound.js
+// @require      http://localhost:3000/tampormonkey/marketTrend/constants.js
 // @require      http://localhost:3000/tampormonkey/marketTrend/script.js
-
 // @downloadURL  http://localhost:3000/tampormonkey/marketTrend/marketTrend.user.js
 // @updateURL    http://localhost:3000/tampormonkey/marketTrend/marketTrend.meta.js
 // ==/UserScript==
