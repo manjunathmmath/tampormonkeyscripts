@@ -2,7 +2,7 @@ const my_css = GM_getResourceText("TOASTIFY_CSS");
 const boot_css = GM_getResourceText("BOOTSTRAP_CSS");
 const common_css = GM_getResourceText("COMMON_CSS");
 const popup_window_css = GM_getResourceText("POPUP_WINDOW_CSS");
-const sackbar_css =GM_getResourceText("SACKBAR_CSS"); 
+const sackbar_css = GM_getResourceText("SACKBAR_CSS");
 
 GM_addStyle(my_css);
 GM_addStyle(sackbar_css);
@@ -57,9 +57,10 @@ const BASKET = g_config.get('basket');
 const MARGIN = g_config.get('margin');
 let weightIndex = []
 
+
 function callAddToWatchList() {
     for (let i = 0; i < FOLIST_TWO.length; i++) {
-        addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 7)
+        addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 5)
         callSleepForAWhile(1000)
     }
 }
@@ -140,6 +141,7 @@ function callSleepForAWhile(times) {
 let instrumentsMap = {}
 let timerInstance = null
 let interval = 30
+let infoMap = {}
 
 function startRefresh() {
     startTimer(interval);
@@ -166,12 +168,14 @@ function startTimer(duration) {
 async function generateTrend() {
     await callSleepForAWhile(2000);
     clearInterval(timerInstance)
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
     let marketWatchSideBar = jQ(".marketwatch-sidebar");
     let tabs = marketWatchSideBar.find(".marketwatch-selector a.item");
     let instrumentsWrapper = jQ(".instruments");
     let instruments = instrumentsWrapper.find(".vddl-list .instrument");
+    infoMap = {}
     jQ.each(tabs, function (index, item) {
-        if(index == 6){
+        if (index == 6 || index == 5) {
             return;
         }
         if (jQ(item).hasClass("selected")) {
@@ -183,13 +187,13 @@ async function generateTrend() {
                         let price = jQ(this).find(".price").find(".last-price").html();
                         let perc = jQ(this).find(".price-change").find(".price-absolute").html();
                         let insMap = {}
-                        if(name == "M&amp;M"){
+                        if (name == "M&amp;M") {
                             name = "M&M"
                         }
-                        if(name == "M&amp;MFIN"){
+                        if (name == "M&amp;MFIN") {
                             name = "M&MFIN"
                         }
-                        
+
                         insMap['name'] = name.trim();
                         insMap['price'] = parseFloat(price.trim()).toFixed(2)
                         insMap['perc'] = perc.trim();
@@ -206,11 +210,11 @@ async function generateTrend() {
             jQ(instruments).each(function (iindex, iitem) {
                 let name = jQ(this).find(".symbol").find(".nice-name").html();
                 let price = jQ(this).find(".price").find(".last-price").html();
-                if(name == "M&amp;M"){
+                if (name == "M&amp;M") {
                     name = "M&M"
                 }
 
-                if(name == "M&amp;MFIN"){
+                if (name == "M&amp;MFIN") {
                     name = "M&MFIN"
                 }
                 if (name != "INDIA VIX") {
@@ -219,13 +223,9 @@ async function generateTrend() {
                     that.find(".info-wrapper").find(".add-to-basket").remove();
                     that.find(".info-wrapper").find(".script-weight").remove();
                     that.find(".info-wrapper").find(".strike-info").remove();
+                    that.find(".info-wrapper").find(".show-info").remove();
 
-                    if (index != 0) {
-                        /*
-                        let add = '<div data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + 'NA' + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</div>'
-                        that.find(".info-wrapper").append(add);
-                        */
-                    }
+
 
                     if (index == 1 || index == 2) {
                         let indexType = "NIFTY 50"
@@ -240,7 +240,7 @@ async function generateTrend() {
 
                     let strikeData = getStrikeDetails(instrumentsMap[name], name);
                     let currentStrike = parseFloat(instrumentsMap[name]['currentStrike']).toFixed(2)
-                    
+
                     let currentPrice = parseFloat(price.trim()).toFixed(2);
                     let alrtSound = new Audio(alertSound);
                     let trend = "NA"
@@ -249,53 +249,112 @@ async function generateTrend() {
                         let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
                         that.find(".info-wrapper").append(strike);
                         trend = "AST"
-                        if (g_config.get('enableSound') == "Yes") {
-                            if (currentStrike != parseFloat(strikeData['ustrikeTwo'])) {
+
+                        if (currentStrike != parseFloat(strikeData['ustrikeTwo'])) {
+                            if (g_config.get('enableSound') == "Yes") {
                                 alrtSound.play();
-                                let message = " Probability trade is SELL " + name +"( "+trend+")"
-                                callSackBar(message)
                             }
+                            let message = " Probability trade is SELL " + name + "( " + trend + ")"
+                            callSackBar(message)
+
                         }
                         instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['ustrikeTwo']).toFixed(2)
                     } else if (currentPrice > parseFloat(strikeData['ustrikeOne'])) {
                         let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
                         that.find(".info-wrapper").append(strike);
                         trend = "ASO"
-                        if (g_config.get('enableSound') == "Yes") {
-                            if (currentStrike != parseFloat(strikeData['ustrikeOne'])) {
+                        if (currentStrike != parseFloat(strikeData['ustrikeOne'])) {
+                            if (g_config.get('enableSound') == "Yes") {
                                 alrtSound.play();
-                                let message = " Probability trade is SELL " + name +"( "+trend+")"
-                                callSackBar(message)
                             }
+                            let message = " Probability trade is SELL " + name + "( " + trend + ")"
+                            callSackBar(message)
                         }
                         instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['ustrikeOne']).toFixed(2)
-                    }else if (currentPrice < parseFloat(strikeData['bstrikeTwo'])) {
+                    } else if (currentPrice < parseFloat(strikeData['bstrikeTwo'])) {
                         let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
                         that.find(".info-wrapper").append(strike);
                         trend = "BST"
-                        if (g_config.get('enableSound') == "Yes") {
-                            if (currentStrike != parseFloat(strikeData['bstrikeTwo'])) {
+                        if (currentStrike != parseFloat(strikeData['bstrikeTwo'])) {
+                            if (g_config.get('enableSound') == "Yes") {
                                 alrtSound.play();
-                                let message = " Probability trade is BUY " + name +"( "+trend+")"
-                                callSackBar(message)
                             }
+                            let message = " Probability trade is BUY " + name + "( " + trend + ")"
+                            callSackBar(message)
                         }
                         instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['bstrikeTwo']).toFixed(2)
-                    } else  if (currentPrice < parseFloat(strikeData['bstrikeOne'])) {
+                    } else if (currentPrice < parseFloat(strikeData['bstrikeOne'])) {
                         let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
                         that.find(".info-wrapper").append(strike);
                         trend = "BSO"
-                        if (g_config.get('enableSound') == "Yes") {
-                            if (currentStrike != parseFloat(strikeData['bstrikeOne'])) {
+                        if (currentStrike != parseFloat(strikeData['bstrikeOne'])) {
+                            if (g_config.get('enableSound') == "Yes") {
                                 alrtSound.play();
-                                let message = " Probability trade is BUY " + name +"( "+trend+")"
-                                callSackBar(message)
                             }
+                            let message = " Probability trade is BUY " + name + "( " + trend + ")"
+                            callSackBar(message)
                         }
                         instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['bstrikeOne']).toFixed(2)
                     }
+
+                    var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
+                    var vixLowerRange = 0;
+                    var vixUpperRange = 0;
+                    var vixDDRange = 0;
+
+                    vixLowerRange = parseFloat(vix.vixDDLower)
+                    vixUpperRange = parseFloat(vix.vixDDUpper)
+                    vixDDRange = parseFloat(vix.vixDDRange)
+
+
+                    if (currentPrice <= parseFloat(vixLowerRange)) {
+                        let strike = '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                        that.find(".info-wrapper").append(strike);
+                        trend = "VIXL"
+                        if (currentStrike != parseFloat(vixLowerRange)) {
+                            if (g_config.get('enableSound') == "Yes") {
+                                alrtSound.play();
+                            }
+                            let message = " Probability trade is BUY " + name + "( " + trend + ")"
+                            callSackBar(message)
+                        }
+                        instrumentsMap[name]['currentStrike'] = parseFloat(vixLowerRange).toFixed(2)
+                    }
+
+
+                    if (currentPrice >= parseFloat(vixUpperRange)) {
+                        let strike = '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                        that.find(".info-wrapper").append(strike);
+                        trend = "VIXU"
+                        if (currentStrike != parseFloat(vixUpperRange)) {
+                            if (g_config.get('enableSound') == "Yes") {
+                                alrtSound.play();
+                            }
+                            let message = " Probability trade is SELL " + name + "( " + trend + ")"
+                            callSackBar(message)
+                        }
+                        instrumentsMap[name]['currentStrike'] = parseFloat(vixUpperRange).toFixed(2)
+                    }
+
                     let draw = '<div data-trend="' + trend + '" data-name="' + name + '" class="badge bg-secondary draw-points">Draw</div>'
                     that.find(".info-wrapper").append(draw);
+
+                    let infoObj = {}
+
+                    infoObj['instrument'] = instrumentsMap[name]
+                    infoObj['vix'] = vix
+                    infoObj['strikeData'] = strikeData
+                    infoMap[name] = infoObj
+
+                    let tooltip = '<div data-name="' + name + '" class="badge bg-secondary show-info">i</div>'
+                    that.find(".info-wrapper").append(tooltip);
+
+                    let add = '<div data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + trend + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</div>'
+
+                    if (index != 0) {
+                        that.find(".info-wrapper").append(add);
+                    }
+
                 }
             });
             jQ(item).find(".add-all-scripts").remove();
@@ -310,6 +369,32 @@ async function generateTrend() {
     startRefresh();
 }
 
+jQ(document).on("click", ".show-info", function () {
+    let name = jQ(this).attr("data-name");
+    let data = infoMap[name];
+    let html = ''
+    html += '<div style="text-align:center;">'
+    html += name
+    html += '</div>'
+    html += '<div>'
+    html += ' ASO : ' + data['strikeData']['ustrikeOne']
+    html += ' AST : ' + data['strikeData']['ustrikeTwo']
+    html += '</div>'
+    html += '<hr>'
+    html += '<div>'
+    html += ' BSO : ' + data['strikeData']['bstrikeOne']
+    html += ' BST : ' + data['strikeData']['bstrikeTwo']
+    html += '</div>'
+    html += '<hr>'
+    html += '<div>'
+    html += ' VIXU : ' + data['vix']['vixDDUpper']
+    html += ' VIXL : ' + data['vix']['vixDDLower']
+    html += '</div>'
+    html += ''
+    html += ''
+    callSackBarInfo(html)
+});
+
 jQ(document).on("click", ".add-all-scripts", function () {
     addAllToBasket()
 });
@@ -320,14 +405,93 @@ async function addAllToBasket() {
     let instrumentsWrapper = jQ(".instruments");
     let instruments = instrumentsWrapper.find(".vddl-list .instrument");
     weightIndex = [];
+
+    let INSTRUMENT_TRADE_PRESENT = localStorage.getItem("INSTRUMENT_TRADE_PRESENT");
+
+    if(INSTRUMENT_TRADE_PRESENT){
+        INSTRUMENT_TRADE_PRESENT = JSON.parse(INSTRUMENT_TRADE_PRESENT);
+    }else{
+        INSTRUMENT_TRADE_PRESENT = []
+    }
+    
+    let addInstrumentsToTrade = []
     for (let i = 0; i < instruments.length; i++) {
         let that = jQ(instruments[i]);
-        let add = that.find(".symbol").find(".add-to-basket");
+        let add = that.find(".info-wrapper").find(".add-to-basket");
         let name = add.attr("data-name");
         let trend = add.attr("data-trend");
         let price = add.attr("data-price");
         let transaction_type = "SELL"
-        if (trend == "OIBS") {
+        if (trend == "VIXU" || trend == "VIXL") {
+            if (jQ.inArray(name, INSTRUMENT_TRADE_PRESENT) == -1) {
+                if (trend == "VIXL") {
+                    transaction_type = "BUY"
+                }
+                let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+                let params = { "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
+                let tradingsymbol = name
+                let exchange = "NSE"
+                let weight = (weightIndex.length + 1)
+
+                if (i <= 19) {
+                    addToBasket(tradingsymbol, exchange, weight, params, baskets[0])
+                    weightIndex = [];
+                }
+                if (i > 19 && i <= 39) {
+                    addToBasket(tradingsymbol, exchange, weight, params, baskets[1])
+                    weightIndex = [];
+                }
+
+                if (i > 39 && i < 59) {
+                    addToBasket(tradingsymbol, exchange, weight, params, baskets[2])
+                    weightIndex = [];
+                }
+                weightIndex.push(name)
+                await callSleepForAWhile(1000)
+                addInstrumentsToTrade.push(tradingsymbol)
+            }
+        }
+    }
+
+    jQ.each(addInstrumentsToTrade,function(index,item){
+        INSTRUMENT_TRADE_PRESENT.push(item)
+    });
+
+    localStorage.setItem("INSTRUMENT_TRADE_PRESENT", JSON.stringify(INSTRUMENT_TRADE_PRESENT));
+    alert("Added all scripts to the Basket.")
+}
+
+function callSackBar(message) {
+    return;
+    SnackBar({
+        message: message,
+        status: "alert",
+        timeout: 20000,
+        actions: [],
+        container: "app"
+    });
+}
+
+function callSackBarInfo(message) {
+    SnackBar({
+        message: message,
+        status: "info",
+        timeout: 20000,
+        actions: [],
+        container: "app",
+        position: 'tm'
+    });
+}
+
+
+jQ(document).on("click", ".add-to-basket", function () {
+    let name = jQ(this).attr("data-name");
+    let trend = jQ(this).attr("data-trend");
+    let price = jQ(this).attr("data-price");
+
+    if (trend == "VIXL" || trend == "VIXU") {
+        let transaction_type = "SELL"
+        if (trend == "VIXL") {
             transaction_type = "BUY"
         }
         let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
@@ -335,51 +499,9 @@ async function addAllToBasket() {
         let tradingsymbol = name
         let exchange = "NSE"
         let weight = (weightIndex.length + 1)
-
-        if (i <= 19) {
-            addToBasket(tradingsymbol, exchange, weight, params, baskets[0])
-            weightIndex = [];
-        }
-        if (i > 19 && i <= 39) {
-            addToBasket(tradingsymbol, exchange, weight, params, baskets[1])
-            weightIndex = [];
-        }
-
-        if (i > 39 && i < 59) {
-            addToBasket(tradingsymbol, exchange, weight, params, baskets[2])
-            weightIndex = [];
-        }
-
+        addToBasket(tradingsymbol, exchange, weight, params, BASKET)
         weightIndex.push(name)
-        await callSleepForAWhile(1000)
     }
-    alert("Added all scripts to the Basket.")
-}
-
-function callSackBar(message){
-    SnackBar({
-        message: message,
-        status: "alert",
-        timeout: 20000,
-        actions: []
-    });
-}
-
-jQ(document).on("click", ".add-to-basket", function () {
-    let name = jQ(this).attr("data-name");
-    let trend = jQ(this).attr("data-trend");
-    let price = jQ(this).attr("data-price");
-    let transaction_type = "SELL"
-    if (trend == "OIBS") {
-        transaction_type = "BUY"
-    }
-    let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
-    let params = { "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
-    let tradingsymbol = name
-    let exchange = "NSE"
-    let weight = (weightIndex.length + 1)
-    addToBasket(tradingsymbol, exchange, weight, params, BASKET)
-    weightIndex.push(name)
 });
 
 jQ(document).on("click", ".marketwatch-selector a.item", function () {
@@ -415,58 +537,58 @@ jQ(document).on("click", ".draw-points", function () {
 
     let lineMap = {}
 
-    lineMap = { 
-        coordinates: strikeData.bstrikeOne, 
-        color: 1, 
-        label: 'Below Strike 1 (Bearish Below)' ,
-        probabilityNo:"There is 66.7% probability of price not crossing below 1st deciding strike.  (Probability of Bullish Trade)",
-        probabilityYes:"There is 32.8% probability of price crossing below 1st deciding strike and closing below.  (Probability of Bullish Trade)",
+    lineMap = {
+        coordinates: strikeData.bstrikeOne,
+        color: 1,
+        label: 'Below Strike 1 (Bearish Below)',
+        probabilityNo: "There is 66.7% probability of price not crossing below 1st deciding strike.  (Probability of Bullish Trade)",
+        probabilityYes: "There is 32.8% probability of price crossing below 1st deciding strike and closing below.  (Probability of Bullish Trade)",
     }
     lineArr.push(lineMap)
 
-    lineMap = { 
-        coordinates: strikeData.bstrikeTwo, 
-        color: 1, 
-        label: 'Below Strike 2 (Bearish Below)' ,
-        probabilityNo:"There is 81.1% probability of price not crossing below 2nd deciding strike.  (Probability of Bullish Trade)",
-        probabilityYes:"There is 18.5% probability of price crossing below 2nd deciding strike and closing below.  (Probability of Bullish Trade)",
+    lineMap = {
+        coordinates: strikeData.bstrikeTwo,
+        color: 1,
+        label: 'Below Strike 2 (Bearish Below)',
+        probabilityNo: "There is 81.1% probability of price not crossing below 2nd deciding strike.  (Probability of Bullish Trade)",
+        probabilityYes: "There is 18.5% probability of price crossing below 2nd deciding strike and closing below.  (Probability of Bullish Trade)",
     }
     lineArr.push(lineMap)
 
-    lineMap = { 
-        coordinates: strikeData.ustrikeOne, 
-        color: 2, 
-        label: 'Above Strike 1 (Bullish Above)' ,
-        probabilityNo:"There is 70.7% probability of price not crossing above 1st deciding strike.  (Probability of Bearish Trade)",
-        probabilityYes:"There is 28.9% probability of price crossing above 1st deciding strike and closing above.  (Probability of Bearish Trade)",
+    lineMap = {
+        coordinates: strikeData.ustrikeOne,
+        color: 2,
+        label: 'Above Strike 1 (Bullish Above)',
+        probabilityNo: "There is 70.7% probability of price not crossing above 1st deciding strike.  (Probability of Bearish Trade)",
+        probabilityYes: "There is 28.9% probability of price crossing above 1st deciding strike and closing above.  (Probability of Bearish Trade)",
     }
     lineArr.push(lineMap)
 
-    lineMap = { 
-        coordinates: strikeData.ustrikeTwo, 
-        color: 2, 
+    lineMap = {
+        coordinates: strikeData.ustrikeTwo,
+        color: 2,
         label: 'Above Strike 2 (Bullish Above)',
-        probabilityNo:"There is 85.7% probability of price not crossing above 2nd deciding strike.  (Probability of Bearish Trade)",
-        probabilityYes:"There is 13.9% probability of price crossing above 2nd deciding strike and closing above. (Probability of Bearish Trade)",
-     }
+        probabilityNo: "There is 85.7% probability of price not crossing above 2nd deciding strike.  (Probability of Bearish Trade)",
+        probabilityYes: "There is 13.9% probability of price crossing above 2nd deciding strike and closing above. (Probability of Bearish Trade)",
+    }
     lineArr.push(lineMap)
 
-    lineMap = { 
-        coordinates: vixLowerRange, 
-        color: 3, 
+    lineMap = {
+        coordinates: vixLowerRange,
+        color: 3,
         label: 'Vix Lower Range ( If breaks are working. It should stop here) ',
-        probabilityNo:"There is 90% probability of price not crossing Vix lower range. (Probability of Bullish Trade)",
-        probabilityYes:"There is 9.6% probability of price crossing Vix lower range. (Probability of Bullish Trade)",
-     }
+        probabilityNo: "There is 90% probability of price not crossing Vix lower range. (Probability of Bullish Trade)",
+        probabilityYes: "There is 9.6% probability of price crossing Vix lower range. (Probability of Bullish Trade)",
+    }
     lineArr.push(lineMap)
 
-    lineMap = { 
-        coordinates: vixUpperRange, 
-        color: 4, 
+    lineMap = {
+        coordinates: vixUpperRange,
+        color: 4,
         label: 'Vix Upper Range ( If breaks are working. It should stop here)',
-        probabilityNo:"There is 89.2% probability of price not crossing Vix upper range.(Probability of Bearish Trade)",
-        probabilityYes:"There is 10.4% probability of price crossing Vix upper range.(Probability of Bearish Trade)",
-     }
+        probabilityNo: "There is 89.2% probability of price not crossing Vix upper range.(Probability of Bearish Trade)",
+        probabilityYes: "There is 10.4% probability of price crossing Vix upper range.(Probability of Bearish Trade)",
+    }
     lineArr.push(lineMap)
 
     dataMap['lines'] = lineArr

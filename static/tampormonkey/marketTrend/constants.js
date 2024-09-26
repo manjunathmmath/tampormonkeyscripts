@@ -1,7 +1,7 @@
 let nseStrikeDiff = {
     'AARTIIND': 20,
     'ABB': 100,
-    'ABBOTINDIA': 500,
+    'ABBOTINDIA': 250,
     'ABCAPITAL': 5,
     'ABFRL': 5,
     'ACC': 20,

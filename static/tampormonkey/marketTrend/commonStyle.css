@@ -19,6 +19,9 @@ span.bullsVersesBears {
 .draw-points{
     cursor: pointer;
 }
+.show-info{
+  cursor: pointer;
+}
 .trend-class{
     cursor: pointer;
 }
