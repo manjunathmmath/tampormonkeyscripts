@@ -59,8 +59,8 @@ let weightIndex = []
 
 
 function callAddToWatchList() {
-    for (let i = 0; i < FOLIST_TWO.length; i++) {
-        addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 5)
+    for (let i = 0; i < NIFTY_BANK_LIST.length; i++) {
+        addToWatchList("NSE", NIFTY_BANK_LIST[i], (i + 1), 3)
         callSleepForAWhile(1000)
     }
 }
@@ -107,6 +107,9 @@ function makeUIChanges() {
     html += '<a href="#" id="clean-storage">'
     html += 'Clean'
     html += '</a>'
+    //html += '<a href="#" id="add-to-watch-list">'
+    //html += 'Add Watchlist'
+    //html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
 }
 
@@ -114,7 +117,11 @@ jQ(document).on("click", "#get-entoken", function (e) {
     e.preventDefault();
     navigator.clipboard.writeText(getCookie('enctoken'));
     saveToken();
-    /*callAddToWatchList();*/
+});
+
+jQ(document).on("click", "#add-to-watch-list", function (e) {
+    e.preventDefault();
+    callAddToWatchList();
 });
 
 jQ(document).on("click", "#clean-storage", function (e) {
@@ -178,7 +185,8 @@ async function generateTrend() {
         if (index == 6 || index == 5) {
             return;
         }
-        if (jQ(item).hasClass("selected")) {
+        
+        if (jQ(item).hasClass("selected") && index <= 2) {
             instrumentsMap = {}
             if (!localStorage.getItem("INSTRUMENT_LIST_" + index)) {
                 if (instruments.length > 0) {
@@ -364,9 +372,479 @@ async function generateTrend() {
                 jQ(item).append(addAll)
             }
             localStorage.setItem("INSTRUMENT_LIST_" + index, JSON.stringify(instrumentsMap));
+        }else{
+            if (jQ(item).hasClass("selected") && index == 3) {
+                jQ(instruments).each(function (iindex, iitem) {
+                    let name = jQ(this).find(".symbol").find(".nice-name").html();
+                    let validName = name.replaceAll(" ","_");
+                    savePreviousFutureQuote(validName)
+                    getCurrentFutureQuote(validName)
+                    let currentQuote = JSON.parse(localStorage.getItem(validName+"_CURRENT_QUOTE")) 
+                    let prevQuote =JSON.parse(localStorage.getItem(validName));
+                    let trend = aiFutureAnalysis(currentQuote,prevQuote,name)
+                    let that = jQ(this);
+                    that.find(".info-wrapper").find(".ai-prediction").remove();
+                    let strike = trend['PLUS'] + trend['MINUS']
+                    that.find(".info-wrapper").append(strike);
+                });
+            }
         }
     });
     startRefresh();
+}
+
+function aiFutureAnalysis(currentQuote,prevQuote,name){
+    let trend;
+    if(name == "NIFTY OCT FUT"){
+        trend = showAiNiftyPrediction(currentQuote,prevQuote,name)
+    } 
+    if(name == "BANKNIFTY OCT FUT"){
+        trend =showAiBankNiftyPrediction(currentQuote,prevQuote,name)
+    }
+    
+    return trend;
+}
+
+
+function showAiNiftyPrediction(currentQuoteData,prevQuoteData,name) {
+    let futuresData = {};
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length-1];
+
+    
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
+    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5; // price spike adjustment
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / 50;
+    var previousOI = prevQuote['oi'] / 50
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+    var dogImgContainer = '<span class="badge bg-light ai-prediction">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="badge bg-light ai-prediction">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="badge bg-light ai-prediction">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="badge bg-light ai-prediction">' + captain + '</span>'
+    var lokiImgContainer = '<span class="badge bg-light ai-prediction">' + loki + '</span>'
+    var ironManImgContainer = '<span class="badge bg-light ai-prediction">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="badge bg-light ai-prediction">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="badge bg-light ai-prediction">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+    if (price == "+" && oi == "+") {
+        remark = '<span class="badge bg-success ai-prediction">Long</span>'
+        display = "+";
+    } else if (price == "-" && oi == "+") {
+        remark = '<span class="badge bg-danger ai-prediction">Short</span>'
+        display = "-";
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<span class="badge bg-success ai-prediction">Short Covering</span>'
+        display = "+";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<span class="badge bg-danger ai-prediction">Long Unwinding</span>'
+        display = "-";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger ai-prediction">Bears Coming,Sell On Rise</span>'
+        display = "-";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Gambling! Buy,News & Events</span>'
+        display = "+";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Caution! Writers Eroding Premium</span>'
+        display = "+";
+    } else {
+        remark = captainImgContainer + '<span class="badge bg-danger ai-prediction">Defence,Buy On Decline</span>'
+        display = "+";
+    }
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    if (display == "+") {
+        marketTrendPlus = '<span class="blinking badge bg-success ai-prediction">Hulk Arrived (+)</span>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<span class="blinking badge bg-warning ai-prediction">Doctor Strange Arrived (+)</span>'
+            imageBullPlus = doctorStrangeImgContainer
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to buy Calls</span>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    futuresData['PLUS'] = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<span class="blinking badge bg-danger ai-prediction">Chitauri Army Arrived (-)</span>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to Short Calls</span>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+
+    futuresData['MINUS'] = imageBearMinus + bearRemark + marketTrendMinus
+
+    return futuresData;
+}
+
+function showAiBankNiftyPrediction(currentQuoteData,prevQuoteData,name) {
+    let futuresData = {};
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length-1];
+
+    
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
+    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var close = quote.close;
+    var lastPrice = quote.close;
+
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5; // price spike adjustment
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / 15;
+    var previousOI = prevQuote['oi'] / 15
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+
+    var dogImgContainer = '<span class="badge bg-light ai-prediction">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="badge bg-light ai-prediction">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="badge bg-light ai-prediction">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="badge bg-light ai-prediction">' + captain + '</span>'
+    var lokiImgContainer = '<span class="badge bg-light ai-prediction">' + loki + '</span>'
+    var ironManImgContainer = '<span class="badge bg-light ai-prediction">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="badge bg-light ai-prediction">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="badge bg-light ai-prediction">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+
+    if (price == "+" && oi == "+") {
+        remark = '<span class="badge bg-success ai-prediction">Long</span>'
+        display = "+";
+    } else if (price == "-" && oi == "+") {
+        remark = '<span class="badge bg-danger ai-prediction">Short</span>'
+        display = "-";
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<span class="badge bg-success ai-prediction">Short Covering</span>'
+        display = "+";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<span class="badge bg-danger ai-prediction">Long Unwinding</span>'
+        display = "-";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) { 
+        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger ai-prediction">Bears Coming,Sell On Rise</span>'
+        display = "-";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Gambling! Buy,News & Events</span>'
+        display = "+";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Caution! Writers Eroding Premium</span>'
+        display = "+";
+    } else {
+        remark = captainImgContainer + '<span class="badge bg-danger ai-prediction">Defence,Buy On Decline</span>'
+        display = "+";
+    }
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    var openInterestMarkupBull = openInterestMarkup
+    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
+    var openInterestChangeMarkupBull = openInterestChangeMarkup
+    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
+    var niftyOILabelPlusBull = "NIFTY-OI"
+    if (display == "+") {
+        marketTrendPlus = '<span class="blinking badge bg-success ai-prediction">Hulk Arrived (+)</span>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<span class="blinking badge bg-warning ai-prediction">Doctor Strange Arrived (+)</span>'
+            imageBullPlus = doctorStrangeImgContainer
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to buy Calls</span>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    futuresData['PLUS'] = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<span class="blinking badge bg-danger ai-prediction">Chitauri Army Arrived (-)</span>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to Short Calls</span>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+    futuresData['MINUS'] = imageBearMinus + bearRemark + marketTrendMinus
+
+    return futuresData;
+}
+
+
+
+let futureInstruments = {
+    "NIFTY_OCT_FUT":9057794,
+    "BANKNIFTY_OCT_FUT":8961538,
+}
+function savePreviousFutureQuote(validName) {
+    if (!localStorage.getItem(validName)) {
+        jQ.when(getHistoricalData(futureInstruments[validName], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (res) {
+            localStorage.setItem(validName, JSON.stringify(res));
+        })
+    }
+}
+
+function getCurrentFutureQuote(validName) {
+    jQ.when(getHistoricalData(futureInstruments[validName], CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (res) {
+        localStorage.setItem(validName+"_CURRENT_QUOTE", JSON.stringify(res));
+    })
 }
 
 jQ(document).on("click", ".show-info", function () {
@@ -434,11 +912,11 @@ async function addAllToBasket() {
                 let weight = (weightIndex.length + 1)
 
                 if (i <= 19) {
-                    addToBasket(tradingsymbol, exchange, weight, params, baskets[0])
+                    addToBasket(tradingsymbol, exchange, weight, params, baskets[2])
                     weightIndex = [];
                 }
                 if (i > 19 && i <= 39) {
-                    addToBasket(tradingsymbol, exchange, weight, params, baskets[1])
+                    addToBasket(tradingsymbol, exchange, weight, params, baskets[2])
                     weightIndex = [];
                 }
 
@@ -808,6 +1286,11 @@ function clearLocalStorage() {
     localStorage.removeItem("INSTRUMENT_LIST_4");
     localStorage.removeItem("INSTRUMENT_LIST_5");
     localStorage.removeItem("INSTRUMENT_LIST_6");
+    localStorage.removeItem("INSTRUMENT_TRADE_PRESENT");
+    localStorage.removeItem("NIFTY_OCT_FUT");
+    localStorage.removeItem("BANKNIFTY_OCT_FUT");
+    
+    
 }
 
 function getStrikeDetails(item, instrument) {

@@ -126,3 +126,11 @@ span.bullsVersesBears {
   .below-strike-two{
     background-color: #48ed27 !important;
   }
+  .ai-prediction img{
+    max-width: 25px !important;
+    max-height: 25px !important;
+  }
+
+  .ai-prediction{
+    display: block;
+  }
