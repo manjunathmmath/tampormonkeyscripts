@@ -22,6 +22,11 @@ span.bullsVersesBears {
 .show-info{
   cursor: pointer;
 }
+
+.show-chart{
+  cursor: pointer;
+}
+
 .trend-class{
     cursor: pointer;
 }

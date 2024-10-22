@@ -59,8 +59,8 @@ let weightIndex = []
 
 
 function callAddToWatchList() {
-    for (let i = 0; i < NIFTY_BANK_LIST.length; i++) {
-        addToWatchList("NSE", NIFTY_BANK_LIST[i], (i + 1), 3)
+    for (let i = 0; i < FOLIST_TWO.length; i++) {
+        addToWatchList("NSE", FOLIST_TWO[i], (i + 1), 6)
         callSleepForAWhile(1000)
     }
 }
@@ -126,7 +126,10 @@ jQ(document).on("click", "#add-to-watch-list", function (e) {
 
 jQ(document).on("click", "#clean-storage", function (e) {
     e.preventDefault();
-    clearLocalStorage()
+    let result = confirm("Are you sure you want to clear the local storage ?");
+    if (result === true) {
+        clearLocalStorage()
+    }
 });
 
 function saveToken() {
@@ -182,11 +185,11 @@ async function generateTrend() {
     let instruments = instrumentsWrapper.find(".vddl-list .instrument");
     infoMap = {}
     jQ.each(tabs, function (index, item) {
-        if (index == 6 || index == 5) {
+        if (index == 6) {
             return;
         }
-        
-        if (jQ(item).hasClass("selected") && index <= 2) {
+
+        if (jQ(item).hasClass("selected") && index != 3) {
             instrumentsMap = {}
             if (!localStorage.getItem("INSTRUMENT_LIST_" + index)) {
                 if (instruments.length > 0) {
@@ -232,8 +235,12 @@ async function generateTrend() {
                     that.find(".info-wrapper").find(".script-weight").remove();
                     that.find(".info-wrapper").find(".strike-info").remove();
                     that.find(".info-wrapper").find(".show-info").remove();
+                    that.find(".info-wrapper").find(".quantity-to-buy").remove();
+                    that.find(".info-wrapper").find(".refresh-rsi").remove();
+                    that.find(".info-wrapper").find(".price-moved").remove();
+                    that.find(".info-wrapper").find(".show-chart").remove();
 
-
+                    let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
 
                     if (index == 1 || index == 2) {
                         let indexType = "NIFTY 50"
@@ -253,56 +260,57 @@ async function generateTrend() {
                     let alrtSound = new Audio(alertSound);
                     let trend = "NA"
 
-                    if (currentPrice > parseFloat(strikeData['ustrikeTwo'])) {
-                        let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
-                        that.find(".info-wrapper").append(strike);
-                        trend = "AST"
+                    if (index == 0) {
+                        if (currentPrice > parseFloat(strikeData['ustrikeTwo'])) {
+                            let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                            that.find(".info-wrapper").append(strike);
+                            trend = "AST"
+                            if (currentStrike != parseFloat(strikeData['ustrikeTwo'])) {
+                                if (g_config.get('enableSound') == "Yes") {
+                                    alrtSound.play();
+                                }
+                                let message = " Probability trade is SELL " + name + "( " + trend + ")"
+                                callSackBar(message)
 
-                        if (currentStrike != parseFloat(strikeData['ustrikeTwo'])) {
-                            if (g_config.get('enableSound') == "Yes") {
-                                alrtSound.play();
                             }
-                            let message = " Probability trade is SELL " + name + "( " + trend + ")"
-                            callSackBar(message)
-
-                        }
-                        instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['ustrikeTwo']).toFixed(2)
-                    } else if (currentPrice > parseFloat(strikeData['ustrikeOne'])) {
-                        let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
-                        that.find(".info-wrapper").append(strike);
-                        trend = "ASO"
-                        if (currentStrike != parseFloat(strikeData['ustrikeOne'])) {
-                            if (g_config.get('enableSound') == "Yes") {
-                                alrtSound.play();
+                            instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['ustrikeTwo']).toFixed(2)
+                        } else if (currentPrice > parseFloat(strikeData['ustrikeOne'])) {
+                            let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                            that.find(".info-wrapper").append(strike);
+                            trend = "ASO"
+                            if (currentStrike != parseFloat(strikeData['ustrikeOne'])) {
+                                if (g_config.get('enableSound') == "Yes") {
+                                    alrtSound.play();
+                                }
+                                let message = " Probability trade is SELL " + name + "( " + trend + ")"
+                                callSackBar(message)
                             }
-                            let message = " Probability trade is SELL " + name + "( " + trend + ")"
-                            callSackBar(message)
-                        }
-                        instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['ustrikeOne']).toFixed(2)
-                    } else if (currentPrice < parseFloat(strikeData['bstrikeTwo'])) {
-                        let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
-                        that.find(".info-wrapper").append(strike);
-                        trend = "BST"
-                        if (currentStrike != parseFloat(strikeData['bstrikeTwo'])) {
-                            if (g_config.get('enableSound') == "Yes") {
-                                alrtSound.play();
+                            instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['ustrikeOne']).toFixed(2)
+                        } else if (currentPrice < parseFloat(strikeData['bstrikeTwo'])) {
+                            let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                            that.find(".info-wrapper").append(strike);
+                            trend = "BST"
+                            if (currentStrike != parseFloat(strikeData['bstrikeTwo'])) {
+                                if (g_config.get('enableSound') == "Yes") {
+                                    alrtSound.play();
+                                }
+                                let message = " Probability trade is BUY " + name + "( " + trend + ")"
+                                callSackBar(message)
                             }
-                            let message = " Probability trade is BUY " + name + "( " + trend + ")"
-                            callSackBar(message)
-                        }
-                        instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['bstrikeTwo']).toFixed(2)
-                    } else if (currentPrice < parseFloat(strikeData['bstrikeOne'])) {
-                        let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
-                        that.find(".info-wrapper").append(strike);
-                        trend = "BSO"
-                        if (currentStrike != parseFloat(strikeData['bstrikeOne'])) {
-                            if (g_config.get('enableSound') == "Yes") {
-                                alrtSound.play();
+                            instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['bstrikeTwo']).toFixed(2)
+                        } else if (currentPrice < parseFloat(strikeData['bstrikeOne'])) {
+                            let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                            that.find(".info-wrapper").append(strike);
+                            trend = "BSO"
+                            if (currentStrike != parseFloat(strikeData['bstrikeOne'])) {
+                                if (g_config.get('enableSound') == "Yes") {
+                                    alrtSound.play();
+                                }
+                                let message = " Probability trade is BUY " + name + "( " + trend + ")"
+                                callSackBar(message)
                             }
-                            let message = " Probability trade is BUY " + name + "( " + trend + ")"
-                            callSackBar(message)
+                            instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['bstrikeOne']).toFixed(2)
                         }
-                        instrumentsMap[name]['currentStrike'] = parseFloat(strikeData['bstrikeOne']).toFixed(2)
                     }
 
                     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
@@ -323,7 +331,10 @@ async function generateTrend() {
                             if (g_config.get('enableSound') == "Yes") {
                                 alrtSound.play();
                             }
-                            let message = " Probability trade is BUY " + name + "( " + trend + ")"
+                            let message = " Probability trade is SELL " + name + "( " + trend + " : Qty=" + quantity + ")"
+                            if (index == 0) {
+                                message = " Probability trade is BUY " + name + "( " + trend + " : Qty=" + quantity + ")"
+                            }
                             callSackBar(message)
                         }
                         instrumentsMap[name]['currentStrike'] = parseFloat(vixLowerRange).toFixed(2)
@@ -338,14 +349,18 @@ async function generateTrend() {
                             if (g_config.get('enableSound') == "Yes") {
                                 alrtSound.play();
                             }
-                            let message = " Probability trade is SELL " + name + "( " + trend + ")"
+                            let message = " Probability trade is BUY " + name + "( " + trend + " : Qty=" + quantity + ")"
+                            if (index == 0) {
+                                message = " Probability trade is SELL " + name + "( " + trend + " : Qty=" + quantity + ")"
+                            }
                             callSackBar(message)
                         }
                         instrumentsMap[name]['currentStrike'] = parseFloat(vixUpperRange).toFixed(2)
                     }
 
-                    let draw = '<div data-trend="' + trend + '" data-name="' + name + '" class="badge bg-secondary draw-points">Draw</div>'
+                    /*let draw = '<div data-trend="' + trend + '" data-name="' + name + '" class="badge bg-secondary draw-points">Draw</div>'
                     that.find(".info-wrapper").append(draw);
+                    */
 
                     let infoObj = {}
 
@@ -359,9 +374,37 @@ async function generateTrend() {
 
                     let add = '<div data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + trend + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</div>'
 
+
+                  
+                    let VIXU_MOVED = parseFloat(currentPrice - vixUpperRange).toFixed()
+                    let VIXL_MOVED = parseFloat(vixLowerRange - currentPrice).toFixed()
+
+                    let priceMoved = ''
+                    if (trend == "VIXL") {
+                        priceMoved += '<div class="badge bg-warning price-moved">' + VIXL_MOVED + '</div>'
+                    }
+
+                    if (trend == "VIXU") {
+                        priceMoved += '<div class="badge bg-warning price-moved">' + VIXU_MOVED + '</div>'
+                    }
+
+                    that.find(".info-wrapper").append(priceMoved);
+
+                    let qtyToBuy = '<div class="badge bg-info quantity-to-buy">' + quantity + '</div>'
                     if (index != 0) {
                         that.find(".info-wrapper").append(add);
+                        that.find(".info-wrapper").append(qtyToBuy);
                     }
+
+                    let chart = '<div data-trend="' + trend + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</div>'
+                    that.find(".info-wrapper").append(chart);
+
+
+
+                    /*
+                    let rsi = '<div data-name="' + name + '" class="badge bg-info refresh-rsi">RSI</div>'
+                    that.find(".info-wrapper").append(rsi);
+                    */
 
                 }
             });
@@ -372,16 +415,16 @@ async function generateTrend() {
                 jQ(item).append(addAll)
             }
             localStorage.setItem("INSTRUMENT_LIST_" + index, JSON.stringify(instrumentsMap));
-        }else{
+        } else {
             if (jQ(item).hasClass("selected") && index == 3) {
                 jQ(instruments).each(function (iindex, iitem) {
                     let name = jQ(this).find(".symbol").find(".nice-name").html();
-                    let validName = name.replaceAll(" ","_");
+                    let validName = name.replaceAll(" ", "_");
                     savePreviousFutureQuote(validName)
                     getCurrentFutureQuote(validName)
-                    let currentQuote = JSON.parse(localStorage.getItem(validName+"_CURRENT_QUOTE")) 
-                    let prevQuote =JSON.parse(localStorage.getItem(validName));
-                    let trend = aiFutureAnalysis(currentQuote,prevQuote,name)
+                    let currentQuote = JSON.parse(localStorage.getItem(validName + "_CURRENT_QUOTE"))
+                    let prevQuote = JSON.parse(localStorage.getItem(validName));
+                    let trend = aiFutureAnalysis(currentQuote, prevQuote, name)
                     let that = jQ(this);
                     that.find(".info-wrapper").find(".ai-prediction").remove();
                     let strike = trend['PLUS'] + trend['MINUS']
@@ -393,25 +436,193 @@ async function generateTrend() {
     startRefresh();
 }
 
-function aiFutureAnalysis(currentQuote,prevQuote,name){
-    let trend;
-    if(name == "NIFTY OCT FUT"){
-        trend = showAiNiftyPrediction(currentQuote,prevQuote,name)
-    } 
-    if(name == "BANKNIFTY OCT FUT"){
-        trend =showAiBankNiftyPrediction(currentQuote,prevQuote,name)
-    }
+jQ(document).on("click", ".refresh-rsi", function () {
+    let name = jQ(this).attr("data-name");
+   
+    let that = $(this)
+    jQ.when(getHistoricalData(instrumentTokens[name], PREVIOUS_DAY_DATE, CURRENT_DAY, '5minute')).done(function (res) {
+        let quote = []
+        $.each(res.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("YYYY-MM-DD HH:mm:ss")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            quote.push(map);
+        });
+        let data = showRSIInfo(quote)
+        console.log(data)
+    })
+});
+
+jQ(document).on("click", ".show-chart", function () {
+    let name = jQ(this).attr("data-name");
+    let trend = jQ(this).attr("data-trend");
+    let that = $(this)
+    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (res) {
+        let quote = []
+        $.each(res.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("HH:mm:ss")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            quote.push(map);
+        });
+        let chartId = 'chart-' + name.replaceAll(" ", "-");
+        var html = ''
+        html += '<div id="' + chartId + '" style="width:100%;">'
+        html += '</div>'
+        showPopUpWindow(name.replaceAll(" ", "-"), html, name+" : " + trend);
+        show5MinutesChart(quote, name)
+    })
+});
+
+
+function show5MinutesChart(quote, name) {
     
+    let data = getStrikeDetails(instrumentsMap[name], name);
+    let chartId = 'chart-' + name.replaceAll(" ", "-");
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+    
+    var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
+
+    var vixLowerRange = 0;
+    var vixUpperRange = 0;
+    var vixDDRange = 0;
+
+    vixLowerRange = parseFloat(vix.vixDDLower)
+    vixUpperRange = parseFloat(vix.vixDDUpper)
+    vixDDRange = parseFloat(vix.vixDDRange)
+
+
+    let categoryList = []
+    let dateIndex = 0
+    $.each(quote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+    });
+
+    let dataList = []
+    let min = 0
+    let max = 0
+    dateIndex = 0
+
+    $.each(quote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+    let lines = [];
+    let line = {};
+
+    line.color = "#8be73a";
+    line.startvalue = vixLowerRange;
+    line.displayvalue = 'Vix lower range ' + vixLowerRange;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = vixUpperRange;
+    line.displayvalue = 'Vix upper range ' + vixUpperRange;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = data.bstrikeTwo;
+    line.displayvalue = "BST " + data.bstrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = data.ustrikeTwo;
+    line.displayvalue = "AST " + data.ustrikeTwo;
+    lines.push(line);
+
+
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "100%",
+        height: "100%",
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                "pYAxisMinValue": min,
+                "pYAxisMaxValue": max,
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
+}
+
+
+
+async function showRSIInfo(quote) {
+    let data = await getRSI(quote)
+    return data;
+}
+
+function aiFutureAnalysis(currentQuote, prevQuote, name) {
+    let trend;
+    if (name == "NIFTY OCT FUT") {
+        trend = showAiNiftyPrediction(currentQuote, prevQuote, name)
+    }
+    if (name == "BANKNIFTY OCT FUT") {
+        trend = showAiBankNiftyPrediction(currentQuote, prevQuote, name)
+    }
+
     return trend;
 }
 
 
-function showAiNiftyPrediction(currentQuoteData,prevQuoteData,name) {
+function showAiNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     let futuresData = {};
     let prevData = prevQuoteData.data['candles'][0];
-    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length-1];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
 
-    
+
     var quote = {}
     quote['open'] = currentData[1]
     quote['high'] = currentData[2]
@@ -431,8 +642,8 @@ function showAiNiftyPrediction(currentQuoteData,prevQuoteData,name) {
 
 
     quote.volume = parseInt(quote.volume)
-    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
-    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
     var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
     var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
     var totalVolumePrice = cVolumePrice + pVolumePrice
@@ -613,12 +824,12 @@ function showAiNiftyPrediction(currentQuoteData,prevQuoteData,name) {
     return futuresData;
 }
 
-function showAiBankNiftyPrediction(currentQuoteData,prevQuoteData,name) {
+function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     let futuresData = {};
     let prevData = prevQuoteData.data['candles'][0];
-    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length-1];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
 
-    
+
     var quote = {}
     quote['open'] = currentData[1]
     quote['high'] = currentData[2]
@@ -638,8 +849,8 @@ function showAiBankNiftyPrediction(currentQuoteData,prevQuoteData,name) {
 
 
     quote.volume = parseInt(quote.volume)
-    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
-    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
     var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
     var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
     var totalVolumePrice = cVolumePrice + pVolumePrice
@@ -751,7 +962,7 @@ function showAiBankNiftyPrediction(currentQuoteData,prevQuoteData,name) {
         remark = dogImgContainer + '<span class="badge bg-danger ai-prediction">Long Unwinding</span>'
         display = "-";
     } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding == false) { 
+        && shortCoveringOrLongUnwinding == false) {
         remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger ai-prediction">Bears Coming,Sell On Rise</span>'
         display = "-";
     } else if (price == "+-" && oi == "+"
@@ -827,11 +1038,9 @@ function showAiBankNiftyPrediction(currentQuoteData,prevQuoteData,name) {
     return futuresData;
 }
 
-
-
 let futureInstruments = {
-    "NIFTY_OCT_FUT":9057794,
-    "BANKNIFTY_OCT_FUT":8961538,
+    "NIFTY_OCT_FUT": 9057794,
+    "BANKNIFTY_OCT_FUT": 8961538,
 }
 function savePreviousFutureQuote(validName) {
     if (!localStorage.getItem(validName)) {
@@ -843,7 +1052,7 @@ function savePreviousFutureQuote(validName) {
 
 function getCurrentFutureQuote(validName) {
     jQ.when(getHistoricalData(futureInstruments[validName], CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (res) {
-        localStorage.setItem(validName+"_CURRENT_QUOTE", JSON.stringify(res));
+        localStorage.setItem(validName + "_CURRENT_QUOTE", JSON.stringify(res));
     })
 }
 
@@ -886,12 +1095,12 @@ async function addAllToBasket() {
 
     let INSTRUMENT_TRADE_PRESENT = localStorage.getItem("INSTRUMENT_TRADE_PRESENT");
 
-    if(INSTRUMENT_TRADE_PRESENT){
+    if (INSTRUMENT_TRADE_PRESENT) {
         INSTRUMENT_TRADE_PRESENT = JSON.parse(INSTRUMENT_TRADE_PRESENT);
-    }else{
+    } else {
         INSTRUMENT_TRADE_PRESENT = []
     }
-    
+
     let addInstrumentsToTrade = []
     for (let i = 0; i < instruments.length; i++) {
         let that = jQ(instruments[i]);
@@ -899,11 +1108,11 @@ async function addAllToBasket() {
         let name = add.attr("data-name");
         let trend = add.attr("data-trend");
         let price = add.attr("data-price");
-        let transaction_type = "SELL"
+        let transaction_type = "BUY"
         if (trend == "VIXU" || trend == "VIXL") {
             if (jQ.inArray(name, INSTRUMENT_TRADE_PRESENT) == -1) {
                 if (trend == "VIXL") {
-                    transaction_type = "BUY"
+                    transaction_type = "SELL"
                 }
                 let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
                 let params = { "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
@@ -931,7 +1140,7 @@ async function addAllToBasket() {
         }
     }
 
-    jQ.each(addInstrumentsToTrade,function(index,item){
+    jQ.each(addInstrumentsToTrade, function (index, item) {
         INSTRUMENT_TRADE_PRESENT.push(item)
     });
 
@@ -940,7 +1149,6 @@ async function addAllToBasket() {
 }
 
 function callSackBar(message) {
-    return;
     SnackBar({
         message: message,
         status: "alert",
@@ -957,7 +1165,7 @@ function callSackBarInfo(message) {
         timeout: 20000,
         actions: [],
         container: "app",
-        position: 'tm'
+        position: 'bd'
     });
 }
 
@@ -968,9 +1176,9 @@ jQ(document).on("click", ".add-to-basket", function () {
     let price = jQ(this).attr("data-price");
 
     if (trend == "VIXL" || trend == "VIXU") {
-        let transaction_type = "SELL"
+        let transaction_type = "BUY"
         if (trend == "VIXL") {
-            transaction_type = "BUY"
+            transaction_type = "SELL"
         }
         let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
         let params = { "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
@@ -1084,6 +1292,19 @@ function handleKiteCall(coordinates) {
             type: 'POST',
             url: 'http://localhost:9080/handleKiteCall',
             data: { coordinates: JSON.stringify(coordinates) },
+            success: function (data) {
+                resolve(data);
+            }
+        });
+    });
+}
+
+function getRSI(payload) {
+    return new Promise((resolve, reject) => {
+        jQ.ajax({
+            type: 'POST',
+            url: 'http://localhost:9080/getRSI',
+            data: { input: JSON.stringify(payload) },
             success: function (data) {
                 resolve(data);
             }
@@ -1289,8 +1510,8 @@ function clearLocalStorage() {
     localStorage.removeItem("INSTRUMENT_TRADE_PRESENT");
     localStorage.removeItem("NIFTY_OCT_FUT");
     localStorage.removeItem("BANKNIFTY_OCT_FUT");
-    
-    
+
+
 }
 
 function getStrikeDetails(item, instrument) {
@@ -1580,3 +1801,50 @@ function getWeightAge(index, companyName, onlyWeight) {
     }
     return html;
 }
+
+
+function showPopUpWindow(index, html, title) {
+    var divId = "pop-up-window-" + index;
+    if ($("#" + divId).PopupWindow("getState")) $("#" + divId).PopupWindow("destroy");
+    $("body").find("#" + divId).remove()
+    var popHtml = html
+    var popupCustomClass = 'popup-custom-style-' + index;
+    $("#" + divId).on("open.popupwindow", function (event, data) {
+        $("." + popupCustomClass).find(".popupwindow_titlebar").css({})
+    });
+    var markup = ''
+    markup += '<div id="' + divId + '">'
+    markup += popHtml
+    markup += '</div>'
+    $("body").append(markup);
+    $("#" + divId).PopupWindow({
+        title: title,
+        modal: false,
+        customClass: popupCustomClass,
+        buttons: {
+            close: true,
+            maximize: true,
+            collapse: true,
+            minimize: true,
+        },
+        buttonsPosition: "right",
+        buttonsTexts: {
+            close: "Close",
+            maximize: "Maximize",
+            unmaximize: "Restore",
+            minimize: "Minimize",
+            unminimize: "Show",
+            collapse: "Collapse",
+            uncollapse: "Expand"
+        },
+        draggable: true,
+        dragOpacity: 1,
+        statusBar: true,
+        resizable: true,
+        resizeOpacity: 1,
+        height: 400,
+        width: 900,
+        keepInViewport  : true,              // Boolean
+        mouseMoveEvents : true              // Boolean
+    });
+};
