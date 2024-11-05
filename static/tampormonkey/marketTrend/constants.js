@@ -185,7 +185,8 @@ let nseStrikeDiff = {
     'NIFTY FIN SERVICE': 50,
     'NIFTY BANK': 100,
     'BANKEX': 100,
-    'SENSEX': 100
+    'SENSEX': 100,
+    'GIFT NIFTY': 50,
 }
 
 
@@ -575,6 +576,8 @@ let instrumentTokens = {
     'NIFTY SMLCAP 250': 267273,
     'NIFTY NEXT 50': 270857,
     'NIFTY MID SELECT': 288009,
+    'BANKEX':274441,
+    'GIFT NIFTY':291849
 }
 
 let NIFTY_50_LIST = [

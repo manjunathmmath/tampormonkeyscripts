@@ -89,6 +89,9 @@ jQ(document).ready(function () {
         saveVixQuote()
     }, 2000)
 
+    setInterval(function(){
+        callSackBar(helpMessage)
+    },300000)
 });
 
 function saveVixQuote() {
@@ -218,6 +221,8 @@ async function generateTrend() {
             } else {
                 instrumentsMap = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_" + index));
             }
+            let bulls = 0;
+            let bears = 0;
             jQ(instruments).each(function (iindex, iitem) {
                 let name = jQ(this).find(".symbol").find(".nice-name").html();
                 let price = jQ(this).find(".price").find(".last-price").html();
@@ -375,17 +380,19 @@ async function generateTrend() {
                     let add = '<div data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + trend + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</div>'
 
 
-                  
+
                     let VIXU_MOVED = parseFloat(currentPrice - vixUpperRange).toFixed()
                     let VIXL_MOVED = parseFloat(vixLowerRange - currentPrice).toFixed()
 
                     let priceMoved = ''
                     if (trend == "VIXL") {
                         priceMoved += '<div class="badge bg-warning price-moved">' + VIXL_MOVED + '</div>'
+                        bears++
                     }
 
                     if (trend == "VIXU") {
                         priceMoved += '<div class="badge bg-warning price-moved">' + VIXU_MOVED + '</div>'
+                        bulls++;
                     }
 
                     that.find(".info-wrapper").append(priceMoved);
@@ -396,10 +403,8 @@ async function generateTrend() {
                         that.find(".info-wrapper").append(qtyToBuy);
                     }
 
-                    let chart = '<div data-trend="' + trend + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</div>'
+                    let chart = '<div data-price="' + currentPrice + '" data-index="' + index + '" data-trend="' + trend + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</div>'
                     that.find(".info-wrapper").append(chart);
-
-
 
                     /*
                     let rsi = '<div data-name="' + name + '" class="badge bg-info refresh-rsi">RSI</div>'
@@ -408,12 +413,23 @@ async function generateTrend() {
 
                 }
             });
+            /*
+                jQ(item).find(".add-all-scripts").remove();
+                let addAll = ''
+                addAll += '<sapn class="bg-warning add-all-scripts">+</sapn>'
+                if (index != 0) {
+                    jQ(item).append(addAll)
+                }
+                    
+            */
+
+            jQ(item).find(".bullsVersesBears").remove();
             jQ(item).find(".add-all-scripts").remove();
-            let addAll = ''
-            addAll += '<sapn class="bg-warning add-all-scripts">+</sapn>'
-            if (index != 0) {
-                jQ(item).append(addAll)
-            }
+            let countMaprkup = ''
+            countMaprkup += '<span class="bullsVersesBears bg-success">' + bulls + '</span>'
+            countMaprkup += '<span class="bullsVersesBears bg-danger">' + bears + '</span>'
+            jQ(item).append(countMaprkup)
+
             localStorage.setItem("INSTRUMENT_LIST_" + index, JSON.stringify(instrumentsMap));
         } else {
             if (jQ(item).hasClass("selected") && index == 3) {
@@ -438,7 +454,7 @@ async function generateTrend() {
 
 jQ(document).on("click", ".refresh-rsi", function () {
     let name = jQ(this).attr("data-name");
-   
+
     let that = $(this)
     jQ.when(getHistoricalData(instrumentTokens[name], PREVIOUS_DAY_DATE, CURRENT_DAY, '5minute')).done(function (res) {
         let quote = []
@@ -460,6 +476,8 @@ jQ(document).on("click", ".refresh-rsi", function () {
 jQ(document).on("click", ".show-chart", function () {
     let name = jQ(this).attr("data-name");
     let trend = jQ(this).attr("data-trend");
+    let index = jQ(this).attr("data-index");
+    let price = jQ(this).attr("data-price");
     let that = $(this)
     jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (res) {
         let quote = []
@@ -473,22 +491,75 @@ jQ(document).on("click", ".show-chart", function () {
             map.volume = item[5]
             quote.push(map);
         });
-        let chartId = 'chart-' + name.replaceAll(" ", "-");
+
+        let tempName = name.replaceAll(" ", "-")
+        tempName = tempName.replaceAll("&","-")
+
+        let chartId = 'chart-' + tempName;
+        
         var html = ''
+        let btnColor = "bg-success"
+        if(trend=="VIXL"){
+            btnColor = "bg-danger"
+        }
+        if (index != 0) {
+            html += '<div style="width:100%;text-align:center;">'
+            html += '<button  data-name="' + name + '" data-price="' + price + '"  data-trend="' + trend + '" class="btn-sm btn btn-primary ms-1 place-order '+btnColor+'" type="submit">';
+            html += 'Place Order'
+            html += '</button>'
+            html += '</div>'
+        }
+
         html += '<div id="' + chartId + '" style="width:100%;">'
         html += '</div>'
-        showPopUpWindow(name.replaceAll(" ", "-"), html, name+" : " + trend);
+        showPopUpWindow(tempName, html, name + " : " + trend);
         show5MinutesChart(quote, name)
     })
 });
 
 
+$(document).on("click", ".place-order", function () {
+    let name = jQ(this).attr("data-name");
+    let trend = jQ(this).attr("data-trend");
+    let price = jQ(this).attr("data-price");
+
+    if (trend == "VIXL" || trend == "VIXU") {
+        let transaction_type = "BUY"
+        if (trend == "VIXL") {
+            transaction_type = "SELL"
+        }
+        let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+        let params = { "exchange":"NSE","tradingsymbol":name,"transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
+        placeOrder(params)
+    }
+})
+
+function placeOrder(order) {
+    jQ.ajaxSetup({
+        headers: {
+            'Authorization': `enctoken ${getCookie('enctoken')}`
+        }
+    });
+    return new Promise((resolve, reject) => {
+        jQ.post(BASE_URL + "/oms/orders/regular",
+            order,
+            function (data, status) {
+                resolve(data);
+            });
+    });
+}
+
+
+
+
+
+
 function show5MinutesChart(quote, name) {
-    
+
     let data = getStrikeDetails(instrumentsMap[name], name);
     let chartId = 'chart-' + name.replaceAll(" ", "-");
     let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
-    
+
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
 
     var vixLowerRange = 0;
@@ -606,10 +677,10 @@ async function showRSIInfo(quote) {
 
 function aiFutureAnalysis(currentQuote, prevQuote, name) {
     let trend;
-    if (name == "NIFTY OCT FUT") {
+    if (name == "NIFTY NOV FUT") {
         trend = showAiNiftyPrediction(currentQuote, prevQuote, name)
     }
-    if (name == "BANKNIFTY OCT FUT") {
+    if (name == "BANKNIFTY NOV FUT") {
         trend = showAiBankNiftyPrediction(currentQuote, prevQuote, name)
     }
 
@@ -1039,8 +1110,8 @@ function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, name) {
 }
 
 let futureInstruments = {
-    "NIFTY_OCT_FUT": 9057794,
-    "BANKNIFTY_OCT_FUT": 8961538,
+    "NIFTY_NOV_FUT": 8982786,
+    "BANKNIFTY_NOV_FUT": 8963330,
 }
 function savePreviousFutureQuote(validName) {
     if (!localStorage.getItem(validName)) {
@@ -1844,7 +1915,57 @@ function showPopUpWindow(index, html, title) {
         resizeOpacity: 1,
         height: 400,
         width: 900,
-        keepInViewport  : true,              // Boolean
-        mouseMoveEvents : true              // Boolean
+        keepInViewport: true,              // Boolean
+        mouseMoveEvents: true              // Boolean
     });
 };
+
+
+let helpMessage = ''
+
+helpMessage +=''
+helpMessage +='1. Check the trend'
+helpMessage +='<br>'
+helpMessage +='2. Only based on the trend trade VIXL,VIXU,AST,BST for index '
+helpMessage +='<br>'
+helpMessage +='VIXL/BST  Go for bullish trade'
+helpMessage +='<br>'
+helpMessage +='VIXU/AST  Go for bearish trade'
+helpMessage +='<br>'
+helpMessage +='<br>'
+
+helpMessage +='For stocks'
+helpMessage +='<br>'
+helpMessage +='VIXU Go for bullish trade'
+helpMessage +='<br>'
+helpMessage +='VIXL Go for bearish trade'
+helpMessage +='<br>'
+helpMessage +='<br>'
+
+
+helpMessage +='Check the number of  VIXL and VIXU to make trend prediction'
+helpMessage +='<br>'
+helpMessage +='Apply the avergaing technique '
+helpMessage +='<br>'
+helpMessage +='Near/At BST             100 qty'
+helpMessage +='<br>'
+helpMessage +='Above BST below VIXL    100 qty'
+helpMessage +='<br>'
+helpMessage +='Above BST/VIXL          100 qty'
+helpMessage +='<br>'
+helpMessage +='<br>'
+
+helpMessage +='Near/At AST             100 qty'
+helpMessage +='<br>'
+helpMessage +='Above AST below VIXU    100 qty'
+helpMessage +='<br>'
+helpMessage +='Above AST/VIXU          100 qty'
+
+
+jQ(document).ready(function () {
+    if (localStorage.getItem("__storejs_kite_ticker/ticks")) {
+        let tickData = localStorage.getItem("__storejs_kite_ticker/ticks")
+        tickData = JSON.parse(tickData);
+      console.log(tickData)
+    }
+})
