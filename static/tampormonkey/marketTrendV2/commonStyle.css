@@ -155,3 +155,7 @@ span.bullsVersesBears {
 .popupwindow{
   background-color: #ccc !important;
 }
+
+.filter-instruments{
+  cursor: pointer;
+}

@@ -211,11 +211,50 @@ async function autoRefreshEachTabs(instance) {
         }
         data.push(obj)
     })
-    generateStockDataTable(data)
+    generateStockDataTable(data);
+    jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
         instance.attr("disabled", false)
     }
+}
+
+jQ(document).on("click", ".filter-instruments", function (e) {
+    let indexType = jQ(this).attr("data-index-name");
+
+    filterInstruments(indexType)
+})
+
+
+
+function filterInstruments(indexType) {
+    let listType = FO_LIST;
+    if (indexType == "NIFTY 50") {
+        listType = NIFTY_50_LIST;
+    }
+
+    if (indexType == "BANK NIFTY") {
+        listType = NIFTY_BANK_LIST;
+    }
+    let data = [];
+    jQ.each(instrumentsMap, function (index, item) {
+        if (jQ.inArray(index, listType) != -1) {
+            let obj = {}
+            obj['TRADINGSYMBOL'] = index
+            obj['CLOSE'] = instrumentsMap[index]['prevPrice']
+            obj['PRICE'] = instrumentsMap[index]['price']
+            obj['PERC'] = instrumentsMap[index]['perc']
+
+            obj['TREND'] = ''
+            obj['LTP'] = 0
+            if (infoMap[index]) {
+                obj['TREND'] = infoMap[index]['trends']
+                obj['LTP'] = infoMap[index]['currentPrice']
+            }
+            data.push(obj)
+        }
+    })
+    generateStockDataTable(data)
 }
 
 
@@ -410,16 +449,7 @@ function startTimer(duration, display) {
 
 function showFutureAi() {
     let html = ''
-    html += '<div class="row mb-3">'
-    html += '<div class="col-md-9">'
-    html += '</div>'
-    html += '<div class="col-md-2">'
-    html += '<button class="btn btn-warning btn-sm" id="start-auto-refresh"><i class="bi bi-arrow-counterclockwise"></i>Refresh</button>'
-    html += '</div>'
-    html += '<div class="col-md-1">'
-    html += '<span id="refresh-timer-one">00:00</span>'
-    html += '</div>'
-    html += '</div>'
+
 
     html += '<div class="row">'
     html += '<div class="col-md-6">'
@@ -455,7 +485,7 @@ function showFutureAi() {
 
     html += '<div class="col-md-4">'
     html += '<div class="card" >'
-    html += '<div class="card-header">'
+    html += '<div class="card-header filter-instruments" data-index-name="NIFTY 50">'
     html += 'NIFTY 50'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
@@ -471,7 +501,7 @@ function showFutureAi() {
 
     html += '<div class="col-md-4">'
     html += '<div class="card" >'
-    html += '<div class="card-header">'
+    html += '<div class="card-header filter-instruments" data-index-name="BANK NIFTY">'
     html += 'BANK NIFTY '
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
@@ -486,7 +516,7 @@ function showFutureAi() {
 
     html += '<div class="col-md-4">'
     html += '<div class="card" >'
-    html += '<div class="card-header">'
+    html += '<div class="card-header filter-instruments" data-index-name="ALL">'
     html += 'ALL '
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
@@ -522,11 +552,24 @@ function showFutureAi() {
     html += '</div>'
     html += '</div>'
 
-
-    showPopUpWindow('trend-analysis', html, "Trend Analysis")
+    let title = ''
+    title += '<div class="row">'
+    title += '<div class="col-md-6">'
+    title += 'Trend Analysis'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<a  id="start-auto-refresh"><i class="bi bi-arrow-counterclockwise"></i>Refresh</a>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<span id="refresh-timer-one">00:00</span>'
+    title += '</div>'
+    title += '<div class="col-md-2">'
+    title += '<span id="last-refresh-time">00:00</span>'
+    title += '</div>'
+    title += '</div>'
+    showPopUpWindow('trend-analysis', html, "Trend Analysis");
+    jQ(".popupwindow_titlebar_text").html(title)
 }
-
-
 
 var stockTable;
 
@@ -534,7 +577,6 @@ function generateStockDataTable(data) {
     jQ("#stock-list-table").show()
     stockTable = jQ('#stock-list-table').DataTable({
         "processing": true,
-        dom: 'lrt',
         "order": [[0, "asc"]],
         "pageLength": 50,
         "bPaginate": false,
@@ -567,20 +609,28 @@ function generateStockDataTable(data) {
                 "data": "",
                 render: function (data, type, row, meta) {
                     var html = ""
-                    if (row['TREND']) {
-                        let bears = ['VIXU', 'ASO', 'AST']
-                        let found = row['TREND'].some(r => bears.includes(r))
-                        let transactionType = 'BUY'
-                        let btnColor = "bg-success"
-                        if (found) {
-                            btnColor = "bg-danger"
-                            transactionType = 'SELL'
+                    let index = 1;
+                    if (jQ.inArray(row['TRADINGSYMBOL'], indices) == -1) {
+                        if (row['TREND']) {
+                            let bears = ['VIXU', 'ASO', 'AST']
+                            let found = row['TREND'].some(r => bears.includes(r))
+                            let transactionType = 'BUY'
+                            let btnColor = "bg-success"
+                            if (found) {
+                                btnColor = "bg-danger"
+                                transactionType = 'SELL'
+                            }
+                            html += '<button  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + transactionType + '" class="btn-sm btn  ms-1 place-order ' + btnColor + '" type="submit" style="margin-right:.5rem;">';
+                            html += 'Place Order'
+                            html += '</button>'
                         }
-                        html += '<button  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + transactionType + '" class="btn-sm btn btn-primary ms-1 place-order ' + btnColor + '" type="submit">';
-                        html += 'Place Order'
+                    } else {
+                        index = 0;
+                    }
+                    if (row['TREND']) {
+                        html += '<button data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="btn-sm btn show-chart  bg-info">Chart</button>'
                         html += '</button>'
                     }
-
                     return html
                 }
             },
