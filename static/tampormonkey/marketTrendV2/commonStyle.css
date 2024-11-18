@@ -143,3 +143,15 @@ span.bullsVersesBears {
     max-width: 25px !important;
     max-height: 25px !important;
   }
+
+  .popupwindow_content{
+    overflow-x: hidden !important;
+  }
+
+  .ai-prediction {
+    margin: 0rem .1rem;
+}
+
+.popupwindow{
+  background-color: #ccc !important;
+}

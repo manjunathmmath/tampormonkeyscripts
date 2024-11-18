@@ -13,12 +13,16 @@
 // @grant        GM_setClipboard
 // @grant        GM_getClipboard
 // @resource     BOOTSTRAP_CSS http://localhost:3000/dist/css/bootstrap.css
+// @resource     DATATABLE_CSS http://localhost:3000/global/vendor/datatables/datatables.min.css
+
 // @resource     POPUP_WINDOW_CSS http://localhost:3000/tampormonkey/common/popupwindow/popupwindow.css
 // @require      http://localhost:3000/global/vendor/jquery/jquery.js
 // @require      http://localhost:3000/dist/js/bootstrap.js
 // @require      http://localhost:3000/tampormonkey/common/toastify-js.js
 // @require      http://localhost:3000/tampormonkey/common/popupwindow/popupwindow.js
-// @require      http://localhost:3000/global/vendor/jquery/jquery.js
+
+// @require      http://localhost:3000/global/vendor/datatables/jquery.dataTables.min.js
+
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.js
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.charts.js
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.powercharts.js
