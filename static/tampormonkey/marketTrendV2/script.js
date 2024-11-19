@@ -1061,13 +1061,18 @@ function aiFutureAnalysis(currentQuote, prevQuote, name) {
     let trend;
     if (name == "NIFTY_FUTURE") {
         trend = showAiNiftyPrediction(currentQuote, prevQuote, name)
-        jQ("#nifty-future-ai-trend-plus").html(trend['PLUS'])
-        jQ("#nifty-future-ai-trend-minus").html(trend['MINUS'])
+        if(trend){
+            jQ("#nifty-future-ai-trend-plus").html(trend['PLUS'])
+            jQ("#nifty-future-ai-trend-minus").html(trend['MINUS'])
+        }
+       
     }
     if (name == "BANK_NIFTY_FUTURE") {
         trend = showAiBankNiftyPrediction(currentQuote, prevQuote, name)
-        jQ("#bank-nifty-future-ai-trend-plus").html(trend['PLUS'])
-        jQ("#bank-nifty-future-ai-trend-minus").html(trend['MINUS'])
+        if(trend){
+            jQ("#bank-nifty-future-ai-trend-plus").html(trend['PLUS'])
+            jQ("#bank-nifty-future-ai-trend-minus").html(trend['MINUS'])
+        }
     }
 }
 
@@ -1075,7 +1080,9 @@ function showAiNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     let futuresData = {};
     let prevData = prevQuoteData.data['candles'][0];
     let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
-
+    if(!currentData){
+        return;
+    }
 
     var quote = {}
     quote['open'] = currentData[1]
@@ -1283,6 +1290,9 @@ function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     let prevData = prevQuoteData.data['candles'][0];
     let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
 
+    if(!currentData){
+        return;
+    }
 
     var quote = {}
     quote['open'] = currentData[1]
@@ -2013,6 +2023,7 @@ function getStrikeDiff(instrument) {
     console.log(instrument + " (" + nseStrikeDiff[instrument] + ")")
     if (nseStrikeDiff[instrument]) {
         strikeDiff = nseStrikeDiff[instrument]
+        strikeDiff = strikeDiff.replace(/ /g,'')
     }
     return strikeDiff;
 }
