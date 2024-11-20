@@ -221,13 +221,13 @@ async function autoRefreshEachTabs(instance) {
 
 jQ(document).on("click", ".filter-instruments", function (e) {
     let indexType = jQ(this).attr("data-index-name");
-
-    filterInstruments(indexType)
+    let trendType = jQ(this).attr("data-trend-type");
+    filterInstruments(indexType,trendType)
 })
 
 
 
-function filterInstruments(indexType) {
+function filterInstruments(indexType,trendType) {
     let listType = FO_LIST;
     if (indexType == "NIFTY 50") {
         listType = NIFTY_50_LIST;
@@ -251,7 +251,13 @@ function filterInstruments(indexType) {
                 obj['TREND'] = infoMap[index]['trends']
                 obj['LTP'] = infoMap[index]['currentPrice']
             }
-            data.push(obj)
+            if(trendType){
+                if (jQ.inArray(trendType, obj['TREND']) != -1) {
+                    data.push(obj)
+                }
+            }else{
+                data.push(obj)
+            }
         }
     })
     generateStockDataTable(data)
@@ -489,9 +495,9 @@ function showFutureAi() {
     html += 'NIFTY 50'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
-    html += '<li class="list-group-item" >VIXU: <span id="nifty-vixu">0</span> VIXL: <span id="nifty-vixl">0</span></li>'
-    html += '<li class="list-group-item" >AST: <span id="nifty-ast">0</span> ASO: <span id="nifty-aso">0</span></li>'
-    html += '<li class="list-group-item" >BST: <span id="nifty-bst">0</span> BSO: <span id="nifty-bso">0</span></li>'
+    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="NIFTY 50" id="nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="NIFTY 50" id="nifty-vixl">0</span></li>'
+    html += '<li class="list-group-item" >AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="NIFTY 50" id="nifty-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="NIFTY 50" id="nifty-aso">0</span></li>'
+    html += '<li class="list-group-item" >BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="NIFTY 50" id="nifty-bst">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="NIFTY 50" id="nifty-bso">0</span></li>'
 
 
     html += '</ul>'
@@ -505,9 +511,9 @@ function showFutureAi() {
     html += 'BANK NIFTY '
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
-    html += '<li class="list-group-item">VIXU: <span id="bank-nifty-vixu">0</span> VIXL: <span id="bank-nifty-vixl">0</span></li>'
-    html += '<li class="list-group-item">AST: <span id="bank-nifty-ast">0</span> ASO: <span id="bank-nifty-aso">0</span></li>'
-    html += '<li class="list-group-item">BST: <span id="bank-nifty-bst">0</span> BSO: <span id="bank-nifty-bso">0</span></li>'
+    html += '<li class="list-group-item">VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="BANK NIFTY" id="bank-nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="BANK NIFTY" id="bank-nifty-vixl">0</span></li>'
+    html += '<li class="list-group-item">AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="BANK NIFTY"  id="bank-nifty-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="BANK NIFTY" id="bank-nifty-aso">0</span></li>'
+    html += '<li class="list-group-item">BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="BANK NIFTY" id="bank-nifty-bst">0</span> BSO: <span  class="filter-instruments" data-trend-type="BSO" data-index-name="BANK NIFTY" id="bank-nifty-bso">0</span></li>'
 
     html += '</ul>'
     html += '</div>'
@@ -520,9 +526,9 @@ function showFutureAi() {
     html += 'ALL '
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
-    html += '<li class="list-group-item" >VIXU: <span id="all-vixu">0</span> VIXL: <span id="all-vixl">0</span></li>'
-    html += '<li class="list-group-item" >AST: <span id="all-ast">0</span> ASO: <span id="all-aso">0</span></li>'
-    html += '<li class="list-group-item" >BST: <span id="all-bst">0</span> BSO: <span id="all-bso">0</span></li>'
+    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="ALL" id="all-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="ALL" id="all-vixl">0</span></li>'
+    html += '<li class="list-group-item" >AST: <span class="filter-instruments" data-trend-type="AST" data-index-name="ALL" id="all-ast">0</span> ASO: <span class="filter-instruments" data-trend-type="ASO" data-index-name="ALL" id="all-aso">0</span></li>'
+    html += '<li class="list-group-item" >BST: <span class="filter-instruments" data-trend-type="BST" data-index-name="ALL" id="all-bst">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="ALL" id="all-bso">0</span></li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
