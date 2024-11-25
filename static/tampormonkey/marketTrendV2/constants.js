@@ -673,23 +673,12 @@ helpMessage += 'Above AST below VIXU    100 qty'
 helpMessage += '<br>'
 helpMessage += 'Above AST/VIXU          100 qty'
 
-let indices =[
+let INDICES =[
     'NIFTY 50',
-    'SENSEX',
-    'NIFTY MIDCAP 100',
     'NIFTY BANK',
-    'NIFTY 100',
     'NIFTY FIN SERVICE',
-    'NIFTY IT',
-    'NIFTY MIDCAP 50',
-    'NIFTY PHARMA',
-    'NIFTY AUTO',
-    'NIFTY METAL',
-    'NIFTY 200',
-    'NIFTY MIDCAP 150',
-    'NIFTY SMLCAP 250',
-    'NIFTY NEXT 50',
     'NIFTY MID SELECT',
     'BANKEX',
+    'SENSEX',
     'GIFT NIFTY'
 ]

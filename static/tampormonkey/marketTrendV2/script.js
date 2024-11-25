@@ -121,7 +121,6 @@ jQ(document).on("click", "#show-ai-prediction", function (e) {
 });
 
 
-
 function saveVixQuote() {
     return new Promise((resolve, reject) => {
         if (!localStorage.getItem("VIX_QUOTE")) {
@@ -132,9 +131,6 @@ function saveVixQuote() {
             resolve();
         }
     });
-
-
-
 }
 
 function makeUIChanges() {
@@ -191,6 +187,7 @@ async function autoRefreshEachTabs(instance) {
         await callSleepForAWhile(1000);
     }
     await analyseFutureIntruments();
+    getIndicesBullsBearsCount()
     getNiftyBullsBearsCount();
     getBankNiftyBullsBearsCount();
     getAllBullsBearsCount();
@@ -236,6 +233,11 @@ function filterInstruments(indexType,trendType) {
     if (indexType == "BANK NIFTY") {
         listType = NIFTY_BANK_LIST;
     }
+
+    if (indexType == "INDICES") {
+        listType = INDICES;
+    }
+
     let data = [];
     jQ.each(instrumentsMap, function (index, item) {
         if (jQ.inArray(index, listType) != -1) {
@@ -262,6 +264,59 @@ function filterInstruments(indexType,trendType) {
     })
     generateStockDataTable(data)
 }
+
+
+function getIndicesBullsBearsCount() {
+    let vixl = 0;
+    let vixu = 0;
+
+    let ast = 0;
+    let aso = 0;
+    let bso = 0;
+    let bst = 0;
+    jQ.each(INDICES, function (index, item) {
+        let data = infoMap[item]
+        if (data['trends']) {
+            if (jQ.inArray("VIXL", data['trends']) != -1) {
+                vixl++
+            }
+            if (jQ.inArray("VIXU", data['trends']) != -1) {
+                vixu++
+            }
+
+            if (jQ.inArray("AST", data['trends']) != -1) {
+                ast++
+            }
+            if (jQ.inArray("ASO", data['trends']) != -1) {
+                aso++
+            }
+
+            if (jQ.inArray("BST", data['trends']) != -1) {
+                bst++
+            }
+            if (jQ.inArray("BSO", data['trends']) != -1) {
+                bso++
+            }
+        }
+    });
+    vixu = '<span class="badge bg-success">' + vixu + '</span>'
+    vixl = '<span class="badge bg-danger">' + vixl + '</span>'
+    jQ("#indices-vixu").html(vixu);
+    jQ("#indices-vixl").html(vixl);
+
+
+    ast = '<span class="badge bg-danger">' + ast + '</span>'
+    aso = '<span class="badge bg-danger">' + aso + '</span>'
+    jQ("#indices-ast").html(ast);
+    jQ("#indices-aso").html(aso);
+
+
+    bst = '<span class="badge bg-success">' + bst + '</span>'
+    bso = '<span class="badge bg-success">' + bso + '</span>'
+    jQ("#indices-bst").html(bst);
+    jQ("#indices-bso").html(bso);
+}
+
 
 
 function getNiftyBullsBearsCount() {
@@ -489,7 +544,25 @@ function showFutureAi() {
 
     html += '<div class="row">'
 
-    html += '<div class="col-md-4">'
+
+    html += '<div class="col-md-3">'
+    html += '<div class="card" >'
+    html += '<div class="card-header filter-instruments" data-index-name="INDICES">'
+    html += 'INDICES'
+    html += '</div>'
+    html += '<ul class="list-group list-group-flush">'
+    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
+    html += '<li class="list-group-item" >AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="INDICES" id="indices-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="INDICES" id="indices-aso">0</span></li>'
+    html += '<li class="list-group-item" >BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="INDICES" id="indices-bst">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="INDICES" id="indices-bso">0</span></li>'
+
+
+    html += '</ul>'
+    html += '</div>'
+    html += '</div>'
+
+    
+
+    html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="NIFTY 50">'
     html += 'NIFTY 50'
@@ -505,7 +578,7 @@ function showFutureAi() {
     html += '</div>'
 
 
-    html += '<div class="col-md-4">'
+    html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="BANK NIFTY">'
     html += 'BANK NIFTY '
@@ -520,7 +593,7 @@ function showFutureAi() {
     html += '</div>'
 
 
-    html += '<div class="col-md-4">'
+    html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="ALL">'
     html += 'ALL '
@@ -616,7 +689,7 @@ function generateStockDataTable(data) {
                 render: function (data, type, row, meta) {
                     var html = ""
                     let index = 1;
-                    if (jQ.inArray(row['TRADINGSYMBOL'], indices) == -1) {
+                    if (jQ.inArray(row['TRADINGSYMBOL'], INDICES) == -1) {
                         if (row['TREND']) {
                             let bears = ['VIXU', 'ASO', 'AST']
                             let found = row['TREND'].some(r => bears.includes(r))
@@ -2143,7 +2216,7 @@ function showPopUpWindow(index, html, title) {
         statusBar: true,
         resizable: true,
         resizeOpacity: 1,
-        height: 400,
+        height: 650,
         width: 900,
         keepInViewport: true,              // Boolean
         mouseMoveEvents: true              // Boolean

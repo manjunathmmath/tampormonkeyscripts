@@ -159,3 +159,7 @@ span.bullsVersesBears {
 .filter-instruments{
   cursor: pointer;
 }
+
+#pop-up-window-trend-analysis ul li{
+  margin-bottom: unset !important;
+}
