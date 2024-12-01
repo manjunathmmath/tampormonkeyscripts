@@ -49,11 +49,15 @@ const g_config = new MonkeyConfig({
         },
         nifty_future_token: {
             type: 'text',
-            default: 0
+            default: 8961282
         },
-        bank_nifty_future_yoken: {
+        bank_nifty_future_token: {
             type: 'text',
-            default: 0
+            default: 8966402
+        },
+        crude_oil_m_future_token: {
+            type: 'text',
+            default: 111570951
         },
         refresh_time: {
             type: 'text',
@@ -72,10 +76,17 @@ const BASKET = g_config.get('basket');
 const MARGIN = g_config.get('margin');
 let weightIndex = []
 const NIFTY_FUTURE_TOKEN = g_config.get('nifty_future_token');
-const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_yoken');
+const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_token');
+const CRUDE_OIL_M_FUTURE_TOKEN = g_config.get('crude_oil_m_future_token');
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
     'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
+}
+
+let futureTokens ={
+    'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
+    'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
+    "CRUDE_OIL_M_FUTURE":CRUDE_OIL_M_FUTURE_TOKEN
 }
 const REFRESH_TIME = g_config.get('refresh_time');
 
@@ -118,6 +129,7 @@ jQ(document).ready(function () {
 jQ(document).on("click", "#show-ai-prediction", function (e) {
     e.preventDefault();
     showFutureAi();
+    generateFutreIntruments();
 });
 
 
@@ -209,6 +221,7 @@ async function autoRefreshEachTabs(instance) {
         data.push(obj)
     })
     generateStockDataTable(data);
+   
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
@@ -629,7 +642,27 @@ function showFutureAi() {
     html += '</table>'
     html += '</div>'
     html += '</div>'
+
+
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table  class="" id="future-list-table" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>INSTRUMENT</th>'
+    html += '<th>ACTION</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+
+    html += '</tbody>'
+    html += '</table>'
     html += '</div>'
+    html += '</div>'
+
 
     let title = ''
     title += '<div class="row">'
@@ -647,7 +680,201 @@ function showFutureAi() {
     title += '</div>'
     title += '</div>'
     showPopUpWindow('trend-analysis', html, "Trend Analysis");
-    jQ(".popupwindow_titlebar_text").html(title)
+    jQ(".popupwindow_titlebar_text").html(title);
+    
+}
+
+
+function generateFutreIntruments() {
+    let futureTable = jQ("#future-list-table");
+    let html = ''
+    for (var key in futureTokens) {
+        if (futureTokens.hasOwnProperty(key)) {
+            console.log(key,futureTokens[key])
+            html += '<tr>'
+            html += '<td>'+key+'</td>'
+            html += '<td><div data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-secondary show-future-chart">Chart</div></td>'
+            html += '</tr>'
+        }
+    }
+    futureTable.find("tbody").html(html)
+    futureTable.show()
+}
+
+jQ(document).on("click", ".show-future-chart", function () {
+    let token = jQ(this).attr("data-token");
+    let name = jQ(this).attr("data-name");
+    console.log(token,name)
+    let chartId = 'future-chart-'+token
+    let html=''
+    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
+        jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (cres) {
+                html += '<div id="' +chartId+ '" style="width:100%;">'
+                html += '</div>';
+                showPopUpWindow(name, html, name);
+                show5MinutesFuturesChart(cres, name,token,pres)
+        });
+    });
+});
+
+function show5MinutesFuturesChart(quote,name,token,prev){
+
+    let first = quote.data['candles'][0];
+    let prevData = prev.data['candles'][0];
+    
+    let strikeDiff =nseFutreStrikeDiff[name];
+    strikeDiff = strikeDiff.split(",");
+    let strikeOne = parseInt(strikeDiff[0])
+    let strikeTwo = parseInt(strikeDiff[1])
+
+    let ustrikeOne = (parseFloat(first[1]) + strikeOne);
+    let ustrikeTwo = (ustrikeOne + strikeTwo);
+    let bstrikeOne = (parseFloat(first[1]) - strikeOne);
+    let bstrikeTwo = (bstrikeOne - strikeTwo);
+
+    let strikeMap = {}
+    strikeMap['strikeDiff'] = parseFloat(strikeDiff).toFixed(2);
+    strikeMap['bstrikeOne'] = parseFloat(bstrikeOne).toFixed(2);
+    strikeMap['bstrikeTwo'] = parseFloat(bstrikeTwo).toFixed(2);
+    strikeMap['ustrikeOne'] = parseFloat(ustrikeOne).toFixed(2);
+    strikeMap['ustrikeTwo'] = parseFloat(ustrikeTwo).toFixed(2);
+
+
+    let chartId = 'future-chart-' + token;
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+
+    var vix = getVixRange(parseFloat(prevData[4]), parseFloat(vixQuote[4]))
+
+    var vixLowerRange = 0;
+    var vixUpperRange = 0;
+    var vixDDRange = 0;
+
+    vixLowerRange = parseFloat(vix.vixDDLower)
+    vixUpperRange = parseFloat(vix.vixDDUpper)
+    vixDDRange = parseFloat(vix.vixDDRange);
+
+    let data = []
+    jQ.each(quote.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        data.push(map);
+    });
+
+    console.log(data)
+
+
+    let categoryList = []
+    let dateIndex = 0
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+    });
+
+    let dataList = []
+    let min = 0
+    let max = 0
+    dateIndex = 0
+
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+    let lines = [];
+    let line = {};
+
+    line.color = "#8be73a";
+    line.startvalue = vixLowerRange;
+    line.displayvalue = 'Vix lower range ' + vixLowerRange;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = vixUpperRange;
+    line.displayvalue = 'Vix upper range ' + vixUpperRange;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.bstrikeTwo;
+    line.displayvalue = "BST " + strikeMap.bstrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.ustrikeTwo;
+    line.displayvalue = "AST " + strikeMap.ustrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.bstrikeOne;
+    line.displayvalue = "BSO " + strikeMap.bstrikeOne;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.ustrikeOne;
+    line.displayvalue = "ASO " + strikeMap.ustrikeOne;
+    lines.push(line);
+
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "100%",
+        height: "100%",
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                "pYAxisMinValue": min,
+                "pYAxisMaxValue": max,
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
+
 }
 
 var stockTable;

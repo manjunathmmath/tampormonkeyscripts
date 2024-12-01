@@ -682,3 +682,9 @@ let INDICES =[
     'SENSEX',
     'GIFT NIFTY'
 ]
+
+let nseFutreStrikeDiff = {
+    'NIFTY_FUTURE': '50,50',
+    'BANK_NIFTY_FUTURE': '100,100',
+    "CRUDE_OIL_M_FUTURE":'50,50',
+}
