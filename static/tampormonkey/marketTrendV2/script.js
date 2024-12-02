@@ -83,10 +83,10 @@ let futureInstruments = {
     'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
 }
 
-let futureTokens ={
+let futureTokens = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
     'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
-    "CRUDE_OIL_M_FUTURE":CRUDE_OIL_M_FUTURE_TOKEN
+    "CRUDE_OIL_M_FUTURE": CRUDE_OIL_M_FUTURE_TOKEN
 }
 const REFRESH_TIME = g_config.get('refresh_time');
 
@@ -94,8 +94,10 @@ async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
         if ((i + 1) <= 100) {
             addToWatchList("NSE", FO_LIST[i], (i + 1), 2)
-        } else {
+        } else if ((i + 1) > 100 && (i + 1) <= 200) {
             addToWatchList("NSE", FO_LIST[i], (i + 1), 3)
+        } else {
+            addToWatchList("NSE", FO_LIST[i], (i + 1), 4)
         }
         await callSleepForAWhile(1000)
     }
@@ -150,7 +152,7 @@ function makeUIChanges() {
     html += '<a href="#" id="clean-storage">'
     html += 'Clean'
     html += '</a>'
-    html += '<a href="#" id="add-to-watch-list" style="display:none;">'
+    html += '<a href="#" id="add-to-watch-list">'
     html += 'Add Watchlist'
     html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
@@ -192,7 +194,7 @@ async function autoRefreshEachTabs(instance) {
     clearInterval(timerInstance)
     let marketWatchSideBar = jQ(".marketwatch-sidebar");
     let tabs = marketWatchSideBar.find(".marketwatch-selector a.item");
-    for (let i = 0; i < (tabs.length - 4); i++) {
+    for (let i = 0; i < (tabs.length - 3); i++) {
         jQ(".marketwatch-selector a.item")[i].click();
         await callSleepForAWhile(1000);
         generateTrend();
@@ -221,7 +223,7 @@ async function autoRefreshEachTabs(instance) {
         data.push(obj)
     })
     generateStockDataTable(data);
-   
+
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
@@ -232,12 +234,12 @@ async function autoRefreshEachTabs(instance) {
 jQ(document).on("click", ".filter-instruments", function (e) {
     let indexType = jQ(this).attr("data-index-name");
     let trendType = jQ(this).attr("data-trend-type");
-    filterInstruments(indexType,trendType)
+    filterInstruments(indexType, trendType)
 })
 
 
 
-function filterInstruments(indexType,trendType) {
+function filterInstruments(indexType, trendType) {
     let listType = FO_LIST;
     if (indexType == "NIFTY 50") {
         listType = NIFTY_50_LIST;
@@ -266,11 +268,11 @@ function filterInstruments(indexType,trendType) {
                 obj['TREND'] = infoMap[index]['trends']
                 obj['LTP'] = infoMap[index]['currentPrice']
             }
-            if(trendType){
+            if (trendType) {
                 if (jQ.inArray(trendType, obj['TREND']) != -1) {
                     data.push(obj)
                 }
-            }else{
+            } else {
                 data.push(obj)
             }
         }
@@ -341,6 +343,7 @@ function getNiftyBullsBearsCount() {
     let bso = 0;
     let bst = 0;
     jQ.each(NIFTY_50_LIST, function (index, item) {
+        console.log(item)
         let data = infoMap[item]
         if (data['trends']) {
             if (jQ.inArray("VIXL", data['trends']) != -1) {
@@ -573,7 +576,7 @@ function showFutureAi() {
     html += '</div>'
     html += '</div>'
 
-    
+
 
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
@@ -681,7 +684,7 @@ function showFutureAi() {
     title += '</div>'
     showPopUpWindow('trend-analysis', html, "Trend Analysis");
     jQ(".popupwindow_titlebar_text").html(title);
-    
+
 }
 
 
@@ -690,9 +693,9 @@ function generateFutreIntruments() {
     let html = ''
     for (var key in futureTokens) {
         if (futureTokens.hasOwnProperty(key)) {
-            console.log(key,futureTokens[key])
+            console.log(key, futureTokens[key])
             html += '<tr>'
-            html += '<td>'+key+'</td>'
+            html += '<td>' + key + '</td>'
             html += '<td><div data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-secondary show-future-chart">Chart</div></td>'
             html += '</tr>'
         }
@@ -704,25 +707,25 @@ function generateFutreIntruments() {
 jQ(document).on("click", ".show-future-chart", function () {
     let token = jQ(this).attr("data-token");
     let name = jQ(this).attr("data-name");
-    console.log(token,name)
-    let chartId = 'future-chart-'+token
-    let html=''
+    console.log(token, name)
+    let chartId = 'future-chart-' + token
+    let html = ''
     jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (cres) {
-                html += '<div id="' +chartId+ '" style="width:100%;">'
-                html += '</div>';
-                showPopUpWindow(name, html, name);
-                show5MinutesFuturesChart(cres, name,token,pres)
+            html += '<div id="' + chartId + '" style="width:100%;">'
+            html += '</div>';
+            showPopUpWindow(name, html, name);
+            show5MinutesFuturesChart(cres, name, token, pres)
         });
     });
 });
 
-function show5MinutesFuturesChart(quote,name,token,prev){
+function show5MinutesFuturesChart(quote, name, token, prev) {
 
     let first = quote.data['candles'][0];
     let prevData = prev.data['candles'][0];
-    
-    let strikeDiff =nseFutreStrikeDiff[name];
+
+    let strikeDiff = nseFutreStrikeDiff[name];
     strikeDiff = strikeDiff.split(",");
     let strikeOne = parseInt(strikeDiff[0])
     let strikeTwo = parseInt(strikeDiff[1])
@@ -907,7 +910,34 @@ function generateStockDataTable(data) {
             {
                 "data": "TREND",
                 render: function (data, type, row, meta) {
-                    var html = data
+                    let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "AST") {
+                                html += '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                            }
+
+                            if (item == "ASO") {
+                                html += '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                            }
+
+                            if (item == "VIXL") {
+                                html += '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                            }
+
+                            if (item == "VIXU") {
+                                html += '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                            }
+                        });
+                    }
                     return html
                 }
             },
@@ -955,7 +985,7 @@ async function generateTrend() {
     let instrumentsWrapper = jQ(".instruments");
     let instruments = instrumentsWrapper.find(".vddl-list .instrument");
     jQ.each(tabs, function (index, item) {
-        if (index == 0 || index == 1 || index == 2) {
+        if (index == 0 || index == 1 || index == 2 || index == 3) {
             if (jQ(item).hasClass("selected")) {
                 if (instruments.length > 0) {
                     let currentMap = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
@@ -1367,15 +1397,15 @@ function aiFutureAnalysis(currentQuote, prevQuote, name) {
     let trend;
     if (name == "NIFTY_FUTURE") {
         trend = showAiNiftyPrediction(currentQuote, prevQuote, name)
-        if(trend){
+        if (trend) {
             jQ("#nifty-future-ai-trend-plus").html(trend['PLUS'])
             jQ("#nifty-future-ai-trend-minus").html(trend['MINUS'])
         }
-       
+
     }
     if (name == "BANK_NIFTY_FUTURE") {
         trend = showAiBankNiftyPrediction(currentQuote, prevQuote, name)
-        if(trend){
+        if (trend) {
             jQ("#bank-nifty-future-ai-trend-plus").html(trend['PLUS'])
             jQ("#bank-nifty-future-ai-trend-minus").html(trend['MINUS'])
         }
@@ -1386,7 +1416,7 @@ function showAiNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     let futuresData = {};
     let prevData = prevQuoteData.data['candles'][0];
     let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
-    if(!currentData){
+    if (!currentData) {
         return;
     }
 
@@ -1596,7 +1626,7 @@ function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     let prevData = prevQuoteData.data['candles'][0];
     let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
 
-    if(!currentData){
+    if (!currentData) {
         return;
     }
 
@@ -2329,7 +2359,7 @@ function getStrikeDiff(instrument) {
     console.log(instrument + " (" + nseStrikeDiff[instrument] + ")")
     if (nseStrikeDiff[instrument]) {
         strikeDiff = nseStrikeDiff[instrument]
-        strikeDiff = strikeDiff.replace(/ /g,'')
+        strikeDiff = strikeDiff.replace(/ /g, '')
     }
     return strikeDiff;
 }
