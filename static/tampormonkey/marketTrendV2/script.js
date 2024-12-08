@@ -128,7 +128,7 @@ jQ(document).ready(function () {
         saveVixQuote();
         /*parseChartJson()*/
     }, 2000)
-    
+
 });
 
 jQ(document).on("click", "#show-ai-prediction", function (e) {
@@ -226,6 +226,8 @@ async function autoRefreshEachTabs(instance) {
         if (infoMap[index]) {
             obj['TREND'] = infoMap[index]['trends']
             obj['LTP'] = infoMap[index]['currentPrice']
+            obj['STRIKEDATA'] = infoMap[index]['strikeData']
+            obj['VIX'] = infoMap[index]['vix']
         }
         data.push(obj)
     })
@@ -235,7 +237,7 @@ async function autoRefreshEachTabs(instance) {
     if (instance) {
         instance.attr("disabled", false)
     }
-    
+
 }
 
 jQ(document).on("click", ".filter-instruments", function (e) {
@@ -532,23 +534,23 @@ function startTimer(duration, display) {
 }
 
 
-function updatePrfitLoss(){
+function updatePrfitLoss() {
     let openPosition = jQ(".open-positions");
     let table = openPosition.find("table")
     let tfoot = table.find("tfoot")
     let tr = tfoot.find("tr");
-    let td  = tr.find("td:nth-child(4)");
-    if(td){
-        let price = parseFloat(td.text().replaceAll(",",""));
-        if(!price){
+    let td = tr.find("td:nth-child(4)");
+    if (td) {
+        let price = parseFloat(td.text().replaceAll(",", ""));
+        if (!price) {
             price = 0.00;
         }
-        let html = '<span class="badge bg-success">'+price+'</span>'
-        if(price < 0){
-            html = '<span class="badge bg-danger">'+price+'</span>'
+        let html = '<span class="badge bg-success">' + price + '</span>'
+        if (price < 0) {
+            html = '<span class="badge bg-danger">' + price + '</span>'
         }
 
-        jQ("#profit-loss").html("P/L: "+ html)
+        jQ("#profit-loss").html("P/L: " + html)
     }
 }
 
@@ -561,7 +563,7 @@ function showFutureAi() {
     html += '<div class="card" >'
     html += '<div class="card-header">'
     html += 'NIFTY FUTURES '
-    html +='<span id="nifty-future-ai-extra-info-price">'
+    html += '<span id="nifty-future-ai-extra-info-price">'
     html += '</span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
@@ -576,7 +578,7 @@ function showFutureAi() {
     html += '<div class="card" >'
     html += '<div class="card-header">'
     html += 'BANK NIFTY FUTURE '
-    html +='<span id="bank-nifty-future-ai-extra-info-price">'
+    html += '<span id="bank-nifty-future-ai-extra-info-price">'
     html += '</span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
@@ -717,7 +719,7 @@ function showFutureAi() {
     title += '<div class="col-md-3">'
     title += '<span id="last-refresh-time">Last @ 00:00:00</span>'
     title += '</div>'
- 
+
     title += '<div class="col-md-3">'
     title += '<span id="profit-loss">0.00</span>'
     title += '</div>'
@@ -955,30 +957,70 @@ function generateStockDataTable(data) {
                 "data": "TREND",
                 render: function (data, type, row, meta) {
                     let html = ''
+                    let currentPrice = row['LTP'];
                     if (data.length > 0) {
                         jQ.each(data, function (index, item) {
                             if (item == "AST") {
-                                html += '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                                let astPrice = row['STRIKEDATA']['ustrikeTwo']
+                                let AST_MOVED = parseFloat(astPrice - currentPrice).toFixed();
+                                if (AST_MOVED >= 0) {
+                                    html += '<div class="badge bg-info above-strike-two strike-info">AST (' + AST_MOVED + ')</div>'
+                                } else {
+                                    html += '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                                }
                             }
 
                             if (item == "ASO") {
-                                html += '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                                let asoPrice = row['STRIKEDATA']['ustrikeOne']
+                                let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
+                                if (ASO_MOVED >= 0) {
+                                    html += '<div class="badge bg-info above-strike-one strike-info">ASO (' + ASO_MOVED + ')</div>'
+                                } else {
+                                    html += '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                                }
                             }
 
                             if (item == "BST") {
-                                html += '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                                let bstPrice = row['STRIKEDATA']['bstrikeTwo']
+                                let BST_MOVED = parseFloat(bstPrice - currentPrice).toFixed();
+                                if (BST_MOVED >= 0) {
+                                    html += '<div class="badge bg-info below-strike-two strike-info">BST (' + BST_MOVED + ')</div>'
+                                } else {
+                                    html += '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                                }
                             }
 
                             if (item == "BSO") {
-                                html += '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                                let bsoPrice = row['STRIKEDATA']['bstrikeOne']
+                                let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
+                                if (BSO_MOVED >= 0) {
+                                    html += '<div class="badge bg-info below-strike-one strike-info">BSO (' + BSO_MOVED + ')</div>'
+                                } else {
+                                    html += '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                                }
+
                             }
 
                             if (item == "VIXL") {
-                                html += '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                                let vixlPrice = row['VIX']['vixDDLower']
+                                let VIXL_MOVED = parseFloat(vixlPrice - currentPrice).toFixed();
+                                if (VIXL_MOVED >= 0) {
+                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXL (' + VIXL_MOVED + ')</div>'
+                                } else {
+                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                                }
+
                             }
 
                             if (item == "VIXU") {
-                                html += '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                                let vixuPrice = row['VIX']['vixDDUpper']
+                                let VIXU_MOVED = parseFloat(currentPrice- vixuPrice).toFixed();
+                                if (VIXU_MOVED >= 0) {
+                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXU ('+VIXU_MOVED+')</div>'
+                                } else {
+                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                                }
+
                             }
                         });
                     }
@@ -992,7 +1034,7 @@ function generateStockDataTable(data) {
                     let index = 1;
                     if (jQ.inArray(row['TRADINGSYMBOL'], INDICES) == -1) {
                         if (row['TREND']) {
-                            let bears = ['VIXU', 'ASO', 'AST']
+                            let bears = ['BSO', 'AST', 'VIXL']
                             let found = row['TREND'].some(r => bears.includes(r))
                             let transactionType = 'BUY'
                             let btnColor = "bg-success"
@@ -1237,7 +1279,7 @@ jQ(document).on("click", ".show-chart", function () {
         var html = ''
         let btnColor = "bg-success"
         trends = trends.split(",")
-        let bears = ['VIXU', 'ASO', 'AST']
+        let bears = ['BSO', 'AST', 'VIXL']
         let found = trends.some(r => bears.includes(r))
         let transactionType = 'BUY'
         let counterTransactionType = "SELL"
@@ -1448,7 +1490,7 @@ function aiFutureAnalysis(currentQuote, prevQuote, name) {
             jQ("#nifty-future-ai-trend-minus").html(trend['MINUS'])
             jQ("#nifty-future-ai-extra-info-oi").html('').append(moreInfo['OI'])
             jQ("#nifty-future-ai-extra-info-price").html(moreInfo['PRICE'])
-            jQ("#nifty-future-ai-extra-info-vwap-signal").html('').append(moreInfo['VWAP']+" "+moreInfo['SIGNAL'])
+            jQ("#nifty-future-ai-extra-info-vwap-signal").html('').append(moreInfo['VWAP'] + " " + moreInfo['SIGNAL'])
         }
     }
     if (name == "BANK_NIFTY_FUTURE") {
@@ -1459,7 +1501,7 @@ function aiFutureAnalysis(currentQuote, prevQuote, name) {
             jQ("#bank-nifty-future-ai-trend-minus").html(trend['MINUS'])
             jQ("#bank-nifty-future-ai-extra-info-oi").html('').append(moreInfo['OI'])
             jQ("#bank-nifty-future-ai-extra-info-price").html(moreInfo['PRICE'])
-            jQ("#bank-nifty-future-ai-extra-info-vwap-signal").html('').append(moreInfo['VWAP']+" "+moreInfo['SIGNAL'])
+            jQ("#bank-nifty-future-ai-extra-info-vwap-signal").html('').append(moreInfo['VWAP'] + " " + moreInfo['SIGNAL'])
         }
     }
 }
@@ -1918,8 +1960,8 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
     prevQuote['oi'] = prevData[6]
 
     quote.volume = parseInt(quote.volume)
-    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
-    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
     var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
     var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
     var totalVolumePrice = cVolumePrice + pVolumePrice
@@ -2097,8 +2139,8 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
     prevQuote['oi'] = prevData[6]
 
     quote.volume = parseInt(quote.volume)
-    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
-    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
     var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
     var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
     var totalVolumePrice = cVolumePrice + pVolumePrice
@@ -2888,12 +2930,12 @@ function showPopUpWindow(index, html, title) {
 
 
 
-function parseChartJson(){
+function parseChartJson() {
     let json = localStorage.getItem("TVCharts")
     json = JSON.parse(json);
     console.log(json)
 
-    let  content = JSON.parse(json[0].content)
+    let content = JSON.parse(json[0].content)
     console.log(content)
 
     content = JSON.parse(content.content)
@@ -2909,9 +2951,9 @@ function parseChartJson(){
 
     let addOne = content.charts[0].panes[0].sources[1]
     addOne['id'] = Math.random().toString(36).substr(2, 5)
-    addOne['state']['text']= "Demo" 
+    addOne['state']['text'] = "Demo"
     addOne['points'][0]['price'] = 24549.89
 
-    content.charts[0].panes[0].sources[length+1] = addOne
- 
+    content.charts[0].panes[0].sources[length + 1] = addOne
+
 }
