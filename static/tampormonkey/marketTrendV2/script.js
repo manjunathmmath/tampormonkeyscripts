@@ -4,7 +4,7 @@ const common_css = GM_getResourceText("COMMON_CSS");
 const popup_window_css = GM_getResourceText("POPUP_WINDOW_CSS");
 const sackbar_css = GM_getResourceText("SACKBAR_CSS");
 const datatable_css = GM_getResourceText("DATATABLE_CSS");
-
+const bootstrap_icon_css = GM_getResourceText("BOOTSTRAP_ICON_CSS");
 
 GM_addStyle(my_css);
 GM_addStyle(sackbar_css);
@@ -12,6 +12,7 @@ GM_addStyle(boot_css);
 GM_addStyle(datatable_css);
 GM_addStyle(common_css);
 GM_addStyle(popup_window_css);
+GM_addStyle(bootstrap_icon_css);
 
 window.jQ = jQuery.noConflict(true);
 const g_config = new MonkeyConfig({
@@ -125,7 +126,9 @@ jQ(document).ready(function () {
     setTimeout(function () {
         makeUIChanges();
         saveVixQuote();
+        /*parseChartJson()*/
     }, 2000)
+    
 });
 
 jQ(document).on("click", "#show-ai-prediction", function (e) {
@@ -149,10 +152,7 @@ function saveVixQuote() {
 
 function makeUIChanges() {
     var html = '';
-    html += '<a href="#" id="clean-storage">'
-    html += 'Clean'
-    html += '</a>'
-    html += '<a href="#" id="add-to-watch-list">'
+    html += '<a href="#" id="add-to-watch-list" style="display:none;">'
     html += 'Add Watchlist'
     html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
@@ -200,6 +200,13 @@ async function autoRefreshEachTabs(instance) {
         generateTrend();
         await callSleepForAWhile(1000);
     }
+
+    /*Reset to first tab*/
+    jQ(".marketwatch-selector a.item")[0].click();
+    await callSleepForAWhile(1000);
+    generateTrend();
+    await callSleepForAWhile(1000);
+
     await analyseFutureIntruments();
     getIndicesBullsBearsCount()
     getNiftyBullsBearsCount();
@@ -223,12 +230,12 @@ async function autoRefreshEachTabs(instance) {
         data.push(obj)
     })
     generateStockDataTable(data);
-
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
         instance.attr("disabled", false)
     }
+    
 }
 
 jQ(document).on("click", ".filter-instruments", function (e) {
@@ -520,9 +527,30 @@ function startTimer(duration, display) {
             autoRefreshEachTabs()
             timer = duration;
         }
+        updatePrfitLoss()
     }, 1000);
 }
 
+
+function updatePrfitLoss(){
+    let openPosition = jQ(".open-positions");
+    let table = openPosition.find("table")
+    let tfoot = table.find("tfoot")
+    let tr = tfoot.find("tr");
+    let td  = tr.find("td:nth-child(4)");
+    if(td){
+        let price = parseFloat(td.text().replaceAll(",",""));
+        if(!price){
+            price = 0.00;
+        }
+        let html = '<span class="badge bg-success">'+price+'</span>'
+        if(price < 0){
+            html = '<span class="badge bg-danger">'+price+'</span>'
+        }
+
+        jQ("#profit-loss").html("P/L: "+ html)
+    }
+}
 
 function showFutureAi() {
     let html = ''
@@ -532,22 +560,30 @@ function showFutureAi() {
     html += '<div class="col-md-6">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
-    html += 'NIFTY FUTURES'
+    html += 'NIFTY FUTURES '
+    html +='<span id="nifty-future-ai-extra-info-price">'
+    html += '</span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" id="nifty-future-ai-trend-plus"></li>'
     html += '<li class="list-group-item" id="nifty-future-ai-trend-minus"></li>'
+    html += '<li class="list-group-item" id="nifty-future-ai-extra-info-oi"></li>'
+    html += '<li class="list-group-item" id="nifty-future-ai-extra-info-vwap-signal"></li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
     html += '<div class="col-md-6">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
-    html += 'BANK NIFTY FUTURES'
+    html += 'BANK NIFTY FUTURE '
+    html +='<span id="bank-nifty-future-ai-extra-info-price">'
+    html += '</span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" id="bank-nifty-future-ai-trend-plus"></li>'
     html += '<li class="list-group-item" id="bank-nifty-future-ai-trend-minus"</li>'
+    html += '<li class="list-group-item" id="bank-nifty-future-ai-extra-info-oi"></li>'
+    html += '<li class="list-group-item" id="bank-nifty-future-ai-extra-info-vwap-signal"></li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
@@ -669,17 +705,25 @@ function showFutureAi() {
 
     let title = ''
     title += '<div class="row">'
-    title += '<div class="col-md-6">'
+    title += '<div class="col-md-2">'
     title += 'Trend Analysis'
     title += '</div>'
     title += '<div class="col-md-1">'
-    title += '<a  id="start-auto-refresh"><i class="bi bi-arrow-counterclockwise"></i>Refresh</a>'
+    title += '<a  id="start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
     title += '</div>'
     title += '<div class="col-md-1">'
-    title += '<span id="refresh-timer-one">00:00</span>'
+    title += '<span style="margin-left:.5rem;" id="refresh-timer-one">00:00</span>'
     title += '</div>'
-    title += '<div class="col-md-2">'
-    title += '<span id="last-refresh-time">00:00</span>'
+    title += '<div class="col-md-3">'
+    title += '<span id="last-refresh-time">Last @ 00:00:00</span>'
+    title += '</div>'
+ 
+    title += '<div class="col-md-3">'
+    title += '<span id="profit-loss">0.00</span>'
+    title += '</div>'
+
+    title += '<div class="col-md-1">'
+    title += '<span id="clean-storage">Clear</span>'
     title += '</div>'
     title += '</div>'
     showPopUpWindow('trend-analysis', html, "Trend Analysis");
@@ -1395,19 +1439,27 @@ function show5MinutesChart(quote, name) {
 
 function aiFutureAnalysis(currentQuote, prevQuote, name) {
     let trend;
+    let moreInfo;
     if (name == "NIFTY_FUTURE") {
         trend = showAiNiftyPrediction(currentQuote, prevQuote, name)
+        moreInfo = niftyFutureAnalysis(currentQuote, prevQuote)
         if (trend) {
             jQ("#nifty-future-ai-trend-plus").html(trend['PLUS'])
             jQ("#nifty-future-ai-trend-minus").html(trend['MINUS'])
+            jQ("#nifty-future-ai-extra-info-oi").html('').append(moreInfo['OI'])
+            jQ("#nifty-future-ai-extra-info-price").html(moreInfo['PRICE'])
+            jQ("#nifty-future-ai-extra-info-vwap-signal").html('').append(moreInfo['VWAP']+" "+moreInfo['SIGNAL'])
         }
-
     }
     if (name == "BANK_NIFTY_FUTURE") {
-        trend = showAiBankNiftyPrediction(currentQuote, prevQuote, name)
+        trend = showAiBankNiftyPrediction(currentQuote, prevQuote, name);
+        moreInfo = bankNiftyFutureAnalysis(currentQuote, prevQuote)
         if (trend) {
             jQ("#bank-nifty-future-ai-trend-plus").html(trend['PLUS'])
             jQ("#bank-nifty-future-ai-trend-minus").html(trend['MINUS'])
+            jQ("#bank-nifty-future-ai-extra-info-oi").html('').append(moreInfo['OI'])
+            jQ("#bank-nifty-future-ai-extra-info-price").html(moreInfo['PRICE'])
+            jQ("#bank-nifty-future-ai-extra-info-vwap-signal").html('').append(moreInfo['VWAP']+" "+moreInfo['SIGNAL'])
         }
     }
 }
@@ -1836,6 +1888,356 @@ function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     futuresData['MINUS'] = imageBearMinus + bearRemark + marketTrendMinus
 
     return futuresData;
+}
+
+function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
+    let futuresData = {};
+
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
+
+    if (!currentData) {
+        return;
+    }
+
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
+    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var close = quote.close;
+    var lastPrice = quote.close;
+
+    var lastUpdateTime = quote.date;
+    var prevClose = prevQuote['close']
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose)
+    var booleanValue = false;
+
+    var correctedVwap = vwap;
+
+    var vvapTextOne = ''
+    var vvapTextTwo = ''
+    var vvapTextThree = ''
+    var vvapTextFour = ''
+
+    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+    var upTriangle = '<i class="bi bi-caret-up"></i>'
+
+    if (vwap <= lastPrice) {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
+        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = true;
+    } else {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
+        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = false;
+    }
+    futuresData.VWAP = vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour
+
+    var buyResult = Math.abs(openPrice - lowPrice);
+    var sellResult = Math.abs(openPrice - highPrice);
+    var diffNiftyOpenPrevOpen = Math.abs(openPrice - prevClose);
+    var diffNiftyOpenPrevOpenResult = false;
+    if (diffNiftyOpenPrevOpen >= 1 && diffNiftyOpenPrevOpen <= 11) {
+        diffNiftyOpenPrevOpenResult = true
+    }
+
+    var textOpen = '<span class="badge bg-dark">' + openPrice + '</span>'
+    var textLow = '<span class="badge bg-danger">' + lowPrice + '</span>'
+    var textHigh = '<span class="badge bg-success">' + highPrice + '</span>'
+    var textPreviousClose = '<span class="badge bg-success">' + previousClose + '</span>'
+
+
+    futuresData.OPEN = textOpen
+    futuresData.HIGH = textHigh
+    futuresData.LOW = textLow
+    futuresData.CLOSE = textPreviousClose
+    futuresData.TIMESTAMP = lastUpdateTime
+
+
+    var futureTrend = ''
+    var futureDirection = ''
+    if (buyResult >= 0 && buyResult <= 11 && booleanValue == true) {
+        var trend = "Strong BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (sellResult >= 0 && sellResult <= 9 && booleanValue == false) {
+        var trend = "Strong SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    } else if (openPrice > prevClose && lastPrice > openPrice
+        && booleanValue == true) {
+        var trend = "BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (diffNiftyOpenPrevOpenResult == true
+        && booleanValue == true && lastPrice > openPrice) {
+        var trend = "BUY On Decline";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        var trend = "SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    futuresData.SIGNAL = futureTrend + " " + futureDirection
+
+    var price = ''
+    var priceChang = ''
+    var priceChangDirection = ''
+    var pricePer = ''
+    if (change > 0) {
+        price += '<span class="badge bg-success">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-success">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        price += '<span class="badge bg-danger">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-danger">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pChange > 0) {
+        pricePer += '<span class="badge bg-success">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    } else {
+        pricePer += '<span class="badge bg-danger">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    }
+    futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
+
+    var openInterest = quote.oi / 50;
+    var previousOI = prevQuote['oi'] / 50
+    var changeinOpenInterest = (openInterest - previousOI)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+
+    var oiPrice = ''
+    var oiPriceChang = ''
+    var oiPriceChangDirection = ''
+    var oiPricePer = ''
+    if (changeinOpenInterest > 0) {
+        oiPrice += '<span class="badge bg-success">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-success">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+
+    } else {
+        oiPrice += '<span class="badge bg-danger">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-danger">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        oiPricePer += '<span class="badge bg-success">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    } else {
+        oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    }
+
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
+
+    return futuresData;
+}
+
+function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
+    let futuresData = {};
+
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
+
+    if (!currentData) {
+        return;
+    }
+
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice =(parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close))/3
+    var cTypicalPrice =(parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close))/3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+    var lastUpdateTime = quote.date;
+    var prevClose = prevQuote['close']
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose)
+    var booleanValue = false;
+
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5;
+
+    var vvapTextOne = ''
+    var vvapTextTwo = ''
+    var vvapTextThree = ''
+    var vvapTextFour = ''
+
+    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+    var upTriangle = '<i class="bi bi-caret-up"></i>'
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5;
+    if (correctedVwap <= lastPrice) {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
+        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = true;
+    } else {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
+        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = false;
+    }
+    futuresData.VWAP = vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour
+
+    var buyResult = Math.abs(openPrice - lowPrice);
+    var sellResult = Math.abs(openPrice - highPrice);
+
+    var textOpen = '<span class="badge bg-dark">' + openPrice + '</span>'
+    var textLow = '<span class="badge bg-danger">' + lowPrice + '</span>'
+    var textHigh = '<span class="badge bg-success">' + highPrice + '</span>'
+    var textPreviousClose = '<span class="badge bg-success">' + previousClose + '</span>'
+
+
+    futuresData.OPEN = textOpen
+    futuresData.HIGH = textHigh
+    futuresData.LOW = textLow
+    futuresData.CLOSE = textPreviousClose
+    futuresData.TIMESTAMP = lastUpdateTime
+
+    var futureTrend = ''
+    var futureDirection = ''
+    if (buyResult >= 0 && buyResult <= 30) {
+        var trend = "Strong BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (sellResult >= 0 && sellResult <= 30) {
+        var trend = "Strong SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    } else if (openPrice > prevClose && lastPrice >= openPrice
+        && booleanValue == true) {
+        var trend = "BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (booleanValue == true && lastPrice > openPrice) {
+        var trend = "BUY On Decline";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        var trend = "SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    futuresData.SIGNAL = futureTrend + " " + futureDirection
+
+    var price = ''
+    var priceChang = ''
+    var priceChangDirection = ''
+    var pricePer = ''
+    if (change > 0) {
+        price += '<span class="badge bg-success">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-success">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        price += '<span class="badge bg-danger">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-danger">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pChange > 0) {
+        pricePer += '<span class="badge bg-success">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    } else {
+        pricePer += '<span class="badge bg-danger">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    }
+    futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
+
+    var openInterest = quote.oi / 15;
+    var previousOI = prevQuote['oi'] / 15
+    var changeinOpenInterest = (openInterest - previousOI)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+
+    var oiPrice = ''
+    var oiPriceChang = ''
+    var oiPriceChangDirection = ''
+    var oiPricePer = ''
+    if (changeinOpenInterest > 0) {
+        oiPrice += '<span class="badge bg-success">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-success">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+
+    } else {
+        oiPrice += '<span class="badge bg-danger">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-danger">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        oiPricePer += '<span class="badge bg-success">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    } else {
+        oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    }
+
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
+
+    return futuresData;
+
 }
 
 function savePreviousFutureQuote(validName) {
@@ -2485,3 +2887,31 @@ function showPopUpWindow(index, html, title) {
 };
 
 
+
+function parseChartJson(){
+    let json = localStorage.getItem("TVCharts")
+    json = JSON.parse(json);
+    console.log(json)
+
+    let  content = JSON.parse(json[0].content)
+    console.log(content)
+
+    content = JSON.parse(content.content)
+    console.log(content)
+
+    console.log(content.charts)
+
+    console.log(content.charts[0].panes[0])
+
+    console.log(content.charts[0].panes[0].sources)
+
+    let length = content.charts[0].panes[0].sources.length;
+
+    let addOne = content.charts[0].panes[0].sources[1]
+    addOne['id'] = Math.random().toString(36).substr(2, 5)
+    addOne['state']['text']= "Demo" 
+    addOne['points'][0]['price'] = 24549.89
+
+    content.charts[0].panes[0].sources[length+1] = addOne
+ 
+}

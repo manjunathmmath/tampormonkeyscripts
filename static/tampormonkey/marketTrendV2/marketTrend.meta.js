@@ -14,6 +14,7 @@
 // @grant        GM_getClipboard
 // @resource     BOOTSTRAP_CSS http://localhost:3000/dist/css/bootstrap.css
 // @resource     DATATABLE_CSS http://localhost:3000/global/vendor/datatables/datatables.min.css
+// @resource     BOOTSTRAP_ICON_CSS http://localhost:3000/dist/font/bootstrap-icons.css
 // @resource     POPUP_WINDOW_CSS http://localhost:3000/tampormonkey/common/popupwindow/popupwindow.css
 // @require      http://localhost:3000/global/vendor/jquery/jquery.js
 // @require      http://localhost:3000/dist/js/bootstrap.js
