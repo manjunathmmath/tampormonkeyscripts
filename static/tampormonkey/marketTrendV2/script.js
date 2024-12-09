@@ -276,6 +276,8 @@ function filterInstruments(indexType, trendType) {
             if (infoMap[index]) {
                 obj['TREND'] = infoMap[index]['trends']
                 obj['LTP'] = infoMap[index]['currentPrice']
+                obj['STRIKEDATA'] = infoMap[index]['strikeData']
+                obj['VIX'] = infoMap[index]['vix']
             }
             if (trendType) {
                 if (jQ.inArray(trendType, obj['TREND']) != -1) {
