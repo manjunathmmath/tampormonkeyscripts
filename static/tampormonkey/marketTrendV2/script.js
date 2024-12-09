@@ -966,9 +966,9 @@ function generateStockDataTable(data) {
                                 let astPrice = row['STRIKEDATA']['ustrikeTwo']
                                 let AST_MOVED = parseFloat(astPrice - currentPrice).toFixed();
                                 if (AST_MOVED >= 0) {
-                                    html += '<div class="badge bg-info above-strike-two strike-info">AST (' + AST_MOVED + ')</div>'
+                                    html += '<span class="badge bg-info above-strike-two strike-info">AST (' + AST_MOVED + ')</span>'
                                 } else {
-                                    html += '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                                    html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
                                 }
                             }
 
@@ -976,9 +976,9 @@ function generateStockDataTable(data) {
                                 let asoPrice = row['STRIKEDATA']['ustrikeOne']
                                 let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                                 if (ASO_MOVED >= 0) {
-                                    html += '<div class="badge bg-info above-strike-one strike-info">ASO (' + ASO_MOVED + ')</div>'
+                                    html += '<span class="badge bg-info above-strike-one strike-info">ASO (' + ASO_MOVED + ')</span>'
                                 } else {
-                                    html += '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                                    html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
                                 }
                             }
 
@@ -986,9 +986,9 @@ function generateStockDataTable(data) {
                                 let bstPrice = row['STRIKEDATA']['bstrikeTwo']
                                 let BST_MOVED = parseFloat(bstPrice - currentPrice).toFixed();
                                 if (BST_MOVED >= 0) {
-                                    html += '<div class="badge bg-info below-strike-two strike-info">BST (' + BST_MOVED + ')</div>'
+                                    html += '<span class="badge bg-info below-strike-two strike-info">BST (' + BST_MOVED + ')</span>'
                                 } else {
-                                    html += '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                                    html += '<span class="badge bg-info below-strike-two strike-info">BST</span>'
                                 }
                             }
 
@@ -996,9 +996,9 @@ function generateStockDataTable(data) {
                                 let bsoPrice = row['STRIKEDATA']['bstrikeOne']
                                 let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
                                 if (BSO_MOVED >= 0) {
-                                    html += '<div class="badge bg-info below-strike-one strike-info">BSO (' + BSO_MOVED + ')</div>'
+                                    html += '<span class="badge bg-info below-strike-one strike-info">BSO (' + BSO_MOVED + ')</span>'
                                 } else {
-                                    html += '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                                    html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
                                 }
 
                             }
@@ -1007,20 +1007,20 @@ function generateStockDataTable(data) {
                                 let vixlPrice = row['VIX']['vixDDLower']
                                 let VIXL_MOVED = parseFloat(vixlPrice - currentPrice).toFixed();
                                 if (VIXL_MOVED >= 0) {
-                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXL (' + VIXL_MOVED + ')</div>'
+                                    html += '<span class="badge bg-info below-strike-one strike-info">VIXL (' + VIXL_MOVED + ')</span>'
                                 } else {
-                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                                    html += '<span class="badge bg-info below-strike-one strike-info">VIXL</span>'
                                 }
 
                             }
 
                             if (item == "VIXU") {
                                 let vixuPrice = row['VIX']['vixDDUpper']
-                                let VIXU_MOVED = parseFloat(currentPrice- vixuPrice).toFixed();
+                                let VIXU_MOVED = parseFloat(currentPrice - vixuPrice).toFixed();
                                 if (VIXU_MOVED >= 0) {
-                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXU ('+VIXU_MOVED+')</div>'
+                                    html += '<span class="badge bg-info below-strike-one strike-info">VIXU (' + VIXU_MOVED + ')</span>'
                                 } else {
-                                    html += '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                                    html += '<span class="badge bg-info below-strike-one strike-info">VIXU</span>'
                                 }
 
                             }
@@ -1036,17 +1036,35 @@ function generateStockDataTable(data) {
                     let index = 1;
                     if (jQ.inArray(row['TRADINGSYMBOL'], INDICES) == -1) {
                         if (row['TREND']) {
-                            let bears = ['BSO', 'AST', 'VIXL']
-                            let found = row['TREND'].some(r => bears.includes(r))
+                            let isBuyTrade = false;
+                            let allowTrade = false;
+                            if (jQ.inArray("AST", row['TREND']) != -1) {
+                                isBuyTrade = false
+                                allowTrade = true
+                            }else if (jQ.inArray("ASO", row['TREND']) != -1) {
+                                isBuyTrade = true
+                                allowTrade = true
+                            }else if (jQ.inArray("BST", row['TREND']) != -1) {
+                                isBuyTrade = true
+                                allowTrade = true
+                            }else if (jQ.inArray("BSO", row['TREND']) != -1) {
+                                isBuyTrade = false
+                                allowTrade = true
+                            }
+
                             let transactionType = 'BUY'
                             let btnColor = "bg-success"
-                            if (found) {
+
+                            if (!isBuyTrade) {
                                 btnColor = "bg-danger"
                                 transactionType = 'SELL'
                             }
-                            html += '<button  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + transactionType + '" class="btn-sm btn  ms-1 place-order ' + btnColor + '" type="submit" style="margin-right:.5rem;">';
-                            html += 'Place Order'
-                            html += '</button>'
+
+                            if (allowTrade) {
+                                html += '<button  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + transactionType + '" class="btn-sm btn  ms-1 place-order ' + btnColor + '" type="submit" style="margin-right:.5rem;">';
+                                html += 'Place Order'
+                                html += '</button>'
+                            }
                         }
                     } else {
                         index = 0;
@@ -1281,16 +1299,32 @@ jQ(document).on("click", ".show-chart", function () {
         var html = ''
         let btnColor = "bg-success"
         trends = trends.split(",")
-        let bears = ['BSO', 'AST', 'VIXL']
-        let found = trends.some(r => bears.includes(r))
+
+        let isBuyTrade = false;
+        let allowTrade = false;
+        if (jQ.inArray("AST", trends) != -1) {
+            isBuyTrade = false
+            allowTrade = true
+        }else if (jQ.inArray("ASO", trends) != -1) {
+            isBuyTrade = true
+            allowTrade = true
+        }else if (jQ.inArray("BST", trends) != -1) {
+            isBuyTrade = true
+            allowTrade = true
+        }else if (jQ.inArray("BSO", trends) != -1) {
+            isBuyTrade = false
+            allowTrade = true
+        }
+
         let transactionType = 'BUY'
         let counterTransactionType = "SELL"
-        if (found) {
+        if (!isBuyTrade) {
             btnColor = "bg-danger"
             transactionType = 'SELL'
             counterTransactionType = "BUY"
         }
-        if (index != 0) {
+        
+        if (index != 0 && allowTrade) {
             html += '<div style="width:100%;text-align:center;">'
             html += '<div class="col-md-4" style="display:inline;margin-right:1rem;">'
             html += '<button  data-name="' + name + '" data-price="' + price + '"  data-transaction-type="' + transactionType + '" class="btn-sm btn btn-primary ms-1 place-order ' + btnColor + '" type="submit">';
