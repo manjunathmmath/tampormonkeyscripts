@@ -64,6 +64,10 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: 60
         },
+        historical_data_interval: {
+            type: 'text',
+            default: '3minute'
+        },
     }
 });
 
@@ -79,6 +83,9 @@ let weightIndex = []
 const NIFTY_FUTURE_TOKEN = g_config.get('nifty_future_token');
 const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_token');
 const CRUDE_OIL_M_FUTURE_TOKEN = g_config.get('crude_oil_m_future_token');
+const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
+
+
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
     'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
@@ -712,27 +719,32 @@ function showFutureAi() {
     title += '<div class="col-md-2">'
     title += 'Trend Analysis'
     title += '</div>'
-    title += '<div class="col-md-1">'
+    title += '<div class="col-md-1 pop-title-extra">'
     title += '<a  id="start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
     title += '</div>'
-    title += '<div class="col-md-1">'
+    title += '<div class="col-md-1 pop-title-extra">'
     title += '<span style="margin-left:.5rem;" id="refresh-timer-one">00:00</span>'
     title += '</div>'
-    title += '<div class="col-md-3">'
+    title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="last-refresh-time">Last @ 00:00:00</span>'
     title += '</div>'
 
-    title += '<div class="col-md-3">'
+    title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="profit-loss">0.00</span>'
     title += '</div>'
 
-    title += '<div class="col-md-1">'
+    title += '<div class="col-md-1 pop-title-extra">'
     title += '<span id="clean-storage">Clear</span>'
     title += '</div>'
     title += '</div>'
     showPopUpWindow('trend-analysis', html, "Trend Analysis");
-    jQ(".popupwindow_titlebar_text").html(title);
-
+    var divId = "popup-custom-style-trend-analysis";
+    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    jQ("." + divId).on("close.popupwindow", function () {
+        if (timerInstance) {
+            clearInterval(timerInstance)
+        }
+    });
 }
 
 
@@ -759,16 +771,16 @@ jQ(document).on("click", ".show-future-chart", function () {
     let chartId = 'future-chart-' + token
     let html = ''
     jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
-        jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (cres) {
+        jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
             html += '<div id="' + chartId + '" style="width:100%;">'
             html += '</div>';
             showPopUpWindow(name, html, name);
-            show5MinutesFuturesChart(cres, name, token, pres)
+            showFuturesChart(cres, name, token, pres)
         });
     });
 });
 
-function show5MinutesFuturesChart(quote, name, token, prev) {
+function showFuturesChart(quote, name, token, prev) {
 
     let first = quote.data['candles'][0];
     let prevData = prev.data['candles'][0];
@@ -789,7 +801,6 @@ function show5MinutesFuturesChart(quote, name, token, prev) {
     strikeMap['bstrikeTwo'] = parseFloat(bstrikeTwo).toFixed(2);
     strikeMap['ustrikeOne'] = parseFloat(ustrikeOne).toFixed(2);
     strikeMap['ustrikeTwo'] = parseFloat(ustrikeTwo).toFixed(2);
-
 
     let chartId = 'future-chart-' + token;
     let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
@@ -815,9 +826,6 @@ function show5MinutesFuturesChart(quote, name, token, prev) {
         map.volume = item[5]
         data.push(map);
     });
-
-    console.log(data)
-
 
     let categoryList = []
     let dateIndex = 0
@@ -1041,13 +1049,13 @@ function generateStockDataTable(data) {
                             if (jQ.inArray("AST", row['TREND']) != -1) {
                                 isBuyTrade = false
                                 allowTrade = true
-                            }else if (jQ.inArray("ASO", row['TREND']) != -1) {
+                            } else if (jQ.inArray("ASO", row['TREND']) != -1) {
                                 isBuyTrade = true
                                 allowTrade = true
-                            }else if (jQ.inArray("BST", row['TREND']) != -1) {
+                            } else if (jQ.inArray("BST", row['TREND']) != -1) {
                                 isBuyTrade = true
                                 allowTrade = true
-                            }else if (jQ.inArray("BSO", row['TREND']) != -1) {
+                            } else if (jQ.inArray("BSO", row['TREND']) != -1) {
                                 isBuyTrade = false
                                 allowTrade = true
                             }
@@ -1277,8 +1285,11 @@ jQ(document).on("click", ".show-chart", function () {
     let trends = jQ(this).attr("data-trend");
     let index = jQ(this).attr("data-index");
     let price = jQ(this).attr("data-price");
-    let that = jQ(this)
-    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (res) {
+    commonShowChart(name,trends,index,price)
+});
+
+function commonShowChart(name,trends,index,price){
+    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
         let quote = []
         jQ.each(res.data.candles, function (index, item) {
             let map = {}
@@ -1305,13 +1316,13 @@ jQ(document).on("click", ".show-chart", function () {
         if (jQ.inArray("AST", trends) != -1) {
             isBuyTrade = false
             allowTrade = true
-        }else if (jQ.inArray("ASO", trends) != -1) {
+        } else if (jQ.inArray("ASO", trends) != -1) {
             isBuyTrade = true
             allowTrade = true
-        }else if (jQ.inArray("BST", trends) != -1) {
+        } else if (jQ.inArray("BST", trends) != -1) {
             isBuyTrade = true
             allowTrade = true
-        }else if (jQ.inArray("BSO", trends) != -1) {
+        } else if (jQ.inArray("BSO", trends) != -1) {
             isBuyTrade = false
             allowTrade = true
         }
@@ -1323,7 +1334,7 @@ jQ(document).on("click", ".show-chart", function () {
             transactionType = 'SELL'
             counterTransactionType = "BUY"
         }
-        
+
         if (index != 0 && allowTrade) {
             html += '<div style="width:100%;text-align:center;">'
             html += '<div class="col-md-4" style="display:inline;margin-right:1rem;">'
@@ -1341,10 +1352,95 @@ jQ(document).on("click", ".show-chart", function () {
 
         html += '<div id="' + chartId + '" style="width:100%;">'
         html += '</div>'
+
+        let title = ''
+
+        title += '<div class="row">'
+        title += '<div class="col-md-2">'
+        title += name
+        title += '</div>'
+        title += '<div class="col-md-1 pop-title-extra">'
+        title += '<a   data-price="' + price + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" id="start-auto-refresh-' + name + '" class="chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+        title += '</div>'
+        title += '<div class="col-md-1 pop-title-extra">'
+        title += '<span style="margin-left:.5rem;" id="refresh-timer-' + name + '">00:00</span>'
+        title += '</div>'
+        title += '<div class="col-md-3 pop-title-extra">'
+        title += '<span id="last-refresh-time-' + name + '">Last @ 00:00:00</span>'
+        title += '</div>'
+        title += '</div>'
+
         showPopUpWindow(tempName, html, name + " : " + trends.join(","));
-        show5MinutesChart(quote, name)
+        var divId = "popup-custom-style-" + tempName;
+        jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+        showChart(quote, name);
+        jQ("." + divId).on("close.popupwindow", function () {
+            clearInterval(window['refreshChart' + name])
+        });
     })
-});
+}
+
+function commonShowOnlyChart(name){
+    name = name.replaceAll(" ", "-")
+    clearInterval(window['refreshChart' + name])
+    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
+        let quote = []
+        jQ.each(res.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("HH:mm:ss")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            quote.push(map);
+        });
+        showChart(quote, name);
+        startRefreshChart(name);
+        jQ("#last-refresh-time-"+name).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+    })
+}
+
+
+
+jQ(document).on("click", ".chart-refresh", function () {
+    var that = jQ(this);
+    that.attr("disabled", true)
+    let name = jQ(this).attr("data-name");
+    let trends = jQ(this).attr("data-trend");
+    let index = jQ(this).attr("data-index");
+    let price = jQ(this).attr("data-price");
+    commonShowOnlyChart(name,trends,index,price)
+})
+
+
+function startRefreshChart(name) {
+    var display =  jQ('#refresh-timer-' + name);
+    startTimerCharts(REFRESH_TIME, display, name);
+};
+
+function startTimerCharts(duration, display, name) {
+    if (!duration) {
+        duration = 60
+    }
+    var timer = duration, minutes, seconds;
+    window['refreshChart' + name] = setInterval(function () {
+        minutes = parseInt(timer / 60, 10);
+        seconds = parseInt(timer % 60, 10);
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        display.html(minutes + ":" + seconds);
+
+        if (--timer < 0) {
+            jQ("#start-auto-refresh-" + name).trigger("click");
+            
+            timer = duration;
+        }
+    }, 1000);
+}
+
 
 jQ(document).on("click", ".place-sl-order", function () {
     let name = jQ(this).attr("data-name");
@@ -1390,7 +1486,7 @@ function placeOrder(order) {
     });
 }
 
-function show5MinutesChart(quote, name) {
+function showChart(quote, name) {
 
     let data = getStrikeDetails(instrumentsMap[name], name);
     let chartId = 'chart-' + name.replaceAll(" ", "-");
@@ -2240,11 +2336,11 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
 
     var futureTrend = ''
     var futureDirection = ''
-    if (buyResult >= 0 && buyResult <= 30) {
+    if (buyResult >= 0 && buyResult <= 30 && booleanValue == true) {
         var trend = "Strong BUY";
         futureTrend = '<span class="badge bg-success">' + trend + '</span>'
         futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-    } else if (sellResult >= 0 && sellResult <= 30) {
+    } else if (sellResult >= 0 && sellResult <= 30 && booleanValue == false) {
         var trend = "Strong SELL";
         futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
         futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
@@ -2333,7 +2429,7 @@ function savePreviousFutureQuote(validName) {
 
 function getCurrentFutureQuote(validName) {
     return new Promise((resolve, reject) => {
-        jQ.when(getHistoricalData(futureInstruments[validName], CURRENT_DAY, CURRENT_DAY, '5minute')).done(function (res) {
+        jQ.when(getHistoricalData(futureInstruments[validName], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
             localStorage.setItem(validName + "_CURRENT_QUOTE", JSON.stringify(res));
             resolve();
         })
@@ -2528,137 +2624,6 @@ jQ(document).on("click", ".add-to-basket", function () {
 jQ(document).on("click", ".marketwatch-selector a.item", function () {
     generateTrend()
 });
-
-
-function showChart(chartId, name, vixLowerRange, vixUpperRange, data) {
-
-    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, 'minute')).done(function (res) {
-        let quote = []
-        jQ.each(res.data.candles, function (index, item) {
-            let map = {}
-            map['date'] = item[0]
-            map.open = item[1]
-            map.high = item[2]
-            map.low = item[3]
-            map.close = item[4]
-            quote.push(map);
-        })
-
-        let categoryList = []
-
-        let dateIndex = 0
-        jQ.each(quote, function (index, item) {
-            let map = {}
-            map.label = item.date;
-            map.x = dateIndex;
-            categoryList.push(map)
-            dateIndex++;
-        });
-
-        let dataList = []
-        let min = 0
-        let max = 0
-        dateIndex = 0
-
-        jQ.each(quote, function (index, item) {
-            let map = {}
-            map.open = item.open
-            map.high = item.high
-            map.low = item.low
-            map.close = item.close
-            map.x = dateIndex
-
-            if (index == 0) {
-                min = item.high
-                max = item.high
-            }
-
-            if (item.high < min) {
-                min = item.high
-            }
-
-            if (item.high > max) {
-                max = item.high
-            }
-            dataList.push(map);
-            dateIndex++;
-        });
-
-        let lines = [];
-        let line = {};
-
-        line.color = "#8be73a";
-        line.startvalue = vixLowerRange;
-        line.displayvalue = 'Vix lower range ' + vixLowerRange;
-        lines.push(line);;
-
-        line = {};
-        line.color = "#e7543a";
-        line.startvalue = vixUpperRange;
-        line.displayvalue = 'Vix upper range ' + vixUpperRange;
-        lines.push(line);
-
-
-
-        line = {};
-        line.color = "#403ae7";
-        line.startvalue = data.bstrikeOne;
-        line.displayvalue = 'Bearish below/Bullish above ' + data.bstrikeOne;
-        lines.push(line);
-
-        line = {};
-        line.color = "#403ae7";
-        line.startvalue = data.ustrikeOne;
-        line.displayvalue = 'Bullish above/Bearish below' + data.ustrikeOne;
-        lines.push(line);
-
-        line = {};
-        line.color = "#9f3ae7";
-        line.startvalue = data.bstrikeTwo;
-        line.displayvalue = data.bstrikeTwo;
-        lines.push(line);
-
-        line = {};
-        line.color = "#9f3ae7";
-        line.startvalue = data.ustrikeTwo;
-        line.displayvalue = data.ustrikeTwo;
-        lines.push(line);
-
-
-        jQ("#" + chartId).insertFusionCharts({
-            type: 'candlestick',
-            width: "500",
-            height: "300",
-            dataFormat: 'json',
-            dataSource: {
-                "chart": {
-                    "thousandSeparatorPosition": "2,3",
-                    "formatNumberScale": "0",
-                    "theme": "fusion",
-                    "adjustDiv": "0",
-                    showvalues: "0",
-                    labeldisplay: "ROTATE",
-                    rotatelabels: "1",
-                    "pYAxisMinValue": min,
-                    "pYAxisMaxValue": max,
-                },
-                "categories": [{
-                    "category": categoryList
-                }],
-                "dataset": [{
-                    "data": dataList,
-
-                }],
-                "trendlines": [{
-                    "line": lines
-                }]
-            }
-        });
-
-
-    })
-
-}
 
 function clearLocalStorage() {
     localStorage.removeItem("VIX_QUOTE");
@@ -2962,6 +2927,15 @@ function showPopUpWindow(index, html, title) {
         position: "bottom right",
         direction: "vertical"
     });
+
+    jQ("#" + divId).on("minimize.popupwindow", function () {
+        jQ(".pop-title-extra").hide();
+    });
+
+
+    jQ("#" + divId).on("unminimize.popupwindow", function () {
+        jQ(".pop-title-extra").show();
+    })
 };
 
 
