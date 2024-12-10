@@ -1285,10 +1285,10 @@ jQ(document).on("click", ".show-chart", function () {
     let trends = jQ(this).attr("data-trend");
     let index = jQ(this).attr("data-index");
     let price = jQ(this).attr("data-price");
-    commonShowChart(name,trends,index,price)
+    commonShowChart(name, trends, index, price)
 });
 
-function commonShowChart(name,trends,index,price){
+function commonShowChart(name, trends, index, price) {
     jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
         let quote = []
         jQ.each(res.data.candles, function (index, item) {
@@ -1356,33 +1356,44 @@ function commonShowChart(name,trends,index,price){
         let title = ''
 
         title += '<div class="row">'
-        title += '<div class="col-md-2">'
+        title += '<div class="col-md-3">'
         title += name
         title += '</div>'
-        title += '<div class="col-md-1 pop-title-extra">'
-        title += '<a   data-price="' + price + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" id="start-auto-refresh-' + name + '" class="chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+        title += '<div class="col-md-2 pop-title-extra">'
+        title += '<a   data-price="' + price + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" id="start-auto-refresh-' + tempName + '" class="chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
         title += '</div>'
-        title += '<div class="col-md-1 pop-title-extra">'
-        title += '<span style="margin-left:.5rem;" id="refresh-timer-' + name + '">00:00</span>'
+        title += '<div class="col-md-2 pop-title-extra">'
+        title += '<span style="margin-left:.5rem;" id="refresh-timer-' + tempName + '">00:00</span>'
         title += '</div>'
         title += '<div class="col-md-3 pop-title-extra">'
-        title += '<span id="last-refresh-time-' + name + '">Last @ 00:00:00</span>'
+        title += '<span id="last-refresh-time-' + tempName + '">Last @ 00:00:00</span>'
         title += '</div>'
         title += '</div>'
 
         showPopUpWindow(tempName, html, name + " : " + trends.join(","));
-        var divId = "popup-custom-style-" + tempName;
-        jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
-        showChart(quote, name);
-        jQ("." + divId).on("close.popupwindow", function () {
+        let divId = "pop-up-window-" + tempName;
+        jQ("#" + divId).PopupWindow("setSize", {
+            width: 600,
+            height: 350,
+            animationTime   : 500
+        });
+
+        var divClass = "popup-custom-style-" + tempName;
+        jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
+        setTimeout(function () {
+            showChart(quote, name);
+        }, 1000)
+        jQ("." + divClass).on("close.popupwindow", function () {
             clearInterval(window['refreshChart' + name])
         });
     })
 }
 
-function commonShowOnlyChart(name){
-    name = name.replaceAll(" ", "-")
-    clearInterval(window['refreshChart' + name])
+function commonShowOnlyChart(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    clearInterval(window['refreshChart' + tempName])
     jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
         let quote = []
         jQ.each(res.data.candles, function (index, item) {
@@ -1396,8 +1407,8 @@ function commonShowOnlyChart(name){
             quote.push(map);
         });
         showChart(quote, name);
-        startRefreshChart(name);
-        jQ("#last-refresh-time-"+name).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+        startRefreshChart(tempName);
+        jQ("#last-refresh-time-" + tempName).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     })
 }
 
@@ -1410,12 +1421,12 @@ jQ(document).on("click", ".chart-refresh", function () {
     let trends = jQ(this).attr("data-trend");
     let index = jQ(this).attr("data-index");
     let price = jQ(this).attr("data-price");
-    commonShowOnlyChart(name,trends,index,price)
+    commonShowOnlyChart(name, trends, index, price)
 })
 
 
 function startRefreshChart(name) {
-    var display =  jQ('#refresh-timer-' + name);
+    var display = jQ('#refresh-timer-' + name);
     startTimerCharts(REFRESH_TIME, display, name);
 };
 
@@ -1435,7 +1446,6 @@ function startTimerCharts(duration, display, name) {
 
         if (--timer < 0) {
             jQ("#start-auto-refresh-" + name).trigger("click");
-            
             timer = duration;
         }
     }, 1000);
@@ -2929,12 +2939,11 @@ function showPopUpWindow(index, html, title) {
     });
 
     jQ("#" + divId).on("minimize.popupwindow", function () {
-        jQ(".pop-title-extra").hide();
+        jQ("."+popupCustomClass+" .pop-title-extra").hide();
     });
 
-
     jQ("#" + divId).on("unminimize.popupwindow", function () {
-        jQ(".pop-title-extra").show();
+        jQ("."+popupCustomClass+" .pop-title-extra").show();
     })
 };
 
