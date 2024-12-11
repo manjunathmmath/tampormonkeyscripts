@@ -361,7 +361,6 @@ function getNiftyBullsBearsCount() {
     let bso = 0;
     let bst = 0;
     jQ.each(NIFTY_50_LIST, function (index, item) {
-        console.log(item)
         let data = infoMap[item]
         if (data['trends']) {
             if (jQ.inArray("VIXL", data['trends']) != -1) {
@@ -466,6 +465,7 @@ function getAllBullsBearsCount() {
     let bst = 0;
 
     jQ.each(FO_LIST, function (index, item) {
+        console.log(item)
         let data = infoMap[item]
         if (data['trends']) {
             if (jQ.inArray("VIXL", data['trends']) != -1) {
@@ -753,7 +753,6 @@ function generateFutreIntruments() {
     let html = ''
     for (var key in futureTokens) {
         if (futureTokens.hasOwnProperty(key)) {
-            console.log(key, futureTokens[key])
             html += '<tr>'
             html += '<td>' + key + '</td>'
             html += '<td><div data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-secondary show-future-chart">Chart</div></td>'
@@ -767,7 +766,6 @@ function generateFutreIntruments() {
 jQ(document).on("click", ".show-future-chart", function () {
     let token = jQ(this).attr("data-token");
     let name = jQ(this).attr("data-name");
-    console.log(token, name)
     let chartId = 'future-chart-' + token
     let html = ''
     jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
@@ -2811,7 +2809,6 @@ function calculateVixRange(type, prevQuoteData, prevVixData) {
 
 function getStrikeDiff(instrument) {
     let strikeDiff = 100;
-    console.log(instrument + " (" + nseStrikeDiff[instrument] + ")")
     if (nseStrikeDiff[instrument]) {
         strikeDiff = nseStrikeDiff[instrument]
         strikeDiff = strikeDiff.replace(/ /g, '')
