@@ -332,6 +332,14 @@ function getIndicesBullsBearsCount() {
             }
         }
     });
+
+
+    let bulls = vixl+bst+bso
+    let bears = vixu+aso+ast
+
+    jQ("#index-bulls").html(bulls);
+    jQ("#index-bears").html(bears);
+
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#indices-vixu").html(vixu);
@@ -385,6 +393,13 @@ function getNiftyBullsBearsCount() {
             }
         }
     });
+
+    let bulls = vixu+aso+bst
+    let bears = vixl+ast+bso
+
+    jQ("#nifty-50-bulls").html(bulls);
+    jQ("#nifty-50-bears").html(bears);
+
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#nifty-vixu").html(vixu);
@@ -401,6 +416,8 @@ function getNiftyBullsBearsCount() {
     bso = '<span class="badge bg-success">' + bso + '</span>'
     jQ("#nifty-bst").html(bst);
     jQ("#nifty-bso").html(bso);
+
+    
 }
 
 
@@ -437,6 +454,14 @@ function getBankNiftyBullsBearsCount() {
             }
         }
     });
+
+
+    let bulls = vixu+aso+bst
+    let bears = vixl+ast+bso
+
+    jQ("#nifty-bank-bulls").html(bulls);
+    jQ("#nifty-bank-bears").html(bears);
+
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#bank-nifty-vixu").html(vixu);
@@ -491,6 +516,13 @@ function getAllBullsBearsCount() {
 
         }
     });
+
+    let bulls = vixu+aso+bst
+    let bears = vixl+ast+bso
+
+    jQ("#all-bulls").html(bulls);
+    jQ("#all-bears").html(bears);
+
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#all-vixu").html(vixu);
@@ -611,7 +643,7 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="INDICES">'
-    html += 'INDICES'
+    html += 'INDICES  <span id="index-bulls" class="badge bg-success"></span> <span id="index-bears" class="badge bg-danger"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
@@ -628,7 +660,7 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="NIFTY 50">'
-    html += 'NIFTY 50'
+    html += 'NIFTY 50 <span id="nifty-50-bulls" class="badge bg-success"></span> <span id="nifty-50-bears" class="badge bg-danger"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="NIFTY 50" id="nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="NIFTY 50" id="nifty-vixl">0</span></li>'
@@ -644,7 +676,7 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="BANK NIFTY">'
-    html += 'BANK NIFTY '
+    html += 'BANK NIFTY <span id="nifty-bank-bulls" class="badge bg-success"></span> <span id="nifty-bank-bears" class="badge bg-danger"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item">VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="BANK NIFTY" id="bank-nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="BANK NIFTY" id="bank-nifty-vixl">0</span></li>'
@@ -659,7 +691,7 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="ALL">'
-    html += 'ALL '
+    html += 'ALL <span id="all-bulls" class="badge bg-success"></span> <span id="all-bears" class="badge bg-danger"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="ALL" id="all-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="ALL" id="all-vixl">0</span></li>'
@@ -1532,6 +1564,9 @@ function showChart(quote, name) {
         map.high = item.high
         map.low = item.low
         map.close = item.close
+        if(item.volume){
+            map.volume = item.volume;
+        }
         map.x = dateIndex
 
         if (index == 0) {
@@ -1604,6 +1639,7 @@ function showChart(quote, name) {
                 rotatelabels: "1",
                 "pYAxisMinValue": min,
                 "pYAxisMaxValue": max,
+                showVolumeChart:true
             },
             "categories": [{
                 "category": categoryList
@@ -2943,8 +2979,6 @@ function showPopUpWindow(index, html, title) {
         jQ("."+popupCustomClass+" .pop-title-extra").show();
     })
 };
-
-
 
 function parseChartJson() {
     let json = localStorage.getItem("TVCharts")
