@@ -823,3 +823,29 @@ let nseFutreStrikeDiff = {
     'BANK_NIFTY_FUTURE': '100,100',
     "CRUDE_OIL_M_FUTURE": '50,50',
 }
+
+var NIFTY_50_WEIGHT = {
+    "HDFCBANK": 13.52,
+    "RELIANCE": 9.20,
+    "ICICIBANK": 7.36,
+    "INFY": 5.80,
+    "LT": 4.39,
+    "ITC": 4.31,
+    "TCS": 4.05,
+    "AXISBANK": 3.22,
+    "KOTAKBANK": 2.95,
+    "BHARTIARTL": 2.75
+}
+
+var NIFTY_BANK_WEIGHT = {
+    "HDFCBANK": 29.39,
+    "ICICIBANK": 22.57,
+    "KOTAKBANK": 9.92,
+    "AXISBANK": 9.88,
+    "SBIN": 9.87,
+    "INDUSINDBK": 6.43,
+    "BANKBARODA": 2.62,
+    "AUBANK": 2.30,
+    "FEDERALBNK": 2.13,
+    "IDFCFIRSTB": 2.06,
+}

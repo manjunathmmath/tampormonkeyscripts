@@ -227,6 +227,8 @@ async function autoRefreshEachTabs(instance) {
         obj['CLOSE'] = instrumentsMap[index]['prevPrice']
         obj['PRICE'] = instrumentsMap[index]['price']
         obj['PERC'] = instrumentsMap[index]['perc']
+        obj['WEIGHTAGE'] = 0
+
 
         obj['TREND'] = ''
         obj['LTP'] = 0
@@ -257,12 +259,14 @@ jQ(document).on("click", ".filter-instruments", function (e) {
 
 function filterInstruments(indexType, trendType) {
     let listType = FO_LIST;
+    let WEIGHTAGE = NIFTY_50_WEIGHT;
     if (indexType == "NIFTY 50") {
         listType = NIFTY_50_LIST;
     }
 
     if (indexType == "BANK NIFTY") {
         listType = NIFTY_BANK_LIST;
+        WEIGHTAGE = NIFTY_BANK_WEIGHT;
     }
 
     if (indexType == "INDICES") {
@@ -277,6 +281,10 @@ function filterInstruments(indexType, trendType) {
             obj['CLOSE'] = instrumentsMap[index]['prevPrice']
             obj['PRICE'] = instrumentsMap[index]['price']
             obj['PERC'] = instrumentsMap[index]['perc']
+            obj['WEIGHTAGE']= 0;
+            if(WEIGHTAGE[index]){
+                obj['WEIGHTAGE'] = WEIGHTAGE[index]
+            }
 
             obj['TREND'] = ''
             obj['LTP'] = 0
@@ -334,8 +342,8 @@ function getIndicesBullsBearsCount() {
     });
 
 
-    let bulls = vixl+bst+bso
-    let bears = vixu+aso+ast
+    let bulls = vixl + bst + bso
+    let bears = vixu + aso + ast
 
     jQ("#index-bulls").html(bulls);
     jQ("#index-bears").html(bears);
@@ -394,8 +402,8 @@ function getNiftyBullsBearsCount() {
         }
     });
 
-    let bulls = vixu+aso+bst
-    let bears = vixl+ast+bso
+    let bulls = vixu + aso + bst
+    let bears = vixl + ast + bso
 
     jQ("#nifty-50-bulls").html(bulls);
     jQ("#nifty-50-bears").html(bears);
@@ -417,7 +425,7 @@ function getNiftyBullsBearsCount() {
     jQ("#nifty-bst").html(bst);
     jQ("#nifty-bso").html(bso);
 
-    
+
 }
 
 
@@ -456,8 +464,8 @@ function getBankNiftyBullsBearsCount() {
     });
 
 
-    let bulls = vixu+aso+bst
-    let bears = vixl+ast+bso
+    let bulls = vixu + aso + bst
+    let bears = vixl + ast + bso
 
     jQ("#nifty-bank-bulls").html(bulls);
     jQ("#nifty-bank-bears").html(bears);
@@ -517,8 +525,8 @@ function getAllBullsBearsCount() {
         }
     });
 
-    let bulls = vixu+aso+bst
-    let bears = vixl+ast+bso
+    let bulls = vixu + aso + bst
+    let bears = vixl + ast + bso
 
     jQ("#all-bulls").html(bulls);
     jQ("#all-bears").html(bears);
@@ -711,6 +719,7 @@ function showFutureAi() {
     html += '<thead>'
     html += '<tr>'
     html += '<th>INSTRUMENT</th>'
+    html += '<th>WEIGHTAGE</th>'
     html += '<th>P.CLOSE</th>'
     html += '<th>OPEN PRICE</th>'
     html += '<th>LTP</th>'
@@ -972,7 +981,7 @@ function generateStockDataTable(data) {
     jQ("#stock-list-table").show()
     stockTable = jQ('#stock-list-table').DataTable({
         "processing": true,
-        "order": [[0, "asc"]],
+        "order": [[1, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
@@ -990,6 +999,7 @@ function generateStockDataTable(data) {
             {
                 "data": "TRADINGSYMBOL",
             },
+            { "data": 'WEIGHTAGE'},
             { "data": 'CLOSE' },
             { "data": 'PRICE' },
             { "data": 'LTP' },
@@ -1405,7 +1415,7 @@ function commonShowChart(name, trends, index, price) {
         jQ("#" + divId).PopupWindow("setSize", {
             width: 600,
             height: 350,
-            animationTime   : 500
+            animationTime: 500
         });
 
         var divClass = "popup-custom-style-" + tempName;
@@ -1542,7 +1552,6 @@ function showChart(quote, name) {
     vixUpperRange = parseFloat(vix.vixDDUpper)
     vixDDRange = parseFloat(vix.vixDDRange)
 
-
     let categoryList = []
     let dateIndex = 0
     jQ.each(quote, function (index, item) {
@@ -1557,15 +1566,16 @@ function showChart(quote, name) {
     let min = 0
     let max = 0
     dateIndex = 0
-
+    let isVolumePresent = false;
     jQ.each(quote, function (index, item) {
         let map = {}
         map.open = item.open
         map.high = item.high
         map.low = item.low
         map.close = item.close
-        if(item.volume){
+        if (item.volume) {
             map.volume = item.volume;
+            isVolumePresent = true;
         }
         map.x = dateIndex
 
@@ -1639,7 +1649,7 @@ function showChart(quote, name) {
                 rotatelabels: "1",
                 "pYAxisMinValue": min,
                 "pYAxisMaxValue": max,
-                showVolumeChart:true
+                showVolumeChart: isVolumePresent
             },
             "categories": [{
                 "category": categoryList
@@ -2972,11 +2982,11 @@ function showPopUpWindow(index, html, title) {
     });
 
     jQ("#" + divId).on("minimize.popupwindow", function () {
-        jQ("."+popupCustomClass+" .pop-title-extra").hide();
+        jQ("." + popupCustomClass + " .pop-title-extra").hide();
     });
 
     jQ("#" + divId).on("unminimize.popupwindow", function () {
-        jQ("."+popupCustomClass+" .pop-title-extra").show();
+        jQ("." + popupCustomClass + " .pop-title-extra").show();
     })
 };
 
