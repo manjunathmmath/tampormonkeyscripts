@@ -281,8 +281,8 @@ function filterInstruments(indexType, trendType) {
             obj['CLOSE'] = instrumentsMap[index]['prevPrice']
             obj['PRICE'] = instrumentsMap[index]['price']
             obj['PERC'] = instrumentsMap[index]['perc']
-            obj['WEIGHTAGE']= 0;
-            if(WEIGHTAGE[index]){
+            obj['WEIGHTAGE'] = 0;
+            if (WEIGHTAGE[index]) {
                 obj['WEIGHTAGE'] = WEIGHTAGE[index]
             }
 
@@ -723,6 +723,7 @@ function showFutureAi() {
     html += '<th>P.CLOSE</th>'
     html += '<th>OPEN PRICE</th>'
     html += '<th>LTP</th>'
+    html += '<th>CHANGE</th>'
     html += '<th>TREND</th>'
     html += '<th>ACTION</th>'
     html += '</tr>'
@@ -811,10 +812,41 @@ jQ(document).on("click", ".show-future-chart", function () {
     let html = ''
     jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
+            let tempName = name.replaceAll(" ", "-")
+            tempName = tempName.replaceAll("&", "-")
             html += '<div id="' + chartId + '" style="width:100%;">'
             html += '</div>';
+            html += '<div style="width:100%;">'
+            html += '<table  id="stock-data-' + tempName + '" class="" style="width: 100%;display: none;">'
+            html += '<thead>'
+            html += '<tr>'
+            html += '<th>DATE</th>'
+            html += '<th>OPEN</th>'
+            html += '<th>HIGH</th>'
+            html += '<th>LOW</th>'
+            html += '<th>CLOSE</th>'
+            html += '<th>VOLUME</th>'
+            html += '</tr>'
+            html += '</thead>'
+            html += '<tbody>'
+
+            html += '</tbody>'
+            html += '</table>'
+            html += '</div>'
             showPopUpWindow(name, html, name);
             showFuturesChart(cres, name, token, pres)
+            let data = []
+            jQ.each(cres.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                data.push(map);
+            });
+            showStockData(data, name)
         });
     });
 });
@@ -887,6 +919,7 @@ function showFuturesChart(quote, name, token, prev) {
         map.high = item.high
         map.low = item.low
         map.close = item.close
+        map.volume = item.volume
         map.x = dateIndex
 
         if (index == 0) {
@@ -959,6 +992,7 @@ function showFuturesChart(quote, name, token, prev) {
                 rotatelabels: "1",
                 "pYAxisMinValue": min,
                 "pYAxisMaxValue": max,
+                showVolumeChart: true
             },
             "categories": [{
                 "category": categoryList
@@ -999,10 +1033,20 @@ function generateStockDataTable(data) {
             {
                 "data": "TRADINGSYMBOL",
             },
-            { "data": 'WEIGHTAGE'},
+            { "data": 'WEIGHTAGE' },
             { "data": 'CLOSE' },
             { "data": 'PRICE' },
             { "data": 'LTP' },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    let currentPrice = row['LTP'];
+                    let prevClose = row['CLOSE'];
+                    let change = (currentPrice - prevClose).toFixed(2);
+                    let changePerc = ((change / prevClose) * 100).toFixed(2)
+                    return changePerc;
+                }
+            },
             {
                 "data": "TREND",
                 render: function (data, type, row, meta) {
@@ -1294,6 +1338,15 @@ async function generateTrend() {
 
                         let alerts = '<div data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary create-alerts">a</div>'
                         that.find(".info-wrapper").append(alerts);
+                    } else {
+                        let currentPrice = parseFloat(price.trim()).toFixed(2);
+                        let infoObj = {}
+                        infoObj['instrument'] = instrumentsMap[name]
+                        infoObj['vix'] = ''
+                        infoObj['strikeData'] = ''
+                        infoObj['trends'] = '';
+                        infoObj['currentPrice'] = currentPrice
+                        infoMap[name] = infoObj
                     }
                 });
 
@@ -1329,6 +1382,7 @@ jQ(document).on("click", ".show-chart", function () {
 });
 
 function commonShowChart(name, trends, index, price) {
+
     jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
         let quote = []
         jQ.each(res.data.candles, function (index, item) {
@@ -1375,6 +1429,7 @@ function commonShowChart(name, trends, index, price) {
             counterTransactionType = "BUY"
         }
 
+        allowTrade = false;
         if (index != 0 && allowTrade) {
             html += '<div style="width:100%;text-align:center;">'
             html += '<div class="col-md-4" style="display:inline;margin-right:1rem;">'
@@ -1393,11 +1448,30 @@ function commonShowChart(name, trends, index, price) {
         html += '<div id="' + chartId + '" style="width:100%;">'
         html += '</div>'
 
+
+        html += '<div style="width:100%;">'
+        html += '<table  id="stock-data-' + tempName + '" class="" style="width: 100%;display: none;">'
+        html += '<thead>'
+        html += '<tr>'
+        html += '<th>DATE</th>'
+        html += '<th>OPEN</th>'
+        html += '<th>HIGH</th>'
+        html += '<th>LOW</th>'
+        html += '<th>CLOSE</th>'
+        html += '<th>VOLUME</th>'
+        html += '</tr>'
+        html += '</thead>'
+        html += '<tbody>'
+
+        html += '</tbody>'
+        html += '</table>'
+        html += '</div>'
+
         let title = ''
 
         title += '<div class="row">'
-        title += '<div class="col-md-3">'
-        title += name
+        title += '<div class="col-md-4">'
+        title += name + ' <span class="pop-title-extra" id="current-trend-' + tempName + '"> [' + trends.join(",") + ']</span>'
         title += '</div>'
         title += '<div class="col-md-2 pop-title-extra">'
         title += '<a   data-price="' + price + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" id="start-auto-refresh-' + tempName + '" class="chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
@@ -1412,21 +1486,73 @@ function commonShowChart(name, trends, index, price) {
 
         showPopUpWindow(tempName, html, name + " : " + trends.join(","));
         let divId = "pop-up-window-" + tempName;
-        jQ("#" + divId).PopupWindow("setSize", {
+         /*jQ("#" + divId).PopupWindow("setSize", {
+           
             width: 600,
             height: 350,
+           
             animationTime: 500
-        });
+        }); */
 
         var divClass = "popup-custom-style-" + tempName;
         jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
         setTimeout(function () {
             showChart(quote, name);
+            showStockData(quote, name)
         }, 1000)
         jQ("." + divClass).on("close.popupwindow", function () {
             clearInterval(window['refreshChart' + name])
         });
     })
+}
+
+
+function showStockData(quote, name) {
+    let stockDataTable = jQ("#stock-data-" + name);
+    let html = ''
+    let count = quote.length
+    let newList =[]
+    jQ.each(quote, function (index, item) {
+        let buySide = false;
+        let sellSide = false;
+        if ((index + 1) < count && index > 0) {
+            let current = quote[index]
+            let previous = quote[index-1]
+            if(current.close > previous.close && current.volume > previous.volume && current.volume > 50000){
+                buySide = true;
+            }
+
+            if(current.close < previous.close && current.volume > previous.volume && current.volume > 50000){
+                sellSide = true;
+            }
+        }
+
+        let cssClass=''
+        if(buySide){
+            cssClass='background:green;'
+        }
+
+        if(sellSide){
+            cssClass='background:red;'
+        }
+
+       
+        item.cssClass = cssClass;
+        newList.push(item)
+    });
+    newList.reverse()
+    jQ.each(newList, function (index, item) {
+        html += '<tr style="'+item.cssClass+'">'
+        html += '<td>' + item.date + '</td>'
+        html += '<td>' + item.open + '</td>'
+        html += '<td>' + item.high + '</td>'
+        html += '<td>' + item.low + '</td>'
+        html += '<td>' + item.close + '</td>'
+        html += '<td>' + item.volume + '</td>'
+        html += '</tr>'
+    })
+    stockDataTable.find("tbody").html(html)
+    stockDataTable.show()
 }
 
 function commonShowOnlyChart(name) {
@@ -1447,6 +1573,7 @@ function commonShowOnlyChart(name) {
             quote.push(map);
         });
         showChart(quote, name);
+        showStockData(quote, name)
         startRefreshChart(tempName);
         jQ("#last-refresh-time-" + tempName).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     })
@@ -1462,6 +1589,17 @@ jQ(document).on("click", ".chart-refresh", function () {
     let index = jQ(this).attr("data-index");
     let price = jQ(this).attr("data-price");
     commonShowOnlyChart(name, trends, index, price)
+
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let data = infoMap[name]
+    console.log(data)
+
+    var divClass = "popup-custom-style-" + tempName;
+    if (data['trends'] != undefined) {
+        jQ("." + divClass).find(".popupwindow_titlebar_text").find("#current-trend-" + tempName).html(' [' + data['trends'].join(",") + ']');
+    }
 })
 
 
