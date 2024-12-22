@@ -46,6 +46,7 @@
 // @require      http://localhost:3000/tampormonkey/marketTrendV2/alertSound.js
 // @require      http://localhost:3000/tampormonkey/marketTrendV2/constants.js
 // @require      http://localhost:3000/tampormonkey/marketTrendV2/script.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV2/showWeightageStocks.js
 // @downloadURL  http://localhost:3000/tampormonkey/marketTrendV2/marketTrend.user.js
 // @updateURL    http://localhost:3000/tampormonkey/marketTrendV2/marketTrend.meta.js
 // ==/UserScript==

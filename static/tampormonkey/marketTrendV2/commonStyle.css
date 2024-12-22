@@ -27,6 +27,14 @@ span.bullsVersesBears {
   cursor: pointer;
 }
 
+.place-order{
+  cursor: pointer;
+}
+
+.place-sl-order{
+  cursor: pointer;
+}
+
 .trend-class{
     cursor: pointer;
 }

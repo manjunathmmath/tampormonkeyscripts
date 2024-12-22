@@ -68,6 +68,10 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: '3minute'
         },
+        sl_points: {
+            type: 'text',
+            default: '5'
+        },
     }
 });
 
@@ -84,7 +88,7 @@ const NIFTY_FUTURE_TOKEN = g_config.get('nifty_future_token');
 const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_token');
 const CRUDE_OIL_M_FUTURE_TOKEN = g_config.get('crude_oil_m_future_token');
 const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
-
+const SL_POINTS = parseInt(g_config.get('sl_points'));
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
@@ -347,7 +351,7 @@ function getIndicesBullsBearsCount() {
 
     jQ("#index-bulls").html(bulls);
     jQ("#index-bears").html(bears);
-
+    jQ("#index-weightage").html("W.S")
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#indices-vixu").html(vixu);
@@ -407,7 +411,7 @@ function getNiftyBullsBearsCount() {
 
     jQ("#nifty-50-bulls").html(bulls);
     jQ("#nifty-50-bears").html(bears);
-
+    jQ("#nifty-50-weightage").html("W.S")
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#nifty-vixu").html(vixu);
@@ -469,6 +473,7 @@ function getBankNiftyBullsBearsCount() {
 
     jQ("#nifty-bank-bulls").html(bulls);
     jQ("#nifty-bank-bears").html(bears);
+    jQ("#nifty-bank-weightage").html("W.S")
 
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
@@ -651,7 +656,10 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="INDICES">'
-    html += 'INDICES  <span id="index-bulls" class="badge bg-success"></span> <span id="index-bears" class="badge bg-danger"></span>'
+    html += 'INDICES   '
+    html += '<span id="index-bulls" class="badge bg-success me-1"></span>'
+    html += '<span id="index-bears" class="badge bg-dange me-1r"></span>'
+    html += '<span id="index-weightage" class="show-all-in-one badge bg-info me-1" data-type="INDICES"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
@@ -668,7 +676,10 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="NIFTY 50">'
-    html += 'NIFTY 50 <span id="nifty-50-bulls" class="badge bg-success"></span> <span id="nifty-50-bears" class="badge bg-danger"></span>'
+    html += 'NIFTY 50  '
+    html += '<span id="nifty-50-bulls" class="badge bg-success me-1"></span>'
+    html += '<span id="nifty-50-bears" class="badge bg-danger me-1"></span>'
+    html += '<span id="nifty-50-weightage" class="show-all-in-one badge bg-info me-1" data-type="NIFTY 50"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="NIFTY 50" id="nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="NIFTY 50" id="nifty-vixl">0</span></li>'
@@ -684,7 +695,11 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header filter-instruments" data-index-name="BANK NIFTY">'
-    html += 'BANK NIFTY <span id="nifty-bank-bulls" class="badge bg-success"></span> <span id="nifty-bank-bears" class="badge bg-danger"></span>'
+    html += 'BANK NIFTY  '
+
+    html += '<span id="nifty-bank-bulls" class="badge bg-success me-1"></span>'
+    html += '<span id="nifty-bank-bears" class="badge bg-danger me-1"></span>'
+    html += '<span id="nifty-bank-weightage" class="show-all-in-one badge bg-info me-1" data-type="NIFTY BANK"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item">VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="BANK NIFTY" id="bank-nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="BANK NIFTY" id="bank-nifty-vixl">0</span></li>'
@@ -1126,6 +1141,7 @@ function generateStockDataTable(data) {
                 render: function (data, type, row, meta) {
                     var html = ""
                     let index = 1;
+                    html += '<div>'
                     if (jQ.inArray(row['TRADINGSYMBOL'], INDICES) == -1) {
                         if (row['TREND']) {
                             let isBuyTrade = false;
@@ -1145,26 +1161,35 @@ function generateStockDataTable(data) {
                             }
 
                             let transactionType = 'BUY'
+                            let slTransactionType = "SELL"
                             let btnColor = "bg-success"
-
+                            let name = "Buy"
                             if (!isBuyTrade) {
                                 btnColor = "bg-danger"
                                 transactionType = 'SELL'
+                                name = "Sell"
+                                slTransactionType = "BUY"
                             }
 
                             if (allowTrade) {
-                                html += '<button  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + transactionType + '" class="btn-sm btn  ms-1 place-order ' + btnColor + '" type="submit" style="margin-right:.5rem;">';
-                                html += 'Place Order'
-                                html += '</button>'
+                                html += '<span  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + transactionType + '" class="badge bg-secondary  ms-1 place-order ' + btnColor + '"style="margin-right:.5rem;">';
+                                html += name
+                                html += '</span>'
+
+                                html += '<span  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + slTransactionType + '" class="badge bg-primary  ms-1 place-sl-order" style="margin-right:.5rem;">';
+                                html += "SL"
+                                html += '</span>'
                             }
                         }
                     } else {
                         index = 0;
                     }
                     if (row['TREND']) {
-                        html += '<button data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="btn-sm btn show-chart  bg-info">Chart</button>'
-                        html += '</button>'
+                        html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
+                        html += 'Chart'
+                        html += '</span>'
                     }
+                    html += '</div>'
                     return html
                 }
             },
@@ -1396,6 +1421,17 @@ function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
+        if(quote.length == 0){
+            let map = {}
+            map['date'] = moment().format("HH:mm:ss")
+            map.open = instrumentsMap[name]['price']
+            map.high = instrumentsMap[name]['price']
+            map.low = instrumentsMap[name]['price']
+            map.close = instrumentsMap[name]['price']
+            map.volume = 0
+            quote.push(map);
+        }
+
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
@@ -1486,13 +1522,13 @@ function commonShowChart(name, trends, index, price) {
 
         showPopUpWindow(tempName, html, name + " : " + trends.join(","));
         let divId = "pop-up-window-" + tempName;
-         /*jQ("#" + divId).PopupWindow("setSize", {
-           
-            width: 600,
-            height: 350,
-           
-            animationTime: 500
-        }); */
+        /*jQ("#" + divId).PopupWindow("setSize", {
+          
+           width: 600,
+           height: 350,
+          
+           animationTime: 500
+       }); */
 
         var divClass = "popup-custom-style-" + tempName;
         jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
@@ -1501,7 +1537,7 @@ function commonShowChart(name, trends, index, price) {
             showStockData(quote, name)
         }, 1000)
         jQ("." + divClass).on("close.popupwindow", function () {
-            clearInterval(window['refreshChart' + name])
+            clearInterval(window['refreshChart' + tempName])
         });
     })
 }
@@ -1511,38 +1547,38 @@ function showStockData(quote, name) {
     let stockDataTable = jQ("#stock-data-" + name);
     let html = ''
     let count = quote.length
-    let newList =[]
+    let newList = []
     jQ.each(quote, function (index, item) {
         let buySide = false;
         let sellSide = false;
         if ((index + 1) < count && index > 0) {
             let current = quote[index]
-            let previous = quote[index-1]
-            if(current.close > previous.close && current.volume > previous.volume && current.volume > 50000){
+            let previous = quote[index - 1]
+            if (current.close > previous.close && current.volume > previous.volume && current.volume > 50000) {
                 buySide = true;
             }
 
-            if(current.close < previous.close && current.volume > previous.volume && current.volume > 50000){
+            if (current.close < previous.close && current.volume > previous.volume && current.volume > 50000) {
                 sellSide = true;
             }
         }
 
-        let cssClass=''
-        if(buySide){
-            cssClass='background:green;'
+        let cssClass = ''
+        if (buySide) {
+            cssClass = 'background:green;'
         }
 
-        if(sellSide){
-            cssClass='background:red;'
+        if (sellSide) {
+            cssClass = 'background:red;'
         }
 
-       
+
         item.cssClass = cssClass;
         newList.push(item)
     });
     newList.reverse()
     jQ.each(newList, function (index, item) {
-        html += '<tr style="'+item.cssClass+'">'
+        html += '<tr style="' + item.cssClass + '">'
         html += '<td>' + item.date + '</td>'
         html += '<td>' + item.open + '</td>'
         html += '<td>' + item.high + '</td>'
@@ -1572,6 +1608,19 @@ function commonShowOnlyChart(name) {
             map.volume = item[5]
             quote.push(map);
         });
+
+        
+        if(quote.length == 0){
+            let map = {}
+            map['date'] = moment().format("HH:mm:ss")
+            map.open = instrumentsMap[name]['price']
+            map.high = instrumentsMap[name]['price']
+            map.low = instrumentsMap[name]['price']
+            map.close = instrumentsMap[name]['price']
+            map.volume = 0
+            quote.push(map);
+        }
+
         showChart(quote, name);
         showStockData(quote, name)
         startRefreshChart(tempName);
@@ -1632,20 +1681,51 @@ function startTimerCharts(duration, display, name) {
 
 jQ(document).on("click", ".place-sl-order", function () {
     let name = jQ(this).attr("data-name");
+    let ltp = jQ(this).attr("data-price");
     let transaction_type = jQ(this).attr("data-transaction-type");
     let price = 0
     let trigger_price = 0;
     let data = infoMap[name];
-    vixLowerRange = parseFloat(data['vix']['vixDDLower'])
-    vixUpperRange = parseFloat(data['vixDDUpper'])
-    if (transaction_type == "BUY") {
-        trigger_price = vixUpperRange;
-        price = vixUpperRange - 2
-    } else {
-        trigger_price = vixLowerRange;
-        price = vixLowerRange + 2
+    console.log(data)
+
+    let aso = parseFloat(data['strikeData']['ustrikeOne']).toFixed(2);
+    let ast = parseFloat(data['strikeData']['ustrikeTwo']).toFixed(2);
+    let bso = parseFloat(data['strikeData']['bstrikeOne']).toFixed(2);
+    let bst = parseFloat(data['strikeData']['bstrikeTwo']).toFixed(2);
+    let vixDDUpper = parseFloat(data['vix']['vixDDUpper']).toFixed(2);
+    let vixDDLower = parseFloat(data['vix']['vixDDLower']).toFixed(2);
+
+    let whichTrade = '';
+    if (jQ.inArray("AST", data['trends']) != -1) {
+        whichTrade = "AST";
+    } else if (jQ.inArray("ASO", data['trends']) != -1) {
+        whichTrade = "ASO";
+    } else if (jQ.inArray("BST", data['trends']) != -1) {
+        whichTrade = "BST";
+    } else if (jQ.inArray("BSO", data['trends']) != -1) {
+        whichTrade = "BSO";
     }
-    let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+
+    if (transaction_type == "BUY") {
+        if (whichTrade == "AST") {
+            trigger_price =  parseFloat(ast) + SL_POINTS;
+            price =  parseFloat(ast) + (SL_POINTS+1)
+        }
+        if (whichTrade == "BSO") {
+            trigger_price =  parseFloat(bso) + SL_POINTS;
+            price =  parseFloat(bso) + (SL_POINTS+1)
+        }
+    } else {
+        if (whichTrade == "ASO") {
+            trigger_price =  parseFloat(aso) - SL_POINTS;
+            price =  parseFloat(aso) - (SL_POINTS+1)
+        }
+        if (whichTrade == "BST") {
+            trigger_price =  parseFloat(bst) - SL_POINTS;
+            price =  parseFloat(bst) - (SL_POINTS+1)
+        }
+    }
+    let quantity = (MARGIN / (parseFloat(ltp) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "SL", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
     placeOrder(params)
 })
@@ -3110,7 +3190,7 @@ function showPopUpWindow(index, html, title) {
         resizable: true,
         resizeOpacity: 1,
         height: 650,
-        width: 900,
+        width: 1000,
         keepInViewport: true,              // Boolean
         mouseMoveEvents: true              // Boolean
     });

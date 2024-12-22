@@ -849,3 +849,13 @@ var NIFTY_BANK_WEIGHT = {
     "FEDERALBNK": 2.13,
     "IDFCFIRSTB": 2.06,
 }
+
+var INDICES_WEIGHT = {
+    'GIFT NIFTY':1,
+    'NIFTY 50' :60,
+    'NIFTY BANK':20,
+    'SENSEX':5,
+    'NIFTY MID SELECT':5,
+    'NIFTY FIN SERVICE':5,
+    'BANKEX':5,
+}
