@@ -31,6 +31,18 @@ span.bullsVersesBears {
   cursor: pointer;
 }
 
+#clean-storage{
+  cursor: pointer;
+}
+
+.create-future-alerts{
+  cursor: pointer;
+}
+
+.show-future-chart{
+  cursor: pointer;
+}
+
 .place-sl-order{
   cursor: pointer;
 }

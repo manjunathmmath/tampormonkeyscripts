@@ -72,6 +72,18 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: '5'
         },
+        nifty_future_name: {
+            type: 'text',
+            default: 'NIFTY24DECFUT'
+        },
+        bank_nifty_future_name: {
+            type: 'text',
+            default: 'BANKNIFTY24DECFUT'
+        },
+        crude_oil_m_future_name: {
+            type: 'text',
+            default: 'CRUDEOILM25JANFUT'
+        },
     }
 });
 
@@ -89,6 +101,17 @@ const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_token');
 const CRUDE_OIL_M_FUTURE_TOKEN = g_config.get('crude_oil_m_future_token');
 const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
 const SL_POINTS = parseInt(g_config.get('sl_points'));
+
+const NIFTY_FUTURE_NAME = g_config.get('nifty_future_name');
+const BANK_NIFTY_FUTURE_NAME = g_config.get('bank_nifty_future_name');
+const CRUDE_OIL_M_FUTURE_NAME = g_config.get('crude_oil_m_future_name');
+
+let futureNames = {
+    'NIFTY_FUTURE': NIFTY_FUTURE_NAME,
+    'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_NAME,
+    "CRUDE_OIL_M_FUTURE": CRUDE_OIL_M_FUTURE_NAME
+}
+
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
@@ -610,7 +633,11 @@ function updatePrfitLoss() {
 
 function showFutureAi() {
     let html = ''
-
+    html += '<div class="row mb-3">'
+    html += '<div class="col-md-12 bg-danger">'
+    html += helpMessage
+    html += '</div>'
+    html += '</div>'
 
     html += '<div class="row">'
     html += '<div class="col-md-6">'
@@ -812,13 +839,77 @@ function generateFutreIntruments() {
         if (futureTokens.hasOwnProperty(key)) {
             html += '<tr>'
             html += '<td>' + key + '</td>'
-            html += '<td><div data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-secondary show-future-chart">Chart</div></td>'
+            html += '<td>'
+            html += '<span data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-info show-future-chart">Chart</span>'
+            html += '<span data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-secondary create-future-alerts">Alert</span>'
+            html += '</td>'
             html += '</tr>'
         }
     }
     futureTable.find("tbody").html(html)
     futureTable.show()
 }
+
+
+jQ(document).on("click", ".create-future-alerts", function () {
+
+    let token = jQ(this).attr("data-token");
+    let name = jQ(this).attr("data-name");
+
+    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (prev) {
+        jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (quote) {
+            let first = quote.data['candles'][0];
+            let prevData = prev.data['candles'][0];
+
+            let strikeDiff = nseFutreStrikeDiff[name];
+            strikeDiff = strikeDiff.split(",");
+            let strikeOne = parseInt(strikeDiff[0])
+            let strikeTwo = parseInt(strikeDiff[1])
+
+            let ustrikeOne = (parseFloat(first[1]) + strikeOne);
+            let ustrikeTwo = (ustrikeOne + strikeTwo);
+            let bstrikeOne = (parseFloat(first[1]) - strikeOne);
+            let bstrikeTwo = (bstrikeOne - strikeTwo);
+
+            let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+
+            var vix = getVixRange(parseFloat(prevData[4]), parseFloat(vixQuote[4]))
+
+            var vixLowerRange = 0;
+            var vixUpperRange = 0;
+            var vixDDRange = 0;
+
+            vixLowerRange = parseFloat(vix.vixDDLower)
+            vixUpperRange = parseFloat(vix.vixDDUpper)
+            vixDDRange = parseFloat(vix.vixDDRange);
+
+            lhs_tradingsymbol = futureNames[name]
+
+            let lhs_exchange = "NFO"
+            if (name == 'CRUDE_OIL_M_FUTURE') {
+                lhs_exchange = "MCX"
+
+                let aso = ustrikeOne;
+                createAlert(name + "-" + 'ASO', lhs_tradingsymbol, aso, ">=", lhs_exchange)
+    
+                let bso = bstrikeOne;
+                createAlert(name + "-" + 'BSO', lhs_tradingsymbol, bso, "<=", lhs_exchange)
+            }
+
+            let ast = ustrikeTwo;
+            createAlert(name + "-" + 'AST', lhs_tradingsymbol, ast, ">=", lhs_exchange)
+
+            let bst = bstrikeTwo;
+            createAlert(name + "-" + 'BST', lhs_tradingsymbol, bst, "<=", lhs_exchange)
+
+            let vixu = vixUpperRange;
+            createAlert(name + "-" + 'VIXU', lhs_tradingsymbol, vixu, ">=", lhs_exchange)
+
+            let vixl = vixLowerRange;
+            createAlert(name + "-" + 'VIXL', lhs_tradingsymbol, vixl, "<=", lhs_exchange)
+        })
+    });
+});
 
 jQ(document).on("click", ".show-future-chart", function () {
     let token = jQ(this).attr("data-token");
@@ -1421,7 +1512,7 @@ function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
-        if(quote.length == 0){
+        if (quote.length == 0) {
             let map = {}
             map['date'] = moment().format("HH:mm:ss")
             map.open = instrumentsMap[name]['price']
@@ -1609,8 +1700,8 @@ function commonShowOnlyChart(name) {
             quote.push(map);
         });
 
-        
-        if(quote.length == 0){
+
+        if (quote.length == 0) {
             let map = {}
             map['date'] = moment().format("HH:mm:ss")
             map.open = instrumentsMap[name]['price']
@@ -1708,21 +1799,21 @@ jQ(document).on("click", ".place-sl-order", function () {
 
     if (transaction_type == "BUY") {
         if (whichTrade == "AST") {
-            trigger_price =  parseFloat(ast) + SL_POINTS;
-            price =  parseFloat(ast) + (SL_POINTS+1)
+            trigger_price = parseFloat(ast) + SL_POINTS;
+            price = parseFloat(ast) + (SL_POINTS + 1)
         }
         if (whichTrade == "BSO") {
-            trigger_price =  parseFloat(bso) + SL_POINTS;
-            price =  parseFloat(bso) + (SL_POINTS+1)
+            trigger_price = parseFloat(bso) + SL_POINTS;
+            price = parseFloat(bso) + (SL_POINTS + 1)
         }
     } else {
         if (whichTrade == "ASO") {
-            trigger_price =  parseFloat(aso) - SL_POINTS;
-            price =  parseFloat(aso) - (SL_POINTS+1)
+            trigger_price = parseFloat(aso) - SL_POINTS;
+            price = parseFloat(aso) - (SL_POINTS + 1)
         }
         if (whichTrade == "BST") {
-            trigger_price =  parseFloat(bst) - SL_POINTS;
-            price =  parseFloat(bst) - (SL_POINTS+1)
+            trigger_price = parseFloat(bst) - SL_POINTS;
+            price = parseFloat(bst) - (SL_POINTS + 1)
         }
     }
     let quantity = (MARGIN / (parseFloat(ltp) / 5)).toFixed(0)
@@ -2757,9 +2848,6 @@ jQ(document).on("click", ".create-alerts", function () {
 
     let vixl = data['vix']['vixDDLower'];
     createAlert(name + "-" + 'VIXL', lhs_tradingsymbol, vixl, "<=", lhs_exchange)
-
-
-
 });
 
 
