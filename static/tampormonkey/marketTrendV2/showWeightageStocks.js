@@ -22,7 +22,7 @@ async function showAllInChart(type) {
     for (var key of Object.keys(allObject)) {
         html += '<div class="col-md-4">'
         html += '<h5 style="text-align:center;">' + key + ' ('+ allObject[key]+')</h5>'
-        html += '<div id="all-in-one-chart-' + key.replaceAll(" ", "-") + '">'
+        html += '<div class="chart-max-wh" id="all-in-one-chart-' + key.replaceAll(" ", "-")+'-'+type.replaceAll(" ","-") + '">'
         html += '</div>'
         html += '</div>'
         count++;
@@ -100,7 +100,7 @@ async function showAllInChart(type) {
 
     for (let i = 0; i < dataList.length; i++) {
         console.log(dataList[i])
-        showChartAllInOne(dataList[i].quote, dataList[i].instrument);
+        showChartAllInOne(dataList[i].quote, dataList[i].instrument,type);
         await callSleepForAWhile(1000)
     }
 
@@ -123,7 +123,6 @@ jQ(document).on("click", ".all-in-one-chart-refresh", function () {
 async function showOnlyAllInCharts(type,tempName){
     clearInterval(window['refreshChart' + tempName])
     let allObject = {}
-    alert(type)
     if ( type == "NIFTY 50") {
         allObject = NIFTY_50_WEIGHT
     } else if (type == "NIFTY BANK") {
@@ -168,7 +167,7 @@ async function showOnlyAllInCharts(type,tempName){
 
     for (let i = 0; i < dataList.length; i++) {
         console.log(dataList[i])
-        showChartAllInOne(dataList[i].quote, dataList[i].instrument);
+        showChartAllInOne(dataList[i].quote, dataList[i].instrument,type);
         await callSleepForAWhile(1000)
     }
 
@@ -204,9 +203,9 @@ function startTimerChartsAllInOne(duration, display, name) {
 }
 
 
-function showChartAllInOne(quote, name) {
+function showChartAllInOne(quote, name,type) {
     let data = getStrikeDetails(instrumentsMap[name], name);
-    let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-");
+    let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-")+'-'+type.replaceAll(" ","-");
     let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
 
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))

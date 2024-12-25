@@ -183,3 +183,11 @@ span.bullsVersesBears {
 #pop-up-window-trend-analysis ul li{
   margin-bottom: unset !important;
 }
+
+.chart-max-wh{
+  max-width: 45rem;
+  max-height: 30rem;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  height: 30rem;
+}

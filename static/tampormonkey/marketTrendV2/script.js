@@ -889,11 +889,13 @@ jQ(document).on("click", ".create-future-alerts", function () {
             if (name == 'CRUDE_OIL_M_FUTURE') {
                 lhs_exchange = "MCX"
 
-                let aso = ustrikeOne;
-                createAlert(name + "-" + 'ASO', lhs_tradingsymbol, aso, ">=", lhs_exchange)
-    
-                let bso = bstrikeOne;
-                createAlert(name + "-" + 'BSO', lhs_tradingsymbol, bso, "<=", lhs_exchange)
+                /*
+                    let aso = ustrikeOne;
+                    createAlert(name + "-" + 'ASO', lhs_tradingsymbol, aso, ">=", lhs_exchange)
+        
+                    let bso = bstrikeOne;
+                    createAlert(name + "-" + 'BSO', lhs_tradingsymbol, bso, "<=", lhs_exchange)
+                */
             }
 
             let ast = ustrikeTwo;
