@@ -191,3 +191,16 @@ span.bullsVersesBears {
   overflow-y: scroll;
   height: 30rem;
 }
+
+.filter-type{
+  margin-right: .5rem;
+}
+
+.strike-info{
+  margin-right: .2rem;
+}
+
+#show-stock-scanner{
+  margin-left: .3rem;
+  cursor: pointer;
+}
