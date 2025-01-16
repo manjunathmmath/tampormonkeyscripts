@@ -27,7 +27,7 @@ function showStockScanner() {
     html += '<div class="col-md-6">'
     html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded" checked/></span>'
     html += '</div>'
-     html += '</div>'
+    html += '</div>'
     html += '</div>'
 
     html += '</div>'
@@ -94,10 +94,10 @@ jQ(document).on("click", "#stock-scanner-start-auto-refresh", function () {
     var that = jQ(this);
     that.attr("disabled", true)
     refreshStockScannerTable();
-    
+
 });
 
-function refreshStockScannerTable(){
+function refreshStockScannerTable() {
     generateStockScanner('');
     getStockScannerAllBullsBearsCount();
     clearInterval(stockScannerTimerInstance);
@@ -138,7 +138,7 @@ jQ(document).on("click", ".stock-filter-instruments", function (e) {
 });
 
 
-function generateStockScanner(trendType){
+function generateStockScanner(trendType) {
     let listType = FO_LIST;
     let WEIGHTAGE = NIFTY_50_WEIGHT;
     let data = [];
@@ -166,12 +166,12 @@ function generateStockScanner(trendType){
                 obj['VIX'] = infoMap[index]['vix']
                 currentPrice = infoMap[index]['currentPrice']
             }
-           
+
             if (trendType) {
-                if(priceMoved){
+                if (priceMoved) {
                     priceMoved = parseInt(priceMoved)
                 }
-                if(priceMoved > 0){
+                if (priceMoved > 0) {
                     if (jQ.inArray(trendType, obj['TREND']) != -1) {
                         if (trendType == "AST") {
                             let astPrice = obj['STRIKEDATA']['ustrikeTwo']
@@ -186,7 +186,7 @@ function generateStockScanner(trendType){
                             let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                             if (ASO_MOVED <= priceMoved) {
                                 data.push(obj)
-                            } 
+                            }
                         }
 
                         if (trendType == "BST") {
@@ -194,7 +194,7 @@ function generateStockScanner(trendType){
                             let BST_MOVED = parseFloat(bstPrice - currentPrice).toFixed();
                             if (BST_MOVED <= priceMoved) {
                                 data.push(obj)
-                            } 
+                            }
                         }
 
                         if (trendType == "BSO") {
@@ -202,7 +202,7 @@ function generateStockScanner(trendType){
                             let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
                             if (BSO_MOVED <= priceMoved) {
                                 data.push(obj)
-                            } 
+                            }
                         }
 
                         if (trendType == "VIXL") {
@@ -210,7 +210,7 @@ function generateStockScanner(trendType){
                             let VIXL_MOVED = parseFloat(vixlPrice - currentPrice).toFixed();
                             if (VIXL_MOVED <= priceMoved) {
                                 data.push(obj)
-                            } 
+                            }
                         }
 
                         if (trendType == "VIXU") {
@@ -218,10 +218,10 @@ function generateStockScanner(trendType){
                             let VIXU_MOVED = parseFloat(currentPrice - vixuPrice).toFixed();
                             if (VIXU_MOVED <= priceMoved) {
                                 data.push(obj)
-                            } 
+                            }
                         }
                     }
-                }else{
+                } else {
                     if (jQ.inArray(trendType, obj['TREND']) != -1) {
                         data.push(obj)
                     }
@@ -232,11 +232,11 @@ function generateStockScanner(trendType){
         }
     })
 
-    if(checkTraded){
+    if (checkTraded) {
         let filterData = []
         let trades = JSON.parse(localStorage.getItem("TRADES"));
-        jQ.each(data,function(index,item){
-            if(jQ.inArray(item.TRADINGSYMBOL,trades) === -1){
+        jQ.each(data, function (index, item) {
+            if (jQ.inArray(item.TRADINGSYMBOL, trades) === -1) {
                 filterData.push(item)
             }
         });
@@ -313,7 +313,7 @@ function generateStockScannerDataTable(data) {
     jQ("#stock-scanner-list-table").show()
     stockScannerTable = jQ('#stock-scanner-list-table').DataTable({
         "processing": true,
-        "order": [[1, "desc"]],
+        "order": [[0, "asc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
@@ -329,6 +329,16 @@ function generateStockScannerDataTable(data) {
         "columns": [
             {
                 "data": "TRADINGSYMBOL",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    let trades = JSON.parse(localStorage.getItem("TRADES"));
+                    if (jQ.inArray(data, trades) !== -1) {
+                        html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
+                    }else{
+                        html += data;
+                    }
+                    return html;
+                }
             },
             { "data": 'WEIGHTAGE' },
             { "data": 'CLOSE' },

@@ -161,12 +161,14 @@ jQ(document).ready(function () {
         makeUIChanges();
         saveVixQuote();
         /*parseChartJson()*/
+        
     }, 2000)
 
 });
 
 jQ(document).on("click", "#show-ai-prediction", function (e) {
     e.preventDefault();
+    changeMode();
     showFutureAi();
     generateFutreIntruments();
 });
