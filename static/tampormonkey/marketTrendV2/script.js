@@ -627,7 +627,7 @@ function updatePrfitLoss() {
             html = '<span class="badge bg-danger">' + price + '</span>'
         }
 
-        jQ("#profit-loss").html("P/L: " + html)
+        jQ(".profit-loss").html("P/L: " + html)
     }
 }
 
@@ -814,7 +814,7 @@ function showFutureAi() {
     title += '</div>'
 
     title += '<div class="col-md-3 pop-title-extra">'
-    title += '<span id="profit-loss">0.00</span>'
+    title += '<span class="profit-loss">0.00</span>'
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'
@@ -1829,8 +1829,22 @@ jQ(document).on("click", ".place-order", function () {
     let price = jQ(this).attr("data-price");
     let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
-    placeOrder(params)
-})
+    callPlaceOrder(params)
+});
+
+async function callPlaceOrder(params){
+    let res = await placeOrder(params)
+    if(res == 'error'){
+        let trades = JSON.parse(localStorage.getItem("TRADES"));
+        if(!trades){
+            trades = []
+        }
+        if(jQ.inArray(params.tradingsymbol,trades) === -1){
+            trades.push(params.tradingsymbol);
+            localStorage.setItem("TRADES",JSON.stringify(trades));
+        }
+    }
+}
 
 function placeOrder(order) {
     jQ.ajaxSetup({
@@ -1839,11 +1853,13 @@ function placeOrder(order) {
         }
     });
     return new Promise((resolve, reject) => {
-        jQ.post(BASE_URL + "/oms/orders/regular",
-            order,
+        jQ.post(BASE_URL + "/oms/orders/regular",order,
             function (data, status) {
                 resolve(data);
-            });
+            }).fail(
+                function(jqXHR, textStatus, error) {
+                    resolve(textStatus); }
+            );
     });
 }
 
@@ -2577,7 +2593,7 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
     }
     futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
 
-    var openInterest = quote.oi / 75;
+    var openInterest = (quote.oi / 75).toFixed(0);
     var previousOI = prevQuote['oi'] / 75
     var changeinOpenInterest = (openInterest - previousOI)
     var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
@@ -2747,7 +2763,7 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
     }
     futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
 
-    var openInterest = quote.oi / 15;
+    var openInterest = (quote.oi / 15).toFixed(0);
     var previousOI = prevQuote['oi'] / 15
     var changeinOpenInterest = (openInterest - previousOI)
     var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
@@ -2994,6 +3010,7 @@ function clearLocalStorage() {
     localStorage.removeItem("BANK_NIFTY_FUTURE");
     localStorage.removeItem("BANK_NIFTY_FUTURE_CURRENT_QUOTE")
     localStorage.removeItem("NIFTY_FUTURE_CURRENT_QUOTE")
+    localStorage.removeItem("TRADES")
 
 }
 

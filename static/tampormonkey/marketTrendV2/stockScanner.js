@@ -7,18 +7,29 @@ function showStockScanner() {
 
     html += '<div class="row">'
 
-    html += '<div class="col-md-12">'
+    html += '<div class="col-md-8">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
     html += '<span class="stock-filter-instruments filter-type" data-index-name="ALL">ALL: </span> <span id="stock-all-bulls" class="badge bg-success"></span> <span id="stock-all-bears" class="badge bg-danger"></span>'
     html += '<span class="filter-type" >VIXU: <span class="stock-filter-instruments" data-trend-type="VIXU" data-index-name="ALL" id="stock-all-vixu">0</span> VIXL: <span class="stock-filter-instruments" data-trend-type="VIXL" data-index-name="ALL" id="stock-all-vixl">0</span></span>'
     html += '<span class="filter-type" >AST: <span class="stock-filter-instruments" data-trend-type="AST" data-index-name="ALL" id="stock-all-ast">0</span> ASO: <span class="stock-filter-instruments" data-trend-type="ASO" data-index-name="ALL" id="stock-all-aso">0</span></span>'
     html += '<span class="filter-type" >BST: <span class="stock-filter-instruments" data-trend-type="BST" data-index-name="ALL" id="stock-all-bst">0</span> BSO: <span class="stock-filter-instruments" data-trend-type="BSO" data-index-name="ALL" id="stock-all-bso">0</span></span>'
-    html += '<span class="filter-type" >PRICE MOVED: <input type="text" id="price-moved" placeholder=""></span>'
-  
     html += '</div>'
     html += '</div>'
     html += '</div>'
+
+
+    html += '<div class="col-md-4">'
+    html += '<div class="row">'
+    html += '<div class="col-md-3">'
+    html += '<span class="filter-type" ><input value="5" type="text" id="price-moved" placeholder="" class="form-control form-control-sm"/></span>'
+    html += '</div>'
+    html += '<div class="col-md-6">'
+    html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded" checked/></span>'
+    html += '</div>'
+     html += '</div>'
+    html += '</div>'
+
     html += '</div>'
 
 
@@ -59,6 +70,10 @@ function showStockScanner() {
     title += '</div>'
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="stock-scanner-last-refresh-time">Last @ 00:00:00</span>'
+    title += '</div>'
+    title += '<div class="col-md-3 pop-title-extra">'
+    title += '<span class="profit-loss">0.00</span>'
+    title += '</div>'
     title += '</div>'
 
 
@@ -123,15 +138,12 @@ jQ(document).on("click", ".stock-filter-instruments", function (e) {
 });
 
 
-
-
-
-
 function generateStockScanner(trendType){
     let listType = FO_LIST;
     let WEIGHTAGE = NIFTY_50_WEIGHT;
     let data = [];
     let priceMoved = jQ("#price-moved").val();
+    let checkTraded = jQ("#currently-traded").is(":checked");
     jQ.each(instrumentsMap, function (index, item) {
         if (jQ.inArray(index, listType) != -1) {
             let obj = {}
@@ -156,10 +168,11 @@ function generateStockScanner(trendType){
             }
            
             if (trendType) {
+                if(priceMoved){
+                    priceMoved = parseInt(priceMoved)
+                }
                 if(priceMoved > 0){
                     if (jQ.inArray(trendType, obj['TREND']) != -1) {
-
-                        
                         if (trendType == "AST") {
                             let astPrice = obj['STRIKEDATA']['ustrikeTwo']
                             let AST_MOVED = parseFloat(astPrice - currentPrice).toFixed();
@@ -171,9 +184,6 @@ function generateStockScanner(trendType){
                         if (trendType == "ASO") {
                             let asoPrice = obj['STRIKEDATA']['ustrikeOne']
                             let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
-                            console.log(trendType)
-                            console.log(asoPrice)
-                            console.log(ASO_MOVED)
                             if (ASO_MOVED <= priceMoved) {
                                 data.push(obj)
                             } 
@@ -221,6 +231,17 @@ function generateStockScanner(trendType){
             }
         }
     })
+
+    if(checkTraded){
+        let filterData = []
+        let trades = JSON.parse(localStorage.getItem("TRADES"));
+        jQ.each(data,function(index,item){
+            if(jQ.inArray(item.TRADINGSYMBOL,trades) === -1){
+                filterData.push(item)
+            }
+        });
+        data = filterData
+    }
     generateStockScannerDataTable(data)
 }
 

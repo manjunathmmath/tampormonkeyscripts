@@ -204,3 +204,7 @@ span.bullsVersesBears {
   margin-left: .3rem;
   cursor: pointer;
 }
+
+.card-header{
+  padding: 0.2rem 1rem;
+}
