@@ -45,6 +45,7 @@ function showStockScanner() {
     html += '<th>OPEN PRICE</th>'
     html += '<th>LTP</th>'
     html += '<th>CHANGE</th>'
+    html += '<th>VOLUME</th>'
     html += '<th>TREND</th>'
     html += '<th>ACTION</th>'
     html += '</tr>'
@@ -310,6 +311,7 @@ function getStockScannerAllBullsBearsCount() {
 
 var stockScannerTable;
 function generateStockScannerDataTable(data) {
+    let tickList = readTicksFromStorage();
     jQ("#stock-scanner-list-table").show()
     stockScannerTable = jQ('#stock-scanner-list-table').DataTable({
         "processing": true,
@@ -352,6 +354,13 @@ function generateStockScannerDataTable(data) {
                     let change = (currentPrice - prevClose).toFixed(2);
                     let changePerc = ((change / prevClose) * 100).toFixed(2)
                     return changePerc;
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    let tick = tickList[row.TRADINGSYMBOL]
+                    return tick.volume;
                 }
             },
             {

@@ -1,13 +1,15 @@
-function changeMode() {
-    return;
+function readTicksFromStorage() {
     let ticks = JSON.parse(localStorage.getItem("__storejs_kite_ticker/ticks"));
-    let tickList = []
+    let tickList = {}
     jQ.each(ticks, function (index, item) {
         let temp = item;
         temp.symbol = getByValue(instrumentTokens, item.token)
-        tickList.push(ticks[index])
+        if(!item.hasOwnProperty('volume')){
+            temp.volume = 0;
+        }
+        tickList[temp.symbol] = temp
     });
-    console.log(tickList)
+    return tickList
 }
 
 function getByValue(map, searchValue) {

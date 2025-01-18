@@ -84,6 +84,28 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: 'CRUDEOILM25JANFUT'
         },
+        stocks_price_moved: {
+            type: 'number',
+            default: 5
+        },
+        stock_trend_to_trade: {
+            type: 'select',
+            choices: ['ASO', 'BSO','ALL'],
+            values: ['ASO', 'BSO',],
+            default: 'ALL'
+        },
+        enable_sl: {
+            type: 'checkbox',
+            default: true
+        },
+        enable_algo_trade: {
+            type: 'checkbox',
+            default: false
+        },
+        stock_limit: {
+            type: 'number',
+            default: 50
+        },
     }
 });
 
@@ -105,6 +127,8 @@ const SL_POINTS = parseInt(g_config.get('sl_points'));
 const NIFTY_FUTURE_NAME = g_config.get('nifty_future_name');
 const BANK_NIFTY_FUTURE_NAME = g_config.get('bank_nifty_future_name');
 const CRUDE_OIL_M_FUTURE_NAME = g_config.get('crude_oil_m_future_name');
+
+
 
 let futureNames = {
     'NIFTY_FUTURE': NIFTY_FUTURE_NAME,
@@ -168,7 +192,7 @@ jQ(document).ready(function () {
 
 jQ(document).on("click", "#show-ai-prediction", function (e) {
     e.preventDefault();
-    changeMode();
+    readTicksFromStorage();
     showFutureAi();
     generateFutreIntruments();
 });
@@ -568,13 +592,13 @@ function getAllBullsBearsCount() {
 
 
     ast = '<span class="badge bg-danger">' + ast + '</span>'
-    aso = '<span class="badge bg-danger">' + aso + '</span>'
+    aso = '<span class="badge bg-success">' + aso + '</span>'
     jQ("#all-ast").html(ast);
     jQ("#all-aso").html(aso);
 
 
     bst = '<span class="badge bg-success">' + bst + '</span>'
-    bso = '<span class="badge bg-success">' + bso + '</span>'
+    bso = '<span class="badge bg-danger">' + bso + '</span>'
     jQ("#all-bst").html(bst);
     jQ("#all-bso").html(bso);
 }
@@ -817,6 +841,10 @@ function showFutureAi() {
 
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span class="profit-loss">0.00</span>'
+    title += '</div>'
+
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<input type="checkbox" id="start-algo-stock-trades"/>'
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'
@@ -1639,7 +1667,9 @@ function commonShowChart(name, trends, index, price) {
 
 
 function showStockData(quote, name) {
-    let stockDataTable = jQ("#stock-data-" + name);
+    let tempName = name.replaceAll(" ", "-")
+        tempName = tempName.replaceAll("&", "-")
+    let stockDataTable = jQ("#stock-data-" + tempName);
     let html = ''
     let count = quote.length
     let newList = []
@@ -1836,7 +1866,7 @@ jQ(document).on("click", ".place-order", function () {
 
 async function callPlaceOrder(params){
     let res = await placeOrder(params)
-    if(res == 'error'){
+    if(res != 'error'){
         let trades = JSON.parse(localStorage.getItem("TRADES"));
         if(!trades){
             trades = []
@@ -1868,7 +1898,9 @@ function placeOrder(order) {
 function showChart(quote, name) {
 
     let data = getStrikeDetails(instrumentsMap[name], name);
-    let chartId = 'chart-' + name.replaceAll(" ", "-");
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let chartId = 'chart-' + tempName;
     let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
 
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
