@@ -41,6 +41,7 @@ span.bullsVersesBears {
 
 .show-future-chart{
   cursor: pointer;
+  margin-right: .2rem;
 }
 
 .place-sl-order{
@@ -164,6 +165,11 @@ span.bullsVersesBears {
     max-height: 25px !important;
   }
 
+  .historical-future-data-analyzer img{
+    max-width: 15px !important;
+    max-height: 15px !important;
+  }
+
   .popupwindow_content{
     overflow-x: hidden !important;
   }
@@ -208,3 +214,4 @@ span.bullsVersesBears {
 .card-header{
   padding: 0.2rem 1rem;
 }
+

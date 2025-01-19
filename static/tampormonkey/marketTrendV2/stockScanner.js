@@ -320,7 +320,7 @@ function generateStockScannerDataTable(data) {
         "bPaginate": false,
         "data": data,
         "bDestroy": true,
-        "scrollX": true,
+        "scrollY": "500px",
         "columnDefs": [
             {
                 "targets": [],

@@ -56,10 +56,6 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: 8966402
         },
-        crude_oil_m_future_token: {
-            type: 'text',
-            default: 111570951
-        },
         refresh_time: {
             type: 'text',
             default: 60
@@ -72,25 +68,13 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: '5'
         },
-        nifty_future_name: {
-            type: 'text',
-            default: 'NIFTY24DECFUT'
-        },
-        bank_nifty_future_name: {
-            type: 'text',
-            default: 'BANKNIFTY24DECFUT'
-        },
-        crude_oil_m_future_name: {
-            type: 'text',
-            default: 'CRUDEOILM25JANFUT'
-        },
         stocks_price_moved: {
             type: 'number',
             default: 5
         },
         stock_trend_to_trade: {
             type: 'select',
-            choices: ['ASO', 'BSO','ALL'],
+            choices: ['ASO', 'BSO', 'ALL'],
             values: ['ASO', 'BSO',],
             default: 'ALL'
         },
@@ -106,6 +90,14 @@ const g_config = new MonkeyConfig({
             type: 'number',
             default: 50
         },
+        nifty_future_lot_size: {
+            type: 'number',
+            default: 25
+        },
+        nifty_bank_future_lot_size: {
+            type: 'number',
+            default: 15
+        },
     }
 });
 
@@ -120,33 +112,17 @@ const MARGIN = g_config.get('margin');
 let weightIndex = []
 const NIFTY_FUTURE_TOKEN = g_config.get('nifty_future_token');
 const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_token');
-const CRUDE_OIL_M_FUTURE_TOKEN = g_config.get('crude_oil_m_future_token');
 const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
 const SL_POINTS = parseInt(g_config.get('sl_points'));
 
-const NIFTY_FUTURE_NAME = g_config.get('nifty_future_name');
-const BANK_NIFTY_FUTURE_NAME = g_config.get('bank_nifty_future_name');
-const CRUDE_OIL_M_FUTURE_NAME = g_config.get('crude_oil_m_future_name');
-
-
-
-let futureNames = {
-    'NIFTY_FUTURE': NIFTY_FUTURE_NAME,
-    'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_NAME,
-    "CRUDE_OIL_M_FUTURE": CRUDE_OIL_M_FUTURE_NAME
-}
-
+const NIFTY_FUTURE_LOT_SIZE =  parseInt(g_config.get('nifty_future_lot_size')); 
+const NIFTY_BANK_FUTURE_LOT_SIZE =  parseInt(g_config.get('nifty_bank_future_lot_size')); 
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
     'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
 }
 
-let futureTokens = {
-    'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
-    'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
-    "CRUDE_OIL_M_FUTURE": CRUDE_OIL_M_FUTURE_TOKEN
-}
 const REFRESH_TIME = g_config.get('refresh_time');
 
 async function callAddToWatchList() {
@@ -185,7 +161,7 @@ jQ(document).ready(function () {
         makeUIChanges();
         saveVixQuote();
         /*parseChartJson()*/
-        
+
     }, 2000)
 
 });
@@ -813,6 +789,9 @@ function showFutureAi() {
     html += '<thead>'
     html += '<tr>'
     html += '<th>INSTRUMENT</th>'
+    html += '<th>SYMBOL</th>'
+    html += '<th>EXPIRY</th>'
+    html += '<th>TOKEN</th>'
     html += '<th>ACTION</th>'
     html += '</tr>'
     html += '</thead>'
@@ -861,292 +840,6 @@ function showFutureAi() {
     });
 }
 
-
-function generateFutreIntruments() {
-    let futureTable = jQ("#future-list-table");
-    let html = ''
-    for (var key in futureTokens) {
-        if (futureTokens.hasOwnProperty(key)) {
-            html += '<tr>'
-            html += '<td>' + key + '</td>'
-            html += '<td>'
-            html += '<span data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-info show-future-chart">Chart</span>'
-            html += '<span data-token="' + futureTokens[key] + '" data-name="' + key + '" class="badge bg-secondary create-future-alerts">Alert</span>'
-            html += '</td>'
-            html += '</tr>'
-        }
-    }
-    futureTable.find("tbody").html(html)
-    futureTable.show()
-}
-
-
-jQ(document).on("click", ".create-future-alerts", function () {
-
-    let token = jQ(this).attr("data-token");
-    let name = jQ(this).attr("data-name");
-
-    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (prev) {
-        jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (quote) {
-            let first = quote.data['candles'][0];
-            let prevData = prev.data['candles'][0];
-
-            let strikeDiff = nseFutreStrikeDiff[name];
-            strikeDiff = strikeDiff.split(",");
-            let strikeOne = parseInt(strikeDiff[0])
-            let strikeTwo = parseInt(strikeDiff[1])
-
-            let ustrikeOne = (parseFloat(first[1]) + strikeOne);
-            let ustrikeTwo = (ustrikeOne + strikeTwo);
-            let bstrikeOne = (parseFloat(first[1]) - strikeOne);
-            let bstrikeTwo = (bstrikeOne - strikeTwo);
-
-            let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
-
-            var vix = getVixRange(parseFloat(prevData[4]), parseFloat(vixQuote[4]))
-
-            var vixLowerRange = 0;
-            var vixUpperRange = 0;
-            var vixDDRange = 0;
-
-            vixLowerRange = parseFloat(vix.vixDDLower)
-            vixUpperRange = parseFloat(vix.vixDDUpper)
-            vixDDRange = parseFloat(vix.vixDDRange);
-
-            lhs_tradingsymbol = futureNames[name]
-
-            let lhs_exchange = "NFO"
-            if (name == 'CRUDE_OIL_M_FUTURE') {
-                lhs_exchange = "MCX"
-
-                /*
-                    let aso = ustrikeOne;
-                    createAlert(name + "-" + 'ASO', lhs_tradingsymbol, aso, ">=", lhs_exchange)
-        
-                    let bso = bstrikeOne;
-                    createAlert(name + "-" + 'BSO', lhs_tradingsymbol, bso, "<=", lhs_exchange)
-                */
-            }
-
-            let ast = ustrikeTwo;
-            createAlert(name + "-" + 'AST', lhs_tradingsymbol, ast, ">=", lhs_exchange)
-
-            let bst = bstrikeTwo;
-            createAlert(name + "-" + 'BST', lhs_tradingsymbol, bst, "<=", lhs_exchange)
-
-            let vixu = vixUpperRange;
-            createAlert(name + "-" + 'VIXU', lhs_tradingsymbol, vixu, ">=", lhs_exchange)
-
-            let vixl = vixLowerRange;
-            createAlert(name + "-" + 'VIXL', lhs_tradingsymbol, vixl, "<=", lhs_exchange)
-        })
-    });
-});
-
-jQ(document).on("click", ".show-future-chart", function () {
-    let token = jQ(this).attr("data-token");
-    let name = jQ(this).attr("data-name");
-    let chartId = 'future-chart-' + token
-    let html = ''
-    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
-        jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
-            let tempName = name.replaceAll(" ", "-")
-            tempName = tempName.replaceAll("&", "-")
-            html += '<div id="' + chartId + '" style="width:100%;">'
-            html += '</div>';
-            html += '<div style="width:100%;">'
-            html += '<table  id="stock-data-' + tempName + '" class="" style="width: 100%;display: none;">'
-            html += '<thead>'
-            html += '<tr>'
-            html += '<th>DATE</th>'
-            html += '<th>OPEN</th>'
-            html += '<th>HIGH</th>'
-            html += '<th>LOW</th>'
-            html += '<th>CLOSE</th>'
-            html += '<th>VOLUME</th>'
-            html += '</tr>'
-            html += '</thead>'
-            html += '<tbody>'
-
-            html += '</tbody>'
-            html += '</table>'
-            html += '</div>'
-            showPopUpWindow(name, html, name);
-            showFuturesChart(cres, name, token, pres)
-            let data = []
-            jQ.each(cres.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                data.push(map);
-            });
-            showStockData(data, name)
-        });
-    });
-});
-
-function showFuturesChart(quote, name, token, prev) {
-
-    let first = quote.data['candles'][0];
-    let prevData = prev.data['candles'][0];
-
-    let strikeDiff = nseFutreStrikeDiff[name];
-    strikeDiff = strikeDiff.split(",");
-    let strikeOne = parseInt(strikeDiff[0])
-    let strikeTwo = parseInt(strikeDiff[1])
-
-    let ustrikeOne = (parseFloat(first[1]) + strikeOne);
-    let ustrikeTwo = (ustrikeOne + strikeTwo);
-    let bstrikeOne = (parseFloat(first[1]) - strikeOne);
-    let bstrikeTwo = (bstrikeOne - strikeTwo);
-
-    let strikeMap = {}
-    strikeMap['strikeDiff'] = parseFloat(strikeDiff).toFixed(2);
-    strikeMap['bstrikeOne'] = parseFloat(bstrikeOne).toFixed(2);
-    strikeMap['bstrikeTwo'] = parseFloat(bstrikeTwo).toFixed(2);
-    strikeMap['ustrikeOne'] = parseFloat(ustrikeOne).toFixed(2);
-    strikeMap['ustrikeTwo'] = parseFloat(ustrikeTwo).toFixed(2);
-
-    let chartId = 'future-chart-' + token;
-    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
-
-    var vix = getVixRange(parseFloat(prevData[4]), parseFloat(vixQuote[4]))
-
-    var vixLowerRange = 0;
-    var vixUpperRange = 0;
-    var vixDDRange = 0;
-
-    vixLowerRange = parseFloat(vix.vixDDLower)
-    vixUpperRange = parseFloat(vix.vixDDUpper)
-    vixDDRange = parseFloat(vix.vixDDRange);
-
-    let data = []
-    jQ.each(quote.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("HH:mm:ss")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        data.push(map);
-    });
-
-    let categoryList = []
-    let dateIndex = 0
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        map.volume = item.volume
-        map.x = dateIndex
-
-        if (index == 0) {
-            min = item.high
-            max = item.high
-        }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-    let lines = [];
-    let line = {};
-
-    line.color = "#8be73a";
-    line.startvalue = vixLowerRange;
-    line.displayvalue = 'Vix lower range ' + vixLowerRange;
-    lines.push(line);;
-
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = vixUpperRange;
-    line.displayvalue = 'Vix upper range ' + vixUpperRange;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.bstrikeTwo;
-    line.displayvalue = "BST " + strikeMap.bstrikeTwo;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.ustrikeTwo;
-    line.displayvalue = "AST " + strikeMap.ustrikeTwo;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.bstrikeOne;
-    line.displayvalue = "BSO " + strikeMap.bstrikeOne;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.ustrikeOne;
-    line.displayvalue = "ASO " + strikeMap.ustrikeOne;
-    lines.push(line);
-
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: "100%",
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "fusion",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "pYAxisMinValue": min,
-                "pYAxisMaxValue": max,
-                showVolumeChart: true
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
-
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
-
-}
-
 var stockTable;
 
 function generateStockDataTable(data) {
@@ -1159,7 +852,7 @@ function generateStockDataTable(data) {
         "data": data,
         "bDestroy": true,
         "scrollX": true,
-        "scrollY": "200px",
+        "scrollY": "500px",
         "columnDefs": [
             {
                 "targets": [],
@@ -1321,7 +1014,6 @@ function generateStockDataTable(data) {
         }
     });
 }
-
 
 async function generateTrend() {
     await saveVixQuote();
@@ -1668,7 +1360,7 @@ function commonShowChart(name, trends, index, price) {
 
 function showStockData(quote, name) {
     let tempName = name.replaceAll(" ", "-")
-        tempName = tempName.replaceAll("&", "-")
+    tempName = tempName.replaceAll("&", "-")
     let stockDataTable = jQ("#stock-data-" + tempName);
     let html = ''
     let count = quote.length
@@ -1864,16 +1556,16 @@ jQ(document).on("click", ".place-order", function () {
     callPlaceOrder(params)
 });
 
-async function callPlaceOrder(params){
+async function callPlaceOrder(params) {
     let res = await placeOrder(params)
-    if(res != 'error'){
+    if (res != 'error') {
         let trades = JSON.parse(localStorage.getItem("TRADES"));
-        if(!trades){
+        if (!trades) {
             trades = []
         }
-        if(jQ.inArray(params.tradingsymbol,trades) === -1){
+        if (jQ.inArray(params.tradingsymbol, trades) === -1) {
             trades.push(params.tradingsymbol);
-            localStorage.setItem("TRADES",JSON.stringify(trades));
+            localStorage.setItem("TRADES", JSON.stringify(trades));
         }
     }
 }
@@ -1885,12 +1577,13 @@ function placeOrder(order) {
         }
     });
     return new Promise((resolve, reject) => {
-        jQ.post(BASE_URL + "/oms/orders/regular",order,
+        jQ.post(BASE_URL + "/oms/orders/regular", order,
             function (data, status) {
                 resolve(data);
             }).fail(
-                function(jqXHR, textStatus, error) {
-                    resolve(textStatus); }
+                function (jqXHR, textStatus, error) {
+                    resolve(textStatus);
+                }
             );
     });
 }
@@ -2112,8 +1805,8 @@ function showAiNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     } else {
         booleanValue = false;
     }
-    var openInterest = quote['oi'] / 75;
-    var previousOI = prevQuote['oi'] / 75
+    var openInterest = quote['oi'] / NIFTY_FUTURE_LOT_SIZE;
+    var previousOI = prevQuote['oi'] / NIFTY_FUTURE_LOT_SIZE
     var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
     var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
     var changeEvo1 = change;
@@ -2323,8 +2016,8 @@ function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, name) {
     } else {
         booleanValue = false;
     }
-    var openInterest = quote['oi'] / 15;
-    var previousOI = prevQuote['oi'] / 15
+    var openInterest = quote['oi'] / NIFTY_BANK_FUTURE_LOT_SIZE;
+    var previousOI = prevQuote['oi'] / NIFTY_BANK_FUTURE_LOT_SIZE
     var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
     var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
     var changeEvo1 = change;
@@ -2627,8 +2320,8 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
     }
     futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
 
-    var openInterest = (quote.oi / 75).toFixed(0);
-    var previousOI = prevQuote['oi'] / 75
+    var openInterest = (quote.oi / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
+    var previousOI = prevQuote['oi'] / NIFTY_FUTURE_LOT_SIZE
     var changeinOpenInterest = (openInterest - previousOI)
     var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
 
@@ -2797,8 +2490,8 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
     }
     futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
 
-    var openInterest = (quote.oi / 15).toFixed(0);
-    var previousOI = prevQuote['oi'] / 15
+    var openInterest = (quote.oi / NIFTY_BANK_FUTURE_LOT_SIZE).toFixed(0);
+    var previousOI = prevQuote['oi'] / NIFTY_BANK_FUTURE_LOT_SIZE
     var changeinOpenInterest = (openInterest - previousOI)
     var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
 

@@ -46,6 +46,7 @@
 // @require      http://localhost:3000/tampormonkey/marketTrendV2/stockScanner.js
 // @require      http://localhost:3000/tampormonkey/marketTrendV2/readTicksFromStorage.js
 // @require      http://localhost:3000/tampormonkey/marketTrendV2/algoStockTrades.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV2/futures.js
 // @downloadURL  http://localhost:3000/tampormonkey/marketTrendV2/marketTrend.user.js
 // @updateURL    http://localhost:3000/tampormonkey/marketTrendV2/marketTrend.meta.js
 // ==/UserScript==
