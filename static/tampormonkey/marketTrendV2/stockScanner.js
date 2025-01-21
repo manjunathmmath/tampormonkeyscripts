@@ -236,6 +236,9 @@ function generateStockScanner(trendType) {
     if (checkTraded) {
         let filterData = []
         let trades = JSON.parse(localStorage.getItem("TRADES"));
+        if (!trades) {
+            trades = []
+        }
         jQ.each(data, function (index, item) {
             if (jQ.inArray(item.TRADINGSYMBOL, trades) === -1) {
                 filterData.push(item)

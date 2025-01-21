@@ -215,3 +215,6 @@ span.bullsVersesBears {
   padding: 0.2rem 1rem;
 }
 
+.show-all-in-one{
+  cursor: pointer;
+}

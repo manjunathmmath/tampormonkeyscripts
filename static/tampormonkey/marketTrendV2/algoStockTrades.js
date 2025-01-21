@@ -89,6 +89,11 @@ async function startStockAlgoTrades() {
 
 async function executeTrendTrade(trend, obj) {
     let trades = JSON.parse(localStorage.getItem("TRADES"));
+    if (!trades) {
+        trades = []
+    }
+
+
     if (jQ.inArray(obj.TRADINGSYMBOL, trades) !== -1) {
         return;
     }
@@ -120,6 +125,9 @@ function triggerAlgoOrder(obj, transaction_type) {
     let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
     let trades = JSON.parse(localStorage.getItem("TRADES"));
+    if (!trades) {
+        trades = []
+    }
     if(trades.length  <=  STOCK_LIMIT){
         if (ENABLE_ALGO_TRADE) {
             callPlaceOrder(params)

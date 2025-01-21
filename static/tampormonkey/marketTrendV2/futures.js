@@ -1,3 +1,44 @@
+jQ(document).on("click", "#show-futures", function () {
+    showFuturesAnalyserScanner();
+})
+
+function showFuturesAnalyserScanner() {
+    let html = ''
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table  class="" id="future-list-table" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>INSTRUMENT</th>'
+    html += '<th>SYMBOL</th>'
+    html += '<th>EXPIRY</th>'
+    html += '<th>TOKEN</th>'
+    html += '<th>ACTION</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
+
+
+    let title = ''
+    title += '<div class="row">'
+    title += '<div class="col-md-2">'
+    title += 'Futures Analyser'
+    title += '</div>'
+    title += '</div>'
+
+    showPopUpWindow('futures-analyser', html, "Futures Analyser");
+    var divId = "popup-custom-style-futures-analyser";
+    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    generateFutreIntruments();
+}
+
+
 
 function generateFutreIntruments() {
     jQ("#future-list-table").show();

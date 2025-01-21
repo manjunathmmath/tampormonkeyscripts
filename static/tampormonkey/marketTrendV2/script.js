@@ -635,11 +635,27 @@ function updatePrfitLoss() {
 
 function showFutureAi() {
     let html = ''
-    html += '<div class="row mb-3">'
-    html += '<div class="col-md-12 bg-danger">'
-    html += helpMessage
+
+    
+
+    html += '<div class="row">'
+    html += '<div class="col-md-1">'
+    html += '<button id="show-stock-scanner" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Scanner'
+    html += '</button>'
+    html += '</div>'
+    html += '<div class="col-md-1">'
+    html += '<button id="show-futures" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Futures'
+    html += '</button>'
+    html += '</div>'
+    html += '<div class="col-md-1">'
+    html += '<button id="show-order-book" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Order Book'
+    html += '</button>'
     html += '</div>'
     html += '</div>'
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
     html += '<div class="row">'
     html += '<div class="col-md-6">'
@@ -743,7 +759,7 @@ function showFutureAi() {
     html += '<div class="col-md-3">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
-    html += '<span class="filter-instruments" data-index-name="ALL">ALL</span> <span id="all-bulls" class="badge bg-success"></span> <span id="all-bears" class="badge bg-danger"></span><span id="show-stock-scanner" class="badge bg-info">Scanner</span>'
+    html += '<span class="filter-instruments" data-index-name="ALL">ALL</span> <span id="all-bulls" class="badge bg-success"></span> <span id="all-bears" class="badge bg-danger"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="ALL" id="all-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="ALL" id="all-vixl">0</span></li>'
@@ -779,29 +795,15 @@ function showFutureAi() {
     html += '</div>'
     html += '</div>'
 
-
-
-
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<table  class="" id="future-list-table" style="width: 100%;display: none;">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th>INSTRUMENT</th>'
-    html += '<th>SYMBOL</th>'
-    html += '<th>EXPIRY</th>'
-    html += '<th>TOKEN</th>'
-    html += '<th>ACTION</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
 
-    html += '</tbody>'
-    html += '</table>'
+    html += '<div class="row mb-3">'
+    html += '<div class="col-md-12 bg-danger">'
+    html += helpMessage
     html += '</div>'
     html += '</div>'
 
+    
 
     let title = ''
     title += '<div class="row">'
@@ -823,7 +825,7 @@ function showFutureAi() {
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'
-    title += '<input type="checkbox" id="start-algo-stock-trades"/>'
+    title += 'Auto: <input style="vertical-align:middle;" type="checkbox" id="start-algo-stock-trades"/>'
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'
@@ -852,7 +854,7 @@ function generateStockDataTable(data) {
         "data": data,
         "bDestroy": true,
         "scrollX": true,
-        "scrollY": "500px",
+        "scrollY": "300px",
         "columnDefs": [
             {
                 "targets": [],
@@ -1563,9 +1565,21 @@ async function callPlaceOrder(params) {
         if (!trades) {
             trades = []
         }
+
+        let orderBook = JSON.parse(localStorage.getItem("ORDERBOOK"));
+        if (!orderBook) {
+            orderBook = {}
+        }
+        
         if (jQ.inArray(params.tradingsymbol, trades) === -1) {
             trades.push(params.tradingsymbol);
+            let obj = {}
+            obj['ORDER'] = params
+            obj['INFO'] =  infoMap[params.tradingsymbol];
+            obj['KITE_ORDER'] = res
+            orderBook[params.tradingsymbol] = obj
             localStorage.setItem("TRADES", JSON.stringify(trades));
+            localStorage.setItem("ORDERBOOK", JSON.stringify(orderBook));
         }
     }
 }
@@ -2738,6 +2752,7 @@ function clearLocalStorage() {
     localStorage.removeItem("BANK_NIFTY_FUTURE_CURRENT_QUOTE")
     localStorage.removeItem("NIFTY_FUTURE_CURRENT_QUOTE")
     localStorage.removeItem("TRADES")
+    localStorage.removeItem("ORDERBOOK")
 
 }
 
