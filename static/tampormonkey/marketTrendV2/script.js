@@ -376,7 +376,6 @@ function getIndicesBullsBearsCount() {
 
     jQ("#index-bulls").html(bulls);
     jQ("#index-bears").html(bears);
-    jQ("#index-weightage").html("W.S")
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#indices-vixu").html(vixu);
@@ -436,7 +435,6 @@ function getNiftyBullsBearsCount() {
 
     jQ("#nifty-50-bulls").html(bulls);
     jQ("#nifty-50-bears").html(bears);
-    jQ("#nifty-50-weightage").html("W.S")
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
     jQ("#nifty-vixu").html(vixu);
@@ -498,7 +496,6 @@ function getBankNiftyBullsBearsCount() {
 
     jQ("#nifty-bank-bulls").html(bulls);
     jQ("#nifty-bank-bears").html(bears);
-    jQ("#nifty-bank-weightage").html("W.S")
 
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
     vixl = '<span class="badge bg-danger">' + vixl + '</span>'
@@ -639,21 +636,43 @@ function showFutureAi() {
     
 
     html += '<div class="row">'
+
     html += '<div class="col-md-1">'
     html += '<button id="show-stock-scanner" class="btn ms-1 badge bg-info" type="submit">';
     html += 'Scanner'
     html += '</button>'
     html += '</div>'
+
     html += '<div class="col-md-1">'
     html += '<button id="show-futures" class="btn ms-1 badge bg-info" type="submit">';
     html += 'Futures'
     html += '</button>'
     html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="index-weightage" class="btn ms-1 badge bg-info show-all-in-one" data-type="INDICES" type="submit">';
+    html += 'Indices'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="nifty-50-weightage" class="btn ms-1 badge bg-info show-all-in-one" data-type="NIFTY 50" type="submit">';
+    html += 'Nifty 50'
+    html += '</button>'
+    html += '</div>'
+    
+    html += '<div class="col-md-1">'
+    html += '<button id="nifty-bank-weightage" class="btn ms-1 badge bg-info show-all-in-one" data-type="NIFTY BANK" type="submit">';
+    html += 'Nifty Bank'
+    html += '</button>'
+    html += '</div>'
+
     html += '<div class="col-md-1">'
     html += '<button id="show-order-book" class="btn ms-1 badge bg-info" type="submit">';
     html += 'Order Book'
     html += '</button>'
     html += '</div>'
+
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
@@ -703,8 +722,8 @@ function showFutureAi() {
     html += '<div class="card-header">'
     html += '<span class="filter-instruments" data-index-name="INDICES">INDICES</span>   '
     html += '<span id="index-bulls" class="badge bg-success me-1"></span>'
-    html += '<span id="index-bears" class="badge bg-dange me-1r"></span>'
-    html += '<span id="index-weightage" class="show-all-in-one badge bg-info me-1" data-type="INDICES"></span>'
+    html += '<span id="index-bears" class="badge bg-danger me-1r"></span>'
+    
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
@@ -724,7 +743,7 @@ function showFutureAi() {
     html += '<span class="filter-instruments" data-index-name="NIFTY 50">NIFTY 50 </span> '
     html += '<span id="nifty-50-bulls" class="badge bg-success me-1"></span>'
     html += '<span id="nifty-50-bears" class="badge bg-danger me-1"></span>'
-    html += '<span id="nifty-50-weightage" class="show-all-in-one badge bg-info me-1" data-type="NIFTY 50"></span>'
+   
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="NIFTY 50" id="nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="NIFTY 50" id="nifty-vixl">0</span></li>'
@@ -744,7 +763,7 @@ function showFutureAi() {
 
     html += '<span id="nifty-bank-bulls" class="badge bg-success me-1"></span>'
     html += '<span id="nifty-bank-bears" class="badge bg-danger me-1"></span>'
-    html += '<span id="nifty-bank-weightage" class="show-all-in-one badge bg-info me-1" data-type="NIFTY BANK"></span>'
+    
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item">VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="BANK NIFTY" id="bank-nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="BANK NIFTY" id="bank-nifty-vixl">0</span></li>'
@@ -2899,7 +2918,7 @@ function calculateVixRange(type, prevQuoteData, prevVixData) {
     var previousClose = prevVixData
     var chg;
     if (type == "DAILY") {
-        chg = parseFloat(previousClose) / Math.sqrt(366 - 104 - 13)
+        chg = parseFloat(previousClose) / Math.sqrt(365 - 104 - 14)
     }
     if (type == "MONTHLY") {
         chg = parseFloat(previousClose) / Math.sqrt(12)

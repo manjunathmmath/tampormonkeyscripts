@@ -95,6 +95,7 @@ jQ(document).on("click", "#stock-scanner-start-auto-refresh", function () {
     var that = jQ(this);
     that.attr("disabled", true)
     refreshStockScannerTable();
+    that.attr("disabled", false)
 
 });
 
@@ -315,6 +316,7 @@ function getStockScannerAllBullsBearsCount() {
 var stockScannerTable;
 function generateStockScannerDataTable(data) {
     let tickList = readTicksFromStorage();
+    console.log(tickList)
     jQ("#stock-scanner-list-table").show()
     stockScannerTable = jQ('#stock-scanner-list-table').DataTable({
         "processing": true,
@@ -362,8 +364,14 @@ function generateStockScannerDataTable(data) {
             {
                 "data": '',
                 render: function (data, type, row, meta) {
+                    console.log(row.TRADINGSYMBOL)
                     let tick = tickList[row.TRADINGSYMBOL]
-                    return tick.volume;
+                    if(tick){
+                        return tick.volume;
+                    }else{
+                        return 0;
+                    }
+                    
                 }
             },
             {

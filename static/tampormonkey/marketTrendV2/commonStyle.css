@@ -218,3 +218,7 @@ span.bullsVersesBears {
 .show-all-in-one{
   cursor: pointer;
 }
+
+.exit-trade{
+  cursor: pointer;
+}
