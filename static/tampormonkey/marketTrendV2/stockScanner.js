@@ -25,7 +25,7 @@ function showStockScanner() {
     html += '<span class="filter-type" ><input value="5" type="text" id="price-moved" placeholder="" class="form-control form-control-sm"/></span>'
     html += '</div>'
     html += '<div class="col-md-6">'
-    html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded" checked/></span>'
+    html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded"/></span>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
@@ -332,6 +332,10 @@ function generateStockScannerDataTable(data) {
                 "visible": false,
                 "searchable": false
             }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
             {

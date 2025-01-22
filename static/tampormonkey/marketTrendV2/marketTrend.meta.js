@@ -21,6 +21,11 @@
 // @require      http://localhost:3000/tampormonkey/common/toastify-js.js
 // @require      http://localhost:3000/tampormonkey/common/popupwindow/popupwindow.js
 // @require      http://localhost:3000/global/vendor/datatables/jquery.dataTables.min.js
+// @require      http://localhost:3000/global/vendor/datatables/dataTables.buttons.min.js
+// @require      http://localhost:3000/global/vendor/buttons/buttons.html5.min.js
+// @require      http://localhost:3000/global/vendor/buttons/buttons.print.min.js
+// @require      http://localhost:3000/global/vendor/buttons/jszip.min.js
+
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.js
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.charts.js
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.powercharts.js

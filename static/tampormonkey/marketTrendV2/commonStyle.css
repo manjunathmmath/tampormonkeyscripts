@@ -222,3 +222,10 @@ span.bullsVersesBears {
 .exit-trade{
   cursor: pointer;
 }
+.dt-buttons{
+  position: absolute;
+}
+
+.dt-button{
+  padding: .1rem .3rem;
+}
