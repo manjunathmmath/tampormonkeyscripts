@@ -39,8 +39,11 @@ function showOrderBook() {
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="last-refresh-time-order-book">Last @ 00:00:00</span>'
     title += '</div>'
+    title += '<div class="col-md-2 pop-title-extra">'
+    title += '<span id="total-pl"></span>'
     title += '</div>'
-   
+    title += '</div>'
+
     showPopUpWindow('order-book', html, "Order Book");
     var divId = "popup-custom-style-order-book";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
@@ -52,7 +55,7 @@ jQ(document).on("click", "#refresh-order-book", function () {
     jQ("#last-refresh-time-order-book").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 });
 
-function commonGenerateTable(){
+function commonGenerateTable() {
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {
         trades = []
@@ -102,6 +105,7 @@ function commonGenerateTable(){
 
 
 function generateOrderBook(orderBook) {
+    let total = 0;
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
@@ -166,7 +170,7 @@ function generateOrderBook(orderBook) {
                     let qty = parseFloat(row['QUNTITY'])
 
                     let pl = (qty * diff).toFixed(2)
-
+                    total += parseFloat(pl);
                     if (pl > 0) {
                         html += ' <span class="badge bg-success">' + pl + '</span>'
                     } else {
@@ -190,10 +194,15 @@ function generateOrderBook(orderBook) {
                     return html;
                 }
             },
-
-
         ],
         "fnInitComplete": function (oSettings, json) {
+            let html = ''
+            if (total > 0) {
+                html += ' <span class="badge bg-success">' + total + '</span>'
+            } else {
+                html += ' <span class="badge bg-danger">' + total + '</span>'
+            }
+            jQ("#total-pl").html(html)
         }
     });
 }
