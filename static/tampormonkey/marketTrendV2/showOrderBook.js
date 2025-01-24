@@ -55,7 +55,9 @@ jQ(document).on("click", "#refresh-order-book", function () {
     jQ("#last-refresh-time-order-book").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 });
 
+let total = 0;
 function commonGenerateTable() {
+    total = 0;
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {
         trades = []
@@ -97,15 +99,42 @@ function commonGenerateTable() {
         } else if (jQ.inArray("BSO", info['trends']) != -1) {
             obj.STOPLOSS = parseFloat(bso) + SL_POINTS;
         }
-        orders.push(obj)
-    })
+        orders.push(obj);
+        getTotal(obj)
+    });
+
+    let html = ''
+    total = total.toFixed(2)
+    if (total > 0) {
+        html += ' <span class="badge bg-success">' + total + '</span>'
+    } else {
+        html += ' <span class="badge bg-danger">' + total + '</span>'
+    }
+    jQ("#total-pl").html(html)
     generateOrderBook(orders);
 }
 
 
+function getTotal(row){
+    let price = parseFloat(row['PRICE'])
+    let ltp = parseFloat(row['LTP'])
+    let diff = 0;
+    if (row['TRANSACTION_TYPE'] == "BUY") {
+        diff = (ltp - price).toFixed(2);
+    }
+    if (row['TRANSACTION_TYPE'] == "SELL") {
+        diff = (price - ltp).toFixed(2);
+    }
+    let qty = parseFloat(row['QUNTITY'])
+
+    let pl = (qty * diff).toFixed(2)
+    console.log(pl)
+    total += parseFloat(pl);
+}
+
 
 function generateOrderBook(orderBook) {
-    let total = 0;
+    
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
@@ -115,13 +144,17 @@ function generateOrderBook(orderBook) {
         "data": orderBook,
         "bDestroy": true,
         "scrollX": true,
-        "scrollY": "300px",
+        "scrollY": "500px",
         "columnDefs": [
             {
                 "targets": [],
                 "visible": false,
                 "searchable": false
             }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
             { "data": "SYMBOL" },
@@ -170,7 +203,7 @@ function generateOrderBook(orderBook) {
                     let qty = parseFloat(row['QUNTITY'])
 
                     let pl = (qty * diff).toFixed(2)
-                    total += parseFloat(pl);
+    
                     if (pl > 0) {
                         html += ' <span class="badge bg-success">' + pl + '</span>'
                     } else {
@@ -196,13 +229,7 @@ function generateOrderBook(orderBook) {
             },
         ],
         "fnInitComplete": function (oSettings, json) {
-            let html = ''
-            if (total > 0) {
-                html += ' <span class="badge bg-success">' + total + '</span>'
-            } else {
-                html += ' <span class="badge bg-danger">' + total + '</span>'
-            }
-            jQ("#total-pl").html(html)
+            
         }
     });
 }
