@@ -98,6 +98,10 @@ const g_config = new MonkeyConfig({
             type: 'number',
             default: 15
         },
+        stock_volume: {
+            type: 'number',
+            default: 50000
+        },
     }
 });
 
@@ -115,8 +119,9 @@ const BANK_NIFTY_FUTURE_TOKEN = g_config.get('bank_nifty_future_token');
 const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
 const SL_POINTS = parseInt(g_config.get('sl_points'));
 
-const NIFTY_FUTURE_LOT_SIZE =  parseInt(g_config.get('nifty_future_lot_size')); 
-const NIFTY_BANK_FUTURE_LOT_SIZE =  parseInt(g_config.get('nifty_bank_future_lot_size')); 
+const NIFTY_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_future_lot_size'));
+const NIFTY_BANK_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_bank_future_lot_size'));
+const STOCK_VOLUME = parseInt(g_config.get('stock_volume'));
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
@@ -179,6 +184,7 @@ function saveVixQuote() {
         if (!localStorage.getItem("VIX_QUOTE")) {
             jQ.when(getHistoricalData(264969, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (res) {
                 localStorage.setItem("VIX_QUOTE", JSON.stringify(res));
+                resolve();
             })
         } else {
             resolve();
@@ -270,12 +276,61 @@ async function autoRefreshEachTabs(instance) {
         data.push(obj)
     })
     generateStockDataTable(data);
+    showWeightageStockTrend()
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
         instance.attr("disabled", false)
     }
 
+}
+
+
+function showWeightageStockTrend() {
+    let html = ''
+    let unique = []
+    for (var index of Object.keys(NIFTY_50_WEIGHT)) {
+        if (jQ.inArray(index, unique) == -1 && jQ.inArray(index, WEIGHTAGE_STOCK_SHOW) !== -1) {
+            if (infoMap[index]) {
+                if (infoMap[index]['trends'].length > 0) {
+
+                    html += index + ': <span class="'+getTrendClass(infoMap[index]['trends'])+' me-1">[' + infoMap[index]['trends'].join(",") + ']</span>'
+                }
+
+                unique.push(index)
+            }
+        }
+    }
+
+    for (var index of Object.keys(NIFTY_BANK_WEIGHT)) {
+        if (jQ.inArray(index, unique) == -1 && jQ.inArray(index, WEIGHTAGE_STOCK_SHOW) !== -1) {
+            if (infoMap[index]) {
+                if (infoMap[index]['trends'].length > 0) {
+                    html += index + ': <span class="'+getTrendClass(infoMap[index]['trends'])+' me-1">[' + infoMap[index]['trends'].join(",") + ']</span>'
+                }
+                unique.push(index)
+            }
+        }
+    }
+
+    jQ("#weight-trend-container").html(html);
+}
+
+function getTrendClass(trends) {
+
+    let className = "badge bg-warning"
+    if (jQ.inArray("VIXU", trends) != -1
+        || jQ.inArray("AST", trends) != -1
+        || jQ.inArray("ASO", trends) != -1) {
+            className ="badge bg-danger"
+
+    } else if (jQ.inArray("VIXL", trends) != -1
+        || jQ.inArray("BST", trends) != -1
+        || jQ.inArray("BSO", trends) != -1) {
+            className ="badge bg-success"
+
+    }
+    return className;
 }
 
 jQ(document).on("click", ".filter-instruments", function (e) {
@@ -633,8 +688,39 @@ function updatePrfitLoss() {
 function showFutureAi() {
     let html = ''
 
-    
 
+
+    html += '<div class="row">'
+    html += '<div class="col-md-2">'
+    html += 'Prev. Date: <span class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Curr. Date: <span class="badge bg-primary me-1">' + CURRENT_DAY + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Algo Trend: <span class="badge bg-primary me-1">' + STOCK_TREND_TO_TRADE + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Volume: <span class="badge bg-primary me-1">' + STOCK_VOLUME + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Margin: <span class="badge bg-primary me-1">' + MARGIN + '</span>'
+    html += '</div>'
+
+    html += '</div>'
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<div class="row">'
+    html += '<div class="col-md-12" id="weight-trend-container">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
     html += '<div class="row">'
 
     html += '<div class="col-md-1">'
@@ -660,7 +746,7 @@ function showFutureAi() {
     html += 'Nifty 50'
     html += '</button>'
     html += '</div>'
-    
+
     html += '<div class="col-md-1">'
     html += '<button id="nifty-bank-weightage" class="btn ms-1 badge bg-info show-all-in-one" data-type="NIFTY BANK" type="submit">';
     html += 'Nifty Bank'
@@ -723,7 +809,7 @@ function showFutureAi() {
     html += '<span class="filter-instruments" data-index-name="INDICES">INDICES</span>   '
     html += '<span id="index-bulls" class="badge bg-success me-1"></span>'
     html += '<span id="index-bears" class="badge bg-danger me-1r"></span>'
-    
+
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
@@ -743,7 +829,7 @@ function showFutureAi() {
     html += '<span class="filter-instruments" data-index-name="NIFTY 50">NIFTY 50 </span> '
     html += '<span id="nifty-50-bulls" class="badge bg-success me-1"></span>'
     html += '<span id="nifty-50-bears" class="badge bg-danger me-1"></span>'
-   
+
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="NIFTY 50" id="nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="NIFTY 50" id="nifty-vixl">0</span></li>'
@@ -763,7 +849,7 @@ function showFutureAi() {
 
     html += '<span id="nifty-bank-bulls" class="badge bg-success me-1"></span>'
     html += '<span id="nifty-bank-bears" class="badge bg-danger me-1"></span>'
-    
+
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
     html += '<li class="list-group-item">VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="BANK NIFTY" id="bank-nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="BANK NIFTY" id="bank-nifty-vixl">0</span></li>'
@@ -822,7 +908,7 @@ function showFutureAi() {
     html += '</div>'
     html += '</div>'
 
-    
+
 
     let title = ''
     title += '<div class="row">'
@@ -1589,12 +1675,12 @@ async function callPlaceOrder(params) {
         if (!orderBook) {
             orderBook = {}
         }
-        
+
         if (jQ.inArray(params.tradingsymbol, trades) === -1) {
             trades.push(params.tradingsymbol);
             let obj = {}
             obj['ORDER'] = params
-            obj['INFO'] =  infoMap[params.tradingsymbol];
+            obj['INFO'] = infoMap[params.tradingsymbol];
             obj['KITE_ORDER'] = res
             orderBook[params.tradingsymbol] = obj
             localStorage.setItem("TRADES", JSON.stringify(trades));
@@ -3058,7 +3144,7 @@ function showPopUpWindow(index, html, title) {
         resizable: true,
         resizeOpacity: 1,
         height: 650,
-        width: 1000,
+        width: 1050,
         keepInViewport: true,              // Boolean
         mouseMoveEvents: true              // Boolean
     });

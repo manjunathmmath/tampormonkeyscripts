@@ -224,6 +224,14 @@ function generateOrderBook(orderBook) {
                     html += '<span  data-quantity="' + row['QUNTITY'] + '" data-name="' + row['SYMBOL'] + '"  data-transaction-type="' + row['COUNTER_TRANSACATION_TYPE'] + '" class="badge bg-secondary  ms-1 exit-trade ' + btnColor + '"style="margin-right:.5rem;">';
                     html += row['COUNTER_TRANSACATION_TYPE']
                     html += '</span>'
+
+
+                    if (row['TREND']) {
+                        html += '<span data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['SYMBOL'] + '" class="badge bg-info show-chart">'
+                        html += 'Chart'
+                        html += '</span>'
+                    }
+
                     return html;
                 }
             },

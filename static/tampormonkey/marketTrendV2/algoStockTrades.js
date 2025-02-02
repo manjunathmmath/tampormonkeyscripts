@@ -98,14 +98,32 @@ async function executeTrendTrade(trend, obj) {
         return;
     }
 
+    let quote = await checkVolumeCondtion(obj.TRADINGSYMBOL);
+    let last = quote[quote.length - 1];
+    let isValidClose = false;
+
     let priceMoved = parseInt(STOCK_PRICE_MOVED)
     if (trend == "ASO") {
         let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();
         let currentPrice = parseFloat(obj['CURRENT_PRICE']).toFixed();
         let ASO_MOVED = currentPrice - asoPrice;
         if (ASO_MOVED <= priceMoved && ASO_MOVED > 0) {
-            triggerAlgoOrder(obj, 'BUY');
+            if (last.close > asoPrice) {
+                isValidClose = true
+            }
+            if (last.volume > STOCK_VOLUME && isValidClose) {
+                triggerAlgoOrder(obj, 'BUY');
+            }
         }
+
+
+        console.log("----------------------------[ALGO CHECKING FOR ASO TARDE CONDITION]-----------------------------");
+        console.log("Volume :" + last.volume);
+        console.log("Last Close : " + last.close);
+        console.log("Strike : " + asoPrice);
+        console.log("Price Moved : " + ASO_MOVED);
+        console.log("Valid Close : " + isValidClose);
+        console.log("------------------------------------------------------------------------------------");
     }
 
     if (trend == "BSO") {
@@ -113,9 +131,23 @@ async function executeTrendTrade(trend, obj) {
         let currentPrice = parseFloat(obj['CURRENT_PRICE']).toFixed();
         let BSO_MOVED = bsoPrice - currentPrice
         if (BSO_MOVED <= priceMoved && BSO_MOVED > 0) {
-            triggerAlgoOrder(obj, 'SELL');
+            if (last.close < bsoPrice) {
+                isValidClose = true
+            }
+            if (last.volume > STOCK_VOLUME && isValidClose) {
+                triggerAlgoOrder(obj, 'SELL');
+            }
         }
+
+        console.log("----------------------------[ALGO CHECKING FOR BSO TRADE CONDITION]-----------------------------");
+        console.log("Volume : " + last.volume);
+        console.log("Last Close : " + last.close);
+        console.log("Strike : " + bsoPrice);
+        console.log("Price Moved : " + BSO_MOVED);
+        console.log("Valid Close : " + isValidClose);
+        console.log("------------------------------------------------------------------------------------");
     }
+
 }
 
 
@@ -128,7 +160,7 @@ function triggerAlgoOrder(obj, transaction_type) {
     if (!trades) {
         trades = []
     }
-    if(trades.length  <=  STOCK_LIMIT){
+    if (trades.length <= STOCK_LIMIT) {
         if (ENABLE_ALGO_TRADE) {
             callPlaceOrder(params)
         } else {
@@ -136,11 +168,11 @@ function triggerAlgoOrder(obj, transaction_type) {
             console.log(params);
             console.log("-----------------------------------------------------------------------------");
         }
-    }else{
+    } else {
         console.log("----------------------------STOCK LIMIT EXCEEDED-----------------------------");
         console.log(params);
         console.log("-----------------------------------------------------------------------------");
     }
-    
+
 
 }

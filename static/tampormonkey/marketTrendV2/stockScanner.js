@@ -46,6 +46,7 @@ function showStockScanner() {
     html += '<th>LTP</th>'
     html += '<th>CHANGE</th>'
     html += '<th>VOLUME</th>'
+    html += '<th>TRADABLE</th>'
     html += '<th>TREND</th>'
     html += '<th>ACTION</th>'
     html += '</tr>'
@@ -139,7 +140,7 @@ jQ(document).on("click", ".stock-filter-instruments", function (e) {
     generateStockScanner(trendType)
 });
 
-
+let scannerGlobalList = [];
 function generateStockScanner(trendType) {
     let listType = FO_LIST;
     let WEIGHTAGE = NIFTY_50_WEIGHT;
@@ -160,6 +161,10 @@ function generateStockScanner(trendType) {
 
             obj['TREND'] = ''
             obj['LTP'] = 0
+            obj['PERC'] = 0;
+            obj['VOLUME'] = 0;
+            obj['IS_TRADABLE'] = 'No';
+            obj['ACTIONS'] = ''
             let currentPrice = 0;
             if (infoMap[index]) {
                 obj['TREND'] = infoMap[index]['trends']
@@ -247,6 +252,7 @@ function generateStockScanner(trendType) {
         });
         data = filterData
     }
+    scannerGlobalList = data;
     generateStockScannerDataTable(data)
 }
 
@@ -315,8 +321,7 @@ function getStockScannerAllBullsBearsCount() {
 
 var stockScannerTable;
 function generateStockScannerDataTable(data) {
-    let tickList = readTicksFromStorage();
-    console.log(tickList)
+    /*let tickList = readTicksFromStorage();*/
     jQ("#stock-scanner-list-table").show()
     stockScannerTable = jQ('#stock-scanner-list-table').DataTable({
         "processing": true,
@@ -345,7 +350,7 @@ function generateStockScannerDataTable(data) {
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
                         html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
-                    }else{
+                    } else {
                         html += data;
                     }
                     return html;
@@ -356,7 +361,7 @@ function generateStockScannerDataTable(data) {
             { "data": 'PRICE' },
             { "data": 'LTP' },
             {
-                "data": '',
+                "data": 'PERC',
                 render: function (data, type, row, meta) {
                     let currentPrice = row['LTP'];
                     let prevClose = row['CLOSE'];
@@ -366,16 +371,16 @@ function generateStockScannerDataTable(data) {
                 }
             },
             {
-                "data": '',
+                "data": 'VOLUME',
                 render: function (data, type, row, meta) {
-                    console.log(row.TRADINGSYMBOL)
-                    let tick = tickList[row.TRADINGSYMBOL]
-                    if(tick){
-                        return tick.volume;
-                    }else{
-                        return 0;
-                    }
-                    
+                    return data;
+
+                }
+            },   {
+                "data": 'IS_TRADABLE',
+                render: function (data, type, row, meta) {
+                    return data;
+
                 }
             },
             {
@@ -453,7 +458,7 @@ function generateStockScannerDataTable(data) {
                 }
             },
             {
-                "data": "",
+                "data": "ACTIONS",
                 render: function (data, type, row, meta) {
                     var html = ""
                     let index = 1;
@@ -495,6 +500,12 @@ function generateStockScannerDataTable(data) {
                                 html += '<span  data-name="' + row['TRADINGSYMBOL'] + '" data-price="' + row['LTP'] + '"  data-transaction-type="' + slTransactionType + '" class="badge bg-primary  ms-1 place-sl-order" style="margin-right:.5rem;">';
                                 html += "SL"
                                 html += '</span>'
+
+
+                                html += '<span  data-row-id="' + meta.row + '" data-name="' + row['TRADINGSYMBOL'] + '"  class="badge bg-primary  ms-1 check-volume" style="margin-right:.5rem;">';
+                                html += "Check"
+                                html += '</span>'
+
                             }
                         }
                     } else {
@@ -513,4 +524,69 @@ function generateStockScannerDataTable(data) {
         "fnInitComplete": function (oSettings, json) {
         }
     });
+}
+
+
+jQ(document).on("click", ".check-volume", function () {
+    let name = jQ(this).attr("data-name");
+    var rowId = jQ(this).attr("data-row-id");
+    var rowData = scannerGlobalList[rowId]
+    callCheckVolumeCondtion(name,rowId,rowData)
+});
+
+
+
+async function callCheckVolumeCondtion(name,rowId,row) {
+    let quote = await checkVolumeCondtion(name);
+    let last = quote[quote.length-1];
+
+    let whichTrade = '';
+    if (jQ.inArray("ASO", row['TREND']) != -1) {
+        whichTrade = "ASO";
+    } else if (jQ.inArray("BSO", row['TREND']) != -1) {
+        whichTrade = "BSO";
+    }
+    let isValidClose = false;
+    if (whichTrade == "ASO") {
+        let asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne'])
+        if(last.close > asoPrice){
+            isValidClose = true
+        }
+        
+    } else if (whichTrade == "BSO") {
+        let bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne'])
+        if(last.close < bsoPrice){
+            isValidClose = true
+        }
+    }
+    if(last.volume > STOCK_VOLUME && isValidClose) {
+        scannerGlobalList[rowId]['VOLUME'] = last.volume
+        scannerGlobalList[rowId]['IS_TRADABLE'] = 'Yes';
+    }
+    updateScannerTable(rowId)
+}
+ 
+function checkVolumeCondtion(name) {
+    return new Promise((resolve, reject) => {
+        jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
+            let quote = []
+            jQ.each(res.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                quote.push(map);
+            });
+            resolve(quote)
+        });
+    });
+}
+
+function updateScannerTable(rowId) {
+    console.log(scannerGlobalList)
+    console.log(scannerGlobalList[rowId])
+    jQ('#stock-scanner-list-table').DataTable().row(rowId).data(scannerGlobalList[rowId]).draw(false);
 }
