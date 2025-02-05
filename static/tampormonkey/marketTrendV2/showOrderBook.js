@@ -2,8 +2,14 @@ jQ(document).on("click", "#show-order-book", function () {
     showOrderBook();
 })
 
+jQ(document).on("change", "#trade-type", function () {
+    commonGenerateTable();
+})
+
 function showOrderBook() {
     let html = ''
+
+    
 
     html += '<div class="row">'
     html += '<div class="col-md-12">'
@@ -11,6 +17,7 @@ function showOrderBook() {
     html += '<thead>'
     html += '<tr>'
     html += '<th>SYMBOL</th>'
+    html += '<th>ORDER DATE</th>'
     html += '<th>TRENDS</th>'
     html += '<th>TYPE</th>'
     html += '<th>QUANTITY</th>'
@@ -42,6 +49,13 @@ function showOrderBook() {
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<span id="total-pl"></span>'
     title += '</div>'
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<select  id="trade-type">'
+    title += '<option value="ALL" selected>ALL</option>'
+    title += '<option value="BSO">BSO</option>'
+    title += '<option value="ASO">ASO</option>'
+    title += '</select>'
+    title += '</div>'
     title += '</div>'
 
     showPopUpWindow('order-book', html, "Order Book");
@@ -57,6 +71,7 @@ jQ(document).on("click", "#refresh-order-book", function () {
 
 let total = 0;
 function commonGenerateTable() {
+    let trendType = jQ("#trade-type option:selected").val();
     total = 0;
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {
@@ -70,18 +85,30 @@ function commonGenerateTable() {
 
     let orders = []
     jQ.each(trades, function (index, item) {
-        let obj = {}
 
-        obj.SYMBOL = item
-        let book = orderBook[item]['ORDER']
         let info = orderBook[item]['INFO']
-        let currentInfo = infoMap[item];
+        if(trendType != "ALL"){
+            if(trendType=='BSO' 
+                && jQ.inArray("BSO", info['trends']) === -1){
+                return;
+            }
 
+            if(trendType=='ASO' 
+                && jQ.inArray("ASO", info['trends']) === -1){
+                    return;
+            }
+        }
+
+        let obj = {}
+       
+        let book = orderBook[item]['ORDER']
+        let currentInfo = infoMap[item];
         let aso = parseFloat(info['strikeData']['ustrikeOne']).toFixed(2);
         let ast = parseFloat(info['strikeData']['ustrikeTwo']).toFixed(2);
         let bso = parseFloat(info['strikeData']['bstrikeOne']).toFixed(2);
         let bst = parseFloat(info['strikeData']['bstrikeTwo']).toFixed(2);
 
+        obj.SYMBOL = item
         obj.TRANSACTION_TYPE = book.transaction_type
         obj.QUNTITY = book.quantity
         obj.PRICE = info.currentPrice
@@ -89,15 +116,16 @@ function commonGenerateTable() {
         obj.STOPLOSS = 0;
         obj.COUNTER_TRANSACATION_TYPE = 'BUY'
         obj.LTP = currentInfo.currentPrice
+        obj.ORDER_DATE = orderBook[item]['ORDER_DATE']
 
         if (book.transaction_type === "BUY") {
             obj.COUNTER_TRANSACATION_TYPE = 'SELL'
         }
         if (jQ.inArray("ASO", info['trends']) != -1) {
-            obj.STOPLOSS = parseFloat(aso) - SL_POINTS;
+            obj.STOPLOSS = parseFloat(aso - SL_POINTS).toFixed(2);
 
         } else if (jQ.inArray("BSO", info['trends']) != -1) {
-            obj.STOPLOSS = parseFloat(bso) + SL_POINTS;
+            obj.STOPLOSS = parseFloat(bso + SL_POINTS).toFixed(2);
         }
         orders.push(obj);
         getTotal(obj)
@@ -115,7 +143,7 @@ function commonGenerateTable() {
 }
 
 
-function getTotal(row){
+function getTotal(row) {
     let price = parseFloat(row['PRICE'])
     let ltp = parseFloat(row['LTP'])
     let diff = 0;
@@ -128,13 +156,12 @@ function getTotal(row){
     let qty = parseFloat(row['QUNTITY'])
 
     let pl = (qty * diff).toFixed(2)
-    console.log(pl)
     total += parseFloat(pl);
 }
 
 
 function generateOrderBook(orderBook) {
-    
+
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
@@ -158,6 +185,7 @@ function generateOrderBook(orderBook) {
         ],
         "columns": [
             { "data": "SYMBOL" },
+            { "data": "ORDER_DATE" },
             { "data": "TREND" },
             { "data": "TRANSACTION_TYPE" },
             { "data": "QUNTITY" },
@@ -203,7 +231,7 @@ function generateOrderBook(orderBook) {
                     let qty = parseFloat(row['QUNTITY'])
 
                     let pl = (qty * diff).toFixed(2)
-    
+
                     if (pl > 0) {
                         html += ' <span class="badge bg-success">' + pl + '</span>'
                     } else {
@@ -237,7 +265,7 @@ function generateOrderBook(orderBook) {
             },
         ],
         "fnInitComplete": function (oSettings, json) {
-            
+
         }
     });
 }

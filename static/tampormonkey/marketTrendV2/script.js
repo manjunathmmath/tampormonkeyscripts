@@ -944,6 +944,7 @@ function showFutureAi() {
         if (timerInstance) {
             clearInterval(timerInstance)
         }
+        console.log("Closed AI windows");
     });
 }
 
@@ -1682,6 +1683,7 @@ async function callPlaceOrder(params) {
             obj['ORDER'] = params
             obj['INFO'] = infoMap[params.tradingsymbol];
             obj['KITE_ORDER'] = res
+            obj['ORDER_DATE'] = moment().format("DD-MM-YYYY HH:mm:ss");
             orderBook[params.tradingsymbol] = obj
             localStorage.setItem("TRADES", JSON.stringify(trades));
             localStorage.setItem("ORDERBOOK", JSON.stringify(orderBook));
