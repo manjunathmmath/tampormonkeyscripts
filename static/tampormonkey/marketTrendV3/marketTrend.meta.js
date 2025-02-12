@@ -45,19 +45,19 @@
 // @resource     TOASTIFY_CSS http://localhost:3000/tampormonkey/common/toastify.min.css
 // @resource     SACKBAR_CSS http://localhost:3000/tampormonkey/common/sackbar/js-snackbar.min.css
 // @require      http://localhost:3000/tampormonkey/common/sackbar/js-snackbar.min.js
-// @resource     COMMON_CSS http://localhost:3000/tampormonkey/marketTrendV2/commonStyle.css
+// @resource     COMMON_CSS http://localhost:3000/tampormonkey/marketTrendV3/commonStyle.css
 // @require      http://localhost:3000/tampormonkey/common/betterCommon.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/alertSound.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/constants.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/script.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/showWeightageStocks.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/stockScanner.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/readTicksFromStorage.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/algoStockTrades.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/futures.js
-// @require      http://localhost:3000/tampormonkey/marketTrendV2/showOrderBook.js
-// @downloadURL  http://localhost:3000/tampormonkey/marketTrendV2/marketTrend.user.js
-// @updateURL    http://localhost:3000/tampormonkey/marketTrendV2/marketTrend.meta.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/alertSound.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/constants.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/script.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/showWeightageStocks.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/stockScanner.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/readTicksFromStorage.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/algoStockTrades.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/futures.js
+// @require      http://localhost:3000/tampormonkey/marketTrendV3/showOrderBook.js
+// @downloadURL  http://localhost:3000/tampormonkey/marketTrendV3/marketTrend.user.js
+// @updateURL    http://localhost:3000/tampormonkey/marketTrendV3/marketTrend.meta.js
 // ==/UserScript==
 
 // This is free and unencumbered software released into the public domain.
