@@ -1355,7 +1355,6 @@ async function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
-        quote = []
         if (quote.length == 0) {
             jQ.each(preData.data.candles, function (index, item) {
                 let map = {}
