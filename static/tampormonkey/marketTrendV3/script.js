@@ -102,6 +102,10 @@ const g_config = new MonkeyConfig({
             type: 'number',
             default: 50000
         },
+        show_volume_on_chart: {
+            type: 'checkbox',
+            default: false
+        },
     }
 });
 
@@ -122,6 +126,8 @@ const SL_POINTS = parseInt(g_config.get('sl_points'));
 const NIFTY_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_future_lot_size'));
 const NIFTY_BANK_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_bank_future_lot_size'));
 const STOCK_VOLUME = parseInt(g_config.get('stock_volume'));
+
+const SHOW_VOLUME_ON_CHART = parseInt(g_config.get('show_volume_on_chart'));
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
@@ -898,7 +904,7 @@ function showFutureAi() {
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
 
-    html += '<div class="row mb-3">'
+    html += '<div class="row mb-3" style="display:none;">'
     html += '<div class="col-md-12 bg-danger">'
     html += helpMessage
     html += '</div>'
@@ -1325,7 +1331,16 @@ jQ(document).on("click", ".show-chart", function () {
     commonShowChart(name, trends, index, price)
 });
 
-function commonShowChart(name, trends, index, price) {
+async function commonShowChart(name, trends, index, price) {
+    let d = new Date()
+    let hours = d.getHours()
+    let minutes = d.getMinutes() / 100
+
+    
+    let preData = {};
+    if (hours == 22 && minutes < 20) {
+        preData = await getHistoricalDataAwait(instrumentTokens[name], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+    }
 
     jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
         let quote = []
@@ -1340,7 +1355,19 @@ function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
+        quote = []
         if (quote.length == 0) {
+            jQ.each(preData.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = item[0]
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                quote.push(map);
+            });
+
             let map = {}
             map['date'] = moment().format("YYYY-MM-DD HH:mm:ss")
             map.open = instrumentsMap[name]['price']
@@ -1512,9 +1539,18 @@ function showStockData(quote, name) {
     stockDataTable.show()
 }
 
-function commonShowOnlyChart(name) {
+async function commonShowOnlyChart(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
+
+    let d = new Date()
+    let hours = d.getHours()
+    let minutes = d.getMinutes() / 100
+
+    let preData = {};
+    if (hours == 9 && minutes < 15) {
+        preData = await getHistoricalDataAwait(instrumentTokens[name], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+    }
 
     clearInterval(window['refreshChart' + tempName])
     jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
@@ -1529,15 +1565,24 @@ function commonShowOnlyChart(name) {
             map.volume = item[5]
             quote.push(map);
         });
-
-
+        
         if (quote.length == 0) {
+            jQ.each(preData.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = item[0]
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                quote.push(map);
+            });
             let map = {}
             map['date'] = moment().format("YYYY-MM-DD HH:mm:ss")
-            map.open = instrumentsMap[name]['price']
-            map.high = instrumentsMap[name]['price']
-            map.low = instrumentsMap[name]['price']
-            map.close = instrumentsMap[name]['price']
+            map.open = parseFloat(instrumentsMap[name]['price']).toFixed(2)
+            map.high = parseFloat(instrumentsMap[name]['price']).toFixed(2)
+            map.low = parseFloat(instrumentsMap[name]['price']).toFixed(2)
+            map.close = parseFloat(instrumentsMap[name]['price']).toFixed(2)
             map.volume = 0
             quote.push(map);
         }
@@ -1661,7 +1706,8 @@ jQ(document).on("click", ".place-order", function () {
 });
 
 async function callPlaceOrder(params) {
-    let res = await placeOrder(params)
+    /*let res = await placeOrder(params)*/
+    let res = 'success';
     if (res != 'error') {
         let trades = JSON.parse(localStorage.getItem("TRADES"));
         if (!trades) {
@@ -1733,7 +1779,7 @@ function showChart(quote, name) {
         map.low = item.low
         map.close = item.close
         candleStickData.push(map)
-
+        
         if(item.volume > 0){
             let vol = {}
             vol.time = moment(item.date).utcOffset(0, true).valueOf() / 1000
@@ -1818,13 +1864,20 @@ function showChart(quote, name) {
             vertLines: { color: "#222" },
             horzLines: { color: "#222" },
         },
-        autosiz:true
+        autosiz:true,
+        rightPriceScale: {
+            visible: false,
+        },
+        leftPriceScale: {
+            visible: true,
+        },
     }
     );
 
     chart.priceScale().applyOptions({
         borderColor: "#71649C",
     });
+
 
     chart.timeScale().applyOptions({
         borderColor: "#71649C",
@@ -1842,8 +1895,6 @@ function showChart(quote, name) {
         },
     });
 
-    
-
 
     const mainSeries = chart.addSeries(LightweightCharts.CandlestickSeries);
     mainSeries.setData(candleStickData);
@@ -1858,7 +1909,7 @@ function showChart(quote, name) {
         priceLineVisible: false,
     });
 
-    if (volumeSeriesData.length > 0) {
+    if (volumeSeriesData.length > 0 && SHOW_VOLUME_ON_CHART) {
         const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
             color: '#26a69a',
             priceFormat: {
@@ -1866,21 +1917,21 @@ function showChart(quote, name) {
             },
             priceScaleId: '',
             scaleMargins: {
-                top: 0.7,
+                top: 0.3,
                 bottom: 0,
             },
         });
 
         volumeSeries.priceScale().applyOptions({
             scaleMargins: {
-                top: 0.7,
-                bottom: 0,
+                top: 0.3,
+                bottom:0,
             },
         });
         volumeSeries.setData(volumeSeriesData);
     }
 
-    chart.timeScale().fitContent();
+    //chart.timeScale().fitContent();
 }
 
 function aiFutureAnalysis(currentQuote, prevQuote, name) {
@@ -2979,6 +3030,27 @@ function getHistoricalData(code, fromDate, toDate, interval) {
     });
 }
 
+function getHistoricalDataAwait(code, fromDate, toDate, interval) {
+    return new Promise((resolve, reject) => {
+        jQ.ajaxSetup({
+            headers: {
+                'Authorization': `enctoken ${getCookie('enctoken')}`
+            }
+        });
+        return jQ.ajax({
+            url: BASE_URL + `/oms/instruments/historical/${code}/${interval}?user_id=HY8031&oi=1&from=${fromDate}&to=${toDate}`,
+            type: 'GET',
+            async: true,
+            cache: false,
+            success: function(data) {
+                resolve(data)
+              }
+        });
+    });
+
+    
+}
+
 
 
 function getVixRange(prevQuoteData, prevVixData) {
@@ -3183,7 +3255,7 @@ function showPopUpWindow(index, html, title) {
             collapse: "Collapse",
             uncollapse: "Expand"
         },
-        draggable: false,
+        draggable: true,
         dragOpacity: 1,
         statusBar: true,
         resizable: true,

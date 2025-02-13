@@ -159,7 +159,7 @@ function showOnlyChartAndTable(token,name,lotSize){
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
-            html += '<div id="' + chartId + '" style="width:100%;">'
+            html += '<div id="' + chartId + '"  class="chart-max-wh-single">'
             html += '</div>';
             html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
             html += '<div class="row">'
@@ -200,7 +200,7 @@ function showOnlyChartAndTable(token,name,lotSize){
             let prevData = []
             jQ.each(cres.data.candles, function (index, item) {
                 let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map['date'] = item[0]
                 map.open = item[1]
                 map.high = item[2]
                 map.low = item[3]
@@ -212,7 +212,7 @@ function showOnlyChartAndTable(token,name,lotSize){
 
             jQ.each(pres.data.candles, function (index, item) {
                 let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map['date'] = item[0]
                 map.open = item[1]
                 map.high = item[2]
                 map.low = item[3]
@@ -267,7 +267,7 @@ jQ(document).on("click", ".show-future-chart", function () {
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
-            html += '<div id="' + chartId + '" style="width:100%;">'
+            html += '<div id="' + chartId + '" class="chart-max-wh-single">'
             html += '</div>';
             html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
             html += '<div class="row">'
@@ -335,7 +335,7 @@ jQ(document).on("click", ".show-future-chart", function () {
             let prevData = []
             jQ.each(cres.data.candles, function (index, item) {
                 let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map['date'] = item[0]
                 map.open = item[1]
                 map.high = item[2]
                 map.low = item[3]
@@ -347,7 +347,7 @@ jQ(document).on("click", ".show-future-chart", function () {
 
             jQ.each(pres.data.candles, function (index, item) {
                 let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map['date'] = item[0]
                 map.open = item[1]
                 map.high = item[2]
                 map.low = item[3]
@@ -403,7 +403,7 @@ function showFuturesChart(quote, name, token, prev) {
     let data = []
     jQ.each(quote.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map['date'] = item[0]
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -412,114 +412,168 @@ function showFuturesChart(quote, name, token, prev) {
         data.push(map);
     });
 
-    let categoryList = []
-    let dateIndex = 0
+    let candleStickData = []
+    let volumeSeriesData = []
     jQ.each(data, function (index, item) {
         let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-
-    jQ.each(data, function (index, item) {
-        let map = {}
+        map.time = moment(item.date).utcOffset(0, true).valueOf() / 1000
         map.open = item.open
         map.high = item.high
         map.low = item.low
         map.close = item.close
-        map.volume = item.volume
-        map.x = dateIndex
+        candleStickData.push(map)
 
-        if (index == 0) {
-            min = item.high
-            max = item.high
+        if(item.volume > 0){
+            let vol = {}
+            vol.time = moment(item.date).utcOffset(0, true).valueOf() / 1000
+            vol.value = item.volume
+            vol.color = '#26a69a'
+            if(item.close < item.open){
+                vol.color = '#ef5350'
+            }
+            volumeSeriesData.push(vol);
         }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
     });
 
-    let lines = [];
-    let line = {};
+    const lineWidth = 1;
+    const lineStyle = 0;
 
-    line.color = "#8be73a";
-    line.startvalue = vixLowerRange;
-    line.displayvalue = 'Vix lower range ' + vixLowerRange;
-    lines.push(line);;
+    const vixLowerRangeLine = {
+        price: vixLowerRange,
+        color: '#8be73a',
+        lineWidth: lineWidth,
+        lineStyle: lineStyle,
+        axisLabelVisible: true,
+        title: 'Vix lower range',
+    };
 
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = vixUpperRange;
-    line.displayvalue = 'Vix upper range ' + vixUpperRange;
-    lines.push(line);
+    const vixUpperRangeLine = {
+        price: vixUpperRange,
+        color: '#e7543a',
+        lineWidth: lineWidth,
+        lineStyle: lineStyle,
+        axisLabelVisible: true,
+        title: 'Vix upper range',
+    };
 
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.bstrikeTwo;
-    line.displayvalue = "BST " + strikeMap.bstrikeTwo;
-    lines.push(line);
+    const bstrikeTwoLine = {
+        price: strikeMap.bstrikeTwo,
+        color: '#9f3ae7',
+        lineWidth: lineWidth,
+        lineStyle: lineStyle,
+        axisLabelVisible: true,
+        title: 'BST',
+    };
 
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.ustrikeTwo;
-    line.displayvalue = "AST " + strikeMap.ustrikeTwo;
-    lines.push(line);
+    const ustrikeTwoLine = {
+        price: strikeMap.ustrikeTwo,
+        color: '#9f3ae7',
+        lineWidth: lineWidth,
+        lineStyle: lineStyle,
+        axisLabelVisible: true,
+        title: 'AST',
+    };
 
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.bstrikeOne;
-    line.displayvalue = "BSO " + strikeMap.bstrikeOne;
-    lines.push(line);
+    const bstrikeOneLine = {
+        price: strikeMap.bstrikeOne,
+        color: '#9f3ae7',
+        lineWidth: lineWidth,
+        lineStyle: lineStyle,
+        axisLabelVisible: true,
+        title: 'BSO',
+    };
 
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.ustrikeOne;
-    line.displayvalue = "ASO " + strikeMap.ustrikeOne;
-    lines.push(line);
+    const ustrikeOneLine = {
+        price: strikeMap.ustrikeOne,
+        color: '#9f3ae7',
+        lineWidth: lineWidth,
+        lineStyle: lineStyle,
+        axisLabelVisible: true,
+        title: 'ASO',
+    };
 
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: "100%",
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "fusion",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "pYAxisMinValue": min,
-                "pYAxisMaxValue": max,
-                showVolumeChart: true
+    jQ("#" + chartId).html('');
+
+    const chart = LightweightCharts.createChart(
+        document.getElementById(chartId), {
+        timeScale: {
+            timeVisible: true,
+        },
+        layout: {
+            background: { color: "#222" },
+            textColor: "#C3BCDB",
+        },
+        grid: {
+            vertLines: { color: "#222" },
+            horzLines: { color: "#222" },
+        },
+        autosiz:true,
+        rightPriceScale: {
+            visible: false,
+        },
+        leftPriceScale: {
+            visible: true,
+        },
+    }
+    );
+
+    chart.priceScale().applyOptions({
+        borderColor: "#71649C",
+    });
+
+
+    chart.timeScale().applyOptions({
+        borderColor: "#71649C",
+    });
+
+    const currentLocale = window.navigator.languages[0];
+    const myPriceFormatter = Intl.NumberFormat(currentLocale, {
+        style: "currency",
+        currency: "INR",
+    }).format;
+
+    chart.applyOptions({
+        localization: {
+            priceFormatter: myPriceFormatter,
+        },
+    });
+
+    const mainSeries = chart.addSeries(LightweightCharts.CandlestickSeries);
+    mainSeries.setData(candleStickData);
+    mainSeries.createPriceLine(vixLowerRangeLine);
+    mainSeries.createPriceLine(vixUpperRangeLine);
+    mainSeries.createPriceLine(ustrikeOneLine);
+    mainSeries.createPriceLine(ustrikeTwoLine);
+    mainSeries.createPriceLine(bstrikeOneLine);
+    mainSeries.createPriceLine(bstrikeTwoLine);
+    mainSeries.applyOptions({
+        lastValueVisible: false,
+        priceLineVisible: false,
+    });
+
+    if (volumeSeriesData.length > 0 && SHOW_VOLUME_ON_CHART) {
+        const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+            color: '#26a69a',
+            priceFormat: {
+                type: 'volume',
             },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
+            priceScaleId: '',
+            scaleMargins: {
+                top: 0.3,
+                bottom: 0,
+            },
+        });
 
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
+        volumeSeries.priceScale().applyOptions({
+            scaleMargins: {
+                top: 0.3,
+                bottom:0,
+            },
+        });
+        volumeSeries.setData(volumeSeriesData);
+    }
+
+    chart.timeScale().fitContent();
 
 }
 

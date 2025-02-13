@@ -17,6 +17,10 @@ async function showAllInChart(type) {
     let html = ''
     html += '<div class="row">'
 
+    let d = new Date()
+    let hours = d.getHours()
+    let minutes = d.getMinutes() / 100
+
     let dataList = [];
     let count = 0;
     for (var key of Object.keys(allObject)) {
@@ -30,6 +34,13 @@ async function showAllInChart(type) {
         if (count % 3 == 0) {
             html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
         }
+
+        let preData = {};
+        if (hours == 9 && minutes < 15) {
+            preData = await getHistoricalDataAwait(instrumentTokens[key], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+        }
+
+
         let data = await getHistoricalDataUsingPromise(instrumentTokens[key], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
 
         let quote = []
@@ -45,6 +56,17 @@ async function showAllInChart(type) {
         });
 
         if (quote.length == 0) {
+            jQ.each(preData.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = item[0]
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                quote.push(map);
+            });
+
             let map = {}
             map['date'] = moment().format("YYYY-MM-DD HH:mm:ss")
             map.open = instrumentsMap[key]['price']
@@ -90,8 +112,8 @@ async function showAllInChart(type) {
     showPopUpWindow(tempName, html, type + " : WEIGHTAGE");
     let divId = "pop-up-window-" + tempName;
     jQ("#" + divId).PopupWindow("setSize", {
-        width: 800,
-        height: 450,
+        height: 650,
+        width: 1050,
         animationTime: 500
     });
 
@@ -131,8 +153,16 @@ async function showOnlyAllInCharts(type, tempName) {
         allObject = INDICES_WEIGHT
     }
 
+    let d = new Date()
+    let hours = d.getHours()
+    let minutes = d.getMinutes() / 100
+
     let dataList = [];
     for (var key of Object.keys(allObject)) {
+        let preData = {};
+        if (hours == 9 && minutes < 15) {
+            preData = await getHistoricalDataAwait(instrumentTokens[key], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+        }
         let data = await getHistoricalDataUsingPromise(instrumentTokens[key], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
         let quote = []
         jQ.each(data.data.candles, function (index, item) {
@@ -147,6 +177,17 @@ async function showOnlyAllInCharts(type, tempName) {
         });
 
         if (quote.length == 0) {
+            jQ.each(preData.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = item[0]
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                quote.push(map);
+            });
+
             let map = {}
             map['date'] = moment().format("YYYY-MM-DD HH:mm:ss")
             map.open = instrumentsMap[key]['price']
@@ -228,12 +269,12 @@ function showChartAllInOne(quote, name, type) {
         map.low = item.low
         map.close = item.close
         candleStickData.push(map)
-        if(item.volume > 0){
+        if (item.volume > 0) {
             let vol = {}
             vol.time = moment(item.date).utcOffset(0, true).valueOf() / 1000
             vol.value = item.volume
             vol.color = '#26a69a'
-            if(item.close < item.open){
+            if (item.close < item.open) {
                 vol.color = '#ef5350'
             }
             volumeSeriesData.push(vol);
@@ -312,7 +353,13 @@ function showChartAllInOne(quote, name, type) {
             vertLines: { color: "#222" },
             horzLines: { color: "#222" },
         },
-        autosiz:true
+        autosiz: true,
+        rightPriceScale: {
+            visible: false,
+        },
+        leftPriceScale: {
+            visible: true,
+        },
     }
     );
 
@@ -353,7 +400,7 @@ function showChartAllInOne(quote, name, type) {
         priceLineVisible: false,
     });
 
-    if (volumeSeriesData.length > 0) {
+    if (volumeSeriesData.length > 0 && SHOW_VOLUME_ON_CHART) {
         const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
             color: '#26a69a',
             priceFormat: {
@@ -361,14 +408,14 @@ function showChartAllInOne(quote, name, type) {
             },
             priceScaleId: '',
             scaleMargins: {
-                top: 0.7,
+                top: 0.3,
                 bottom: 0,
             },
         });
 
         volumeSeries.priceScale().applyOptions({
             scaleMargins: {
-                top: 0.7,
+                top: 0.3,
                 bottom: 0,
             },
         });
