@@ -1338,7 +1338,7 @@ async function commonShowChart(name, trends, index, price) {
 
     
     let preData = {};
-    if (hours == 22 && minutes < 20) {
+    if (hours == 9 && minutes < 15) {
         preData = await getHistoricalDataAwait(instrumentTokens[name], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
     }
 
