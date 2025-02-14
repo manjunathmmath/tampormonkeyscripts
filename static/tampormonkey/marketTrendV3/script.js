@@ -1904,8 +1904,8 @@ function showChart(quote, name) {
     mainSeries.createPriceLine(bstrikeOneLine);
     mainSeries.createPriceLine(bstrikeTwoLine);
     mainSeries.applyOptions({
-        lastValueVisible: false,
-        priceLineVisible: false,
+        lastValueVisible: true,
+        priceLineVisible: true,
     });
 
     if (volumeSeriesData.length > 0 && SHOW_VOLUME_ON_CHART) {
