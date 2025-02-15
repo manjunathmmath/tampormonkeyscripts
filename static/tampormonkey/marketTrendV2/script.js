@@ -102,6 +102,10 @@ const g_config = new MonkeyConfig({
             type: 'number',
             default: 50000
         },
+        show_volume_on_chart: {
+            type: 'checkbox',
+            default: false
+        },
     }
 });
 
@@ -122,6 +126,7 @@ const SL_POINTS = parseInt(g_config.get('sl_points'));
 const NIFTY_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_future_lot_size'));
 const NIFTY_BANK_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_bank_future_lot_size'));
 const STOCK_VOLUME = parseInt(g_config.get('stock_volume'));
+const SHOW_VOLUME_ON_CHART = g_config.get('show_volume_on_chart');
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
@@ -902,8 +907,8 @@ function showFutureAi() {
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
 
-    html += '<div class="row mb-3">'
-    html += '<div class="col-md-12 bg-danger">'
+    html += '<div class="row m-3">'
+    html += '<div class="col-md-12 alert alert-warning">'
     html += helpMessage
     html += '</div>'
     html += '</div>'
@@ -1130,6 +1135,7 @@ async function generateTrend() {
     let tabs = marketWatchSideBar.find(".marketwatch-selector a.item");
     let instrumentsWrapper = jQ(".instruments");
     let instruments = instrumentsWrapper.find(".vddl-list .instrument");
+    await callSleepForAWhile(1000)
     jQ.each(tabs, function (index, item) {
         if (index == 0 || index == 1 || index == 2 || index == 3) {
             if (jQ(item).hasClass("selected")) {
@@ -1344,16 +1350,18 @@ function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
-        if (quote.length == 0) {
-            let map = {}
-            map['date'] = moment().format("HH:mm:ss")
-            map.open = instrumentsMap[name]['price']
-            map.high = instrumentsMap[name]['price']
-            map.low = instrumentsMap[name]['price']
-            map.close = instrumentsMap[name]['price']
-            map.volume = 0
-            quote.push(map);
-        }
+        /*
+            if (quote.length == 0) {
+                let map = {}
+                map['date'] = moment().format("HH:mm:ss")
+                map.open = instrumentsMap[name]['price']
+                map.high = instrumentsMap[name]['price']
+                map.low = instrumentsMap[name]['price']
+                map.close = instrumentsMap[name]['price']
+                map.volume = 0
+                quote.push(map);
+            }
+        */
 
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
@@ -1404,12 +1412,12 @@ function commonShowChart(name, trends, index, price) {
             html += '</div>'
         }
 
-        html += '<div id="' + chartId + '" style="width:100%;">'
+        html += '<div id="' + chartId + '" style="width:100%;" class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
         html += '</div>'
 
 
         html += '<div style="width:100%;">'
-        html += '<table  id="stock-data-' + tempName + '" class="" style="width: 100%;display: none;">'
+        html += '<table  id="stock-data-' + tempName + '" class="table table-hover" style="width: 100%;display: none;">'
         html += '<thead>'
         html += '<tr>'
         html += '<th>DATE</th>'
@@ -1490,11 +1498,11 @@ function showStockData(quote, name) {
 
         let cssClass = ''
         if (buySide) {
-            cssClass = 'background:green;'
+            cssClass = 'alert-success'
         }
 
         if (sellSide) {
-            cssClass = 'background:red;'
+            cssClass = 'alert-danger'
         }
 
 
@@ -1503,7 +1511,7 @@ function showStockData(quote, name) {
     });
     newList.reverse()
     jQ.each(newList, function (index, item) {
-        html += '<tr style="' + item.cssClass + '">'
+        html += '<tr class="' + item.cssClass + '">'
         html += '<td>' + item.date + '</td>'
         html += '<td>' + item.open + '</td>'
         html += '<td>' + item.high + '</td>'
@@ -1534,17 +1542,18 @@ function commonShowOnlyChart(name) {
             quote.push(map);
         });
 
-
-        if (quote.length == 0) {
-            let map = {}
-            map['date'] = moment().format("HH:mm:ss")
-            map.open = instrumentsMap[name]['price']
-            map.high = instrumentsMap[name]['price']
-            map.low = instrumentsMap[name]['price']
-            map.close = instrumentsMap[name]['price']
-            map.volume = 0
-            quote.push(map);
-        }
+        /*
+            if (quote.length == 0) {
+                let map = {}
+                map['date'] = moment().format("HH:mm:ss")
+                map.open = instrumentsMap[name]['price']
+                map.high = instrumentsMap[name]['price']
+                map.low = instrumentsMap[name]['price']
+                map.close = instrumentsMap[name]['price']
+                map.volume = 0
+                quote.push(map);
+            }
+        */
 
         showChart(quote, name);
         showStockData(quote, name)
@@ -1665,7 +1674,8 @@ jQ(document).on("click", ".place-order", function () {
 });
 
 async function callPlaceOrder(params) {
-    let res = await placeOrder(params)
+    /*let res = await placeOrder(params)*/
+    let res = 'success';
     if (res != 'error') {
         let trades = JSON.parse(localStorage.getItem("TRADES"));
         if (!trades) {
@@ -1770,6 +1780,8 @@ function showChart(quote, name) {
         dateIndex++;
     });
 
+    isVolumePresent = SHOW_VOLUME_ON_CHART
+
     let lines = [];
     let line = {};
 
@@ -1808,10 +1820,24 @@ function showChart(quote, name) {
     line.displayvalue = "ASO " + data.ustrikeOne;
     lines.push(line);
 
+
+
+    line = {};
+    if(parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)){
+        line.color = "#5D8736";
+        line.displayvalue = "Open +ve" + instrumentsMap[name]['price'];
+    }else{
+        line.color = "#A94A4A";
+        line.displayvalue = "Open -ve" + instrumentsMap[name]['price'];
+    }
+    line.dashed= 1,
+    line.startvalue = instrumentsMap[name]['price'];
+    lines.push(line);
+
+    jQ("#" + chartId).html('')
     jQ("#" + chartId).insertFusionCharts({
         type: 'candlestick',
         width: "100%",
-        height: "100%",
         dataFormat: 'json',
         dataSource: {
             "chart": {
@@ -1822,8 +1848,6 @@ function showChart(quote, name) {
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                "pYAxisMinValue": min,
-                "pYAxisMaxValue": max,
                 showVolumeChart: isVolumePresent
             },
             "categories": [{
@@ -2303,6 +2327,23 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         return;
     }
 
+    let currentChangeInOi=''
+    if(currentQuoteData.data['candles'].length > 1){
+        let secondData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 2];
+        var latestOI = (currentData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
+        var previousLatestOi = (secondData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
+        let diff = latestOI - previousLatestOi
+        if (diff > 0) {
+            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+        } else {
+            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+        }
+        if(Math.abs(diff) > 100){
+            let alrtSound = new Audio(alertSound);
+            alrtSound.play();
+        }
+    }
+
     var quote = {}
     quote['open'] = currentData[1]
     quote['high'] = currentData[2]
@@ -2467,7 +2508,7 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
     }
 
-    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang +" " + currentChangeInOi
 
     return futuresData;
 }
@@ -2480,6 +2521,23 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
 
     if (!currentData) {
         return;
+    }
+
+    let currentChangeInOi=''
+    if(currentQuoteData.data['candles'].length > 1){
+        let secondData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 2];
+        var latestOI = (currentData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
+        var previousLatestOi = (secondData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
+        let diff = latestOI - previousLatestOi
+        if (diff > 0) {
+            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+        } else {
+            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+        }
+        if(Math.abs(diff) > 100){
+            let alrtSound = new Audio(alertSound);
+            alrtSound.play();
+        }
     }
 
     var quote = {}
@@ -2637,7 +2695,7 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
     }
 
-    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang +" "+ currentChangeInOi
 
     return futuresData;
 

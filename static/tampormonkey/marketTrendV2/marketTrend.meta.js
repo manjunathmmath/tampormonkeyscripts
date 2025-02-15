@@ -32,7 +32,6 @@
 // @require      http://localhost:3000/global/vendor/fusioncharts/themes/fusioncharts.theme.fusion.js
 // @require      http://localhost:3000/global/vendor/fusioncharts/fusioncharts.jqueryplugin.min.js
 
-// @require      http://localhost:3000/global/vendor/tradingview/lightweight-charts.js
 
 // @require      http://localhost:3000/tampormonkey/common/monkeyconfig.js
 // @require      http://localhost:3000/tampormonkey/common/axios.min.js

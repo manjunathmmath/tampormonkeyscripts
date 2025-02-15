@@ -20,9 +20,9 @@ async function showAllInChart(type) {
     let dataList = [];
     let count = 0;
     for (var key of Object.keys(allObject)) {
-        html += '<div class="col-md-4">'
+        html += '<div class="col-md-4 ">'
         html += '<h5 style="text-align:center;">' + key + ' ('+ allObject[key]+')</h5>'
-        html += '<div class="chart-max-wh" id="all-in-one-chart-' + key.replaceAll(" ", "-")+'-'+type.replaceAll(" ","-") + '">'
+        html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + key.replaceAll(" ", "-")+'-'+type.replaceAll(" ","-") + '">'
         html += '</div>'
         html += '</div>'
         count++;
@@ -44,16 +44,18 @@ async function showAllInChart(type) {
             quote.push(map);
         });
 
-        if(quote.length == 0){
-            let map = {}
-            map['date'] = moment().format("HH:mm:ss")
-            map.open = instrumentsMap[key]['price']
-            map.high = instrumentsMap[key]['price']
-            map.low = instrumentsMap[key]['price']
-            map.close = instrumentsMap[key]['price']
-            map.volume = 0
-            quote.push(map);
-        }
+        /*
+            if(quote.length == 0){
+                let map = {}
+                map['date'] = moment().format("HH:mm:ss")
+                map.open = instrumentsMap[key]['price']
+                map.high = instrumentsMap[key]['price']
+                map.low = instrumentsMap[key]['price']
+                map.close = instrumentsMap[key]['price']
+                map.volume = 0
+                quote.push(map);
+            }
+        */
 
         await callSleepForAWhile(1000)
         let map = {}
@@ -90,8 +92,8 @@ async function showAllInChart(type) {
     showPopUpWindow(tempName, html, type + " : WEIGHTAGE");
     let divId = "pop-up-window-" + tempName;
     jQ("#" + divId).PopupWindow("setSize", {
-        width: 800,
-        height: 450,
+        width: 1050,
+        height: 650,
         animationTime: 500
     }); 
 
@@ -146,16 +148,18 @@ async function showOnlyAllInCharts(type,tempName){
             quote.push(map);
         });
 
-        if(quote.length == 0){
-            let map = {}
-            map['date'] = moment(item[0]).format("HH:mm:ss")
-            map.open = instrumentsMap[key]['price']
-            map.high = instrumentsMap[key]['price']
-            map.low = instrumentsMap[key]['price']
-            map.close = instrumentsMap[key]['price']
-            map.volume = 0
-            quote.push(map);
-        }
+        /*
+            if(quote.length == 0){
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = instrumentsMap[key]['price']
+                map.high = instrumentsMap[key]['price']
+                map.low = instrumentsMap[key]['price']
+                map.close = instrumentsMap[key]['price']
+                map.volume = 0
+                quote.push(map);
+            }
+        */
 
         await callSleepForAWhile(1000)
         let map = {}
@@ -261,6 +265,8 @@ function showChartAllInOne(quote, name,type) {
         dateIndex++;
     });
 
+    isVolumePresent = SHOW_VOLUME_ON_CHART
+
     let lines = [];
     let line = {};
 
@@ -299,10 +305,22 @@ function showChartAllInOne(quote, name,type) {
     line.displayvalue = "ASO " + data.ustrikeOne;
     lines.push(line);
 
+    line = {};
+    if(parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)){
+        line.color = "#5D8736";
+        line.displayvalue = "Open +ve" + instrumentsMap[name]['price'];
+    }else{
+        line.color = "#A94A4A";
+        line.displayvalue = "Open -ve" + instrumentsMap[name]['price'];
+    }
+    line.dashed= 1,
+    line.startvalue = instrumentsMap[name]['price'];
+    lines.push(line);
+
+    jQ("#" + chartId).html('')
     jQ("#" + chartId).insertFusionCharts({
         type: 'candlestick',
         width: "100%",
-        height: "100%",
         dataFormat: 'json',
         dataSource: {
             "chart": {

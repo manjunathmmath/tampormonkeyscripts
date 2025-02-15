@@ -396,8 +396,8 @@ function showChartAllInOne(quote, name, type) {
     mainSeries.createPriceLine(bstrikeTwoLine);
 
     mainSeries.applyOptions({
-        lastValueVisible: false,
-        priceLineVisible: false,
+        lastValueVisible: true,
+        priceLineVisible: true,
     });
 
     if (volumeSeriesData.length > 0 && SHOW_VOLUME_ON_CHART) {

@@ -523,7 +523,7 @@ function showFuturesChart(quote, name, token, prev) {
 
 }
 
-function generateFutresDataTable(data, id, prevQuote,lotSize) {
+function generateFutresDataTable(quote, id, prevQuote,lotSize) {
     lotSize = parseInt(lotSize)
     console.log(lotSize)
     jQ('#historical-future-data-analyzer-list-table-' + id).DataTable({
@@ -531,7 +531,7 @@ function generateFutresDataTable(data, id, prevQuote,lotSize) {
         "order": [[0, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
-        "data": data,
+        "data": quote,
         "bDestroy": true,
         "scrollX": true,
         "scrollY": "500px",
@@ -557,7 +557,29 @@ function generateFutresDataTable(data, id, prevQuote,lotSize) {
             {
                 "data": 'oi',
                 render: function (data, type, row, meta) {
-                    return (data / lotSize).toFixed(0)
+                    let html = ''
+                    if(meta.row != 0 ){
+                        let prev = parseInt(quote[(meta.row-1)]['oi'])
+                        let curr = parseInt(data);
+                        let change = parseInt(curr - prev)/ lotSize
+                        console.log(prev,curr,change)
+                        if(curr > prev){
+                            html +='+ ' + change  
+                        }
+
+                        if(curr < prev){
+                            html +='- '+ Math.abs(change)
+                        }
+
+                        if(curr == prev){
+                            html +='='  + change  
+                        }
+
+                        html += ' '+ (data / lotSize).toFixed(0)
+                    }else{
+                        html = ' '+ (data / lotSize).toFixed(0)
+                    }
+                    return html
                 }
             },
             {

@@ -229,3 +229,7 @@ span.bullsVersesBears {
 .dt-button{
   padding: .1rem .3rem;
 }
+
+.shadow-lg{
+  background-color: #fff !important;
+}
