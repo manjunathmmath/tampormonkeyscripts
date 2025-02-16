@@ -2342,6 +2342,7 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
             let alrtSound = new Audio(alertSound);
             alrtSound.play();
         }
+        
     }
 
     var quote = {}
