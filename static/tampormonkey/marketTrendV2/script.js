@@ -181,6 +181,7 @@ jQ(document).on("click", "#show-ai-prediction", function (e) {
     readTicksFromStorage();
     showFutureAi();
     generateFutreIntruments();
+    startAlgoScanner()
 });
 
 
@@ -282,6 +283,7 @@ async function autoRefreshEachTabs(instance) {
     })
     generateStockDataTable(data);
     showWeightageStockTrend()
+    showOrderTypeCount();
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
@@ -716,6 +718,10 @@ function showFutureAi() {
     html += 'Margin: <span class="badge bg-primary me-1">' + MARGIN + '</span>'
     html += '</div>'
 
+    html += '<div class="col-md-2">'
+    html += 'Trades: <span id="asoTradeCount" class="badge bg-success">0</span>/<span id="bsoTradeCount" class="badge bg-danger">0</span>'
+    html += '</div>'
+
     html += '</div>'
 
 
@@ -935,7 +941,7 @@ function showFutureAi() {
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'
-    title += 'Auto: <input style="vertical-align:middle;" type="checkbox" id="start-algo-stock-trades"/>'
+    title += 'Auto: <input style="vertical-align:middle;" type="checkbox" id="start-algo-stock-trades" checked/>'
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'
@@ -1350,18 +1356,18 @@ function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
-        /*
-            if (quote.length == 0) {
-                let map = {}
-                map['date'] = moment().format("HH:mm:ss")
-                map.open = instrumentsMap[name]['price']
-                map.high = instrumentsMap[name]['price']
-                map.low = instrumentsMap[name]['price']
-                map.close = instrumentsMap[name]['price']
-                map.volume = 0
-                quote.push(map);
-            }
-        */
+        
+        if (quote.length == 0) {
+            let map = {}
+            map['date'] = moment().format("HH:mm:ss")
+            map.open = instrumentsMap[name]['price']
+            map.high = instrumentsMap[name]['price']
+            map.low = instrumentsMap[name]['price']
+            map.close = instrumentsMap[name]['price']
+            map.volume = 0
+            quote.push(map);
+        }
+        
 
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
@@ -1542,18 +1548,18 @@ function commonShowOnlyChart(name) {
             quote.push(map);
         });
 
-        /*
-            if (quote.length == 0) {
-                let map = {}
-                map['date'] = moment().format("HH:mm:ss")
-                map.open = instrumentsMap[name]['price']
-                map.high = instrumentsMap[name]['price']
-                map.low = instrumentsMap[name]['price']
-                map.close = instrumentsMap[name]['price']
-                map.volume = 0
-                quote.push(map);
-            }
-        */
+        
+        if (quote.length == 0) {
+            let map = {}
+            map['date'] = moment().format("HH:mm:ss")
+            map.open = instrumentsMap[name]['price']
+            map.high = instrumentsMap[name]['price']
+            map.low = instrumentsMap[name]['price']
+            map.close = instrumentsMap[name]['price']
+            map.volume = 0
+            quote.push(map);
+        }
+        
 
         showChart(quote, name);
         showStockData(quote, name)
@@ -3249,4 +3255,32 @@ function parseChartJson() {
 
     content.charts[0].panes[0].sources[length + 1] = addOne
 
+}
+
+
+function showOrderTypeCount(){
+    let trades = JSON.parse(localStorage.getItem("TRADES"));
+    if (!trades) {
+        trades = []
+    }
+
+    let orderBook = JSON.parse(localStorage.getItem("ORDERBOOK"));
+    if (!orderBook) {
+        orderBook = []
+    }
+    let asoTradeCount = 0;
+    let bsoTradeCount = 0;
+    jQ.each(trades, function (index, item) {
+        let info = orderBook[item]['INFO']
+        if(jQ.inArray("BSO", info['trends']) === -1){
+            bsoTradeCount++;
+        }
+
+        if(jQ.inArray("ASO", info['trends']) === -1){
+            asoTradeCount++;
+        }
+    });
+
+    jQ("#bsoTradeCount").html(bsoTradeCount);
+    jQ("#asoTradeCount").html(asoTradeCount);
 }

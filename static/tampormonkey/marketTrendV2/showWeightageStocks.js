@@ -44,18 +44,17 @@ async function showAllInChart(type) {
             quote.push(map);
         });
 
-        /*
-            if(quote.length == 0){
-                let map = {}
-                map['date'] = moment().format("HH:mm:ss")
-                map.open = instrumentsMap[key]['price']
-                map.high = instrumentsMap[key]['price']
-                map.low = instrumentsMap[key]['price']
-                map.close = instrumentsMap[key]['price']
-                map.volume = 0
-                quote.push(map);
-            }
-        */
+        
+        if(quote.length == 0){
+            let map = {}
+            map['date'] = moment().format("HH:mm:ss")
+            map.open = instrumentsMap[key]['price']
+            map.high = instrumentsMap[key]['price']
+            map.low = instrumentsMap[key]['price']
+            map.close = instrumentsMap[key]['price']
+            map.volume = 0
+            quote.push(map);
+        }
 
         await callSleepForAWhile(1000)
         let map = {}
@@ -148,18 +147,17 @@ async function showOnlyAllInCharts(type,tempName){
             quote.push(map);
         });
 
-        /*
-            if(quote.length == 0){
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = instrumentsMap[key]['price']
-                map.high = instrumentsMap[key]['price']
-                map.low = instrumentsMap[key]['price']
-                map.close = instrumentsMap[key]['price']
-                map.volume = 0
-                quote.push(map);
-            }
-        */
+        if(quote.length == 0){
+            let map = {}
+            map['date'] = moment().format("HH:mm:ss")
+            map.open = instrumentsMap[key]['price']
+            map.high = instrumentsMap[key]['price']
+            map.low = instrumentsMap[key]['price']
+            map.close = instrumentsMap[key]['price']
+            map.volume = 0
+            quote.push(map);
+        }
+        
 
         await callSleepForAWhile(1000)
         let map = {}

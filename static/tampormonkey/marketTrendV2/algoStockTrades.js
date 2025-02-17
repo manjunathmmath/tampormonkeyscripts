@@ -81,10 +81,23 @@ let stockAlgoTradeTimerInstance = null
 jQ(document).on("change", "#start-algo-stock-trades", function () {
     clearInterval(stockAlgoTradeTimerInstance)
     let isChecked = jQ(this).is(":checked");
-    if (!isChecked) {
+    if (isChecked) {
         startStockAlgoTrades();
     }
 });
+
+jQ(document).ready(function () {
+    
+})
+
+
+function startAlgoScanner(){
+    let isChecked = jQ("#start-algo-stock-trades").is(":checked");
+    if (isChecked) {
+        console.log("Algo scan started.............")
+        startStockAlgoTrades();
+    }
+}
 
 
 function stockAlgoTradingStartTimer() {
