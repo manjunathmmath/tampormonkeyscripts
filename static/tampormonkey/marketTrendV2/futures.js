@@ -24,6 +24,78 @@ function showFuturesAnalyserScanner() {
     html += '</div>'
     html += '</div>'
 
+    html += '<table class="table table-striped">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th scope="col">Price</th>'
+    html += '<th scope="col">OI</th>'
+    html += '<th scope="col">ChangeinOpenInterest</th>'
+    html += '<th>PchangeinOpenInterest</th>'
+    html += '<th>(Vwap -5) <= lastPrice</th>'
+    html += '<th scope="col">Result</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '<tr>'
+    html += '<td>+</td>'
+    html += '<td>+</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>LONG</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>-</td>'
+    html += '<td>+</td>'
+    html += '<td>N/A</td>'
+    html += ' <td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>SHORT</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>+</td>'
+    html += '<td>-</td>'
+    html += '<td><0</td>'
+    html += '<td><-2</td>'
+    html += '<td>N/A</td>'
+    html += '<td>SHORT COVERING</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>-</td>'
+    html += '<td>-</td>'
+    html += '<td><0</td>'
+    html += '<td><-2</td>'
+    html += '<td>N/A</td>'
+    html += '<td>LONG UNWINDING</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += ' <td>-</td>'
+    html += '<td>-</td>'
+    html += '<td>N/A</td>'
+    html += '<td>>= 10</td>'
+    html += '<td>true</td>'
+    html += '<td>Bears Coming,Sell On Rise</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += ' <td>+-</td>'
+    html += '<td>+</td>'
+    html += '<td>>0</td>'
+    html += '<td><10</td>'
+    html += '<td>true</td>'
+    html += '<td>Caution! Writers Eroding Premium</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>Defence,Buy On Decline</td>'
+    html += '</tr>'
+
+    html += '</tbody>'
+    html += '</table>'
+
 
     let title = ''
     title += '<div class="row">'
@@ -148,10 +220,10 @@ jQ(document).on("click", ".future-chart-refresh", function () {
     let name = jQ(this).attr("data-name");
     let lotSize = parseInt(jQ(this).attr("data-lot-size"));
     clearInterval(window['refreshFuture' + name])
-    showOnlyChartAndTable(token,name,lotSize)
+    showOnlyChartAndTable(token, name, lotSize)
 })
 
-function showOnlyChartAndTable(token,name,lotSize){
+function showOnlyChartAndTable(token, name, lotSize) {
     let chartId = 'future-chart-' + token
     let html = ''
 
@@ -223,7 +295,7 @@ function showOnlyChartAndTable(token,name,lotSize){
             });
             prevData = prevData[prevData.length - 1];
 
-            generateFutresDataTable(data, tempName, prevData,lotSize)
+            generateFutresDataTable(data, tempName, prevData, lotSize)
 
             futureStartRefreshChart(tempName);
             jQ("#future-last-refresh-time-" + tempName).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
@@ -311,7 +383,7 @@ jQ(document).on("click", ".show-future-chart", function () {
             title += name + ' <span class="pop-title-extra"></span>'
             title += '</div>'
             title += '<div class="col-md-2 pop-title-extra">'
-            title += '<a   data-lot-size="' + lotSize + '" data-name="'+name+'" data-token="'+token+'" id="future-start-auto-refresh-' + tempName + '" class="future-chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+            title += '<a   data-lot-size="' + lotSize + '" data-name="' + name + '" data-token="' + token + '" id="future-start-auto-refresh-' + tempName + '" class="future-chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
             title += '</div>'
             title += '<div class="col-md-2 pop-title-extra">'
             title += '<span style="margin-left:.5rem;" id="future-refresh-timer-' + tempName + '">00:00</span>'
@@ -358,7 +430,7 @@ jQ(document).on("click", ".show-future-chart", function () {
             });
             prevData = prevData[prevData.length - 1];
 
-            generateFutresDataTable(data, tempName, prevData,lotSize)
+            generateFutresDataTable(data, tempName, prevData, lotSize)
         });
     });
 });
@@ -523,7 +595,7 @@ function showFuturesChart(quote, name, token, prev) {
 
 }
 
-function generateFutresDataTable(quote, id, prevQuote,lotSize) {
+function generateFutresDataTable(quote, id, prevQuote, lotSize) {
     lotSize = parseInt(lotSize)
     console.log(lotSize)
     jQ('#historical-future-data-analyzer-list-table-' + id).DataTable({
@@ -558,26 +630,26 @@ function generateFutresDataTable(quote, id, prevQuote,lotSize) {
                 "data": 'oi',
                 render: function (data, type, row, meta) {
                     let html = ''
-                    if(meta.row != 0 ){
-                        let prev = parseInt(quote[(meta.row-1)]['oi'])
+                    if (meta.row != 0) {
+                        let prev = parseInt(quote[(meta.row - 1)]['oi'])
                         let curr = parseInt(data);
-                        let change = parseInt(curr - prev)/ lotSize
-                        console.log(prev,curr,change)
-                        if(curr > prev){
-                            html +='+ ' + change  
+                        let change = parseInt(curr - prev) / lotSize
+                        console.log(prev, curr, change)
+                        if (curr > prev) {
+                            html += '+ ' + change
                         }
 
-                        if(curr < prev){
-                            html +='- '+ Math.abs(change)
+                        if (curr < prev) {
+                            html += '- ' + Math.abs(change)
                         }
 
-                        if(curr == prev){
-                            html +='='  + change  
+                        if (curr == prev) {
+                            html += '=' + change
                         }
 
-                        html += ' '+ (data / lotSize).toFixed(0)
-                    }else{
-                        html = ' '+ (data / lotSize).toFixed(0)
+                        html += ' ' + (data / lotSize).toFixed(0)
+                    } else {
+                        html = ' ' + (data / lotSize).toFixed(0)
                     }
                     return html
                 }
@@ -811,9 +883,9 @@ function generateFutresDataTable(quote, id, prevQuote,lotSize) {
                 render: function (data, type, row, meta) {
                     let resp = {};
                     if (id == "BANKNIFTY") {
-                        resp = showTableAiBankNiftyPrediction(row, prevQuote,lotSize)
+                        resp = showTableAiBankNiftyPrediction(row, prevQuote, lotSize)
                     } else {
-                        resp = showTableAiNiftyPrediction(row, prevQuote,lotSize)
+                        resp = showTableAiNiftyPrediction(row, prevQuote, lotSize)
                     }
                     return resp['PLUS'] + '<br/>' + resp['MINUS'];
                 }
@@ -824,7 +896,7 @@ function generateFutresDataTable(quote, id, prevQuote,lotSize) {
     });
 }
 
-function showTableAiNiftyPrediction(quote, prevQuote,lotSize) {
+function showTableAiNiftyPrediction(quote, prevQuote, lotSize) {
     let data = {}
     quote.volume = parseInt(quote.volume)
     var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
@@ -1033,7 +1105,7 @@ function showTableAiNiftyPrediction(quote, prevQuote,lotSize) {
     return data;
 }
 
-function showTableAiBankNiftyPrediction(quote, prevQuote,lotSize) {
+function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize) {
 
     let data = {}
 

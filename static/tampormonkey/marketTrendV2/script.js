@@ -3272,11 +3272,11 @@ function showOrderTypeCount(){
     let bsoTradeCount = 0;
     jQ.each(trades, function (index, item) {
         let info = orderBook[item]['INFO']
-        if(jQ.inArray("BSO", info['trends']) === -1){
+        if(jQ.inArray("BSO", info['trends']) !==-1){
             bsoTradeCount++;
         }
 
-        if(jQ.inArray("ASO", info['trends']) === -1){
+        if(jQ.inArray("ASO", info['trends']) !==-1){
             asoTradeCount++;
         }
     });
