@@ -1676,12 +1676,18 @@ jQ(document).on("click", ".place-order", function () {
     let price = jQ(this).attr("data-price");
     let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
-    callPlaceOrder(params)
+    callPlaceOrder(params,true)
 });
 
-async function callPlaceOrder(params) {
-    /*let res = await placeOrder(params)*/
-    let res = 'success';
+async function callPlaceOrder(params,isAllowed) {
+    let res = '';
+    
+    if(isAllowed){
+        res = await placeOrder(params)
+    }else{
+        res = 'success';
+    }
+
     if (res != 'error') {
         let trades = JSON.parse(localStorage.getItem("TRADES"));
         if (!trades) {

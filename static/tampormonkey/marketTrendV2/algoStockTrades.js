@@ -86,11 +86,6 @@ jQ(document).on("change", "#start-algo-stock-trades", function () {
     }
 });
 
-jQ(document).ready(function () {
-    
-})
-
-
 function startAlgoScanner(){
     let isChecked = jQ("#start-algo-stock-trades").is(":checked");
     if (isChecked) {
@@ -129,7 +124,8 @@ async function startStockAlgoTrades() {
 
     for (let i = 0; i < allInstruments.length; i++) {
         let data = allInstruments[i];
-        if (jQ.inArray(data.name, listType) != -1) {
+        if (jQ.inArray(data.name, listType) != -1 
+        && jQ.inArray(data.name,MOVEMENTSTOCKS) !=-1) {
             let obj = {}
             obj['TRADINGSYMBOL'] = data.name;
             obj['CLOSE'] = data['prevPrice'];
@@ -173,7 +169,6 @@ async function startStockAlgoTrades() {
     if (isChecked) {
         stockAlgoTradingStartTimer();
     }
-   
 }
 
 
@@ -260,9 +255,8 @@ function triggerAlgoOrder(obj, transaction_type) {
         trades = []
     }
     if (trades.length <= STOCK_LIMIT) {
-        if (ENABLE_ALGO_TRADE) {
-            callPlaceOrder(params)
-        } else {
+        callPlaceOrder(params,ENABLE_ALGO_TRADE)
+        if(!ENABLE_ALGO_TRADE){
             console.log("----------------------------STOCK ALGO DISABLED------------------------------");
             console.log(params);
             console.log("-----------------------------------------------------------------------------");
