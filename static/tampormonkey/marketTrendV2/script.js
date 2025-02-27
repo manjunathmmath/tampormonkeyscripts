@@ -181,7 +181,6 @@ jQ(document).on("click", "#show-ai-prediction", function (e) {
     readTicksFromStorage();
     showFutureAi();
     generateFutreIntruments();
-    startAlgoScanner()
 });
 
 
@@ -284,6 +283,7 @@ async function autoRefreshEachTabs(instance) {
     generateStockDataTable(data);
     showWeightageStockTrend()
     showOrderTypeCount();
+    startStockAlgoTrades();
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
@@ -587,7 +587,6 @@ function getAllBullsBearsCount() {
     let bst = 0;
 
     jQ.each(FO_LIST, function (index, item) {
-        console.log(item)
         let data = infoMap[item]
         if (data['trends']) {
             if (jQ.inArray("VIXL", data['trends']) != -1) {
@@ -643,7 +642,7 @@ jQ(document).on("click", "#start-auto-refresh", function () {
     that.attr("disabled", true)
     clearInterval(timerInstance)
     autoRefreshEachTabs(that)
-})
+});
 
 function startRefresh() {
     var display = document.querySelector('#refresh-timer-one');
@@ -651,23 +650,16 @@ function startRefresh() {
 };
 
 function startTimer(duration, display) {
-    if (!duration) {
-        duration = 60
-    }
-    var timer = duration, minutes, seconds;
     timerInstance = setInterval(function () {
-        minutes = parseInt(timer / 60, 10);
-        seconds = parseInt(timer % 60, 10);
-
-        display.textContent = minutes + ":" + seconds;
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-        if (--timer < 0) {
-            autoRefreshEachTabs()
-            timer = duration;
+        var d = new Date();
+        var s = d.getSeconds();
+        var m = d.getMinutes();
+        var h = d.getHours();
+        display.textContent =  ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
+        if(s == 59){
+            autoRefreshEachTabs();
         }
-        updatePrfitLoss()
+        updatePrfitLoss();
     }, 1000);
 }
 
@@ -938,10 +930,6 @@ function showFutureAi() {
 
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span class="profit-loss">0.00</span>'
-    title += '</div>'
-
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += 'Auto: <input style="vertical-align:middle;" type="checkbox" id="start-algo-stock-trades" checked/>'
     title += '</div>'
 
     title += '<div class="col-md-1 pop-title-extra">'

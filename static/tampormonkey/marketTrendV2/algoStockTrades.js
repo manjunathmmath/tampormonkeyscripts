@@ -74,48 +74,18 @@ const fiveMinutes = [
     "14:50",
     "14:55",
     "15:00",
-    "15:05"
+    "15:05",
 ]
 
-let stockAlgoTradeTimerInstance = null
-jQ(document).on("change", "#start-algo-stock-trades", function () {
-    clearInterval(stockAlgoTradeTimerInstance)
-    let isChecked = jQ(this).is(":checked");
-    if (isChecked) {
-        startStockAlgoTrades();
-    }
-});
-
-function startAlgoScanner(){
-    let isChecked = jQ("#start-algo-stock-trades").is(":checked");
-    if (isChecked) {
-        console.log("Algo scan started.............")
-        startStockAlgoTrades();
-    }
-}
-
-
-function stockAlgoTradingStartTimer() {
-    if (!REFRESH_TIME) {
-        REFRESH_TIME = 60
-    }
-    let duration = REFRESH_TIME
-    var timer = duration, minutes, seconds;
-    stockAlgoTradeTimerInstance = setInterval(function () {
-        minutes = parseInt(timer / 60, 10);
-        seconds = parseInt(timer % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-        if (--timer < 0) {
-            startStockAlgoTrades()
-            timer = duration;
-        }
-    }, 1000);
-}
-
 async function startStockAlgoTrades() {
-    clearInterval(stockAlgoTradeTimerInstance)
+    let currentTime = moment().format("HH:mm")
+    if (jQ.inArray(currentTime, fiveMinutes) === -1) {
+        console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES TARDE CONDITION]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
     let listType = FO_LIST;
     let allInstruments = [];
     jQ.each(instrumentsMap, function (index, item) {
@@ -165,31 +135,18 @@ async function startStockAlgoTrades() {
             }
         }
     }
-    let isChecked = jQ("#start-algo-stock-trades").is(":checked");
-    if (isChecked) {
-        stockAlgoTradingStartTimer();
-    }
 }
 
 
 async function executeTrendTrade(trend, obj) {
+
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {
         trades = []
     }
 
-
     if (jQ.inArray(obj.TRADINGSYMBOL, trades) !== -1) {
         return;
-    }
-
-    let currentTime = moment().format("HH:mm")
-
-    if (jQ.inArray(currentTime, fiveMinutes) === -1) {
-        console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES TARDE CONDITION]-----------");
-        console.log("current Time :" + currentTime);
-        console.log("------------------------------------------------------------------------------------");
-        return
     }
 
     let quote = await checkVolumeCondtion(obj.TRADINGSYMBOL);
@@ -266,6 +223,5 @@ function triggerAlgoOrder(obj, transaction_type) {
         console.log(params);
         console.log("-----------------------------------------------------------------------------");
     }
-
 
 }
