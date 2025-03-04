@@ -75,7 +75,7 @@ const g_config = new MonkeyConfig({
         stock_trend_to_trade: {
             type: 'select',
             choices: ['ASO', 'BSO', 'ALL'],
-            values: ['ASO', 'BSO',],
+            values: ['ASO', 'BSO', 'ALL'],
             default: 'ALL'
         },
         enable_sl: {
@@ -106,6 +106,16 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: false
         },
+        order_type: {
+            type: 'select',
+            choices: ['LIMIT', 'MARKET'],
+            values: ['LIMIT', 'MARKET',],
+            default: 'MARKET'
+        },
+        check_volume: {
+            type: 'checkbox',
+            default: false
+        },
     }
 });
 
@@ -127,6 +137,9 @@ const NIFTY_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_future_lot_size'));
 const NIFTY_BANK_FUTURE_LOT_SIZE = parseInt(g_config.get('nifty_bank_future_lot_size'));
 const STOCK_VOLUME = parseInt(g_config.get('stock_volume'));
 const SHOW_VOLUME_ON_CHART = g_config.get('show_volume_on_chart');
+
+const ORDER_TYPE = g_config.get('order_type');
+const CHECK_VOLume = g_config.get('check_volume');
 
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
@@ -301,7 +314,7 @@ function showWeightageStockTrend() {
             if (infoMap[index]) {
                 if (infoMap[index]['trends'].length > 0) {
 
-                    html += index + ': <span class="'+getTrendClass(infoMap[index]['trends'])+' me-1">[' + infoMap[index]['trends'].join(",") + ']</span>'
+                    html += index + ': <span class="' + getTrendClass(infoMap[index]['trends']) + ' me-1">[' + infoMap[index]['trends'].join(",") + ']</span>'
                 }
 
                 unique.push(index)
@@ -313,7 +326,7 @@ function showWeightageStockTrend() {
         if (jQ.inArray(index, unique) == -1 && jQ.inArray(index, WEIGHTAGE_STOCK_SHOW) !== -1) {
             if (infoMap[index]) {
                 if (infoMap[index]['trends'].length > 0) {
-                    html += index + ': <span class="'+getTrendClass(infoMap[index]['trends'])+' me-1">[' + infoMap[index]['trends'].join(",") + ']</span>'
+                    html += index + ': <span class="' + getTrendClass(infoMap[index]['trends']) + ' me-1">[' + infoMap[index]['trends'].join(",") + ']</span>'
                 }
                 unique.push(index)
             }
@@ -329,12 +342,12 @@ function getTrendClass(trends) {
     if (jQ.inArray("VIXU", trends) != -1
         || jQ.inArray("AST", trends) != -1
         || jQ.inArray("ASO", trends) != -1) {
-            className ="badge bg-danger"
+        className = "badge bg-danger"
 
     } else if (jQ.inArray("VIXL", trends) != -1
         || jQ.inArray("BST", trends) != -1
         || jQ.inArray("BSO", trends) != -1) {
-            className ="badge bg-success"
+        className = "badge bg-success"
 
     }
     return className;
@@ -655,8 +668,8 @@ function startTimer(duration, display) {
         var s = d.getSeconds();
         var m = d.getMinutes();
         var h = d.getHours();
-        display.textContent =  ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
-        if(s == 59){
+        display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
+        if (s == 59) {
             autoRefreshEachTabs();
         }
         updatePrfitLoss();
@@ -1344,7 +1357,7 @@ function commonShowChart(name, trends, index, price) {
             quote.push(map);
         });
 
-        
+
         if (quote.length == 0) {
             let map = {}
             map['date'] = moment().format("HH:mm:ss")
@@ -1355,7 +1368,7 @@ function commonShowChart(name, trends, index, price) {
             map.volume = 0
             quote.push(map);
         }
-        
+
 
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
@@ -1536,7 +1549,7 @@ function commonShowOnlyChart(name) {
             quote.push(map);
         });
 
-        
+
         if (quote.length == 0) {
             let map = {}
             map['date'] = moment().format("HH:mm:ss")
@@ -1547,7 +1560,7 @@ function commonShowOnlyChart(name) {
             map.volume = 0
             quote.push(map);
         }
-        
+
 
         showChart(quote, name);
         showStockData(quote, name)
@@ -1661,18 +1674,27 @@ jQ(document).on("click", ".place-sl-order", function () {
 jQ(document).on("click", ".place-order", function () {
     let name = jQ(this).attr("data-name");
     let transaction_type = jQ(this).attr("data-transaction-type");
-    let price = jQ(this).attr("data-price");
+    let ltp = parseFloat(jQ(this).attr("data-price"));
+    let trigger_price = 0;
+    let price = 0;
+    if (transaction_type == "SELL") {
+        trigger_price = ltp
+        price = ltp - 1
+    } else {
+        trigger_price = ltp
+        price = ltp + 1
+    }
     let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
-    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
-    callPlaceOrder(params,true)
+    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
+    callPlaceOrder(params, true)
 });
 
-async function callPlaceOrder(params,isAllowed) {
+async function callPlaceOrder(params, isAllowed) {
     let res = '';
-    
-    if(isAllowed){
+
+    if (isAllowed) {
         res = await placeOrder(params)
-    }else{
+    } else {
         res = 'success';
     }
 
@@ -1823,15 +1845,15 @@ function showChart(quote, name) {
 
 
     line = {};
-    if(parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)){
+    if (parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)) {
         line.color = "#5D8736";
         line.displayvalue = "Open +ve" + instrumentsMap[name]['price'];
-    }else{
+    } else {
         line.color = "#A94A4A";
         line.displayvalue = "Open -ve" + instrumentsMap[name]['price'];
     }
-    line.dashed= 1,
-    line.startvalue = instrumentsMap[name]['price'];
+    line.dashed = 1,
+        line.startvalue = instrumentsMap[name]['price'];
     lines.push(line);
 
     jQ("#" + chartId).html('')
@@ -2327,22 +2349,22 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         return;
     }
 
-    let currentChangeInOi=''
-    if(currentQuoteData.data['candles'].length > 1){
+    let currentChangeInOi = ''
+    if (currentQuoteData.data['candles'].length > 1) {
         let secondData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 2];
         var latestOI = (currentData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
         var previousLatestOi = (secondData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
         let diff = latestOI - previousLatestOi
         if (diff > 0) {
-            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
         } else {
-            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
         }
-        if(Math.abs(diff) > 100){
+        if (Math.abs(diff) > 100) {
             let alrtSound = new Audio(alertSound);
             alrtSound.play();
         }
-        
+
     }
 
     var quote = {}
@@ -2509,7 +2531,7 @@ function niftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
     }
 
-    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang +" " + currentChangeInOi
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang + " " + currentChangeInOi
 
     return futuresData;
 }
@@ -2524,18 +2546,18 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         return;
     }
 
-    let currentChangeInOi=''
-    if(currentQuoteData.data['candles'].length > 1){
+    let currentChangeInOi = ''
+    if (currentQuoteData.data['candles'].length > 1) {
         let secondData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 2];
         var latestOI = (currentData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
         var previousLatestOi = (secondData[6] / NIFTY_FUTURE_LOT_SIZE).toFixed(0);
         let diff = latestOI - previousLatestOi
         if (diff > 0) {
-            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
         } else {
-            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' ['+moment(currentData[0]).format("HH:mm")+']'+ '</span>'
+            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
         }
-        if(Math.abs(diff) > 100){
+        if (Math.abs(diff) > 100) {
             let alrtSound = new Audio(alertSound);
             alrtSound.play();
         }
@@ -2696,7 +2718,7 @@ function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData) {
         oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
     }
 
-    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang +" "+ currentChangeInOi
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang + " " + currentChangeInOi
 
     return futuresData;
 
@@ -3252,7 +3274,7 @@ function parseChartJson() {
 }
 
 
-function showOrderTypeCount(){
+function showOrderTypeCount() {
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {
         trades = []
@@ -3266,11 +3288,11 @@ function showOrderTypeCount(){
     let bsoTradeCount = 0;
     jQ.each(trades, function (index, item) {
         let info = orderBook[item]['INFO']
-        if(jQ.inArray("BSO", info['trends']) !==-1){
+        if (jQ.inArray("BSO", info['trends']) !== -1) {
             bsoTradeCount++;
         }
 
-        if(jQ.inArray("ASO", info['trends']) !==-1){
+        if (jQ.inArray("ASO", info['trends']) !== -1) {
             asoTradeCount++;
         }
     });

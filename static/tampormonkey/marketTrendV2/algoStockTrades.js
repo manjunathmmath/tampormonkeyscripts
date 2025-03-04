@@ -79,12 +79,26 @@ const fiveMinutes = [
 
 async function startStockAlgoTrades() {
     let currentTime = moment().format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    /*
+    
     if (jQ.inArray(currentTime, fiveMinutes) === -1) {
         console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES TARDE CONDITION]-----------");
         console.log("current Time :" + currentTime);
         console.log("------------------------------------------------------------------------------------");
         return
     }
+    */
+
+    console.log("current Time :" + currentTime,checkTime);
+    if(!(currentTime > checkTime)){
+        console.log("----------------------------[ALGO CHECKING FOR 9:15 MINUTES TARDE CONDITION]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
+
 
     let listType = FO_LIST;
     let allInstruments = [];
@@ -94,8 +108,8 @@ async function startStockAlgoTrades() {
 
     for (let i = 0; i < allInstruments.length; i++) {
         let data = allInstruments[i];
-        if (jQ.inArray(data.name, listType) != -1 
-        && jQ.inArray(data.name,MOVEMENTSTOCKS) !=-1) {
+        if (jQ.inArray(data.name, listType) != -1
+            && jQ.inArray(data.name, MOVEMENTSTOCKS) != -1) {
             let obj = {}
             obj['TRADINGSYMBOL'] = data.name;
             obj['CLOSE'] = data['prevPrice'];
@@ -137,7 +151,6 @@ async function startStockAlgoTrades() {
     }
 }
 
-
 async function executeTrendTrade(trend, obj) {
 
     let trades = JSON.parse(localStorage.getItem("TRADES"));
@@ -150,7 +163,7 @@ async function executeTrendTrade(trend, obj) {
     }
 
     let quote = await checkVolumeCondtion(obj.TRADINGSYMBOL);
-    let last = quote[quote.length - 2];
+    let last = quote[quote.length - 1];
     let isValidClose = false;
 
     let priceMoved = parseInt(STOCK_PRICE_MOVED)
@@ -162,11 +175,16 @@ async function executeTrendTrade(trend, obj) {
             if (last.close > asoPrice) {
                 isValidClose = true
             }
-            if (last.volume > STOCK_VOLUME && isValidClose) {
-                triggerAlgoOrder(obj, 'BUY');
+            if(CHECK_VOLume){
+                if (last.volume > STOCK_VOLUME && isValidClose) {
+                    triggerAlgoOrder(obj, 'BUY');
+                }
+            }else{
+                if (isValidClose) {
+                    triggerAlgoOrder(obj, 'BUY');
+                }
             }
         }
-
 
         console.log("----------------------------[ALGO CHECKING FOR ASO TARDE CONDITION]-----------------------------");
         console.log("Volume :" + last.volume);
@@ -174,6 +192,7 @@ async function executeTrendTrade(trend, obj) {
         console.log("Strike : " + asoPrice);
         console.log("Price Moved : " + ASO_MOVED);
         console.log("Valid Close : " + isValidClose);
+        console.log("Volume Check : " + CHECK_VOLume);
         console.log("------------------------------------------------------------------------------------");
     }
 
@@ -185,8 +204,14 @@ async function executeTrendTrade(trend, obj) {
             if (last.close < bsoPrice) {
                 isValidClose = true
             }
-            if (last.volume > STOCK_VOLUME && isValidClose) {
-                triggerAlgoOrder(obj, 'SELL');
+            if(CHECK_VOLume){
+                if (last.volume > STOCK_VOLUME && isValidClose) {
+                    triggerAlgoOrder(obj, 'SELL');
+                }
+            }else{
+                if (isValidClose) {
+                    triggerAlgoOrder(obj, 'SELL');
+                }
             }
         }
 
@@ -196,24 +221,34 @@ async function executeTrendTrade(trend, obj) {
         console.log("Strike : " + bsoPrice);
         console.log("Price Moved : " + BSO_MOVED);
         console.log("Valid Close : " + isValidClose);
+        console.log("Volume Check : " + CHECK_VOLume);
         console.log("------------------------------------------------------------------------------------");
     }
-
 }
-
 
 function triggerAlgoOrder(obj, transaction_type) {
     let name = obj.TRADINGSYMBOL;
-    let price = parseFloat(obj['CURRENT_PRICE']).toFixed();
+    let trigger_price = 0;
+    let price = 0;
+    if (transaction_type == "SELL") {
+        let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']).toFixed();
+        trigger_price = bsoPrice
+        price = bsoPrice - 1
+    } else {
+        let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();
+        trigger_price = asoPrice
+        price = asoPrice + 1
+    }
+    price = parseFloat(obj['CURRENT_PRICE']).toFixed();
     let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
-    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "MARKET", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": 0, "trigger_price": 0, "disclosed_quantity": 0, "tags": [] }
+    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {
         trades = []
     }
     if (trades.length <= STOCK_LIMIT) {
-        callPlaceOrder(params,ENABLE_ALGO_TRADE)
-        if(!ENABLE_ALGO_TRADE){
+        callPlaceOrder(params, ENABLE_ALGO_TRADE)
+        if (!ENABLE_ALGO_TRADE) {
             console.log("----------------------------STOCK ALGO DISABLED------------------------------");
             console.log(params);
             console.log("-----------------------------------------------------------------------------");
