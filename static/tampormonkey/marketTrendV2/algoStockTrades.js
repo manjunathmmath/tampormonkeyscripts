@@ -79,7 +79,7 @@ const fiveMinutes = [
 
 async function startStockAlgoTrades() {
     let currentTime = moment().format("HH:mm")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
     /*
     
     if (jQ.inArray(currentTime, fiveMinutes) === -1) {
@@ -98,6 +98,12 @@ async function startStockAlgoTrades() {
         return
     }
 
+    if((currentTime % 5 !=0)){
+        console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES INTERVAL TARDE CONDITION]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
 
 
     let listType = FO_LIST;
@@ -163,7 +169,7 @@ async function executeTrendTrade(trend, obj) {
     }
 
     let quote = await checkVolumeCondtion(obj.TRADINGSYMBOL);
-    let last = quote[quote.length - 1];
+    let last = quote[quote.length - 2];
     let isValidClose = false;
 
     let priceMoved = parseInt(STOCK_PRICE_MOVED)
