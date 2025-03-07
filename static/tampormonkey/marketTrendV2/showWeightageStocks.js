@@ -319,7 +319,6 @@ function showChartAllInOne(quote, name,type) {
     jQ("#" + chartId).insertFusionCharts({
         type: 'candlestick',
         width: "100%",
-        height:"100%",
         dataFormat: 'json',
         dataSource: {
             "chart": {

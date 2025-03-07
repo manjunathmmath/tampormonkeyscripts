@@ -101,7 +101,7 @@ async function startStockAlgoTrades() {
     let currentMinute = moment().format("mm")
     if ((currentMinute % 5) != 0) {
         console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES INTERVAL TARDE CONDITION]-----------");
-        console.log("current Time :" + currentTime);
+        console.log("current Minute :" + currentMinute);
         console.log("------------------------------------------------------------------------------------");
         return
     }
