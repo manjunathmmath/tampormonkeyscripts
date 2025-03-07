@@ -90,15 +90,16 @@ async function startStockAlgoTrades() {
     }
     */
 
-    console.log("current Time :" + currentTime,checkTime);
-    if(!(currentTime > checkTime)){
+    console.log("current Time :" + currentTime, checkTime);
+    if (!(currentTime >= checkTime)) {
         console.log("----------------------------[ALGO CHECKING FOR 9:15 MINUTES TARDE CONDITION]-----------");
         console.log("current Time :" + currentTime);
         console.log("------------------------------------------------------------------------------------");
         return
     }
 
-    if((currentTime % 5 !=0)){
+    let currentMinute = moment().format("mm")
+    if ((currentMinute % 5) != 0) {
         console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES INTERVAL TARDE CONDITION]-----------");
         console.log("current Time :" + currentTime);
         console.log("------------------------------------------------------------------------------------");
@@ -181,11 +182,11 @@ async function executeTrendTrade(trend, obj) {
             if (last.close > asoPrice) {
                 isValidClose = true
             }
-            if(CHECK_VOLume){
+            if (CHECK_VOLume) {
                 if (last.volume > STOCK_VOLUME && isValidClose) {
                     triggerAlgoOrder(obj, 'BUY');
                 }
-            }else{
+            } else {
                 if (isValidClose) {
                     triggerAlgoOrder(obj, 'BUY');
                 }
@@ -210,11 +211,11 @@ async function executeTrendTrade(trend, obj) {
             if (last.close < bsoPrice) {
                 isValidClose = true
             }
-            if(CHECK_VOLume){
+            if (CHECK_VOLume) {
                 if (last.volume > STOCK_VOLUME && isValidClose) {
                     triggerAlgoOrder(obj, 'SELL');
                 }
-            }else{
+            } else {
                 if (isValidClose) {
                     triggerAlgoOrder(obj, 'SELL');
                 }
