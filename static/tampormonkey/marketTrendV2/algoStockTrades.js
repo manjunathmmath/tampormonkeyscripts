@@ -80,17 +80,8 @@ const fiveMinutes = [
 async function startStockAlgoTrades() {
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    /*
-    
-    if (jQ.inArray(currentTime, fiveMinutes) === -1) {
-        console.log("----------------------------[ALGO CHECKING FOR 5 MINUTES TARDE CONDITION]-----------");
-        console.log("current Time :" + currentTime);
-        console.log("------------------------------------------------------------------------------------");
-        return
-    }
-    */
 
-    console.log("current Time :" + currentTime, checkTime);
+    console.log("Algo starts executing orders @ " + checkTime + "AM.  current time is :" + currentTime);
     if (!(currentTime >= checkTime)) {
         console.log("----------------------------[ALGO CHECKING FOR 9:15 MINUTES TARDE CONDITION]-----------");
         console.log("current Time :" + currentTime);
@@ -158,6 +149,26 @@ async function startStockAlgoTrades() {
     }
 }
 
+function checkAlgoVolumeCondtion(name) {
+    return new Promise((resolve, reject) => {
+        jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
+            let quote = []
+            jQ.each(res.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                map['time'] = moment(item[0]).format("HH:mm")
+                quote.push(map);
+            });
+            resolve(quote)
+        });
+    });
+}
+
 async function executeTrendTrade(trend, obj) {
 
     let trades = JSON.parse(localStorage.getItem("TRADES"));
@@ -169,10 +180,27 @@ async function executeTrendTrade(trend, obj) {
         return;
     }
 
-    let quote = await checkVolumeCondtion(obj.TRADINGSYMBOL);
-    let last = quote[quote.length - 2];
-    let isValidClose = false;
+    let quote = await checkAlgoVolumeCondtion(obj.TRADINGSYMBOL);
 
+    let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
+    console.log("----------------------------[LAST FIVE MINUTE]-----------------------------");
+    console.log("Current Time :" + moment().format("HH:mm"));
+    console.log("Last Minutes Time :" + prevFiveMinutes);
+    console.log("-----------------------------------------------------------------------");
+
+    let last = {};
+
+    jQ.each(quote, function (index, item) {
+        if (prevFiveMinutes == item['time']) {
+            last = item
+        }
+    });
+    
+    if (!last) {
+        return;
+    }
+
+    let isValidClose = false;
     let priceMoved = parseInt(STOCK_PRICE_MOVED)
     if (trend == "ASO") {
         let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();

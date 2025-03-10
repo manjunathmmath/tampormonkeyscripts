@@ -212,7 +212,7 @@ function saveVixQuote() {
 
 function makeUIChanges() {
     var html = '';
-    html += '<a href="#" id="add-to-watch-list" style="display:none;">'
+    html += '<a href="#" id="add-to-watch-list">'
     html += 'Add Watchlist'
     html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
