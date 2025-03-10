@@ -1,87 +1,19 @@
-const STOCK_PRICE_MOVED = g_config.get('stocks_price_moved');
-const STOCK_TREND_TO_TRADE = g_config.get('stock_trend_to_trade');
-const ENABLE_SL = g_config.get('enable_sl');
-const ENABLE_ALGO_TRADE = g_config.get('enable_algo_trade');
-const STOCK_LIMIT = g_config.get('stock_limit');
-
-const fiveMinutes = [
-    "09:20",
-    "09:25",
-    "09:30",
-    "09:35",
-    "09:40",
-    "09:45",
-    "09:50",
-    "09:55",
-    "10:00",
-    "10:05",
-    "10:10",
-    "10:15",
-    "10:20",
-    "10:25",
-    "10:30",
-    "10:35",
-    "10:40",
-    "10:45",
-    "10:50",
-    "10:55",
-    "11:00",
-    "11:05",
-    "11:10",
-    "11:15",
-    "11:20",
-    "11:25",
-    "11:30",
-    "11:35",
-    "11:40",
-    "11:45",
-    "11:50",
-    "11:55",
-    "12:00",
-    "12:05",
-    "12:10",
-    "12:15",
-    "12:20",
-    "12:25",
-    "12:30",
-    "12:35",
-    "12:40",
-    "12:45",
-    "12:50",
-    "12:55",
-    "13:00",
-    "13:05",
-    "13:10",
-    "13:15",
-    "13:20",
-    "13:25",
-    "13:30",
-    "13:35",
-    "13:40",
-    "13:45",
-    "13:50",
-    "13:55",
-    "14:00",
-    "14:05",
-    "14:10",
-    "14:15",
-    "14:20",
-    "14:25",
-    "14:30",
-    "14:35",
-    "14:40",
-    "14:45",
-    "14:50",
-    "14:55",
-    "15:00",
-    "15:05",
-]
 
 async function startStockAlgoTrades() {
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:10:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     console.log("Algo starts executing orders @ " + checkTime + "AM.  current time is :" + currentTime);
+
+
+    if (currentTime >= endTime) {
+        console.log("----------------------------[MARKET CLOSED..............................]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
     if (!(currentTime >= checkTime)) {
         console.log("----------------------------[ALGO CHECKING FOR 9:15 MINUTES TARDE CONDITION]-----------");
         console.log("current Time :" + currentTime);
@@ -96,6 +28,12 @@ async function startStockAlgoTrades() {
         console.log("------------------------------------------------------------------------------------");
         return
     }
+
+    let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
+    console.log("----------------------------[LAST FIVE MINUTE]-----------------------------");
+    console.log("Current Time :" + moment().format("HH:mm"));
+    console.log("Last Minutes Time :" + prevFiveMinutes);
+    console.log("-----------------------------------------------------------------------");
 
 
     let listType = FO_LIST;
@@ -115,6 +53,7 @@ async function startStockAlgoTrades() {
             obj['PERC'] = data['perc'];
             obj['TREND'] = '';
             obj['LTP'] = 0;
+            obj['prevFiveMinutes'] = prevFiveMinutes;
 
             if (infoMap[data.name]) {
                 obj['TREND'] = infoMap[data.name]['trends'];
@@ -182,20 +121,14 @@ async function executeTrendTrade(trend, obj) {
 
     let quote = await checkAlgoVolumeCondtion(obj.TRADINGSYMBOL);
 
-    let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
-    console.log("----------------------------[LAST FIVE MINUTE]-----------------------------");
-    console.log("Current Time :" + moment().format("HH:mm"));
-    console.log("Last Minutes Time :" + prevFiveMinutes);
-    console.log("-----------------------------------------------------------------------");
-
     let last = {};
 
     jQ.each(quote, function (index, item) {
-        if (prevFiveMinutes == item['time']) {
+        if (obj['prevFiveMinutes'] == item['time']) {
             last = item
         }
     });
-    
+
     if (!last) {
         return;
     }
@@ -212,11 +145,11 @@ async function executeTrendTrade(trend, obj) {
             }
             if (CHECK_VOLume) {
                 if (last.volume > STOCK_VOLUME && isValidClose) {
-                    triggerAlgoOrder(obj, 'BUY');
+                    await triggerAlgoOrder(obj, 'BUY');
                 }
             } else {
                 if (isValidClose) {
-                    triggerAlgoOrder(obj, 'BUY');
+                    await triggerAlgoOrder(obj, 'BUY');
                 }
             }
         }
@@ -241,11 +174,11 @@ async function executeTrendTrade(trend, obj) {
             }
             if (CHECK_VOLume) {
                 if (last.volume > STOCK_VOLUME && isValidClose) {
-                    triggerAlgoOrder(obj, 'SELL');
+                    await triggerAlgoOrder(obj, 'SELL');
                 }
             } else {
                 if (isValidClose) {
-                    triggerAlgoOrder(obj, 'SELL');
+                    await triggerAlgoOrder(obj, 'SELL');
                 }
             }
         }
@@ -261,7 +194,7 @@ async function executeTrendTrade(trend, obj) {
     }
 }
 
-function triggerAlgoOrder(obj, transaction_type) {
+async function triggerAlgoOrder(obj, transaction_type) {
     let name = obj.TRADINGSYMBOL;
     let trigger_price = 0;
     let price = 0;
@@ -282,7 +215,12 @@ function triggerAlgoOrder(obj, transaction_type) {
         trades = []
     }
     if (trades.length <= STOCK_LIMIT) {
-        callPlaceOrder(params, ENABLE_ALGO_TRADE)
+        let res = await callPlaceOrder(params, ENABLE_ALGO_TRADE)
+        if (res.status == "success") {
+            if (ENABLE_SL && ENABLE_ALGO_TRADE) {
+                await setStopLoss(obj, transaction_type,quantity)
+            }
+        }
         if (!ENABLE_ALGO_TRADE) {
             console.log("----------------------------STOCK ALGO DISABLED------------------------------");
             console.log(params);
@@ -294,4 +232,40 @@ function triggerAlgoOrder(obj, transaction_type) {
         console.log("-----------------------------------------------------------------------------");
     }
 
+}
+
+async function setStopLoss(obj, type,quantity) {
+    let name = obj.TRADINGSYMBOL;
+    let transaction_type = "BUY"
+    if (type == "BUY") {
+        transaction_type = "SELL";
+    }
+
+    let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();
+    let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']).toFixed();
+
+    let price = 0
+    let trigger_price = 0;
+
+    let stopLoss = 0;
+    if (type == "BUY") {
+        let stop = parseFloat(asoPrice) - parseFloat(obj['PRICE']);
+        stop = stop/2
+        stopLoss = parseFloat(asoPrice - stop).toFixed(2);
+    } else if (type =="SELL") {
+        let stop = parseFloat(currentInfo['instrument']['price']) - parseFloat(bsoPrice);
+        stop = stop/2
+        stopLoss = parseFloat(bsoPrice + stop).toFixed(2);
+    }
+
+    if(transaction_type == "BUY"){
+        trigger_price = stopLoss
+        price = parseFloat(stopLoss + 0.10).toFixed(2)
+    }else{
+        trigger_price = stopLoss
+        price = parseFloat(stopLoss - 0.10).toFixed(2)
+    }
+
+    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "SL", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
+    placeOrder(params)
 }

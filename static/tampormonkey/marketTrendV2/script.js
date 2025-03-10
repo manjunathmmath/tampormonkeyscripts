@@ -141,6 +141,12 @@ const SHOW_VOLUME_ON_CHART = g_config.get('show_volume_on_chart');
 const ORDER_TYPE = g_config.get('order_type');
 const CHECK_VOLume = g_config.get('check_volume');
 
+const STOCK_PRICE_MOVED = g_config.get('stocks_price_moved');
+const STOCK_TREND_TO_TRADE = g_config.get('stock_trend_to_trade');
+const ENABLE_SL = g_config.get('enable_sl');
+const ENABLE_ALGO_TRADE = g_config.get('enable_algo_trade');
+const STOCK_LIMIT = g_config.get('stock_limit');
+
 let futureInstruments = {
     'NIFTY_FUTURE': NIFTY_FUTURE_TOKEN,
     'BANK_NIFTY_FUTURE': BANK_NIFTY_FUTURE_TOKEN,
@@ -1622,51 +1628,20 @@ function startTimerCharts(duration, display, name) {
 
 jQ(document).on("click", ".place-sl-order", function () {
     let name = jQ(this).attr("data-name");
-    let ltp = jQ(this).attr("data-price");
+    let stop = parseFloat(jQ(this).attr("data-price")).toFixed(2);
     let transaction_type = jQ(this).attr("data-transaction-type");
+    let quantity = jQ(this).attr("data-quantity");
     let price = 0
     let trigger_price = 0;
-    let data = infoMap[name];
-    console.log(data)
 
-    let aso = parseFloat(data['strikeData']['ustrikeOne']).toFixed(2);
-    let ast = parseFloat(data['strikeData']['ustrikeTwo']).toFixed(2);
-    let bso = parseFloat(data['strikeData']['bstrikeOne']).toFixed(2);
-    let bst = parseFloat(data['strikeData']['bstrikeTwo']).toFixed(2);
-    let vixDDUpper = parseFloat(data['vix']['vixDDUpper']).toFixed(2);
-    let vixDDLower = parseFloat(data['vix']['vixDDLower']).toFixed(2);
-
-    let whichTrade = '';
-    if (jQ.inArray("AST", data['trends']) != -1) {
-        whichTrade = "AST";
-    } else if (jQ.inArray("ASO", data['trends']) != -1) {
-        whichTrade = "ASO";
-    } else if (jQ.inArray("BST", data['trends']) != -1) {
-        whichTrade = "BST";
-    } else if (jQ.inArray("BSO", data['trends']) != -1) {
-        whichTrade = "BSO";
+    if(transaction_type == "BUY"){
+        trigger_price = stop
+        price = parseFloat(stop + 0.10).toFixed(2)
+    }else{
+        trigger_price = stop
+        price = parseFloat(stop - 0.10).toFixed(2)
     }
 
-    if (transaction_type == "BUY") {
-        if (whichTrade == "AST") {
-            trigger_price = parseFloat(ast) + SL_POINTS;
-            price = parseFloat(ast) + (SL_POINTS + 1)
-        }
-        if (whichTrade == "BSO") {
-            trigger_price = parseFloat(bso) + SL_POINTS;
-            price = parseFloat(bso) + (SL_POINTS + 1)
-        }
-    } else {
-        if (whichTrade == "ASO") {
-            trigger_price = parseFloat(aso) - SL_POINTS;
-            price = parseFloat(aso) - (SL_POINTS + 1)
-        }
-        if (whichTrade == "BST") {
-            trigger_price = parseFloat(bst) - SL_POINTS;
-            price = parseFloat(bst) - (SL_POINTS + 1)
-        }
-    }
-    let quantity = (MARGIN / (parseFloat(ltp) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "SL", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
     placeOrder(params)
 })
@@ -1721,6 +1696,8 @@ async function callPlaceOrder(params, isAllowed) {
             localStorage.setItem("ORDERBOOK", JSON.stringify(orderBook));
         }
     }
+
+    return res;
 }
 
 function placeOrder(order) {
