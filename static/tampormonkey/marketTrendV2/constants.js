@@ -1130,7 +1130,8 @@ let nseFutreStrikeDiff = {
 	'NBCC': '2.5,5',
 	'PHOENIXLTD': '50,100',
 	'SOLARINDS': '100,200',
-	'TORNTPOWER': '20,40'
+	'TORNTPOWER': '20,40',
+	'SENSEX': '100,100'
 }
 
 let futureInstrumentsList = [
@@ -5739,9 +5740,84 @@ let futureInstrumentsList = [
 		"expiry": "29-05-2025",
 		"tradingsymbol": "ZYDUSLIFE25MAYFUT",
 		"lot_size": "900"
-	}
+	},
+	{
+		"name": "SENSEX",
+		"instrument_token": "215569413",
+		"expiry": "29-03-2025",
+		"tradingsymbol": "SENSEX25MARFUT",
+		"lot_size": "20"
+	},
 ]
 
 
 
 let MOVEMENTSTOCKS = FO_LIST;
+
+let PRE_MARKET_LIST = [
+	'MANAPPURAM',
+	'CANBK',
+	'RBLBANK',
+	'TATASTEEL',
+	'WIPRO',
+	'IGL',
+	'IRFC',
+	'ONGC',
+	'HFCL',
+	'PNB',
+	'TATAMOTORS',
+	'UNIONBANK',
+	'BANKBARODA',
+	'GAIL',
+	'GMRAIRPORT',
+	'HUDCO',
+	'IEX',
+	'IRB',
+	'NYKAA',
+	'SJVN',
+	'TATAPOWER',
+	'ZOMATO',
+	'BANKINDIA',
+	'BHEL',
+	'INDUSTOWER',
+	'MOTHERSON',
+	'RELIANCE',
+	'BEL',
+	'COALINDIA',
+	'HINDCOPPER',
+	'NHPC',
+	'NMDC',
+	'RECLTD',
+	'SHRIRAMFIN',
+	'INFY',
+	'LTF',
+	'NCC',
+	'AUBANK',
+	'BANDHANBNK',
+	'BIOCON',
+	'FEDERALBNK',
+	'HINDPETRO',
+	'INDUSINDBK',
+	'ITC',
+	'JIOFIN',
+	'NBCC',
+	'NTPC',
+	'AARTIIND',
+	'BPCL',
+	'KALYANKJIL',
+	'PAYTM',
+	'PFC',
+	'SBIN',
+	'VBL',
+	'IDFCFIRSTB',
+	'IOC',
+	'NATIONALUM',
+	'OIL',
+	'ABCAPITAL',
+	'ABFRL',
+	'AXISBANK',
+	'ICICIBANK',
+	'POWERGRID',
+	'SAIL',
+	'VEDL'
+]

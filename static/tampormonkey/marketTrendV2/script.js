@@ -218,7 +218,7 @@ function saveVixQuote() {
 
 function makeUIChanges() {
     var html = '';
-    html += '<a href="#" id="add-to-watch-list">'
+    html += '<a href="#" id="add-to-watch-list" style="display:none;">'
     html += 'Add Watchlist'
     html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
@@ -457,20 +457,20 @@ function getIndicesBullsBearsCount() {
 
     jQ("#index-bulls").html(bulls);
     jQ("#index-bears").html(bears);
-    vixu = '<span class="badge bg-success">' + vixu + '</span>'
-    vixl = '<span class="badge bg-danger">' + vixl + '</span>'
+    vixu = '<span class="badge bg-danger">' + vixu + '</span>'
+    vixl = '<span class="badge bg-success">' + vixl + '</span>'
     jQ("#indices-vixu").html(vixu);
     jQ("#indices-vixl").html(vixl);
 
 
     ast = '<span class="badge bg-danger">' + ast + '</span>'
-    aso = '<span class="badge bg-success">' + aso + '</span>'
+    aso = '<span class="badge bg-danger">' + aso + '</span>'
     jQ("#indices-ast").html(ast);
     jQ("#indices-aso").html(aso);
 
 
     bst = '<span class="badge bg-success">' + bst + '</span>'
-    bso = '<span class="badge bg-danger">' + bso + '</span>'
+    bso = '<span class="badge bg-success">' + bso + '</span>'
     jQ("#indices-bst").html(bst);
     jQ("#indices-bso").html(bso);
 }
@@ -514,6 +514,11 @@ function getNiftyBullsBearsCount() {
     let bulls = vixu + aso + bst
     let bears = vixl + ast + bso
 
+    let count = getTradeASOBSOStrengthCount('NIFTY 50');
+
+    let caso = '<span class="badge bg-success">' + count[0] + '</span>'
+    let cbso = '<span class="badge bg-danger">' + count[1] + '</span>'
+
     jQ("#nifty-50-bulls").html(bulls);
     jQ("#nifty-50-bears").html(bears);
     vixu = '<span class="badge bg-success">' + vixu + '</span>'
@@ -525,14 +530,15 @@ function getNiftyBullsBearsCount() {
     ast = '<span class="badge bg-danger">' + ast + '</span>'
     aso = '<span class="badge bg-success">' + aso + '</span>'
     jQ("#nifty-ast").html(ast);
-    jQ("#nifty-aso").html(aso);
+    jQ("#nifty-aso").html(aso + " " + caso);
 
 
     bst = '<span class="badge bg-success">' + bst + '</span>'
     bso = '<span class="badge bg-danger">' + bso + '</span>'
     jQ("#nifty-bst").html(bst);
-    jQ("#nifty-bso").html(bso);
+    jQ("#nifty-bso").html(bso + " " + cbso);
 
+    niftyAdr()
 
 }
 
@@ -575,6 +581,11 @@ function getBankNiftyBullsBearsCount() {
     let bulls = vixu + aso + bst
     let bears = vixl + ast + bso
 
+    let count = getTradeASOBSOStrengthCount('BANK NIFTY');
+
+    let caso = '<span class="badge bg-success">' + count[0] + '</span>'
+    let cbso = '<span class="badge bg-danger">' + count[1] + '</span>'
+
     jQ("#nifty-bank-bulls").html(bulls);
     jQ("#nifty-bank-bears").html(bears);
 
@@ -587,13 +598,16 @@ function getBankNiftyBullsBearsCount() {
     ast = '<span class="badge bg-danger">' + ast + '</span>'
     aso = '<span class="badge bg-success">' + aso + '</span>'
     jQ("#bank-nifty-ast").html(ast);
-    jQ("#bank-nifty-aso").html(aso);
+    jQ("#bank-nifty-aso").html(aso + " " + caso);
 
 
     bst = '<span class="badge bg-success">' + bst + '</span>'
     bso = '<span class="badge bg-danger">' + bso + '</span>'
     jQ("#bank-nifty-bst").html(bst);
-    jQ("#bank-nifty-bso").html(bso);
+    jQ("#bank-nifty-bso").html(bso + " " + cbso);
+
+    bankNiftyAdr()
+
 }
 
 function getAllBullsBearsCount() {
@@ -635,6 +649,11 @@ function getAllBullsBearsCount() {
     let bulls = vixu + aso + bst
     let bears = vixl + ast + bso
 
+    let count = getTradeASOBSOStrengthCount('ALL');
+
+    let caso = '<span class="badge bg-success">' + count[0] + '</span>'
+    let cbso = '<span class="badge bg-danger">' + count[1] + '</span>'
+
     jQ("#all-bulls").html(bulls);
     jQ("#all-bears").html(bears);
 
@@ -647,13 +666,54 @@ function getAllBullsBearsCount() {
     ast = '<span class="badge bg-danger">' + ast + '</span>'
     aso = '<span class="badge bg-success">' + aso + '</span>'
     jQ("#all-ast").html(ast);
-    jQ("#all-aso").html(aso);
+    jQ("#all-aso").html(aso + " " + caso);
 
 
     bst = '<span class="badge bg-success">' + bst + '</span>'
     bso = '<span class="badge bg-danger">' + bso + '</span>'
     jQ("#all-bst").html(bst);
-    jQ("#all-bso").html(bso);
+    jQ("#all-bso").html(bso + " " + cbso);
+
+    allAdr()
+}
+
+
+function getTradeASOBSOStrengthCount(type) {
+
+    let listType = FO_LIST;
+    if (type == "NIFTY 50") {
+        listType = NIFTY_50_LIST;
+    }
+
+    if (type == "BANK NIFTY") {
+        listType = NIFTY_BANK_LIST;
+    }
+
+    let trades = JSON.parse(localStorage.getItem("TRADES"));
+    if (!trades) {
+        trades = []
+    }
+
+    let orderBook = JSON.parse(localStorage.getItem("ORDERBOOK"));
+    if (!orderBook) {
+        orderBook = []
+    }
+
+    let bsoCount = 0;
+    let asoCount = 0;
+    jQ.each(trades, function (index, item) {
+        if (jQ.inArray(item, listType) !== -1) {
+            let info = orderBook[item]['INFO']
+            if (jQ.inArray("BSO", info['trends']) !== -1) {
+                bsoCount++;
+            }
+
+            if (jQ.inArray("ASO", info['trends']) !== -1) {
+                asoCount++;
+            }
+        }
+    })
+    return [asoCount, bsoCount]
 }
 
 jQ(document).on("click", "#start-auto-refresh", function () {
@@ -781,6 +841,12 @@ function showFutureAi() {
     html += '</button>'
     html += '</div>'
 
+    html += '<div class="col-md-1">'
+    html += '<button id="add-aso-bso-to-basket" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Add Trades to Basket'
+    html += '</button>'
+    html += '</div>'
+
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
@@ -834,11 +900,9 @@ function showFutureAi() {
 
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
-    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
-    html += '<li class="list-group-item" >AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="INDICES" id="indices-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="INDICES" id="indices-aso">0</span></li>'
     html += '<li class="list-group-item" >BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="INDICES" id="indices-bst">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="INDICES" id="indices-bso">0</span></li>'
-
-
+    html += '<li class="list-group-item" >AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="INDICES" id="indices-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="INDICES" id="indices-aso">0</span></li>'
+    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="INDICES" id="indices-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="INDICES" id="indices-vixl">0</span></li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
@@ -849,16 +913,20 @@ function showFutureAi() {
     html += '<div class="card" >'
     html += '<div class="card-header">'
     html += '<span class="filter-instruments" data-index-name="NIFTY 50">NIFTY 50 </span> '
-    html += '<span id="nifty-50-bulls" class="badge bg-success me-1"></span>'
-    html += '<span id="nifty-50-bears" class="badge bg-danger me-1"></span>'
+    html += '<span id="nifty-50-bulls" class="badge bg-success me-1">0</span>'
+    html += '<span id="nifty-50-bears" class="badge bg-danger me-1"0></span>'
 
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
+    html += '<li class="list-group-item" >ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="NIFTY 50" id="nifty-aso">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="NIFTY 50" id="nifty-bso">0</span></li>'
+    html += '<li class="list-group-item" >AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="NIFTY 50" id="nifty-ast">0</span>BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="NIFTY 50" id="nifty-bst">0</span></li>'
     html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="NIFTY 50" id="nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="NIFTY 50" id="nifty-vixl">0</span></li>'
-    html += '<li class="list-group-item" >AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="NIFTY 50" id="nifty-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="NIFTY 50" id="nifty-aso">0</span></li>'
-    html += '<li class="list-group-item" >BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="NIFTY 50" id="nifty-bst">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="NIFTY 50" id="nifty-bso">0</span></li>'
-
-
+    html += '<li class="list-group-item">'
+    html += '<span titl="Advances" id="nifty-50-advances" class="badge bg-success me-1">0</span>'
+    html += '<span titl="Declines" id="nifty-50-declines" class="badge bg-danger me-1">0</span>'
+    html += '<span titl="ADR" id="nifty-50-adr" class="badge bg-info me-1">0.0</span>'
+    html += '<div titl="Trend" class="badge bg-info me-1" id="nifty-trend"></div>'
+    html += ' </li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
@@ -874,10 +942,16 @@ function showFutureAi() {
 
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
+    html += '<li class="list-group-item">ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="BANK NIFTY" id="bank-nifty-aso">0</span> BSO: <span  class="filter-instruments" data-trend-type="BSO" data-index-name="BANK NIFTY" id="bank-nifty-bso">0</span></li>'
+    html += '<li class="list-group-item">AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="BANK NIFTY"  id="bank-nifty-ast">0</span>BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="BANK NIFTY" id="bank-nifty-bst">0</span>  </li>'
     html += '<li class="list-group-item">VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="BANK NIFTY" id="bank-nifty-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="BANK NIFTY" id="bank-nifty-vixl">0</span></li>'
-    html += '<li class="list-group-item">AST: <span  class="filter-instruments" data-trend-type="AST" data-index-name="BANK NIFTY"  id="bank-nifty-ast">0</span> ASO: <span  class="filter-instruments" data-trend-type="ASO" data-index-name="BANK NIFTY" id="bank-nifty-aso">0</span></li>'
-    html += '<li class="list-group-item">BST: <span  class="filter-instruments" data-trend-type="BST" data-index-name="BANK NIFTY" id="bank-nifty-bst">0</span> BSO: <span  class="filter-instruments" data-trend-type="BSO" data-index-name="BANK NIFTY" id="bank-nifty-bso">0</span></li>'
 
+    html += '<li class="list-group-item">'
+    html += '<span titl="Advances" id="nifty-bank-advances" class="badge bg-success me-1">0</span>'
+    html += '<span titl="Declines" id="nifty-bank-declines" class="badge bg-danger me-1">0</span>'
+    html += '<span titl="ADR" id="nifty-bank-adr" class="badge bg-info me-1">0.0</span>'
+    html += '<div titl="Trend" class="badge bg-info me-1" id="nifty-bank-trend"></div>'
+    html += ' </li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
@@ -889,9 +963,15 @@ function showFutureAi() {
     html += '<span class="filter-instruments" data-index-name="ALL">ALL</span> <span id="all-bulls" class="badge bg-success"></span> <span id="all-bears" class="badge bg-danger"></span>'
     html += '</div>'
     html += '<ul class="list-group list-group-flush">'
-    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="ALL" id="all-vixu">0</span> VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="ALL" id="all-vixl">0</span></li>'
-    html += '<li class="list-group-item" >AST: <span class="filter-instruments" data-trend-type="AST" data-index-name="ALL" id="all-ast">0</span> ASO: <span class="filter-instruments" data-trend-type="ASO" data-index-name="ALL" id="all-aso">0</span></li>'
-    html += '<li class="list-group-item" >BST: <span class="filter-instruments" data-trend-type="BST" data-index-name="ALL" id="all-bst">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="ALL" id="all-bso">0</span></li>'
+    html += '<li class="list-group-item" >ASO: <span class="filter-instruments" data-trend-type="ASO" data-index-name="ALL" id="all-aso">0</span> BSO: <span class="filter-instruments" data-trend-type="BSO" data-index-name="ALL" id="all-bso">0</span></li>'
+    html += '<li class="list-group-item" >AST: <span class="filter-instruments" data-trend-type="AST" data-index-name="ALL" id="all-ast">0</span> BST: <span class="filter-instruments" data-trend-type="BST" data-index-name="ALL" id="all-bst">0</span> </li>'
+    html += '<li class="list-group-item" >VIXU: <span class="filter-instruments" data-trend-type="VIXU" data-index-name="ALL" id="all-vixu">0</span>VIXL: <span class="filter-instruments" data-trend-type="VIXL" data-index-name="ALL" id="all-vixl">0</span></li>'
+    html += '<li class="list-group-item">'
+    html += '<span titl="Advances" id="all-advances" class="badge bg-success me-1">0</span>'
+    html += '<span titl="Declines" id="all-declines" class="badge bg-danger me-1">0</span>'
+    html += '<span titl="ADR" id="all-adr" class="badge bg-info me-1">0.0</span>'
+    html += '<div titl="Trend" class="badge bg-info me-1" id="all-trend"></div>'
+    html += ' </li>'
     html += '</ul>'
     html += '</div>'
     html += '</div>'
@@ -965,6 +1045,9 @@ function showFutureAi() {
         console.log("Closed AI windows");
     });
 }
+
+
+
 
 var stockTable;
 
@@ -1634,10 +1717,10 @@ jQ(document).on("click", ".place-sl-order", function () {
     let price = 0
     let trigger_price = 0;
 
-    if(transaction_type == "BUY"){
+    if (transaction_type == "BUY") {
         trigger_price = stop
         price = parseFloat(stop + 0.10).toFixed(2)
-    }else{
+    } else {
         trigger_price = stop
         price = parseFloat(stop - 0.10).toFixed(2)
     }
@@ -1821,6 +1904,32 @@ function showChart(quote, name) {
 
 
 
+    let asoStopLoss = 0;
+    let bsoStopLoss = 0;
+
+    let asoStop = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
+    asoStop = asoStop / 2
+    asoStopLoss = parseFloat(data.ustrikeOne) - asoStop;
+
+    let bsoStop = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
+    bsoStop = bsoStop / 2
+    bsoStopLoss = parseFloat(data.bstrikeOne) + bsoStop;
+
+
+    line = {};
+    line.color = "#d65db1";
+    line.startvalue = asoStopLoss;
+    line.displayvalue = "ASO STOP" + asoStopLoss.toFixed(2);
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#ff6f91";
+    line.startvalue = bsoStopLoss;
+    line.displayvalue = "BSO STOP" + bsoStopLoss.toFixed(2);
+    lines.push(line);
+
+
     line = {};
     if (parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)) {
         line.color = "#5D8736";
@@ -1829,14 +1938,15 @@ function showChart(quote, name) {
         line.color = "#A94A4A";
         line.displayvalue = "Open -ve" + instrumentsMap[name]['price'];
     }
-    line.dashed = 1,
-        line.startvalue = instrumentsMap[name]['price'];
+    line.dashed = 1;
+    line.startvalue = instrumentsMap[name]['price'];
     lines.push(line);
 
     jQ("#" + chartId).html('')
     jQ("#" + chartId).insertFusionCharts({
         type: 'candlestick',
         width: "100%",
+        height: "100%",
         dataFormat: 'json',
         dataSource: {
             "chart": {
@@ -2864,6 +2974,116 @@ async function addAllToBasket() {
     alert("Added all scripts to the Basket.")
 }
 
+jQ(document).on("click", "#add-aso-bso-to-basket", function () {
+    addAsoBsoToBasket()
+});
+
+async function addAsoBsoToBasket() {
+    weightIndex = [];
+    let listType = FO_LIST;
+    let allInstruments = [];
+    jQ.each(instrumentsMap, function (index, item) {
+        allInstruments.push(instrumentsMap[index])
+    });
+
+    let doubleCount = 0;
+    let tradeCounts = [];
+    let basketNumber = 0;
+    let exchange = "NSE"
+    for (let i = 0; i < allInstruments.length; i++) {
+        let data = allInstruments[i];
+        if (jQ.inArray(data.name, listType) != -1
+            && jQ.inArray(data.name, PRE_MARKET_LIST) !== -1
+            && tradeCounts.length < STOCK_LIMIT) {
+            let obj = {}
+            obj['TRADINGSYMBOL'] = data.name;
+            obj['CLOSE'] = data['prevPrice'];
+            obj['PRICE'] = data['price'];
+            obj['PERC'] = data['perc'];
+            if (infoMap[data.name]) {
+                let asoPrice = parseFloat(infoMap[data.name]['strikeData']['ustrikeOne']);
+                let trigger_price = 0.00;
+                let price = 0.00;
+                let transaction_type = "BUY"
+                trigger_price = asoPrice
+                price = parseFloat(asoPrice) + 0.50
+                let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+                let params = {
+                    "transaction_type": transaction_type,
+                    "product": "MIS",
+                    "order_type": "SL",
+                    "validity": "DAY",
+                    "validity_ttl": 1,
+                    "variety": "regular",
+                    "quantity": parseInt(quantity),
+                    "price": parseFloat(price),
+                    "trigger_price": parseFloat(trigger_price),
+                    "disclosed_quantity": 0,
+                    "tags": []
+                }
+
+                let weight = (weightIndex.length + 1);
+
+                if (doubleCount == 19) {
+                    weightIndex = [];
+                }
+
+                if (doubleCount == 39) {
+                    weightIndex = [];
+                }
+                if (doubleCount == 59) {
+                    weightIndex = [];
+                }
+
+                if (doubleCount > 19 && doubleCount <= 39) {
+                    basketNumber = 1;
+                }
+
+                if (doubleCount > 39 && doubleCount < 59) {
+                    basketNumber = 2;
+                }
+
+                addToBasket(data.name, exchange, weight, params, baskets[basketNumber])
+                doubleCount++;
+                await callSleepForAWhile(2000)
+                weightIndex.push(data.name)
+
+                let bsoPrice = parseFloat(infoMap[data.name]['strikeData']['bstrikeOne']);
+
+                trigger_price = 0.00;
+                price = 0.00;
+                transaction_type = "SELL"
+                trigger_price = bsoPrice
+                price = parseFloat(bsoPrice) - 0.50
+                quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+                params = {
+                    "transaction_type": transaction_type,
+                    "product": "MIS",
+                    "order_type": "SL",
+                    "validity": "DAY",
+                    "validity_ttl": 1,
+                    "variety": "regular",
+                    "quantity": parseInt(quantity),
+                    "price": parseFloat(price),
+                    "trigger_price": parseFloat(trigger_price),
+                    "disclosed_quantity": 0, "tags": []
+                }
+                weight = (weightIndex.length + 1)
+
+                addToBasket(data.name, exchange, weight, params, baskets[basketNumber])
+                doubleCount++;
+                await callSleepForAWhile(2000)
+                weightIndex.push(data.name)
+
+                tradeCounts.push(data.name)
+                
+            }
+        }
+    }
+}
+
+
+
 function callSackBar(message) {
     SnackBar({
         message: message,
@@ -3097,9 +3317,10 @@ function getStrikeDiff(instrument) {
 function addToBasket(tradingsymbol, exchange, weight, params, basket) {
     jQ.ajaxSetup({
         headers: {
-            'x-csrftoken': `${getCookie('public_token')}`
+            'x-csrftoken': `${getCookie('public_token')}`,
         }
     });
+    delete jQ.ajaxSetup().headers['Authorization'];
     return jQ.ajax({
         url: BASE_URL + `/api/baskets/${basket}/items`,
         type: 'POST',
@@ -3245,9 +3466,7 @@ function parseChartJson() {
     addOne['id'] = Math.random().toString(36).substr(2, 5)
     addOne['state']['text'] = "Demo"
     addOne['points'][0]['price'] = 24549.89
-
     content.charts[0].panes[0].sources[length + 1] = addOne
-
 }
 
 
@@ -3276,4 +3495,167 @@ function showOrderTypeCount() {
 
     jQ("#bsoTradeCount").html(bsoTradeCount);
     jQ("#asoTradeCount").html(asoTradeCount);
+}
+
+
+function niftyAdr() {
+    let advances = 0;
+    let declines = 0;
+    let unchanged = 0;
+    jQ.each(NIFTY_50_LIST, function (index, item) {
+        let prevPrice = parseFloat(instrumentsMap[item].prevPrice).toFixed(2)
+        let currentPrice = parseFloat(infoMap[item].currentPrice).toFixed(2);
+        if (currentPrice > prevPrice) {
+            advances++;
+        }
+
+        if (currentPrice < prevPrice) {
+            declines++;
+        }
+
+        if (currentPrice == prevPrice) {
+            unchanged++;
+        }
+    });
+
+    var bull_per = (advances / NIFTY_50_LIST.length) * 100;
+    var bear_per = (declines / NIFTY_50_LIST.length) * 100;
+    var unchanged_per = (unchanged / NIFTY_50_LIST.length) * 100;
+    var adr = advances / declines;
+    if (adr == 'Infinity') {
+        adr = 50;
+    }
+    adr = adr.toFixed(2)
+
+    if (bull_per > 65 && adr >= 1.8) {
+        trend = "Extremely Bullish(+)";
+    } else if (bull_per >= 50 && bull_per <= 65 && adr >= 1.50 && adr < 1.8) {
+        trend = "Bullish(+)";
+    } else if (bear_per >= 55 && adr <= 1) {
+        trend = "Extremely Bearish(-)";
+    } else if (bear_per >= 50 && bear_per < 55) {
+        trend = "Bearish(-)";
+    } else if (bear_per >= 40 && bear_per <= 49 && adr < 1.25) {
+        trend = "Little Bearish(-) and Bearish to Choppy Market";
+    } else if (bull_per > 45 && bull_per <= 49 && adr <= 1.25) {
+        trend = "little Bullish(+) with SideWays Market";
+    } else if (bull_per >= 50 && bull_per <= 59 && adr >= 1.25) {
+        trend = "Bullish(+) with  Volatile Market";
+    } else {
+        trend = "No Clear Trend";
+    }
+
+    jQ("#nifty-50-advances").html(advances);
+    jQ("#nifty-50-declines").html(declines);
+    jQ("#nifty-50-adr").html(adr + "%");
+    jQ("#nifty-trend").html(trend)
+}
+
+
+function bankNiftyAdr() {
+    let advances = 0;
+    let declines = 0;
+    let unchanged = 0;
+    jQ.each(NIFTY_BANK_LIST, function (index, item) {
+        let prevPrice = parseFloat(instrumentsMap[item].prevPrice).toFixed(2)
+        let currentPrice = parseFloat(infoMap[item].currentPrice).toFixed(2);
+        if (currentPrice > prevPrice) {
+            advances++;
+        }
+
+        if (currentPrice < prevPrice) {
+            declines++;
+        }
+
+        if (currentPrice == prevPrice) {
+            unchanged++;
+        }
+    });
+
+    var bull_per = (advances / NIFTY_BANK_LIST.length) * 100;
+    var bear_per = (declines / NIFTY_BANK_LIST.length) * 100;
+    var unchanged_per = (unchanged / NIFTY_BANK_LIST.length) * 100;
+    var adr = advances / declines;
+
+    if (adr == 'Infinity') {
+        adr = 12;
+    }
+
+    adr = adr.toFixed(2)
+
+    if (bull_per >= 60 && adr >= 2.2) {
+        trend = "Extremely Bullish(+)";
+    } else if (bull_per >= 50 && bull_per < 59 && adr >= 1.50) {
+        trend = "Bullish(+)";
+    } else if (bear_per >= 60 && adr <= 1) {
+        trend = "Extremely Bearish(-)";
+    } else if (bear_per > 50 && bear_per < 59) {
+        trend = "Bearish(-)";
+    } else if (bear_per >= 40 && bear_per <= 50 && adr < 1.25) {
+        trend = "Little Bearish(-) and Bearish to Choppy Market";
+    } else if (bull_per >= 40 && bull_per <= 49 && adr >= 1.25) {
+        trend = "little Bullish(+) with SideWays Market";
+    } else if (bull_per >= 50 && bull_per < 59 && adr >= 1.25 && adr < 1.50) {
+        trend = "Bullish(+) with Volatile Market";
+    } else
+        trend = "No Clear Trend";
+
+    jQ("#nifty-bank-advances").html(advances);
+    jQ("#nifty-bank-declines").html(declines);
+    jQ("#nifty-bank-adr").html(adr + "%");
+    jQ("#nifty-bank-trend").html(trend)
+}
+
+function allAdr() {
+    let advances = 0;
+    let declines = 0;
+    let unchanged = 0;
+    jQ.each(FO_LIST, function (index, item) {
+        let prevPrice = parseFloat(instrumentsMap[item].prevPrice).toFixed(2)
+        let currentPrice = parseFloat(infoMap[item].currentPrice).toFixed(2);
+        if (currentPrice > prevPrice) {
+            advances++;
+        }
+
+        if (currentPrice < prevPrice) {
+            declines++;
+        }
+
+        if (currentPrice == prevPrice) {
+            unchanged++;
+        }
+    });
+
+    var bull_per = (advances / FO_LIST.length) * 100;
+    var bear_per = (declines / FO_LIST.length) * 100;
+    var unchanged_per = (unchanged / FO_LIST.length) * 100;
+    var adr = advances / declines;
+
+    if (adr == 'Infinity') {
+        adr = 12;
+    }
+
+    adr = adr.toFixed(2)
+
+    if (bull_per >= 60 && adr >= 2) {
+        trend = "Extremely Bullish(+)";
+    } else if (bull_per >= 50 && bull_per <= 59 && adr >= 1.50) {
+        trend = "Bullish(+)";
+    } else if (bear_per >= 55 && adr <= 1) {
+        trend = "Extremely Bearish(-)";
+    } else if (bear_per >= 50 && bear_per < 55) {
+        trend = "Bearish(-)";
+    } else if (bull_per >= 40 && bull_per <= 45 && adr < 1.25) {
+        trend = "Little Bearish(-) and Bearish to Choppy Market";
+    } else if (bull_per > 45 && bull_per <= 49 && adr <= 1.25) {
+        trend = "little Bullish(+) with SideWays Market";
+    } else if (bull_per >= 50 && bull_per <= 59 && adr >= 1.25) {
+        trend = "Bullish(+) with  Volatile Market";
+    } else
+        trend = "No Clear Trend";
+
+    jQ("#all-advances").html(advances);
+    jQ("#all-declines").html(declines);
+    jQ("#all-adr").html(adr + "%");
+    jQ("#all-trend").html(trend)
 }

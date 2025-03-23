@@ -154,7 +154,8 @@ async function executeTrendTrade(trend, obj) {
             }
         }
 
-        console.log("----------------------------[ALGO CHECKING FOR ASO TARDE CONDITION]-----------------------------");
+        console.log("----------------------------[ALGO CHECKING FOR ASO TARDE CONDITION]------------------");
+        console.log("Script : " + obj.TRADINGSYMBOL);
         console.log("Volume :" + last.volume);
         console.log("Last Close : " + last.close);
         console.log("Strike : " + asoPrice);
@@ -183,7 +184,8 @@ async function executeTrendTrade(trend, obj) {
             }
         }
 
-        console.log("----------------------------[ALGO CHECKING FOR BSO TRADE CONDITION]-----------------------------");
+        console.log("----------------------------[ALGO CHECKING FOR BSO TRADE CONDITION]------------------");
+        console.log("Script : " + obj.TRADINGSYMBOL);
         console.log("Volume : " + last.volume);
         console.log("Last Close : " + last.close);
         console.log("Strike : " + bsoPrice);
@@ -199,11 +201,11 @@ async function triggerAlgoOrder(obj, transaction_type) {
     let trigger_price = 0;
     let price = 0;
     if (transaction_type == "SELL") {
-        let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']).toFixed();
+        let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']);
         trigger_price = bsoPrice
         price = bsoPrice - 1
     } else {
-        let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();
+        let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
         trigger_price = asoPrice
         price = asoPrice + 1
     }
@@ -244,27 +246,33 @@ async function setStopLoss(obj, type,quantity) {
     let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();
     let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']).toFixed();
 
-    let price = 0
-    let trigger_price = 0;
+    let price = 0.00
+    let trigger_price = 0.00;
 
-    let stopLoss = 0;
+    let stopLoss = 0.00;
     if (type == "BUY") {
         let stop = parseFloat(asoPrice) - parseFloat(obj['PRICE']);
         stop = stop/2
-        stopLoss = parseFloat(asoPrice - stop).toFixed(2);
+        stopLoss = parseFloat(asoPrice) - parseFloat(stop);
     } else if (type =="SELL") {
-        let stop = parseFloat(currentInfo['instrument']['price']) - parseFloat(bsoPrice);
+        let stop = parseFloat(obj['PRICE']) - parseFloat(bsoPrice);
         stop = stop/2
-        stopLoss = parseFloat(bsoPrice + stop).toFixed(2);
+        stopLoss = parseFloat(bsoPrice) + parseFloat(stop);
     }
+
+    stopLoss = Math.round(stopLoss * 10, 2) / 10;
 
     if(transaction_type == "BUY"){
         trigger_price = stopLoss
-        price = parseFloat(stopLoss + 0.10).toFixed(2)
+        price = parseFloat(stopLoss) + 0.20
     }else{
         trigger_price = stopLoss
-        price = parseFloat(stopLoss - 0.10).toFixed(2)
+        price = parseFloat(stopLoss) - 0.20
     }
+
+    trigger_price = parseFloat(trigger_price);
+    price = parseFloat(price);
+
 
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": "SL", "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
     placeOrder(params)
