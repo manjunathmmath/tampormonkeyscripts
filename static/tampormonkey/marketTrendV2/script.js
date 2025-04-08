@@ -264,14 +264,14 @@ async function autoRefreshEachTabs(instance) {
         jQ(".marketwatch-selector a.item")[i].click();
         await callSleepForAWhile(1000);
         generateTrend();
-        await callSleepForAWhile(1000);
+        /*await callSleepForAWhile(1000);*/
     }
 
     /*Reset to first tab*/
     jQ(".marketwatch-selector a.item")[0].click();
     await callSleepForAWhile(1000);
     generateTrend();
-    await callSleepForAWhile(1000);
+    /*await callSleepForAWhile(1000);*/
 
     await analyseFutureIntruments();
     getIndicesBullsBearsCount()
@@ -1265,8 +1265,6 @@ async function generateTrend() {
                     localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(currentMap));
                 }
 
-                let bulls = 0;
-                let bears = 0;
                 instrumentsMap = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
                 jQ(instruments).each(function (iindex, iitem) {
                     let name = jQ(this).find(".symbol").find(".nice-name").html();
@@ -1293,7 +1291,20 @@ async function generateTrend() {
 
                         let strikeData = getStrikeDetails(instrumentsMap[name], name);
 
+
                         let currentPrice = parseFloat(price.trim()).toFixed(2);
+
+                        let asoPrice = 0;
+                        let bsoPrice = 0;
+                        let aso = parseFloat(strikeData['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
+                        aso = aso / 2
+                        asoPrice = parseFloat(strikeData['ustrikeOne']) - aso;
+
+                        let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(strikeData['bstrikeOne']);
+                        bso = bso / 2
+                        bsoPrice = parseFloat(strikeData['bstrikeOne']) + bso;
+
+
                         let trend = "NA"
                         let trends = []
 
@@ -1306,45 +1317,62 @@ async function generateTrend() {
                         vixUpperRange = parseFloat(vix.vixDDUpper)
                         vixDDRange = parseFloat(vix.vixDDRange)
 
-                        if (currentPrice >= parseFloat(strikeData['ustrikeTwo'])) {
-                            let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
-                            that.find(".info-wrapper").append(strike);
-                            trend = "AST"
-                            trends.push(trend);
-                        }
 
-                        if (currentPrice >= parseFloat(strikeData['ustrikeOne'])) {
-                            let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
-                            that.find(".info-wrapper").append(strike);
-                            trend = "ASO"
-                            trends.push(trend);
-                        }
-                        if (currentPrice <= parseFloat(strikeData['bstrikeTwo'])) {
-                            let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
-                            that.find(".info-wrapper").append(strike);
-                            trend = "BST"
-                            trends.push(trend);
-                        }
+                        if (index == 0) {
+                            if (currentPrice >= parseFloat(strikeData['ustrikeTwo'])) {
+                                let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "AST"
+                                trends.push(trend);
+                            }
 
-                        if (currentPrice <= parseFloat(strikeData['bstrikeOne'])) {
-                            let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
-                            that.find(".info-wrapper").append(strike);
-                            trend = "BSO"
-                            trends.push(trend);
-                        }
+                            if (currentPrice >= parseFloat(strikeData['ustrikeOne'])) {
+                                let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "ASO"
+                                trends.push(trend);
+                            }
+                            if (currentPrice <= parseFloat(strikeData['bstrikeTwo'])) {
+                                let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "BST"
+                                trends.push(trend);
+                            }
 
-                        if (currentPrice <= parseFloat(vixLowerRange)) {
-                            let strike = '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
-                            that.find(".info-wrapper").append(strike);
-                            trend = "VIXL"
-                            trends.push(trend);
-                        }
+                            if (currentPrice <= parseFloat(strikeData['bstrikeOne'])) {
+                                let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "BSO"
+                                trends.push(trend);
+                            }
 
-                        if (currentPrice >= parseFloat(vixUpperRange)) {
-                            let strike = '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
-                            that.find(".info-wrapper").append(strike);
-                            trend = "VIXU"
-                            trends.push(trend);
+                            if (currentPrice <= parseFloat(vixLowerRange)) {
+                                let strike = '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "VIXL"
+                                trends.push(trend);
+                            }
+
+                            if (currentPrice >= parseFloat(vixUpperRange)) {
+                                let strike = '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "VIXU"
+                                trends.push(trend);
+                            }
+                        } else {
+                            if (currentPrice >= parseFloat(asoPrice)) {
+                                let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "ASO"
+                                trends.push(trend);
+                            }
+
+                            if (currentPrice <= parseFloat(bsoPrice)) {
+                                let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "BSO"
+                                trends.push(trend);
+                            }
                         }
 
                         let infoObj = {}
@@ -1356,7 +1384,7 @@ async function generateTrend() {
                         infoObj['currentPrice'] = currentPrice
                         infoMap[name] = infoObj
 
-                        let tooltip = '<div data-name="' + name + '" class="badge bg-secondary show-info">i</div>'
+                        let tooltip = '<div data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</div>'
                         that.find(".info-wrapper").append(tooltip);
 
                         let add = '<div data-price="' + parseFloat(price.trim()).toFixed(2) + '" data-trend="' + trend + '" data-name="' + name + '" class="badge bg-primary add-to-basket">+</div>'
@@ -1364,18 +1392,37 @@ async function generateTrend() {
                         let VIXU_MOVED = parseFloat(currentPrice - vixUpperRange).toFixed()
                         let VIXL_MOVED = parseFloat(vixLowerRange - currentPrice).toFixed()
 
-                        let priceMoved = ''
-                        if (trend == "VIXL") {
-                            priceMoved += '<div class="badge bg-warning price-moved">' + VIXL_MOVED + '</div>'
-                            bears++
+
+                        if (index == 0) {
+                            let priceMoved = ''
+                            if (trend == "VIXL") {
+                                priceMoved += '<div class="badge bg-warning price-moved">' + VIXL_MOVED + '</div>'
+                            }
+
+                            if (trend == "VIXU") {
+                                priceMoved += '<div class="badge bg-warning price-moved">' + VIXU_MOVED + '</div>'
+                            }
+                            that.find(".info-wrapper").append(priceMoved);
                         }
 
-                        if (trend == "VIXU") {
-                            priceMoved += '<div class="badge bg-warning price-moved">' + VIXU_MOVED + '</div>'
-                            bulls++;
+
+                        if (index != 0) {
+
+                            let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed()
+                            let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed()
+
+                            let priceMoved = ''
+                            if (trend == "ASO") {
+                                priceMoved += '<div class="badge bg-warning price-moved">' + ASO_MOVED + '</div>'
+                            }
+
+                            if (trend == "BSO") {
+                                priceMoved += '<div class="badge bg-warning price-moved">' + BSO_MOVED + '</div>'
+                            }
+
+                            that.find(".info-wrapper").append(priceMoved);
                         }
 
-                        that.find(".info-wrapper").append(priceMoved);
 
                         let qtyToBuy = '<div class="badge bg-info quantity-to-buy">' + quantity + '</div>'
                         if (index != 0) {
@@ -1400,12 +1447,6 @@ async function generateTrend() {
                     }
                 });
 
-                jQ(item).find(".bullsVersesBears").remove();
-                jQ(item).find(".add-all-scripts").remove();
-                let countMaprkup = ''
-                countMaprkup += '<span class="bullsVersesBears bg-success">' + bulls + '</span>'
-                countMaprkup += '<span class="bullsVersesBears bg-danger">' + bears + '</span>'
-                jQ(item).append(countMaprkup)
             }
         }
     });
@@ -1737,10 +1778,10 @@ jQ(document).on("click", ".place-order", function () {
     let price = 0;
     if (transaction_type == "SELL") {
         trigger_price = ltp
-        price = ltp - 1
+        price = ltp - 0.20
     } else {
         trigger_price = ltp
-        price = ltp + 1
+        price = ltp - 0.20
     }
     let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
@@ -2835,27 +2876,52 @@ function getCurrentFutureQuote(validName) {
 
 jQ(document).on("click", ".show-info", function () {
     let name = jQ(this).attr("data-name");
+    let index = jQ(this).attr("data-index");
     let data = infoMap[name];
+
+    let asoPrice = 0;
+    let bsoPrice = 0;
+    let aso = parseFloat(data['strikeData']['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
+    aso = aso / 2
+    asoPrice = parseFloat(data['strikeData']['ustrikeOne']) - aso;
+
+    let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data['strikeData']['bstrikeOne']);
+    bso = bso / 2
+    bsoPrice = parseFloat(data['strikeData']['bstrikeOne']) + bso;
+
+
     let html = ''
-    html += '<div style="text-align:center;">'
-    html += name
-    html += '</div>'
-    html += '<div>'
-    html += ' ASO : ' + data['strikeData']['ustrikeOne']
-    html += ' AST : ' + data['strikeData']['ustrikeTwo']
-    html += '</div>'
-    html += '<hr>'
-    html += '<div>'
-    html += ' BSO : ' + data['strikeData']['bstrikeOne']
-    html += ' BST : ' + data['strikeData']['bstrikeTwo']
-    html += '</div>'
-    html += '<hr>'
-    html += '<div>'
-    html += ' VIXU : ' + data['vix']['vixDDUpper']
-    html += ' VIXL : ' + data['vix']['vixDDLower']
-    html += '</div>'
-    html += ''
-    html += ''
+
+    if (index == 0) {
+        html += '<div style="text-align:center;">'
+        html += name
+        html += '</div>'
+        html += '<div>'
+        html += ' ASO : ' + data['strikeData']['ustrikeOne']
+        html += ' AST : ' + data['strikeData']['ustrikeTwo']
+        html += '</div>'
+        html += '<hr>'
+        html += '<div>'
+        html += ' BSO : ' + data['strikeData']['bstrikeOne']
+        html += ' BST : ' + data['strikeData']['bstrikeTwo']
+        html += '</div>'
+        html += '<hr>'
+        html += '<div>'
+        html += ' VIXU : ' + data['vix']['vixDDUpper']
+        html += ' VIXL : ' + data['vix']['vixDDLower']
+        html += '</div>'
+    } else {
+        html += '<div style="text-align:center;">'
+        html += name
+        html += '</div>'
+        html += '<div>'
+        html += ' ASO : ' + asoPrice
+        html += '</div>'
+        html += '<hr>'
+        html += '<div>'
+        html += ' BSO : ' + bsoPrice
+        html += '</div>'
+    }
     callSackBarInfo(html)
 });
 
@@ -3076,7 +3142,7 @@ async function addAsoBsoToBasket() {
                 weightIndex.push(data.name)
 
                 tradeCounts.push(data.name)
-                
+
             }
         }
     }

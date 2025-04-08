@@ -9,8 +9,6 @@ jQ(document).on("change", "#trade-type", function () {
 function showOrderBook() {
     let html = ''
 
-    
-
     html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<table  class="" id="order-book-list-table" style="width: 100%;display: none;">'
@@ -70,7 +68,7 @@ jQ(document).on("click", "#refresh-order-book", function () {
 });
 
 let total = 0;
-function commonGenerateTable() {
+async function commonGenerateTable() {
     let trendType = jQ("#trade-type option:selected").val();
     total = 0;
     let trades = JSON.parse(localStorage.getItem("TRADES"));
@@ -82,31 +80,40 @@ function commonGenerateTable() {
     if (!orderBook) {
         orderBook = []
     }
+    let positions = await getPositons();
 
+    console.log(positions)
     let orders = []
     jQ.each(trades, function (index, item) {
 
         let info = orderBook[item]['INFO']
-        if(trendType != "ALL"){
-            if(trendType=='BSO' 
-                && jQ.inArray("BSO", info['trends']) === -1){
+        if (trendType != "ALL") {
+            if (trendType == 'BSO'
+                && jQ.inArray("BSO", info['trends']) === -1) {
                 return;
             }
 
-            if(trendType=='ASO' 
-                && jQ.inArray("ASO", info['trends']) === -1){
-                    return;
+            if (trendType == 'ASO'
+                && jQ.inArray("ASO", info['trends']) === -1) {
+                return;
             }
         }
 
         let obj = {}
-       
+
         let book = orderBook[item]['ORDER']
         let currentInfo = infoMap[item];
-        let aso = parseFloat(info['strikeData']['ustrikeOne']).toFixed(2);
-        let ast = parseFloat(info['strikeData']['ustrikeTwo']).toFixed(2);
-        let bso = parseFloat(info['strikeData']['bstrikeOne']).toFixed(2);
-        let bst = parseFloat(info['strikeData']['bstrikeTwo']).toFixed(2);
+
+
+        let asoPrice = 0;
+        let bsoPrice = 0;
+        let aso = parseFloat(info['strikeData']['ustrikeOne']) - parseFloat(currentInfo['instrument']['price']);
+        aso = aso / 2
+        asoPrice = parseFloat(info['strikeData']['ustrikeOne']) - aso;
+    
+        let bso = parseFloat(currentInfo['instrument']['price']) - parseFloat(info['strikeData']['bstrikeOne']);
+        bso = bso / 2
+        bsoPrice = parseFloat(info['strikeData']['bstrikeOne']) + bso;
 
         obj.SYMBOL = item
         obj.TRANSACTION_TYPE = book.transaction_type
@@ -122,14 +129,14 @@ function commonGenerateTable() {
             obj.COUNTER_TRANSACATION_TYPE = 'SELL'
         }
         if (jQ.inArray("ASO", info['trends']) != -1) {
-            let stop = parseFloat(aso) - parseFloat(currentInfo['instrument']['price']);
-            stop = stop/2
-            obj.STOPLOSS = parseFloat(aso - stop).toFixed(2);
+            let stop = parseFloat(currentInfo['instrument']['price']);
+            stop = stop
+            obj.STOPLOSS = parseFloat(stop).toFixed(2);
 
         } else if (jQ.inArray("BSO", info['trends']) != -1) {
-            let stop = parseFloat(currentInfo['instrument']['price']) - parseFloat(bso);
-            stop = stop/2
-            obj.STOPLOSS = parseFloat(bso + stop).toFixed(2);
+            let stop = parseFloat(currentInfo['instrument']['price']);
+            stop = stop
+            obj.STOPLOSS = parseFloat(stop).toFixed(2);
         }
         orders.push(obj);
         getTotal(obj)
@@ -165,7 +172,6 @@ function getTotal(row) {
 
 
 function generateOrderBook(orderBook) {
-
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
@@ -268,6 +274,10 @@ function generateOrderBook(orderBook) {
                         html += '</span>'
                     }
 
+                    html += '<span  data-name="' + row['SYMBOL'] + '" class="badge bg-warning  ms-1 clear-order" style="margin-right:.5rem;">';
+                    html += "CLEAR"
+                    html += '</span>'
+
                     return html;
                 }
             },
@@ -277,6 +287,22 @@ function generateOrderBook(orderBook) {
         }
     });
 }
+
+jQ(document).on("click", ".clear-order", function () {
+    let name = jQ(this).attr("data-name");
+    if(name){
+        let trades = JSON.parse(localStorage.getItem("TRADES"));
+        if (!trades) {
+            trades = []
+        }
+
+        const index = trades.indexOf(name);
+        if (index > -1) {
+            trades.splice(index, 1);
+            localStorage.setItem("TRADES", JSON.stringify(trades));
+        }
+    }
+});
 
 
 jQ(document).on("click", ".exit-trade", function () {
@@ -298,4 +324,25 @@ jQ(document).on("click", ".exit-trade", function () {
         };
 
     }
-})
+});
+
+
+function getPositons() {
+    jQ.ajaxSetup({
+        headers: {
+            'Authorization': `enctoken ${getCookie('enctoken')}`
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        jQ.ajax({
+            url: BASE_URL + `/oms/portfolio/positions`,
+            type: 'GET',
+            async: true,
+            cache: false,
+            success: function (resp) {
+                resolve(resp);
+            }
+        });
+    });
+}
