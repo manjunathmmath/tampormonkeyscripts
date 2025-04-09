@@ -213,7 +213,7 @@ let nseStrikeDiff = {
 	'VOLTAS': '20,40',
 	'WIPRO': '2.5,5',
 	'YESBANK': '1,2',
-	'ZOMATO': '5,10',
+	'ETERNAL': '5,10',
 	'ZYDUSLIFE': '10,20',
 	'NIFTY 50': '50,50',
 	'NIFTY MID SELECT': '25,25',
@@ -439,7 +439,7 @@ let FO_LIST = [
 	'VOLTAS',
 	'WIPRO',
 	'YESBANK',
-	'ZOMATO',
+	'ETERNAL',
 	'ZYDUSLIFE'
 ]
 
@@ -658,7 +658,7 @@ let instrumentTokens = {
 	'VOLTAS': 951809,
 	'WIPRO': 969473,
 	'YESBANK': 3050241,
-	'ZOMATO': 1304833,
+	'ETERNAL': 1304833,
 	'ZYDUSLIFE': 2029825,
 
 	'NIFTY 50': 256265,
@@ -1124,7 +1124,7 @@ let nseFutreStrikeDiff = {
 	'VOLTAS': '20,40',
 	'WIPRO': '5,10',
 	'YESBANK': '1,2',
-	'ZOMATO': '5,10',
+	'ETERNAL': '5,10',
 	'ZYDUSLIFE': '20,40',
 
 	'NBCC': '2.5,5',
@@ -5776,7 +5776,7 @@ let PRE_MARKET_LIST = [
 	'NYKAA',
 	'SJVN',
 	'TATAPOWER',
-	'ZOMATO',
+	'ETERNAL',
 	'BANKINDIA',
 	'BHEL',
 	'INDUSTOWER',

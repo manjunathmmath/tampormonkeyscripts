@@ -621,6 +621,7 @@ function getAllBullsBearsCount() {
 
     jQ.each(FO_LIST, function (index, item) {
         let data = infoMap[item]
+         console.log(item)
         if (data['trends']) {
             if (jQ.inArray("VIXL", data['trends']) != -1) {
                 vixl++
