@@ -266,7 +266,7 @@ async function autoRefreshEachTabs(instance) {
         generateTrend();
         /*await callSleepForAWhile(1000);*/
     }
-
+    startStockAlgoTrades();
     /*Reset to first tab*/
     jQ(".marketwatch-selector a.item")[0].click();
     await callSleepForAWhile(1000);
@@ -288,7 +288,6 @@ async function autoRefreshEachTabs(instance) {
         obj['PERC'] = instrumentsMap[index]['perc']
         obj['WEIGHTAGE'] = 0
 
-
         obj['TREND'] = ''
         obj['LTP'] = 0
         if (infoMap[index]) {
@@ -302,13 +301,11 @@ async function autoRefreshEachTabs(instance) {
     generateStockDataTable(data);
     showWeightageStockTrend()
     showOrderTypeCount();
-    startStockAlgoTrades();
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
         instance.attr("disabled", false)
     }
-
 }
 
 
@@ -1844,7 +1841,7 @@ function placeOrder(order) {
 }
 
 function showChart(quote, name) {
-
+    
     let data = getStrikeDetails(instrumentsMap[name], name);
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -3209,6 +3206,7 @@ function clearLocalStorage() {
 }
 
 function getStrikeDetails(item, instrument) {
+    console.log(instrument)
     let strikeDiff = getStrikeDiff(instrument);
     strikeDiff = strikeDiff.split(",");
     let strikeOne = parseInt(strikeDiff[0])

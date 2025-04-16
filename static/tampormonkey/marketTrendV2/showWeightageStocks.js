@@ -265,6 +265,20 @@ function showChartAllInOne(quote, name,type) {
 
     isVolumePresent = SHOW_VOLUME_ON_CHART
 
+
+
+    let asoPrice = 0;
+    let bsoPrice = 0;
+    let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
+    aso = aso / 2
+    asoPrice = parseFloat(data.ustrikeOne) - aso;
+
+    let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
+    bso = bso / 2
+    bsoPrice = parseFloat(data.bstrikeOne) + bso;
+
+    
+
     let lines = [];
     let line = {};
 
@@ -302,6 +316,22 @@ function showChartAllInOne(quote, name,type) {
     line.startvalue = data.ustrikeOne;
     line.displayvalue = "ASO " + data.ustrikeOne;
     lines.push(line);
+
+
+    if(type != "INDICES"){
+        line = {};
+        line.color = "#d65db1";
+        line.startvalue = asoPrice;
+        line.displayvalue = "ASO STOP" + asoPrice.toFixed(2);
+        lines.push(line);
+    
+    
+        line = {};
+        line.color = "#ff6f91";
+        line.startvalue = bsoPrice;
+        line.displayvalue = "BSO STOP" + bsoPrice.toFixed(2);
+        lines.push(line);
+    }
 
     line = {};
     if(parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)){
