@@ -674,8 +674,6 @@ jQ(document).on("click", ".chart-refresh", function () {
     tempName = tempName.replaceAll("&", "-")
 
     let data = infoMap[name]
-    console.log(data)
-
     var divClass = "popup-custom-style-" + tempName;
     if (data['trends'] != undefined) {
         jQ("." + divClass).find(".popupwindow_titlebar_text").find("#current-trend-" + tempName).html(' [' + data['trends'].join(",") + ']');
@@ -986,7 +984,6 @@ function clearLocalStorage() {
 }
 
 function getStrikeDetails(item, instrument) {
-    console.log(instrument)
     let strikeDiff = getStrikeDiff(instrument);
     strikeDiff = strikeDiff.split(",");
     let strikeOne = parseInt(strikeDiff[0])

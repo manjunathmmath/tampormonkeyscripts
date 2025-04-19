@@ -109,9 +109,27 @@ async function executeTrendTrade(trend, obj) {
         trades = []
     }
 
-    if (jQ.inArray(obj.TRADINGSYMBOL, trades) !== -1) {
+    let orderBook = JSON.parse(localStorage.getItem("ORDERBOOK"));
+    if (!orderBook) {
+        orderBook = {}
+    }
+    let prevOrder = orderBook[obj.TRADINGSYMBOL]
+
+    let skipTrade = false;
+    if (prevOrder) {
+        if (jQ.inArray(trend, obj['TREND']) !== -1) {
+            skipTrade = true
+        }
+    } else {
+        if (jQ.inArray(obj.TRADINGSYMBOL, trades) !== -1) {
+            skipTrade = true
+        }
+    }
+
+    if (skipTrade) {
         return;
     }
+
 
     let quote = await checkAlgoVolumeCondtion(obj.TRADINGSYMBOL);
 
@@ -223,7 +241,7 @@ async function triggerAlgoOrder(obj, transaction_type) {
         let res = await callPlaceOrder(params, ENABLE_ALGO_TRADE)
         if (res.status == "success") {
             if (ENABLE_SL && ENABLE_ALGO_TRADE) {
-                await setStopLoss(obj, transaction_type,quantity)
+                await setStopLoss(obj, transaction_type, quantity)
             }
         }
         if (!ENABLE_ALGO_TRADE) {
@@ -239,7 +257,7 @@ async function triggerAlgoOrder(obj, transaction_type) {
 
 }
 
-async function setStopLoss(obj, type,quantity) {
+async function setStopLoss(obj, type, quantity) {
     let name = obj.TRADINGSYMBOL;
     let transaction_type = "BUY"
     if (type == "BUY") {
@@ -248,12 +266,12 @@ async function setStopLoss(obj, type,quantity) {
 
     let price = 0.00
     let trigger_price = 0.00;
-    let stopLoss =parseFloat(obj['PRICE']);
+    let stopLoss = parseFloat(obj['PRICE']);
 
-    if(transaction_type == "BUY"){
+    if (transaction_type == "BUY") {
         trigger_price = stopLoss
         price = parseFloat(stopLoss) + 0.20
-    }else{
+    } else {
         trigger_price = stopLoss
         price = parseFloat(stopLoss) - 0.20
     }
