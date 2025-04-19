@@ -1,3 +1,0 @@
-
-select symbol,group_concat(step_value separator ', ') as myList from nse_stock_strike_intervals where month_type='M1' group by symbol
-

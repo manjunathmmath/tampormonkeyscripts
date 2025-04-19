@@ -6,7 +6,6 @@ async function startStockAlgoTrades() {
 
     console.log("Algo starts executing orders @ " + checkTime + "AM.  current time is :" + currentTime);
 
-
     if (currentTime >= endTime) {
         console.log("----------------------------[MARKET CLOSED]-----------------------------------------");
         console.log("current Time :" + currentTime);
@@ -59,29 +58,24 @@ async function startStockAlgoTrades() {
                 obj['TREND'] = infoMap[data.name]['trends'];
                 obj['LTP'] = infoMap[data.name]['currentPrice'];
                 obj['STRIKEDATA'] = infoMap[data.name]['strikeData'];
-                obj['VIX'] = infoMap[data.name]['vix'];
                 obj['CURRENT_PRICE'] = infoMap[data.name]['currentPrice'];
             }
 
             if (STOCK_TREND_TO_TRADE == "ALL") {
                 if (jQ.inArray("ASO", obj['TREND']) != -1) {
                     await executeTrendTrade("ASO", obj)
-                    /*await callSleepForAWhile(1000);*/
                 }
                 if (jQ.inArray("BSO", obj['TREND']) != -1) {
                     await executeTrendTrade("BSO", obj)
-                    /*await callSleepForAWhile(1000);*/
                 }
             } else if (STOCK_TREND_TO_TRADE == "ASO") {
                 if (jQ.inArray("ASO", obj['TREND']) != -1) {
                     await executeTrendTrade("ASO", obj)
-                    /*await callSleepForAWhile(1000);*/
                 }
 
             } else if (STOCK_TREND_TO_TRADE == "BSO") {
                 if (jQ.inArray("BSO", obj['TREND']) != -1) {
                     await executeTrendTrade("BSO", obj)
-                    /*await callSleepForAWhile(1000);*/
                 }
             }
         }
@@ -147,7 +141,6 @@ async function executeTrendTrade(trend, obj) {
     let isValidClose = false;
     let priceMoved = parseInt(STOCK_PRICE_MOVED)
     if (trend == "ASO") {
-        /*let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']).toFixed();*/
         let currentPrice = parseFloat(obj['CURRENT_PRICE']);
         let ASO_MOVED = currentPrice - asoPrice;
         if (ASO_MOVED <= priceMoved) {
@@ -177,7 +170,6 @@ async function executeTrendTrade(trend, obj) {
     }
 
     if (trend == "BSO") {
-        /*let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']).toFixed();*/
         let currentPrice = parseFloat(obj['CURRENT_PRICE']);
         let BSO_MOVED = bsoPrice - currentPrice
         if (BSO_MOVED <= priceMoved) {
