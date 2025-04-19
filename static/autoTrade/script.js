@@ -141,7 +141,7 @@ jQ(document).ready(function () {
 
 });
 
-jQ(document).on("click", "#show-ai-prediction", function (e) {
+jQ(document).on("click", "#start-algo-trade", function (e) {
     e.preventDefault();
     showAutoTrade();
 });
@@ -154,8 +154,8 @@ function makeUIChanges() {
     jQ('body').first().find(".app-nav").append(html);
 
     html = '';
-    html += '<a href="#" id="show-ai-prediction" style="padding:10px;">'
-    html += 'AI'
+    html += '<a href="#" id="start-algo-trade" style="padding:10px;">'
+    html += 'Algo'
     html += '</a>'
     jQ('body').first().find(".settings").append(html);
 }
@@ -336,7 +336,7 @@ function showAutoTrade() {
         if (timerInstance) {
             clearInterval(timerInstance)
         }
-        console.log("Closed AI windows");
+        console.log("Closed windows");
     });
 }
 

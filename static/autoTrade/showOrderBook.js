@@ -80,9 +80,8 @@ async function commonGenerateTable() {
     if (!orderBook) {
         orderBook = []
     }
-    let positions = await getPositons();
+    /*let positions = await getPositons();*/
 
-    console.log(positions)
     let orders = []
     jQ.each(trades, function (index, item) {
 
