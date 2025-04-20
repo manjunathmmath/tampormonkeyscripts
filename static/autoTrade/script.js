@@ -203,11 +203,38 @@ async function autoRefreshEachTabs(instance) {
     generateTrend();
     /*await callSleepForAWhile(1000);*/
     showOrderTypeCount();
+    getAllBullsBearsCount()
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
     if (instance) {
         instance.attr("disabled", false)
     }
+}
+
+function getAllBullsBearsCount() {
+    let aso = 0;
+    let bso = 0;
+    jQ.each(FO_LIST, function (index, item) {
+        let data = infoMap[item]
+         console.log(item)
+        if (data['trends']) {
+            if (jQ.inArray("ASO", data['trends']) != -1) {
+                aso++
+            }
+            if (jQ.inArray("BSO", data['trends']) != -1) {
+                bso++
+            }
+
+        }
+    });
+
+    aso = '<span class="badge bg-success">' + aso + '</span>'
+    jQ("#all-aso").html(aso);
+
+
+    bso = '<span class="badge bg-danger">' + bso + '</span>'
+    jQ("#all-bso").html(bso);
+
 }
 
 jQ(document).on("click", "#start-auto-refresh", function () {
@@ -302,6 +329,15 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
+
+    html += '<div class="col-md-1">'
+    html += 'ASO: <span id="all-aso" class="badge bg-success">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'BSO: <span id="all-bso" class="badge bg-danger">0</span>'
+    html += '</div>'
+
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
@@ -329,7 +365,7 @@ function showAutoTrade() {
     title += '<span id="clean-storage">Clear</span>'
     title += '</div>'
     title += '</div>'
-    showPopUpWindow('trend-analysis', html, "Auto Trade", 1200, 100);
+    showPopUpWindow('trend-analysis', html, "Auto Trade", 1200, 150);
     var divId = "popup-custom-style-trend-analysis";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     jQ("." + divId).on("close.popupwindow", function () {
