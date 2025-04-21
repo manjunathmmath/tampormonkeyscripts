@@ -216,7 +216,6 @@ function getAllBullsBearsCount() {
     let bso = 0;
     jQ.each(FO_LIST, function (index, item) {
         let data = infoMap[item]
-         console.log(item)
         if (data['trends']) {
             if (jQ.inArray("ASO", data['trends']) != -1) {
                 aso++
