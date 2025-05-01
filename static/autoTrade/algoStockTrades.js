@@ -36,6 +36,10 @@ async function startStockAlgoTrades() {
 
 
     let listType = FO_LIST;
+
+    if (USE_MOVEMENT_STOCKS) {
+        listType = MOVEMENTSTOCKS
+    }
     let allInstruments = [];
     jQ.each(instrumentsMap, function (index, item) {
         allInstruments.push(instrumentsMap[index])
@@ -43,8 +47,7 @@ async function startStockAlgoTrades() {
 
     for (let i = 0; i < allInstruments.length; i++) {
         let data = allInstruments[i];
-        if (jQ.inArray(data.name, listType) != -1
-            && jQ.inArray(data.name, MOVEMENTSTOCKS) != -1) {
+        if (jQ.inArray(data.name, listType) != -1) {
             let obj = {}
             obj['TRADINGSYMBOL'] = data.name;
             obj['CLOSE'] = data['prevPrice'];
@@ -221,17 +224,18 @@ async function triggerAlgoOrder(obj, transaction_type) {
     let name = obj.TRADINGSYMBOL;
     let trigger_price = 0;
     let price = 0;
+    let currentPrice = parseFloat(obj['CURRENT_PRICE']);
     if (transaction_type == "SELL") {
         let bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']);
-        trigger_price = bsoPrice
-        price = bsoPrice - 1
+        trigger_price = currentPrice
+        price = currentPrice - 0.50
     } else {
         let asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
-        trigger_price = asoPrice
-        price = asoPrice + 1
+        trigger_price = currentPrice
+        price = currentPrice + 0.50
     }
-    price = parseFloat(obj['CURRENT_PRICE']);
-    let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
+
+    let quantity = (MARGIN / (parseFloat(currentPrice) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
     let trades = JSON.parse(localStorage.getItem("TRADES"));
     if (!trades) {

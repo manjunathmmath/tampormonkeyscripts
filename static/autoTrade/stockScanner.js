@@ -7,7 +7,7 @@ function showStockScanner() {
 
     html += '<div class="row">'
 
-    html += '<div class="col-md-8">'
+    html += '<div class="col-md-4">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
     html += '<span class="stock-filter-instruments filter-type" data-index-name="ALL">ALL: </span> <span id="stock-all-bulls" class="badge bg-success"></span> <span id="stock-all-bears" class="badge bg-danger"></span>'
@@ -18,13 +18,16 @@ function showStockScanner() {
     html += '</div>'
 
 
-    html += '<div class="col-md-4">'
+    html += '<div class="col-md-6">'
     html += '<div class="row">'
-    html += '<div class="col-md-3">'
+    html += '<div class="col-md-2">'
     html += '<span class="filter-type" ><input value="5" type="text" id="price-moved" placeholder="" class="form-control form-control-sm"/></span>'
     html += '</div>'
-    html += '<div class="col-md-6">'
+    html += '<div class="col-md-4">'
     html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded"/></span>'
+    html += '</div>'
+    html += '<div class="col-md-4">'
+    html += '<span class="filter-type" >MOVEMENT: <input checked type="checkbox" id="movement-stocks"/></span>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
@@ -146,6 +149,7 @@ function generateStockScanner(trendType) {
     let data = [];
     let priceMoved = jQ("#price-moved").val();
     let checkTraded = jQ("#currently-traded").is(":checked");
+    let checkMovementStock = jQ("#movement-stocks").is(":checked");
     jQ.each(instrumentsMap, function (index, item) {
         if (jQ.inArray(index, listType) != -1) {
             let obj = {}
@@ -225,6 +229,17 @@ function generateStockScanner(trendType) {
             }
         });
         data = filterData
+    }
+
+    if(checkMovementStock){
+        let filterData = []
+        jQ.each(data, function (index, item) {
+            if (jQ.inArray(item.TRADINGSYMBOL, MOVEMENTSTOCKS) != -1) {
+                filterData.push(item)
+            }
+        });
+        data = filterData
+
     }
     scannerGlobalList = data;
     generateStockScannerDataTable(data)
@@ -321,12 +336,15 @@ function generateStockScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+ 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
                         html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
                     } else {
                         html += data;
                     }
+                    html +='</a>'
                     return html;
                 }
             },

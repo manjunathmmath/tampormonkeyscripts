@@ -193,7 +193,16 @@ function generateOrderBook(orderBook) {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
-            { "data": "SYMBOL" },
+            {
+                "data": "SYMBOL",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += data;
+                    html +='</a>'
+                    return html;
+                }
+            },
             { "data": "ORDER_DATE" },
             { "data": "TREND" },
             { "data": "TRANSACTION_TYPE" },
