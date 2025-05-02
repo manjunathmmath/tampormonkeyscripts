@@ -460,11 +460,12 @@ function generateStockScannerDataTable(data) {
                     } else {
                         index = 0;
                     }
-                    if (row['TREND']) {
-                        html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
-                        html += 'Chart'
-                        html += '</span>'
+                    if (!row['TREND']) {
+                        row['TREND'] = []
                     }
+                    html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
+                    html += 'Chart'
+                    html += '</span>'
                     html += '</div>'
                     return html
                 }

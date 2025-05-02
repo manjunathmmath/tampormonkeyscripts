@@ -328,6 +328,12 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
+    html += '<div class="col-md-2">'
+    html += '<button id="all-stock-charts" class="btn ms-1 badge bg-info show-all-stock-charts" data-type="ALL STOCK" type="submit">';
+    html += 'Stock Charts'
+    html += '</button>'
+    html += '</div>'
+
     html += '<div class="col-md-1">'
     html += '<button id="show-order-book" class="btn ms-1 badge bg-info" type="submit">';
     html += 'Order Book'
@@ -370,7 +376,7 @@ function showAutoTrade() {
     title += '<span id="clean-storage">Clear</span>'
     title += '</div>'
     title += '</div>'
-    showPopUpWindow('trend-analysis', html, "Auto Trade", 1200, 150);
+    showPopUpWindow('trend-analysis', html, "Auto Trade", 950, 150);
     var divId = "popup-custom-style-trend-analysis";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     jQ("." + divId).on("close.popupwindow", function () {
@@ -555,7 +561,7 @@ async function generateTrend() {
                         }
 
                         if (index != 0) {
-                          
+
                             let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed()
                             let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed()
 
@@ -574,7 +580,7 @@ async function generateTrend() {
                             let qtyToBuy = '<div class="badge bg-info quantity-to-buy">' + quantity + '</div>'
                             that.find(".info-wrapper").append(qtyToBuy);
 
-                            
+
                         }
                     } else {
                         let currentPrice = parseFloat(price.trim()).toFixed(2);
@@ -672,12 +678,12 @@ function commonShowChart(name, trends, index, price) {
         title += '</div>'
         title += '</div>'
 
-        showPopUpWindow(tempName, html, name + " : " + trends.join(","), 1050, 650);
+        showPopUpWindow(tempName, html, name + " : " + trends.join(","), 950, 650);
 
         var divClass = "popup-custom-style-" + tempName;
         jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
         setTimeout(function () {
-            showChart(quote, name);
+            showChart(quote, name,index);
             showStockData(quote, name)
         }, 1000)
         jQ("." + divClass).on("close.popupwindow", function () {
@@ -911,12 +917,25 @@ function placeOrder(order) {
     });
 }
 
-function showChart(quote, name) {
+function showChart(quote, name, index) {
 
     let data = getStrikeDetails(instrumentsMap[name], name);
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let chartId = 'chart-' + tempName;
+
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+
+    var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
+
+    var vixLowerRange = 0;
+    var vixUpperRange = 0;
+    var vixDDRange = 0;
+
+    vixLowerRange = parseFloat(vix.vixDDLower)
+    vixUpperRange = parseFloat(vix.vixDDUpper)
+    vixDDRange = parseFloat(vix.vixDDRange)
+
 
     let categoryList = []
     let dateIndex = 0
@@ -967,39 +986,75 @@ function showChart(quote, name) {
     let line = {};
 
 
-    let asoStopLoss = 0;
-    let bsoStopLoss = 0;
+    let asoPrice = 0;
+    let bsoPrice = 0;
+    let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
+    aso = aso / 2
+    asoPrice = parseFloat(data.ustrikeOne) - aso;
 
-    let asoStop = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
-    asoStop = asoStop / 2
-    asoStopLoss = parseFloat(data.ustrikeOne) - asoStop;
+    let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
+    bso = bso / 2
+    bsoPrice = parseFloat(data.bstrikeOne) + bso;
 
-    let bsoStop = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
-    bsoStop = bsoStop / 2
-    bsoStopLoss = parseFloat(data.bstrikeOne) + bsoStop;
+    if (index == 0) {
+        line.color = "#8be73a";
+        line.startvalue = vixLowerRange;
+        line.displayvalue = 'VIXL: ' + vixLowerRange;
+        lines.push(line);;
+
+        line = {};
+        line.color = "#e7543a";
+        line.startvalue = vixUpperRange;
+        line.displayvalue = 'VIXU: ' + vixUpperRange;
+        lines.push(line);
+    }
+
+    line = {};
+    line.color = "#198754";
+    line.startvalue = data.ustrikeTwo;
+    line.displayvalue = "AST" + data.ustrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#198754";
+    line.startvalue = data.ustrikeOne;
+    line.displayvalue = "ASO ST-1: " + data.ustrikeOne;
+    lines.push(line);
 
 
     line = {};
     line.color = "#d65db1";
-    line.startvalue = asoStopLoss;
-    line.displayvalue = "ASO" + asoStopLoss.toFixed(2);
+    line.startvalue = asoPrice;
+    line.displayvalue = "ASO: " + asoPrice.toFixed(2);
     lines.push(line);
 
 
     line = {};
     line.color = "#ff6f91";
-    line.startvalue = bsoStopLoss;
-    line.displayvalue = "BSO" + bsoStopLoss.toFixed(2);
+    line.startvalue = bsoPrice;
+    line.displayvalue = "BSO: " + bsoPrice.toFixed(2);
+    lines.push(line);
+
+    line = {};
+    line.color = "#dc3545";
+    line.startvalue = data.bstrikeOne;
+    line.displayvalue = "BSO ST-1: " + data.bstrikeOne;
+    lines.push(line);
+
+    line = {};
+    line.color = "#dc3545";
+    line.startvalue = data.bstrikeTwo;
+    line.displayvalue = "BST: " + data.bstrikeTwo;
     lines.push(line);
 
 
     line = {};
     if (parseFloat(instrumentsMap[name]['price']).toFixed(2) > parseFloat(instrumentsMap[name].prevPrice).toFixed(2)) {
         line.color = "#5D8736";
-        line.displayvalue = "Open +ve" + instrumentsMap[name]['price'];
+        line.displayvalue = "Open +ve: " + instrumentsMap[name]['price'];
     } else {
         line.color = "#A94A4A";
-        line.displayvalue = "Open -ve" + instrumentsMap[name]['price'];
+        line.displayvalue = "Open -ve: " + instrumentsMap[name]['price'];
     }
     line.dashed = 1;
     line.startvalue = instrumentsMap[name]['price'];
@@ -1020,7 +1075,8 @@ function showChart(quote, name) {
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                showVolumeChart: isVolumePresent
+                showVolumeChart: isVolumePresent,
+                "showLabels":0
             },
             "categories": [{
                 "category": categoryList
@@ -1094,6 +1150,7 @@ function clearLocalStorage() {
     localStorage.removeItem("INSTRUMENT_LIST_GLOBAL");
     localStorage.removeItem("TRADES")
     localStorage.removeItem("ORDERBOOK")
+    localStorage.removeItem("VIX_QUOTE")
 }
 
 function getStrikeDetails(item, instrument) {

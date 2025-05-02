@@ -225,6 +225,30 @@ let nseStrikeDiff = {
 	'GIFT NIFTY': '50,50',
 }
 
+let TESTING = [
+	'AARTIIND',
+	'ABB',
+	'ABCAPITAL',
+	'ABFRL',
+	'ACC',
+	'ADANIENSOL',
+	'ADANIENT',
+	'ADANIGREEN',
+	'ADANIPORTS',
+	'ALKEM',
+	'AMBUJACEM',
+	'ANGELONE',
+	'APLAPOLLO',
+	'APOLLOHOSP',
+	'APOLLOTYRE',
+	'ASHOKLEY',
+	'ASIANPAINT',
+	'ASTRAL',
+	'ATGL',
+	'AUBANK',
+	'AUROPHARMA',
+]
+
 let FO_LIST = [
 	'AARTIIND',
 	'ABB',

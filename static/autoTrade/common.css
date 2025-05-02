@@ -236,3 +236,10 @@ span.bullsVersesBears {
 .shadow-lg{
   background-color: #fff !important;
 }
+#all-chart-container h5{
+  font-size: 12px;
+  font-weight: 600;
+}
+.trend-type{
+  font-size: xx-small;
+}

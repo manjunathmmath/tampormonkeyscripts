@@ -56,7 +56,7 @@ function showOrderBook() {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('order-book', html, "Order Book",1050,650);
+    showPopUpWindow('order-book', html, "Order Book",900,650);
     var divId = "popup-custom-style-order-book";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     commonGenerateTable();
