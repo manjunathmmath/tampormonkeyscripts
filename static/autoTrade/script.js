@@ -605,100 +605,143 @@ jQ(document).on("click", ".show-chart", function () {
     commonShowChart(name, trends, index, price)
 });
 
-function commonShowChart(name, trends, index, price) {
+async function commonShowChart(name, trends, index, price) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
 
-    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
-        let quote = []
-        jQ.each(res.data.candles, function (index, item) {
-            let map = {}
-            map['date'] = moment(item[0]).format("HH:mm:ss")
-            map.open = item[1]
-            map.high = item[2]
-            map.low = item[3]
-            map.close = item[4]
-            map.volume = item[5]
-            quote.push(map);
-        });
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+    await savePreviousStockQuote(tempName, instrumentTokens[name])
+    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
+
+    let quote = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map['time'] = moment(item[0]).format("HH:mm")
+        quote.push(map);
+    });
+
+    if (quote.length == 0) {
+        let map = {}
+        map['date'] = moment().format("HH:mm:ss")
+        map.open = instrumentsMap[name]['price']
+        map.high = instrumentsMap[name]['price']
+        map.low = instrumentsMap[name]['price']
+        map.close = instrumentsMap[name]['price']
+        map.volume = 0
+        quote.push(map);
+    }
+
+    let prevQuote = []
+    jQ.each(previousQuote.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        prevQuote.push(map);
+    });
 
 
-        if (quote.length == 0) {
-            let map = {}
-            map['date'] = moment().format("HH:mm:ss")
-            map.open = instrumentsMap[name]['price']
-            map.high = instrumentsMap[name]['price']
-            map.low = instrumentsMap[name]['price']
-            map.close = instrumentsMap[name]['price']
-            map.volume = 0
-            quote.push(map);
-        }
 
+    let chartId = 'chart-' + tempName;
+    trends = trends.split(",")
+    var html = ''
 
-        let tempName = name.replaceAll(" ", "-")
-        tempName = tempName.replaceAll("&", "-")
+    html += '<div id="' + chartId + '" style="width:100%;" class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
 
-        let chartId = 'chart-' + tempName;
-        trends = trends.split(",")
-        var html = ''
+    html += '<div style="width:100%;">'
+    html += '<table  id="stock-data-' + tempName + '" class="table table-hover" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>OPEN</th>'
+    html += '<th>HIGH</th>'
+    html += '<th>LOW</th>'
+    html += '<th>CLOSE</th>'
+    html += '<th>VOLUME</th>'
+    html += '<th>OHL TREND</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
 
-        html += '<div id="' + chartId + '" style="width:100%;" class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-        html += '</div>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
 
-        html += '<div style="width:100%;">'
-        html += '<table  id="stock-data-' + tempName + '" class="table table-hover" style="width: 100%;display: none;">'
-        html += '<thead>'
-        html += '<tr>'
-        html += '<th>DATE</th>'
-        html += '<th>OPEN</th>'
-        html += '<th>HIGH</th>'
-        html += '<th>LOW</th>'
-        html += '<th>CLOSE</th>'
-        html += '<th>VOLUME</th>'
-        html += '</tr>'
-        html += '</thead>'
-        html += '<tbody>'
+    let title = ''
 
-        html += '</tbody>'
-        html += '</table>'
-        html += '</div>'
+    title += '<div class="row">'
+    title += '<div class="col-md-4">'
+    title += name + ' <span class="pop-title-extra" id="current-trend-' + tempName + '"> [' + trends.join(",") + ']</span>'
+    title += '</div>'
+    title += '<div class="col-md-2 pop-title-extra">'
+    title += '<a   data-price="' + price + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" id="start-auto-refresh-' + tempName + '" class="chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+    title += '</div>'
+    title += '<div class="col-md-2 pop-title-extra">'
+    title += '<span style="margin-left:.5rem;" id="refresh-timer-' + tempName + '">00:00</span>'
+    title += '</div>'
+    title += '<div class="col-md-3 pop-title-extra">'
+    title += '<span id="last-refresh-time-' + tempName + '">Last @ 00:00:00</span>'
+    title += '</div>'
+    title += '</div>'
 
-        let title = ''
+    showPopUpWindow(tempName, html, name + " : " + trends.join(","), 950, 650);
 
-        title += '<div class="row">'
-        title += '<div class="col-md-4">'
-        title += name + ' <span class="pop-title-extra" id="current-trend-' + tempName + '"> [' + trends.join(",") + ']</span>'
-        title += '</div>'
-        title += '<div class="col-md-2 pop-title-extra">'
-        title += '<a   data-price="' + price + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" id="start-auto-refresh-' + tempName + '" class="chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
-        title += '</div>'
-        title += '<div class="col-md-2 pop-title-extra">'
-        title += '<span style="margin-left:.5rem;" id="refresh-timer-' + tempName + '">00:00</span>'
-        title += '</div>'
-        title += '<div class="col-md-3 pop-title-extra">'
-        title += '<span id="last-refresh-time-' + tempName + '">Last @ 00:00:00</span>'
-        title += '</div>'
-        title += '</div>'
-
-        showPopUpWindow(tempName, html, name + " : " + trends.join(","), 950, 650);
-
-        var divClass = "popup-custom-style-" + tempName;
-        jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
-        setTimeout(function () {
-            showChart(quote, name,index);
-            showStockData(quote, name)
-        }, 1000)
-        jQ("." + divClass).on("close.popupwindow", function () {
-            clearInterval(window['refreshChart' + tempName])
-        });
-    })
+    var divClass = "popup-custom-style-" + tempName;
+    jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
+    setTimeout(function () {
+        showChart(quote, name, index, prevQuote);
+        showStockData(quote, name, prevQuote)
+    }, 1000)
+    jQ("." + divClass).on("close.popupwindow", function () {
+        clearInterval(window['refreshChart' + tempName])
+    });
 }
 
-function showStockData(quote, name) {
+function showStockData(quote, name, prevQuote) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let stockDataTable = jQ("#stock-data-" + tempName);
     let html = ''
     let count = quote.length
     let newList = []
+
+    let dayOpen = parseFloat(instrumentsMap[name]['price']);
+    let previousClose = parseFloat(instrumentsMap[name].prevPrice);
+    let dayHigh = 0
+    let dayLow = 0
+
+    jQ.each(prevQuote, function (index, item) {
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+    let ltp = 0;
+    let trends = ''
+    if (infoMap[name]) {
+        ltp = infoMap[name]['currentPrice'];
+        trends = infoMap[name]['trends'];
+    }
+
+
     jQ.each(quote, function (index, item) {
         let buySide = false;
         let sellSide = false;
@@ -723,9 +766,25 @@ function showStockData(quote, name) {
             cssClass = 'alert-danger'
         }
 
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+
+        let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
+        item.trend = res
+        item.dayHigh = dayHigh
+        item.dayLow = dayLow
+        item.previousClose = previousClose
+
 
         item.cssClass = cssClass;
         newList.push(item)
+
+
     });
     newList.reverse()
     jQ.each(newList, function (index, item) {
@@ -734,50 +793,83 @@ function showStockData(quote, name) {
         html += '<td>' + item.open + '</td>'
         html += '<td>' + item.high + '</td>'
         html += '<td>' + item.low + '</td>'
-        html += '<td>' + item.close + '</td>'
+
+        let closeHtml = ''
+        if ((item.close - item.previousClose) < 0) {
+            closeHtml += '<span class="badge bg-danger">' + item.close + '</span>'
+        } else {
+            closeHtml += '<span class="badge bg-success">' + item.close + '</span>'
+        }
+
+        html += '<td>' + closeHtml + '</td>'
         html += '<td>' + item.volume + '</td>'
+        let trendHtml = ''
+        if (item.trend[2].includes("Sell")) {
+            trendHtml += '<span class="badge bg-danger">' + item.trend[2] + '</span>'
+        } else {
+            trendHtml += '<span class="badge bg-success">' + item.trend[2] + '</span>'
+        }
+        html += '<td>' + trendHtml + ' Buy %:' + parseFloat(item.trend[0]).toFixed(2) + ' Sell %:' + parseFloat(item.trend[1]).toFixed(2) + '</td>'
+
         html += '</tr>'
     })
     stockDataTable.find("tbody").html(html)
     stockDataTable.show()
 }
 
-function commonShowOnlyChart(name) {
+async function commonShowOnlyChart(name, trends, index, price) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
+
+
     clearInterval(window['refreshChart' + tempName])
-    jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
-        let quote = []
-        jQ.each(res.data.candles, function (index, item) {
-            let map = {}
-            map['date'] = moment(item[0]).format("HH:mm:ss")
-            map.open = item[1]
-            map.high = item[2]
-            map.low = item[3]
-            map.close = item[4]
-            map.volume = item[5]
-            quote.push(map);
-        });
 
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+    await savePreviousStockQuote(tempName, instrumentTokens[name])
+    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
 
-        if (quote.length == 0) {
-            let map = {}
-            map['date'] = moment().format("HH:mm:ss")
-            map.open = instrumentsMap[name]['price']
-            map.high = instrumentsMap[name]['price']
-            map.low = instrumentsMap[name]['price']
-            map.close = instrumentsMap[name]['price']
-            map.volume = 0
-            quote.push(map);
-        }
+    let quote = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map['time'] = moment(item[0]).format("HH:mm")
+        quote.push(map);
+    });
 
+    if (quote.length == 0) {
+        let map = {}
+        map['date'] = moment().format("HH:mm:ss")
+        map.open = instrumentsMap[name]['price']
+        map.high = instrumentsMap[name]['price']
+        map.low = instrumentsMap[name]['price']
+        map.close = instrumentsMap[name]['price']
+        map.volume = 0
+        quote.push(map);
+    }
 
-        showChart(quote, name);
-        showStockData(quote, name)
-        startRefreshChart(tempName);
-        jQ("#last-refresh-time-" + tempName).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
-    })
+    let prevQuote = []
+    jQ.each(previousQuote.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        prevQuote.push(map);
+    });
+
+    showChart(quote, name, index, prevQuote);
+    showStockData(quote, name, prevQuote)
+    startRefreshChart(tempName);
+    jQ("#last-refresh-time-" + tempName).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+
 }
 
 jQ(document).on("click", ".chart-refresh", function () {
@@ -917,7 +1009,7 @@ function placeOrder(order) {
     });
 }
 
-function showChart(quote, name, index) {
+function showChart(quote, name, index, prevQuote) {
 
     let data = getStrikeDetails(instrumentsMap[name], name);
     let tempName = name.replaceAll(" ", "-")
@@ -928,6 +1020,7 @@ function showChart(quote, name, index) {
 
     var vix = getVixRange(parseFloat(instrumentsMap[name].prevPrice), parseFloat(vixQuote[4]))
 
+
     var vixLowerRange = 0;
     var vixUpperRange = 0;
     var vixDDRange = 0;
@@ -937,14 +1030,53 @@ function showChart(quote, name, index) {
     vixDDRange = parseFloat(vix.vixDDRange)
 
 
+    let dayOpen = parseFloat(instrumentsMap[name]['price']);
+    let previousClose = parseFloat(instrumentsMap[name].prevPrice);
+    let dayHigh = 0
+    let dayLow = 0
+
+
     let categoryList = []
     let dateIndex = 0
+
+
+    jQ.each(prevQuote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+
     jQ.each(quote, function (index, item) {
         let map = {}
         map.label = item.date;
         map.x = dateIndex;
         categoryList.push(map)
         dateIndex++;
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+
     });
 
     let dataList = []
@@ -952,6 +1084,36 @@ function showChart(quote, name, index) {
     let max = 0
     dateIndex = 0
     let isVolumePresent = false;
+
+    jQ.each(prevQuote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        if (item.volume) {
+            map.volume = item.volume;
+            isVolumePresent = true;
+        }
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+
     jQ.each(quote, function (index, item) {
         let map = {}
         map.open = item.open
@@ -981,6 +1143,43 @@ function showChart(quote, name, index) {
     });
 
     isVolumePresent = SHOW_VOLUME_ON_CHART
+
+    let ltp = 0;
+    let trends = ''
+    if (infoMap[name]) {
+        ltp = infoMap[name]['currentPrice'];
+        trends = infoMap[name]['trends'];
+    }
+    console.log("dayOpen : " + dayOpen);
+    console.log("dayHigh :" + dayHigh);
+    console.log("dayLow : " + dayLow);
+    console.log("ltp : " + ltp);
+    console.log("previousClose: " + previousClose);
+
+    let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
+
+
+    let ohl = '#current-trend-' + name.replaceAll(" ", "-")
+
+    let ohlHtml = ''
+    if (res[2].includes('Buy')) {
+        ohlHtml += '<span class="badge bg-success">' + res[2] + '</span>'
+        ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
+    } else {
+        ohlHtml += '<span class="badge bg-danger">' + res[2] + '</span>'
+        ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
+    }
+
+    let exchange = "NSE"
+    if (name == "SENSEX") {
+        exchange = "BSE"
+    }
+    ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + name + '/' + instrumentTokens[name] + '"> '
+    ohlHtml += 'OC'
+    ohlHtml += '</a>'
+
+    jQ(ohl).append(ohlHtml)
+
 
     let lines = [];
     let line = {};
@@ -1076,7 +1275,7 @@ function showChart(quote, name, index) {
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
                 showVolumeChart: isVolumePresent,
-                "showLabels":0
+                "showLabels": 0
             },
             "categories": [{
                 "category": categoryList
@@ -1151,6 +1350,18 @@ function clearLocalStorage() {
     localStorage.removeItem("TRADES")
     localStorage.removeItem("ORDERBOOK")
     localStorage.removeItem("VIX_QUOTE")
+    for (let i = 0; i < FO_LIST.length; i++) {
+        let name = FO_LIST[i]
+        name = name.replaceAll(" ", "-")
+        name = name.replaceAll("&", "-")
+        localStorage.removeItem(name + "_PREVIOUS_DAY_QUOTE")
+    }
+    for (let i = 0; i < INDICES.length; i++) {
+        let name = INDICES[i]
+        name = name.replaceAll(" ", "-")
+        name = name.replaceAll("&", "-")
+        localStorage.removeItem(name + "_PREVIOUS_DAY_QUOTE")
+    }
 }
 
 function getStrikeDetails(item, instrument) {

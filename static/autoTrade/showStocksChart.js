@@ -5,6 +5,7 @@ jQ(document).on("click", ".show-all-stock-charts", function (e) {
 });
 
 async function showAllInChart(type) {
+    clearInterval(window['refreshChart' + type])
     let html = ''
     html += '<div class="row" id="all-chart-container">'
     let count = 0;
@@ -24,8 +25,14 @@ async function showAllInChart(type) {
             }
         }
         if (isTrending) {
+            let ohlTrend = '<span id="ohl-trend-' + FO_LIST[i].replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
             html += '<div class="col-md-4">'
-            html += '<h5 style="text-align:center;">' + FO_LIST[i] + " " + trends + '</h5>'
+            html += '<h5 style="text-align:center;">'
+            html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
+            html += FO_LIST[i]
+            html += '</a>'
+            html += " " + trends + " " + ohlTrend
+            html += '</h5>'
             html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + FO_LIST[i].replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-") + '">'
             html += '</div>'
             html += '</div>'
@@ -86,6 +93,8 @@ async function showAllInChart(type) {
         }
         if (isTrending) {
             let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+            await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
+            let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
             let quote = []
             jQ.each(data.data.candles, function (index, item) {
                 let map = {}
@@ -95,34 +104,59 @@ async function showAllInChart(type) {
                 map.low = item[3]
                 map.close = item[4]
                 map.volume = item[5]
+                map['time'] = moment(item[0]).format("HH:mm")
                 quote.push(map);
             });
 
-            showChartAllInOne(quote, FO_LIST[i], type)
+            let prevQuote = []
+            jQ.each(previousQuote.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                prevQuote.push(map);
+            });
+
+            showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
             count++;
             if (count % 3 == 0) {
-                await callSleepForAWhile(5000)
+                await callSleepForAWhile(3000)
             }
         }
     }
     jQ("." + divClass).on("close.popupwindow", function () {
         clearInterval(window['refreshChart' + tempName])
     });
+    startRefreshChartAllInOne(tempName)
 
 }
 
 jQ(document).on("click", ".all-stock-chart-refresh", function () {
+
     let name = jQ(this).attr("data-name");
     let type = jQ(this).attr("data-type");
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
+    clearInterval(window['refreshChart' + tempName])
     showOnlyAllInCharts(type, tempName)
 });
 
 
 async function showOnlyAllInCharts(type, tempName) {
     let count = 0;
-    clearInterval(window['refreshChart' + tempName])
+
+    let currentMinute = moment().format("mm")
+    if ((currentMinute % 5) != 0) {
+        console.log("-------------------REFRESHING @ EVERY 5 MINUTES]-----------");
+        console.log("current Minute :" + currentMinute);
+        console.log("------------------------------------------------------------------------------------");
+        startRefreshChartAllInOne(tempName)
+        return
+    }
+
     for (let i = 0; i < FO_LIST.length; i++) {
         let info = infoMap[FO_LIST[i]]
         let isTrending = false;
@@ -137,6 +171,8 @@ async function showOnlyAllInCharts(type, tempName) {
         }
         if (isTrending) {
             let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+            await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
+            let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
             let quote = []
             jQ.each(data.data.candles, function (index, item) {
                 let map = {}
@@ -146,13 +182,27 @@ async function showOnlyAllInCharts(type, tempName) {
                 map.low = item[3]
                 map.close = item[4]
                 map.volume = item[5]
+                map['time'] = moment(item[0]).format("HH:mm")
                 quote.push(map);
             });
 
-            showChartAllInOne(quote, FO_LIST[i], type)
+            let prevQuote = []
+            jQ.each(previousQuote.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                prevQuote.push(map);
+            });
+
+
+            showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
             count++;
             if (count % 3 == 0) {
-                await callSleepForAWhile(5000)
+                await callSleepForAWhile(3000)
             }
         }
     }
@@ -160,52 +210,140 @@ async function showOnlyAllInCharts(type, tempName) {
     startRefreshChartAllInOne(tempName)
 }
 
+function savePreviousStockQuote(script, token) {
+    return new Promise((resolve, reject) => {
+        if (!localStorage.getItem(script + "_PREVIOUS_DAY_QUOTE")) {
+            jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL)).done(function (res) {
+                localStorage.setItem(script + "_PREVIOUS_DAY_QUOTE", JSON.stringify(res));
+                resolve();
+            })
+        } else {
+            resolve();
+        }
+    });
+}
+
 function startRefreshChartAllInOne(name) {
-    var display = jQ('#refresh-timer-' + name);
-    startTimerChartsAllInOne(600, display, name);
+    var display = document.querySelector('#refresh-timer-' + name);
+    startTimerChartsAllInOne(display, name);
 };
 
-function startTimerChartsAllInOne(duration, display, name) {
-    if (!duration) {
-        duration = 60
-    }
-    var timer = duration, minutes, seconds;
+function startTimerChartsAllInOne(display, name) {
+
     window['refreshChart' + name] = setInterval(function () {
-        minutes = parseInt(timer / 60, 10);
-        seconds = parseInt(timer % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-        display.html(minutes + ":" + seconds);
-
-        if (--timer < 0) {
+        var d = new Date();
+        var s = d.getSeconds();
+        var m = d.getMinutes();
+        var h = d.getHours();
+        display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
+        if (s == 59) {
             jQ("#start-auto-refresh-" + name).trigger("click");
-            timer = duration;
         }
     }, 1000);
+
 }
 
 
-function showChartAllInOne(quote, name, type) {
+function showChartAllInOne(quote, name, type, prevQuote) {
+
+    let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
+
+    let last = {};
+    console.log(quote)
+    jQ.each(quote, function (index, item) {
+        if (prevFiveMinutes == item['time']) {
+            last = item
+        }
+    });
+
+    if (!last) {
+        return;
+    }
+
+    let dayOpen = parseFloat(instrumentsMap[name]['price']);
+    let previousClose = parseFloat(instrumentsMap[name].prevPrice);
+    let dayHigh = 0
+    let dayLow = 0
+
     let data = getStrikeDetails(instrumentsMap[name], name);
     let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-");
 
     let categoryList = []
     let dateIndex = 0
+
+    jQ.each(prevQuote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
     jQ.each(quote, function (index, item) {
         let map = {}
         map.label = item.date;
         map.x = dateIndex;
         categoryList.push(map)
         dateIndex++;
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
     });
+
 
     let dataList = []
     let min = 0
     let max = 0
     dateIndex = 0
     let isVolumePresent = false;
+
+    jQ.each(prevQuote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        if (item.volume) {
+            map.volume = item.volume;
+            isVolumePresent = true;
+        }
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+
     jQ.each(quote, function (index, item) {
         let map = {}
         map.open = item.open
@@ -233,6 +371,38 @@ function showChartAllInOne(quote, name, type) {
         dataList.push(map);
         dateIndex++;
     });
+
+    let ltp = 0;
+    let trends = ''
+    if (infoMap[name]) {
+        ltp = infoMap[name]['currentPrice'];
+        trends = infoMap[name]['trends'];
+    }
+    console.log("dayOpen : " + dayOpen);
+    console.log("dayHigh :" + dayHigh);
+    console.log("dayLow : " + dayLow);
+    console.log("ltp : " + ltp);
+    console.log("previousClose: " + previousClose);
+
+
+    let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
+    console.log(res)
+    let ohl = '#ohl-trend-' + name.replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-")
+
+    let ohlHtml = ''
+    if (res[2].includes('Buy')) {
+        ohlHtml += '<span class="badge bg-success">' + res[2] + '</span>'
+        ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
+    } else {
+        ohlHtml += '<span class="badge bg-danger">' + res[2] + '</span>'
+        ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
+    }
+
+    let chartMax = '<span data-price="' + ltp + '" data-index="1" data-trend="' + trends.join(",") + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</span>'
+
+
+    jQ(ohl).html(ohlHtml)
+    jQ(ohl).append(chartMax)
 
     isVolumePresent = SHOW_VOLUME_ON_CHART
 
@@ -349,4 +519,53 @@ function getHistoricalDataUsingPromise(code, fromDate, toDate, interval) {
             }
         });
     })
+}
+
+function calculateOHLBuySell(o, h, l, ltp, previousClose) {
+    let result = "Neutral";
+    let open = o;
+    let high = h;
+    let low = l;
+    let ltpd = ltp;
+    let highMinusOpen = high - open;
+    let openMinuslow = open - low;
+    let list = []
+    let oh = (highMinusOpen / high) * 100;
+    let ol = (openMinuslow / open) * 100;
+
+    list.push(oh);
+    list.push(ol);
+
+    if (open == high) {
+        result = "Strong Sell(OH)";
+        list.push(result);
+        return list;
+    }
+    else if (open == low) {
+        result = "Strong Buy(OL)";
+        list.push(result);
+        return list;
+    }
+    if (oh >= 0.0 && oh <= 0.85 && ol >= 1.25) {
+        result = "Strong Sell(Lower High)";
+        list.push(result);
+        return list;
+    }
+    else if (ol >= 0.0 && ol <= 0.85 && oh >= 1.25) {
+        result = "Strong Buy(Higher High)";
+        list.push(result);
+        return list;
+    }
+    if (ltpd >= open && ltpd >= low) {
+        result = "Buy";
+        list.push(result);
+        return list;
+    }
+    else if (ltpd <= open && ltpd <= high) {
+        result = "Sell";
+        list.push(result);
+        return list;
+    }
+    list.push(result);
+    return list;
 }
