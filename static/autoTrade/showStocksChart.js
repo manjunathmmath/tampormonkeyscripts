@@ -108,6 +108,17 @@ async function showAllInChart(type) {
                 quote.push(map);
             });
 
+            if (quote.length == 0) {
+                let map = {}
+                map['date'] = moment().format("HH:mm:ss")
+                map.open = instrumentsMap[FO_LIST[i]]['price']
+                map.high = instrumentsMap[FO_LIST[i]]['price']
+                map.low = instrumentsMap[FO_LIST[i]]['price']
+                map.close = instrumentsMap[FO_LIST[i]]['price']
+                map.volume = 0
+                quote.push(map);
+            }
+
             let prevQuote = []
             jQ.each(previousQuote.data.candles, function (index, item) {
                 let map = {}
@@ -185,6 +196,17 @@ async function showOnlyAllInCharts(type, tempName) {
                 map['time'] = moment(item[0]).format("HH:mm")
                 quote.push(map);
             });
+
+            if (quote.length == 0) {
+                let map = {}
+                map['date'] = moment().format("HH:mm:ss")
+                map.open = instrumentsMap[FO_LIST[i]]['price']
+                map.high = instrumentsMap[FO_LIST[i]]['price']
+                map.low = instrumentsMap[FO_LIST[i]]['price']
+                map.close = instrumentsMap[FO_LIST[i]]['price']
+                map.volume = 0
+                quote.push(map);
+            }
 
             let prevQuote = []
             jQ.each(previousQuote.data.candles, function (index, item) {
@@ -359,6 +381,7 @@ function showChartAllInOne(quote, name, type, prevQuote) {
         if (index == 0) {
             min = item.high
             max = item.high
+            map.displayValue = "O"
         }
 
         if (item.high < min) {

@@ -1129,6 +1129,7 @@ function showChart(quote, name, index, prevQuote) {
         if (index == 0) {
             min = item.high
             max = item.high
+            map.displayValue = "O"
         }
 
         if (item.high < min) {
