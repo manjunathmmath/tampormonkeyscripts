@@ -69,6 +69,10 @@ jQ(document).on("click", "#refresh-order-book", function () {
 
 let total = 0;
 async function commonGenerateTable() {
+    if(jQ.isEmptyObject(instrumentsMap)){
+        return
+    }
+
     let trendType = jQ("#trade-type option:selected").val();
     total = 0;
     let trades = JSON.parse(localStorage.getItem("TRADES"));

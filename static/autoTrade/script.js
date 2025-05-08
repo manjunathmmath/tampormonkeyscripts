@@ -211,6 +211,9 @@ async function autoRefreshEachTabs(instance) {
     getAllBullsBearsCount()
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     startRefresh();
+    if (jQ("a#refresh-order-book").is(":visible")) {
+        jQ("a#refresh-order-book").trigger("click")
+    }
     if (instance) {
         instance.attr("disabled", false)
     }
@@ -246,7 +249,7 @@ jQ(document).on("click", "#start-auto-refresh", function () {
     var that = jQ(this);
     that.attr("disabled", true)
     clearInterval(timerInstance)
-    autoRefreshEachTabs(that)
+    autoRefreshEachTabs(that);   
 });
 
 function startRefresh() {
@@ -529,6 +532,20 @@ async function generateTrend() {
                                 trend = "BSO"
                                 trends.push(trend);
                             }
+
+                            if (currentPrice >= parseFloat(strikeData['ustrikeTwo'])) {
+                                let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "AST"
+                                trends.push(trend);
+                            }
+
+                            if (currentPrice <= parseFloat(strikeData['bstrikeTwo'])) {
+                                let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                                that.find(".info-wrapper").append(strike);
+                                trend = "BST"
+                                trends.push(trend);
+                            }
                         }
 
 
@@ -694,7 +711,7 @@ async function commonShowChart(name, trends, index, price) {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow(tempName, html, name + " : " + trends.join(","), 950, 650);
+    showPopUpWindow(tempName, html, name + " : " + trends.join(","), 1020, 650);
 
     var divClass = "popup-custom-style-" + tempName;
     jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);

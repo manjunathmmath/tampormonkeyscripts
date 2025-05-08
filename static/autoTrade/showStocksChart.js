@@ -271,7 +271,6 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
 
     let last = {};
-    console.log(quote)
     jQ.each(quote, function (index, item) {
         if (prevFiveMinutes == item['time']) {
             last = item

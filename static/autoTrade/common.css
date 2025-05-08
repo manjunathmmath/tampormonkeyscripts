@@ -243,3 +243,12 @@ span.bullsVersesBears {
 .trend-type{
   font-size: xx-small;
 }
+
+.stock-filter-instruments{
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.check-volume{
+  cursor: pointer;
+}

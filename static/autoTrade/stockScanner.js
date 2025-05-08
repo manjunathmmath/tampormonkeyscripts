@@ -7,12 +7,14 @@ function showStockScanner() {
 
     html += '<div class="row">'
 
-    html += '<div class="col-md-4">'
+    html += '<div class="col-md-5">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
     html += '<span class="stock-filter-instruments filter-type" data-index-name="ALL">ALL: </span> <span id="stock-all-bulls" class="badge bg-success"></span> <span id="stock-all-bears" class="badge bg-danger"></span>'
     html += 'ASO: <span class="stock-filter-instruments" data-trend-type="ASO" data-index-name="ALL" id="stock-all-aso">0</span></span>'
     html += 'BSO: <span class="stock-filter-instruments" data-trend-type="BSO" data-index-name="ALL" id="stock-all-bso">0</span></span>'
+    html += 'AST: <span class="stock-filter-instruments" data-trend-type="AST" data-index-name="ALL" id="stock-all-ast">0</span></span>'
+    html += 'BST: <span class="stock-filter-instruments" data-trend-type="BST" data-index-name="ALL" id="stock-all-bst">0</span></span>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
@@ -21,7 +23,7 @@ function showStockScanner() {
     html += '<div class="col-md-6">'
     html += '<div class="row">'
     html += '<div class="col-md-2">'
-    html += '<span class="filter-type" ><input value="5" type="text" id="price-moved" placeholder="" class="form-control form-control-sm"/></span>'
+    html += '<span class="filter-type" ><input value="-1" type="text" id="price-moved" placeholder="" class="form-control form-control-sm"/></span>'
     html += '</div>'
     html += '<div class="col-md-4">'
     html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded"/></span>'
@@ -50,6 +52,7 @@ function showStockScanner() {
     html += '<th>VOLUME</th>'
     html += '<th>TRADABLE</th>'
     html += '<th>TREND</th>'
+    html += '<th>MOVED</th>'
     html += '<th>ACTION</th>'
     html += '</tr>'
     html += '</thead>'
@@ -89,6 +92,9 @@ function showStockScanner() {
             clearInterval(stockScannerTimerInstance)
         }
     });
+    if(jQ.isEmptyObject(instrumentsMap)){
+        return
+    }
     refreshStockScannerTable();
 }
 
@@ -322,7 +328,7 @@ function generateStockScannerDataTable(data) {
         "scrollY": "500px",
         "columnDefs": [
             {
-                "targets": [],
+                "targets": [1,2,3],
                 "visible": false,
                 "searchable": false
             }
@@ -379,6 +385,34 @@ function generateStockScannerDataTable(data) {
                 "data": "TREND",
                 render: function (data, type, row, meta) {
                     let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "ASO") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
+                            }
+
+                            if (item == "AST") {
+                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+                            }
+                        });
+                    }
+                    return html
+                }
+            },
+
+
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
                     let currentPrice = row['LTP'];
                     if (data.length > 0) {
                         jQ.each(data, function (index, item) {
@@ -389,9 +423,7 @@ function generateStockScannerDataTable(data) {
                                 asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']) - aso;
                                 let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                                 if (ASO_MOVED >= 0) {
-                                    html += '<span class="badge bg-info above-strike-one strike-info">ASO (' + ASO_MOVED + ')</span>'
-                                } else {
-                                    html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                                    html += ASO_MOVED
                                 }
                             }
 
@@ -402,16 +434,16 @@ function generateStockScannerDataTable(data) {
                                 bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne']) + bso;
                                 let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
                                 if (BSO_MOVED >= 0) {
-                                    html += '<span class="badge bg-info below-strike-one strike-info">BSO (' + BSO_MOVED + ')</span>'
-                                } else {
-                                    html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
-                                }
+                                    html += BSO_MOVED
+                                } 
                             }
                         });
                     }
                     return html
                 }
             },
+
+
             {
                 "data": "ACTIONS",
                 render: function (data, type, row, meta) {
