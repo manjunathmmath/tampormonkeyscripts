@@ -316,7 +316,7 @@ function showAutoTrade() {
     html += '</div>'
 
     html += '<div class="col-md-2">'
-    html += 'Trades: <span id="asoTradeCount" class="badge bg-success">0</span>/<span id="bsoTradeCount" class="badge bg-danger">0</span>'
+    html += 'Trades: <span class="badge bg-success asoTradeCount">0</span>/<span class="badge bg-danger bsoTradeCount">0</span>'
     html += '</div>'
 
     html += '</div>'
@@ -668,7 +668,7 @@ async function commonShowChart(name, trends, index, price) {
 
 
 
-    let chartId = 'chart-' + tempName;
+    let chartId = 'chart-' + tempName.replaceAll(" ", "-").replaceAll("&","-");
     trends = trends.split(",")
     var html = ''
 
@@ -1177,7 +1177,7 @@ function showChart(quote, name, index, prevQuote) {
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
 
 
-    let ohl = '#current-trend-' + name.replaceAll(" ", "-")
+    let ohl = '#current-trend-' + name.replaceAll(" ", "-").replaceAll("&","-")
 
     let ohlHtml = ''
     if (res[2].includes('Buy')) {
@@ -1541,8 +1541,8 @@ function showOrderTypeCount() {
         }
     });
 
-    jQ("#bsoTradeCount").html(bsoTradeCount);
-    jQ("#asoTradeCount").html(asoTradeCount);
+    jQ(".bsoTradeCount").html(bsoTradeCount);
+    jQ(".asoTradeCount").html(asoTradeCount);
 }
 
 

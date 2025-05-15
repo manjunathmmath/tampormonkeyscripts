@@ -5,44 +5,64 @@ jQ(document).on("click", ".show-all-stock-charts", function (e) {
 });
 
 async function showAllInChart(type) {
+
+    let trades = JSON.parse(localStorage.getItem("TRADES"));
+    console.log(trades)
+
     clearInterval(window['refreshChart' + type])
     let html = ''
     html += '<div class="row" id="all-chart-container">'
     let count = 0;
     for (let i = 0; i < FO_LIST.length; i++) {
-        let info = infoMap[FO_LIST[i]]
-        let trends = ''
-        let isTrending = false;
-        if (info['trends'].length > 0) {
-            if (jQ.inArray("ASO", info['trends']) != -1) {
-                isTrending = true;
-                trends = '<span class="trend-type badge bg-success">' + info['trends'].join(",") + '</span>'
+        if (jQ.inArray(FO_LIST[i], trades) !== -1) {
+            let info = infoMap[FO_LIST[i]]
+            let trends = ''
+            let isTrending = false;
+            if (info['trends'].length > 0) {
+                if (jQ.inArray("ASO", info['trends']) != -1) {
+                    isTrending = true;
+                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                }
+
+                if (jQ.inArray("BSO", info['trends']) != -1) {
+                    isTrending = true;
+                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                }
+            }
+            if (isTrending) {
+                let ohlTrend = '<span id="ohl-trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                html += '<div class="col-md-4">'
+                html += '<h5 style="text-align:center;">'
+                html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
+                if (jQ.inArray(FO_LIST[i], trades) !== -1) {
+                    html += '<span class="badge bg-warning" title="Already traded">' + FO_LIST[i] + '</span>'
+                } else {
+                    html += FO_LIST[i];
+                }
+                html += '</a>'
+
+                let ohlHtml = ''
+                let exchange = "NSE"
+                if (FO_LIST[i] == "SENSEX") {
+                    exchange = "BSE"
+                }
+                ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
+                ohlHtml += 'OC'
+                ohlHtml += '</a>'
+
+                html += " " + trends + " " + ohlTrend + " " + ohlHtml
+                html += '</h5>'
+                html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '">'
+                html += '</div>'
+                html += '</div>'
+                count++;
+
+                if (count % 3 == 0) {
+                    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+                }
             }
 
-            if (jQ.inArray("BSO", info['trends']) != -1) {
-                isTrending = true;
-                trends = '<span class="trend-type badge bg-danger">' + info['trends'].join(",") + '</span>'
-            }
         }
-        if (isTrending) {
-            let ohlTrend = '<span id="ohl-trend-' + FO_LIST[i].replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
-            html += '<div class="col-md-4">'
-            html += '<h5 style="text-align:center;">'
-            html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
-            html += FO_LIST[i]
-            html += '</a>'
-            html += " " + trends + " " + ohlTrend
-            html += '</h5>'
-            html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + FO_LIST[i].replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-") + '">'
-            html += '</div>'
-            html += '</div>'
-            count++;
-
-            if (count % 3 == 0) {
-                html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-            }
-        }
-
     }
     html += '</div>'
 
@@ -54,8 +74,11 @@ async function showAllInChart(type) {
     let title = ''
 
     title += '<div class="row">'
-    title += '<div class="col-md-4">'
+    title += '<div class="col-md-2">'
     title += type + '<span class="pop-title-extra"></span>'
+    title += '</div>'
+    title += '<div class="col-md-2">'
+    title += 'Trades: <span class="badge bg-success asoTradeCount">0</span>/<span class="badge bg-danger bsoTradeCount">0</span>'
     title += '</div>'
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<a  data-type="' + type + '" data-name="' + tempName + '"  id="start-auto-refresh-' + tempName + '" class="all-stock-chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
@@ -80,61 +103,64 @@ async function showAllInChart(type) {
     jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
     count = 0;
     for (let i = 0; i < FO_LIST.length; i++) {
-        let info = infoMap[FO_LIST[i]]
-        let isTrending = false;
-        if (info['trends'].length > 0) {
-            if (jQ.inArray("ASO", info['trends']) != -1) {
-                isTrending = true;
+        if (jQ.inArray(FO_LIST[i], trades) !== -1) {
+
+            let info = infoMap[FO_LIST[i]]
+            let isTrending = false;
+            if (info['trends'].length > 0) {
+                if (jQ.inArray("ASO", info['trends']) != -1) {
+                    isTrending = true;
+                }
+
+                if (jQ.inArray("BSO", info['trends']) != -1) {
+                    isTrending = true;
+                }
             }
+            if (isTrending) {
+                let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+                await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
+                let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
+                let quote = []
+                jQ.each(data.data.candles, function (index, item) {
+                    let map = {}
+                    map['date'] = moment(item[0]).format("HH:mm:ss")
+                    map.open = item[1]
+                    map.high = item[2]
+                    map.low = item[3]
+                    map.close = item[4]
+                    map.volume = item[5]
+                    map['time'] = moment(item[0]).format("HH:mm")
+                    quote.push(map);
+                });
 
-            if (jQ.inArray("BSO", info['trends']) != -1) {
-                isTrending = true;
-            }
-        }
-        if (isTrending) {
-            let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-            await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
-            let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
-            let quote = []
-            jQ.each(data.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                map['time'] = moment(item[0]).format("HH:mm")
-                quote.push(map);
-            });
+                if (quote.length == 0) {
+                    let map = {}
+                    map['date'] = moment().format("HH:mm:ss")
+                    map.open = instrumentsMap[FO_LIST[i]]['price']
+                    map.high = instrumentsMap[FO_LIST[i]]['price']
+                    map.low = instrumentsMap[FO_LIST[i]]['price']
+                    map.close = instrumentsMap[FO_LIST[i]]['price']
+                    map.volume = 0
+                    quote.push(map);
+                }
 
-            if (quote.length == 0) {
-                let map = {}
-                map['date'] = moment().format("HH:mm:ss")
-                map.open = instrumentsMap[FO_LIST[i]]['price']
-                map.high = instrumentsMap[FO_LIST[i]]['price']
-                map.low = instrumentsMap[FO_LIST[i]]['price']
-                map.close = instrumentsMap[FO_LIST[i]]['price']
-                map.volume = 0
-                quote.push(map);
-            }
+                let prevQuote = []
+                jQ.each(previousQuote.data.candles, function (index, item) {
+                    let map = {}
+                    map['date'] = moment(item[0]).format("HH:mm:ss")
+                    map.open = item[1]
+                    map.high = item[2]
+                    map.low = item[3]
+                    map.close = item[4]
+                    map.volume = item[5]
+                    prevQuote.push(map);
+                });
 
-            let prevQuote = []
-            jQ.each(previousQuote.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                prevQuote.push(map);
-            });
-
-            showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
-            count++;
-            if (count % 3 == 0) {
-                await callSleepForAWhile(3000)
+                showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
+                count++;
+                if (count % 3 == 0) {
+                    await callSleepForAWhile(3000)
+                }
             }
         }
     }
@@ -158,73 +184,66 @@ jQ(document).on("click", ".all-stock-chart-refresh", function () {
 
 async function showOnlyAllInCharts(type, tempName) {
     let count = 0;
-
-    let currentMinute = moment().format("mm")
-    if ((currentMinute % 5) != 0) {
-        console.log("-------------------REFRESHING @ EVERY 5 MINUTES]-----------");
-        console.log("current Minute :" + currentMinute);
-        console.log("------------------------------------------------------------------------------------");
-        startRefreshChartAllInOne(tempName)
-        return
-    }
-
+    let trades = JSON.parse(localStorage.getItem("TRADES"));
     for (let i = 0; i < FO_LIST.length; i++) {
-        let info = infoMap[FO_LIST[i]]
-        let isTrending = false;
-        if (info['trends'].length > 0) {
-            if (jQ.inArray("ASO", info['trends']) != -1) {
-                isTrending = true;
+        if (jQ.inArray(FO_LIST[i], trades) !== -1) {
+            let info = infoMap[FO_LIST[i]]
+            let isTrending = false;
+            if (info['trends'].length > 0) {
+                if (jQ.inArray("ASO", info['trends']) != -1) {
+                    isTrending = true;
+                }
+
+                if (jQ.inArray("BSO", info['trends']) != -1) {
+                    isTrending = true;
+                }
             }
+            if (isTrending) {
+                let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+                await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
+                let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
+                let quote = []
+                jQ.each(data.data.candles, function (index, item) {
+                    let map = {}
+                    map['date'] = moment(item[0]).format("HH:mm:ss")
+                    map.open = item[1]
+                    map.high = item[2]
+                    map.low = item[3]
+                    map.close = item[4]
+                    map.volume = item[5]
+                    map['time'] = moment(item[0]).format("HH:mm")
+                    quote.push(map);
+                });
 
-            if (jQ.inArray("BSO", info['trends']) != -1) {
-                isTrending = true;
-            }
-        }
-        if (isTrending) {
-            let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-            await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
-            let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
-            let quote = []
-            jQ.each(data.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                map['time'] = moment(item[0]).format("HH:mm")
-                quote.push(map);
-            });
+                if (quote.length == 0) {
+                    let map = {}
+                    map['date'] = moment().format("HH:mm:ss")
+                    map.open = instrumentsMap[FO_LIST[i]]['price']
+                    map.high = instrumentsMap[FO_LIST[i]]['price']
+                    map.low = instrumentsMap[FO_LIST[i]]['price']
+                    map.close = instrumentsMap[FO_LIST[i]]['price']
+                    map.volume = 0
+                    quote.push(map);
+                }
 
-            if (quote.length == 0) {
-                let map = {}
-                map['date'] = moment().format("HH:mm:ss")
-                map.open = instrumentsMap[FO_LIST[i]]['price']
-                map.high = instrumentsMap[FO_LIST[i]]['price']
-                map.low = instrumentsMap[FO_LIST[i]]['price']
-                map.close = instrumentsMap[FO_LIST[i]]['price']
-                map.volume = 0
-                quote.push(map);
-            }
-
-            let prevQuote = []
-            jQ.each(previousQuote.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                prevQuote.push(map);
-            });
+                let prevQuote = []
+                jQ.each(previousQuote.data.candles, function (index, item) {
+                    let map = {}
+                    map['date'] = moment(item[0]).format("HH:mm:ss")
+                    map.open = item[1]
+                    map.high = item[2]
+                    map.low = item[3]
+                    map.close = item[4]
+                    map.volume = item[5]
+                    prevQuote.push(map);
+                });
 
 
-            showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
-            count++;
-            if (count % 3 == 0) {
-                await callSleepForAWhile(3000)
+                showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
+                count++;
+                if (count % 3 == 0) {
+                    await callSleepForAWhile(3000)
+                }
             }
         }
     }
@@ -287,7 +306,7 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     let dayLow = 0
 
     let data = getStrikeDetails(instrumentsMap[name], name);
-    let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-");
+    let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-");
 
     let categoryList = []
     let dateIndex = 0
@@ -400,16 +419,19 @@ function showChartAllInOne(quote, name, type, prevQuote) {
         ltp = infoMap[name]['currentPrice'];
         trends = infoMap[name]['trends'];
     }
-    console.log("dayOpen : " + dayOpen);
-    console.log("dayHigh :" + dayHigh);
-    console.log("dayLow : " + dayLow);
-    console.log("ltp : " + ltp);
-    console.log("previousClose: " + previousClose);
-
 
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
-    console.log(res)
-    let ohl = '#ohl-trend-' + name.replaceAll(" ", "-") + '-' + type.replaceAll(" ", "-")
+    let ohl = '#ohl-trend-' + name.replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-")
+    let trend = '#trend-' + name.replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-")
+    if (trends.length > 0) {
+        if (jQ.inArray("ASO", trends) != -1) {
+            jQ(trend).html('<span  class="trend-type badge bg-success">' + trends.join(",") + '</span>')
+        }
+        if (jQ.inArray("BSO", trends) != -1) {
+            jQ(trend).html('<span class="trend-type badge bg-danger">' + trends.join(",") + '</span>');
+        }
+    }
+
 
     let ohlHtml = ''
     if (res[2].includes('Buy')) {
@@ -422,9 +444,12 @@ function showChartAllInOne(quote, name, type, prevQuote) {
 
     let chartMax = '<span data-price="' + ltp + '" data-index="1" data-trend="' + trends.join(",") + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</span>'
 
-
-    jQ(ohl).html(ohlHtml)
-    jQ(ohl).append(chartMax)
+    try {
+        jQ(ohl).html(ohlHtml)
+        jQ(ohl).append(chartMax)
+    } catch {
+        console.log("Error")
+    }
 
     isVolumePresent = SHOW_VOLUME_ON_CHART
 

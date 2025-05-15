@@ -178,7 +178,7 @@ function generateOrderBook(orderBook) {
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
-        "order": [[0, "asc"]],
+        "order": [[1, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": orderBook,
