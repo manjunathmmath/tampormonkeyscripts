@@ -252,10 +252,12 @@ async function showOnlyAllInCharts(type, tempName) {
 }
 
 function savePreviousStockQuote(script, token) {
+    let tempName = script.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
     return new Promise((resolve, reject) => {
-        if (!localStorage.getItem(script + "_PREVIOUS_DAY_QUOTE")) {
+        if (!localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE")) {
             jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL)).done(function (res) {
-                localStorage.setItem(script + "_PREVIOUS_DAY_QUOTE", JSON.stringify(res));
+                localStorage.setItem(tempName + "_PREVIOUS_DAY_QUOTE", JSON.stringify(res));
                 resolve();
             })
         } else {

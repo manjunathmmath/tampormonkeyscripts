@@ -110,13 +110,7 @@ const USE_MOVEMENT_STOCKS = g_config.get('movement_stocks');
 
 async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
-        if ((i + 1) <= 100) {
-            addToWatchList("NSE", FO_LIST[i], (i + 1), 2)
-        } else if ((i + 1) > 100 && (i + 1) <= 200) {
-            addToWatchList("NSE", FO_LIST[i], (i + 1), 3)
-        } else {
-            addToWatchList("NSE", FO_LIST[i], (i + 1), 4)
-        }
+        addToWatchList("NSE", FO_LIST[i], (i + 1), 2)
         await callSleepForAWhile(1000)
     }
 }
@@ -131,10 +125,10 @@ function addToWatchList(segment, tradingsymbol, weight, watch_id) {
         url: BASE_URL + `/api/marketwatch/${watch_id}/items`,
         type: 'POST',
         data: {
-            segment: segment,
+            exchange: segment,
             tradingsymbol: tradingsymbol,
             weight: weight,
-            watch_id: watch_id
+            group: 'GROUP:enjLXYs2'
         }
     });
 }
@@ -162,7 +156,7 @@ function makeUIChanges() {
     html += '<a href="#" id="start-algo-trade" style="padding:10px;">'
     html += 'Algo'
     html += '</a>'
-    jQ('body').first().find(".settings").append(html);
+    jQ('body').first().find(".app-nav").append(html);
 }
 
 
@@ -193,17 +187,17 @@ let infoMap = {}
 
 async function autoRefreshEachTabs(instance) {
     clearInterval(timerInstance)
-    let marketWatchSideBar = jQ(".marketwatch-sidebar");
-    let tabs = marketWatchSideBar.find(".marketwatch-selector a.item");
-    for (let i = 0; i < (tabs.length - 3); i++) {
-        jQ(".marketwatch-selector a.item")[i].click();
+    let marketWatchSideBar = jQ(".marketwatch-pagination");
+    let tabs = marketWatchSideBar.find(".pagination a.item");
+    for (let i = 0; i < (tabs.length - 5); i++) {
+        jQ(".marketwatch-pagination a.item")[i].click();
         await callSleepForAWhile(1000);
         generateTrend();
         /*await callSleepForAWhile(1000);*/
     }
     startStockAlgoTrades();
     /*Reset to first tab*/
-    jQ(".marketwatch-selector a.item")[0].click();
+    jQ(".marketwatch-pagination a.item")[0].click();
     await callSleepForAWhile(1000);
     generateTrend();
     await callSleepForAWhile(1000);
@@ -249,7 +243,7 @@ jQ(document).on("click", "#start-auto-refresh", function () {
     var that = jQ(this);
     that.attr("disabled", true)
     clearInterval(timerInstance)
-    autoRefreshEachTabs(that);   
+    autoRefreshEachTabs(that);
 });
 
 function startRefresh() {
@@ -392,14 +386,15 @@ function showAutoTrade() {
 
 async function generateTrend() {
     await saveVixQuote();
-    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
-    let marketWatchSideBar = jQ(".marketwatch-sidebar");
-    let tabs = marketWatchSideBar.find(".marketwatch-selector a.item");
-    let instrumentsWrapper = jQ(".instruments");
-    let instruments = instrumentsWrapper.find(".vddl-list .instrument");
     await callSleepForAWhile(1000)
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+    let marketWatchSideBar = jQ(".marketwatch-pagination");
+    let tabs = marketWatchSideBar.find(".pagination a.item");
+    let instrumentsWrapper = jQ(".draggable-wrapper");
+    let instruments = instrumentsWrapper.find(".items .item-wrapper");
+
     jQ.each(tabs, function (index, item) {
-        if (index == 0 || index == 1 || index == 2 || index == 3) {
+        if (index == 0 || index == 1) {
             if (jQ(item).hasClass("selected")) {
                 if (instruments.length > 0) {
                     let currentMap = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
@@ -407,9 +402,9 @@ async function generateTrend() {
                         currentMap = {}
                     }
                     jQ(instruments).each(function (iindex, iitem) {
-                        let name = jQ(this).find(".symbol").find(".nice-name").html();
+                        let name = jQ(this).find(".symbol").find(".name").html();
                         let price = jQ(this).find(".price").find(".last-price").html();
-                        let perc = jQ(this).find(".price-change").find(".price-absolute").html();
+                        let perc = jQ(this).find(".price-change").find(".change-absolute").html();
                         let insMap = {}
                         if (name == "M&amp;M") {
                             name = "M&M"
@@ -433,7 +428,7 @@ async function generateTrend() {
 
                 instrumentsMap = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
                 jQ(instruments).each(function (iindex, iitem) {
-                    let name = jQ(this).find(".symbol").find(".nice-name").html();
+                    let name = jQ(this).find(".symbol").find(".name").html();
                     let price = jQ(this).find(".price").find(".last-price").html();
                     if (name == "M&amp;M") {
                         name = "M&M"
@@ -444,11 +439,11 @@ async function generateTrend() {
                     }
                     if (name != "INDIA VIX") {
                         let that = jQ(this);
-                        that.find(".info-wrapper").find(".strike-info").remove();
-                        that.find(".info-wrapper").find(".show-info").remove();
-                        that.find(".info-wrapper").find(".quantity-to-buy").remove();
-                        that.find(".info-wrapper").find(".price-moved").remove();
-                        that.find(".info-wrapper").find(".show-chart").remove();
+                        that.find(".item-info-wrapper").find(".strike-info").remove();
+                        that.find(".item-info-wrapper").find(".show-info").remove();
+                        that.find(".item-info-wrapper").find(".quantity-to-buy").remove();
+                        that.find(".item-info-wrapper").find(".price-moved").remove();
+                        that.find(".item-info-wrapper").find(".show-chart").remove();
 
                         let quantity = (MARGIN / (parseFloat(price) / 5)).toFixed(0)
                         let strikeData = getStrikeDetails(instrumentsMap[name], name);
@@ -480,69 +475,69 @@ async function generateTrend() {
                         if (index == 0) {
                             if (currentPrice >= parseFloat(strikeData['ustrikeTwo'])) {
                                 let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "AST"
                                 trends.push(trend);
                             }
 
                             if (currentPrice >= parseFloat(strikeData['ustrikeOne'])) {
                                 let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "ASO"
                                 trends.push(trend);
                             }
                             if (currentPrice <= parseFloat(strikeData['bstrikeTwo'])) {
                                 let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "BST"
                                 trends.push(trend);
                             }
 
                             if (currentPrice <= parseFloat(strikeData['bstrikeOne'])) {
                                 let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "BSO"
                                 trends.push(trend);
                             }
 
                             if (currentPrice <= parseFloat(vixLowerRange)) {
                                 let strike = '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "VIXL"
                                 trends.push(trend);
                             }
 
                             if (currentPrice >= parseFloat(vixUpperRange)) {
                                 let strike = '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "VIXU"
                                 trends.push(trend);
                             }
                         } else {
                             if (currentPrice >= parseFloat(asoPrice)) {
                                 let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "ASO"
                                 trends.push(trend);
                             }
 
                             if (currentPrice <= parseFloat(bsoPrice)) {
                                 let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "BSO"
                                 trends.push(trend);
                             }
 
                             if (currentPrice >= parseFloat(strikeData['ustrikeTwo'])) {
                                 let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "AST"
                                 trends.push(trend);
                             }
 
                             if (currentPrice <= parseFloat(strikeData['bstrikeTwo'])) {
                                 let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
-                                that.find(".info-wrapper").append(strike);
+                                that.find(".item-info-wrapper").append(strike);
                                 trend = "BST"
                                 trends.push(trend);
                             }
@@ -557,9 +552,9 @@ async function generateTrend() {
                         infoMap[name] = infoObj
 
                         let tooltip = '<div data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</div>'
-                        that.find(".info-wrapper").append(tooltip);
+                        that.find(".item-info-wrapper").append(tooltip);
                         let chart = '<div data-price="' + currentPrice + '" data-index="' + index + '" data-trend="' + trends.join(",") + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</div>'
-                        that.find(".info-wrapper").append(chart);
+                        that.find(".item-info-wrapper").append(chart);
 
                         let VIXU_MOVED = parseFloat(currentPrice - vixUpperRange).toFixed()
                         let VIXL_MOVED = parseFloat(vixLowerRange - currentPrice).toFixed()
@@ -574,7 +569,7 @@ async function generateTrend() {
                             if (trend == "VIXU") {
                                 priceMoved += '<div class="badge bg-warning price-moved">' + VIXU_MOVED + '</div>'
                             }
-                            that.find(".info-wrapper").append(priceMoved);
+                            that.find(".item-info-wrapper").append(priceMoved);
                         }
 
                         if (index != 0) {
@@ -591,11 +586,11 @@ async function generateTrend() {
                                 priceMoved += '<div class="badge bg-warning price-moved">' + BSO_MOVED + '</div>'
                             }
 
-                            that.find(".info-wrapper").append(priceMoved);
+                            that.find(".item-info-wrapper").append(priceMoved);
 
 
                             let qtyToBuy = '<div class="badge bg-info quantity-to-buy">' + quantity + '</div>'
-                            that.find(".info-wrapper").append(qtyToBuy);
+                            that.find(".item-info-wrapper").append(qtyToBuy);
 
 
                         }
@@ -668,7 +663,7 @@ async function commonShowChart(name, trends, index, price) {
 
 
 
-    let chartId = 'chart-' + tempName.replaceAll(" ", "-").replaceAll("&","-");
+    let chartId = 'chart-' + tempName.replaceAll(" ", "-").replaceAll("&", "-");
     trends = trends.split(",")
     var html = ''
 
@@ -697,7 +692,7 @@ async function commonShowChart(name, trends, index, price) {
     let title = ''
 
     title += '<div class="row">'
-    title += '<div class="col-md-4">'
+    title += '<div class="col-md-5">'
     title += name + ' <span class="pop-title-extra" id="current-trend-' + tempName + '"> [' + trends.join(",") + ']</span>'
     title += '</div>'
     title += '<div class="col-md-2 pop-title-extra">'
@@ -885,6 +880,7 @@ async function commonShowOnlyChart(name, trends, index, price) {
     showChart(quote, name, index, prevQuote);
     showStockData(quote, name, prevQuote)
     startRefreshChart(tempName);
+    jQ("#start-auto-refresh-"+tempName).removeAttr("disabled")
     jQ("#last-refresh-time-" + tempName).html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
 }
@@ -1177,9 +1173,19 @@ function showChart(quote, name, index, prevQuote) {
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
 
 
-    let ohl = '#current-trend-' + name.replaceAll(" ", "-").replaceAll("&","-")
+    let ohl = '#current-trend-' + name.replaceAll(" ", "-").replaceAll("&", "-")
+
+      let exchange = "NSE"
+    if (name == "SENSEX") {
+        exchange = "BSE"
+    }
 
     let ohlHtml = ''
+
+    ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + name + '/' + instrumentTokens[name] + '"> '
+    ohlHtml += 'OC'
+    ohlHtml += '</a>'
+
     if (res[2].includes('Buy')) {
         ohlHtml += '<span class="badge bg-success">' + res[2] + '</span>'
         ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
@@ -1188,14 +1194,7 @@ function showChart(quote, name, index, prevQuote) {
         ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
     }
 
-    let exchange = "NSE"
-    if (name == "SENSEX") {
-        exchange = "BSE"
-    }
-    ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + name + '/' + instrumentTokens[name] + '"> '
-    ohlHtml += 'OC'
-    ohlHtml += '</a>'
-
+  
     jQ(ohl).append(ohlHtml)
 
 
@@ -1359,7 +1358,7 @@ function callSackBarInfo(message) {
     });
 }
 
-jQ(document).on("click", ".marketwatch-selector a.item", function () {
+jQ(document).on("click", ".marketwatch-pagination .pagination a.item", function () {
     generateTrend()
 });
 
