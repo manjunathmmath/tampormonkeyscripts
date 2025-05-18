@@ -136,17 +136,66 @@ async function executeTrendTrade(trend, obj) {
 
     let quote = await checkAlgoVolumeCondtion(obj.TRADINGSYMBOL);
 
+    let tempName = obj.TRADINGSYMBOL.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    await savePreviousStockQuote(tempName, instrumentTokens[obj.TRADINGSYMBOL])
+
+    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
+    let prevQuote = []
+    jQ.each(previousQuote.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        prevQuote.push(map);
+    });
+
+    let dayHigh = 0
+    let dayLow = 0
+    let dayOpen = parseFloat(instrumentsMap[obj.TRADINGSYMBOL]['price']);
+    jQ.each(prevQuote, function (index, item) {
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+
+
     let last = {};
     console.log(quote)
     jQ.each(quote, function (index, item) {
         if (obj['prevFiveMinutes'] == item['time']) {
             last = item
         }
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
     });
 
     if (!last) {
         return;
     }
+
+    let previousClose = parseFloat(instrumentsMap[obj.TRADINGSYMBOL].prevPrice);
+    let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, obj['CURRENT_PRICE'], previousClose);
+
+    obj['OHL_TREND'] = res;
 
     let asoPrice = 0;
     let bsoPrice = 0;
@@ -244,6 +293,15 @@ async function triggerAlgoOrder(obj, transaction_type) {
     if (trades.length <= STOCK_LIMIT) {
         let res = await callPlaceOrder(params, ENABLE_ALGO_TRADE)
         if (res.status == "success") {
+            let ohlTrend = JSON.parse(localStorage.getItem("OHL_TREND"));
+            
+            if (!ohlTrend) {
+                ohlTrend = {}
+            }
+
+            ohlTrend[obj.TRADINGSYMBOL] =  obj['OHL_TREND']
+            localStorage.setItem("OHL_TREND", JSON.stringify(ohlTrend));
+
             if (ENABLE_SL && ENABLE_ALGO_TRADE) {
                 await setStopLoss(obj, transaction_type, quantity)
             }

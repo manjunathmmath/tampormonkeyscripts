@@ -17,6 +17,7 @@ function showOrderBook() {
     html += '<th>SYMBOL</th>'
     html += '<th>ORDER DATE</th>'
     html += '<th>TRENDS</th>'
+    html += '<th>OHL</th>'
     html += '<th>TYPE</th>'
     html += '<th>QUANTITY</th>'
     html += '<th>PRICE</th>'
@@ -175,6 +176,12 @@ function getTotal(row) {
 
 
 function generateOrderBook(orderBook) {
+
+    let ohlTrend = JSON.parse(localStorage.getItem("OHL_TREND"));
+    if (!ohlTrend) {
+        ohlTrend = {}
+    }
+
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
@@ -209,6 +216,24 @@ function generateOrderBook(orderBook) {
             },
             { "data": "ORDER_DATE" },
             { "data": "TREND" },
+
+             { "data": "" ,
+                render: function (data, type, row, meta) {
+                    let html = '';
+                    if (ohlTrend) {
+                        let trend = ohlTrend[row.SYMBOL]
+                        if(trend[2].includes("Sell")){
+                            html += '<span class="badge bg-danger">' + trend[2] + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + trend[2] + '</span>'
+                        }
+                         html += '<span class="badge bg-info">' + ' [B:' + parseFloat(trend[0]).toFixed(2) + ' S:' + parseFloat(trend[1]).toFixed(2) + ']' + '</span>'
+
+                    }
+                    return html;
+                }
+             },
+
             { "data": "TRANSACTION_TYPE" },
             { "data": "QUNTITY" },
             { "data": "PRICE" },
