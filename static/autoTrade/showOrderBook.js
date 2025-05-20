@@ -57,7 +57,7 @@ function showOrderBook() {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('order-book', html, "Order Book",900,650);
+    showPopUpWindow('order-book', html, "Order Book", 900, 650);
     var divId = "popup-custom-style-order-book";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     commonGenerateTable();
@@ -70,7 +70,7 @@ jQ(document).on("click", "#refresh-order-book", function () {
 
 let total = 0;
 async function commonGenerateTable() {
-    if(jQ.isEmptyObject(instrumentsMap)){
+    if (jQ.isEmptyObject(instrumentsMap)) {
         return
     }
 
@@ -114,7 +114,7 @@ async function commonGenerateTable() {
         let aso = parseFloat(info['strikeData']['ustrikeOne']) - parseFloat(currentInfo['instrument']['price']);
         aso = aso / 2
         asoPrice = parseFloat(info['strikeData']['ustrikeOne']) - aso;
-    
+
         let bso = parseFloat(currentInfo['instrument']['price']) - parseFloat(info['strikeData']['bstrikeOne']);
         bso = bso / 2
         bsoPrice = parseFloat(info['strikeData']['bstrikeOne']) + bso;
@@ -176,12 +176,7 @@ function getTotal(row) {
 
 
 function generateOrderBook(orderBook) {
-
     let ohlTrend = JSON.parse(localStorage.getItem("OHL_TREND"));
-    if (!ohlTrend) {
-        ohlTrend = {}
-    }
-
     jQ("#order-book-list-table").show();
     jQ('#order-book-list-table').DataTable({
         "processing": true,
@@ -210,29 +205,32 @@ function generateOrderBook(orderBook) {
                     let html = ''
                     html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
                     html += data;
-                    html +='</a>'
+                    html += '</a>'
                     return html;
                 }
             },
             { "data": "ORDER_DATE" },
             { "data": "TREND" },
 
-             { "data": "" ,
+            {
+                "data": "",
                 render: function (data, type, row, meta) {
                     let html = '';
                     if (ohlTrend) {
                         let trend = ohlTrend[row.SYMBOL]
-                        if(trend[2].includes("Sell")){
-                            html += '<span class="badge bg-danger">' + trend[2] + '</span>'
-                        } else {
-                            html += '<span class="badge bg-success">' + trend[2] + '</span>'
+                        if (trend) {
+                            if (trend[2].includes("Sell")) {
+                                html += '<span class="badge bg-danger">' + trend[2] + '</span>'
+                            } else {
+                                html += '<span class="badge bg-success">' + trend[2] + '</span>'
+                            }
+                            html += '<span class="badge bg-info">' + ' [B:' + parseFloat(trend[0]).toFixed(2) + ' S:' + parseFloat(trend[1]).toFixed(2) + ']' + '</span>'
                         }
-                         html += '<span class="badge bg-info">' + ' [B:' + parseFloat(trend[0]).toFixed(2) + ' S:' + parseFloat(trend[1]).toFixed(2) + ']' + '</span>'
 
                     }
                     return html;
                 }
-             },
+            },
 
             { "data": "TRANSACTION_TYPE" },
             { "data": "QUNTITY" },
@@ -327,7 +325,7 @@ function generateOrderBook(orderBook) {
 
 jQ(document).on("click", ".clear-order", function () {
     let name = jQ(this).attr("data-name");
-    if(name){
+    if (name) {
         let trades = JSON.parse(localStorage.getItem("TRADES"));
         if (!trades) {
             trades = []

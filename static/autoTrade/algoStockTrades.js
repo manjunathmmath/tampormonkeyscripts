@@ -174,7 +174,6 @@ async function executeTrendTrade(trend, obj) {
 
 
     let last = {};
-    console.log(quote)
     jQ.each(quote, function (index, item) {
         if (obj['prevFiveMinutes'] == item['time']) {
             last = item
@@ -298,10 +297,8 @@ async function triggerAlgoOrder(obj, transaction_type) {
             if (!ohlTrend) {
                 ohlTrend = {}
             }
-
             ohlTrend[obj.TRADINGSYMBOL] =  obj['OHL_TREND']
             localStorage.setItem("OHL_TREND", JSON.stringify(ohlTrend));
-
             if (ENABLE_SL && ENABLE_ALGO_TRADE) {
                 await setStopLoss(obj, transaction_type, quantity)
             }

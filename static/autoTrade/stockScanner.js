@@ -31,6 +31,9 @@ function showStockScanner() {
     html += '<div class="col-md-4">'
     html += '<span class="filter-type" >MOVEMENT: <input checked type="checkbox" id="movement-stocks"/></span>'
     html += '</div>'
+    html += '<div class="col-md-2">'
+    html += '<span>OHL: <input checked type="checkbox" id="ohl-trend"/></span>'
+    html += '</div>'
     html += '</div>'
     html += '</div>'
 
@@ -44,15 +47,17 @@ function showStockScanner() {
     html += '<thead>'
     html += '<tr>'
     html += '<th>INSTRUMENT</th>'
+    html += '<th>TREND</th>'
+    html += '<th>OHL</th>'
+    html += '<th>MOVED</th>'
     html += '<th>WEIGHTAGE</th>'
     html += '<th>P.CLOSE</th>'
-    html += '<th>OPEN PRICE</th>'
+    html += '<th>OPEN</th>'
     html += '<th>LTP</th>'
     html += '<th>CHANGE</th>'
     html += '<th>VOLUME</th>'
     html += '<th>TRADABLE</th>'
-    html += '<th>TREND</th>'
-    html += '<th>MOVED</th>'
+
     html += '<th>ACTION</th>'
     html += '</tr>'
     html += '</thead>'
@@ -84,7 +89,7 @@ function showStockScanner() {
     title += '</div>'
 
 
-    showPopUpWindow('stock-scanner', html, "Stock Scanner",1050,650);
+    showPopUpWindow('stock-scanner', html, "Stock Scanner", 1150, 650);
     var divId = "popup-custom-style-stock-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     jQ("." + divId).on("close.popupwindow", function () {
@@ -92,7 +97,7 @@ function showStockScanner() {
             clearInterval(stockScannerTimerInstance)
         }
     });
-    if(jQ.isEmptyObject(instrumentsMap)){
+    if (jQ.isEmptyObject(instrumentsMap)) {
         return
     }
     refreshStockScannerTable();
@@ -144,18 +149,20 @@ function stockScannerStartStTimer(duration, display) {
 
 
 jQ(document).on("click", ".stock-filter-instruments", function (e) {
+    clearInterval(stockScannerTimerInstance)
     let trendType = jQ(this).attr("data-trend-type");
     generateStockScanner(trendType)
 });
 
 let scannerGlobalList = [];
-function generateStockScanner(trendType) {
+async function generateStockScanner(trendType) {
     let listType = FO_LIST;
     let WEIGHTAGE = NIFTY_50_WEIGHT;
     let data = [];
     let priceMoved = jQ("#price-moved").val();
     let checkTraded = jQ("#currently-traded").is(":checked");
     let checkMovementStock = jQ("#movement-stocks").is(":checked");
+    let ohlTrend = jQ("#ohl-trend").is(":checked");
     jQ.each(instrumentsMap, function (index, item) {
         if (jQ.inArray(index, listType) != -1) {
             let obj = {}
@@ -174,6 +181,7 @@ function generateStockScanner(trendType) {
             obj['VOLUME'] = 0;
             obj['IS_TRADABLE'] = 'No';
             obj['ACTIONS'] = ''
+            obj['OHL_TREND'] = ''
             let currentPrice = 0;
             if (infoMap[index]) {
                 obj['TREND'] = infoMap[index]['trends']
@@ -237,7 +245,7 @@ function generateStockScanner(trendType) {
         data = filterData
     }
 
-    if(checkMovementStock){
+    if (checkMovementStock) {
         let filterData = []
         jQ.each(data, function (index, item) {
             if (jQ.inArray(item.TRADINGSYMBOL, MOVEMENTSTOCKS) != -1) {
@@ -248,7 +256,96 @@ function generateStockScanner(trendType) {
 
     }
     scannerGlobalList = data;
+    if (ohlTrend && trendType) {
+        let delayCount = 0;
+        for (let i = 0; i < data.length; i++) {
+            let res = await checkOHLTrend(data[i]);
+            data[i]['OHL_TREND'] = res
+            data[i]['VOLUME'] = res[3]
+            if (parseFloat(res[3]) > STOCK_VOLUME){
+                data[i]['IS_TRADABLE'] ='Yes'
+            }
+
+            if(delayCount == 3){
+                delayCount = 0;
+                await callSleepForAWhile(1000)
+            }
+            delayCount++;
+        }
+        stockScannerStartRefresh();
+    }
     generateStockScannerDataTable(data)
+}
+
+
+async function checkOHLTrend(obj) {
+    let tempName = obj.TRADINGSYMBOL.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    await savePreviousStockQuote(tempName, instrumentTokens[obj.TRADINGSYMBOL])
+
+    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
+    let prevQuote = []
+    jQ.each(previousQuote.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        prevQuote.push(map);
+    });
+
+    let dayHigh = 0
+    let dayLow = 0
+    let dayOpen = parseFloat(instrumentsMap[obj.TRADINGSYMBOL]['price']);
+    jQ.each(prevQuote, function (index, item) {
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[obj.TRADINGSYMBOL], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+    let quote = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map['time'] = moment(item[0]).format("HH:mm")
+        quote.push(map);
+    });
+
+    jQ.each(quote, function (index, item) {
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+
+    let previousClose = parseFloat(instrumentsMap[obj.TRADINGSYMBOL].prevPrice);
+    let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, obj['LTP'], previousClose);
+    let last = quote[quote.length - 1];
+    res.push(last.volume);
+    return  res;
+
 }
 
 
@@ -262,7 +359,6 @@ function getStockScannerAllBullsBearsCount() {
     let bst = 0;
 
     jQ.each(FO_LIST, function (index, item) {
-        console.log(item)
         let data = infoMap[item]
         if (data['trends']) {
             if (jQ.inArray("VIXL", data['trends']) != -1) {
@@ -320,7 +416,7 @@ function generateStockScannerDataTable(data) {
     jQ("#stock-scanner-list-table").show()
     stockScannerTable = jQ('#stock-scanner-list-table').DataTable({
         "processing": true,
-        "order": [[0, "asc"]],
+        "order": [[10, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
@@ -328,7 +424,7 @@ function generateStockScannerDataTable(data) {
         "scrollY": "500px",
         "columnDefs": [
             {
-                "targets": [1,2,3],
+                "targets": [4,5],
                 "visible": false,
                 "searchable": false
             }
@@ -343,42 +439,15 @@ function generateStockScannerDataTable(data) {
                 render: function (data, type, row, meta) {
                     let html = ''
                     html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
- 
+
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
                         html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
                     } else {
                         html += data;
                     }
-                    html +='</a>'
+                    html += '</a>'
                     return html;
-                }
-            },
-            { "data": 'WEIGHTAGE' },
-            { "data": 'CLOSE' },
-            { "data": 'PRICE' },
-            { "data": 'LTP' },
-            {
-                "data": 'PERC',
-                render: function (data, type, row, meta) {
-                    let currentPrice = row['LTP'];
-                    let prevClose = row['CLOSE'];
-                    let change = (currentPrice - prevClose).toFixed(2);
-                    let changePerc = ((change / prevClose) * 100).toFixed(2)
-                    return changePerc;
-                }
-            },
-            {
-                "data": 'VOLUME',
-                render: function (data, type, row, meta) {
-                    return data;
-
-                }
-            },   {
-                "data": 'IS_TRADABLE',
-                render: function (data, type, row, meta) {
-                    return data;
-
                 }
             },
             {
@@ -407,15 +476,30 @@ function generateStockScannerDataTable(data) {
                     return html
                 }
             },
+            {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        if (data[2].includes("Sell")) {
+                            html += '<span class="badge bg-danger">' + data[2] + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + data[2] + '</span>'
+                        }
+                        html += '<span class="badge bg-info">' + ' [B:' + parseFloat(data[0]).toFixed(2) + ' S:' + parseFloat(data[1]).toFixed(2) + ']' + '</span>'
+                    }
 
+                    return html
+                }
+            },
 
             {
-                "data": "TREND",
+                "data": "",
                 render: function (data, type, row, meta) {
                     let html = ''
                     let currentPrice = row['LTP'];
-                    if (data.length > 0) {
-                        jQ.each(data, function (index, item) {
+                    if (row.TREND.length > 0) {
+                        jQ.each(row.TREND, function (index, item) {
                             if (item == "ASO") {
                                 let asoPrice = 0;
                                 let aso = parseFloat(row['STRIKEDATA']['ustrikeOne']) - parseFloat(row['PRICE']);
@@ -435,7 +519,7 @@ function generateStockScannerDataTable(data) {
                                 let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
                                 if (BSO_MOVED >= 0) {
                                     html += BSO_MOVED
-                                } 
+                                }
                             }
                         });
                     }
@@ -443,6 +527,33 @@ function generateStockScannerDataTable(data) {
                 }
             },
 
+            { "data": 'WEIGHTAGE' },
+            { "data": 'CLOSE' },
+            { "data": 'PRICE' },
+            { "data": 'LTP' },
+            {
+                "data": 'PERC',
+                render: function (data, type, row, meta) {
+                    let currentPrice = row['LTP'];
+                    let prevClose = row['CLOSE'];
+                    let change = (currentPrice - prevClose).toFixed(2);
+                    let changePerc = ((change / prevClose) * 100).toFixed(2)
+                    return changePerc;
+                }
+            },
+            {
+                "data": 'VOLUME',
+                render: function (data, type, row, meta) {
+                    return data;
+
+                }
+            }, {
+                "data": 'IS_TRADABLE',
+                render: function (data, type, row, meta) {
+                    return data;
+
+                }
+            },
 
             {
                 "data": "ACTIONS",
@@ -513,14 +624,14 @@ jQ(document).on("click", ".check-volume", function () {
     let name = jQ(this).attr("data-name");
     var rowId = jQ(this).attr("data-row-id");
     var rowData = scannerGlobalList[rowId]
-    callCheckVolumeCondtion(name,rowId,rowData)
+    callCheckVolumeCondtion(name, rowId, rowData)
 });
 
 
 
-async function callCheckVolumeCondtion(name,rowId,row) {
+async function callCheckVolumeCondtion(name, rowId, row) {
     let quote = await checkVolumeCondtion(name);
-    let last = quote[quote.length-1];
+    let last = quote[quote.length - 1];
 
     let whichTrade = '';
     if (jQ.inArray("ASO", row['TREND']) != -1) {
@@ -531,23 +642,23 @@ async function callCheckVolumeCondtion(name,rowId,row) {
     let isValidClose = false;
     if (whichTrade == "ASO") {
         let asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne'])
-        if(last.close > asoPrice){
+        if (last.close > asoPrice) {
             isValidClose = true
         }
-        
+
     } else if (whichTrade == "BSO") {
         let bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne'])
-        if(last.close < bsoPrice){
+        if (last.close < bsoPrice) {
             isValidClose = true
         }
     }
-    if(last.volume > STOCK_VOLUME && isValidClose) {
+    if (last.volume > STOCK_VOLUME && isValidClose) {
         scannerGlobalList[rowId]['VOLUME'] = last.volume
         scannerGlobalList[rowId]['IS_TRADABLE'] = 'Yes';
     }
     updateScannerTable(rowId)
 }
- 
+
 function checkVolumeCondtion(name) {
     return new Promise((resolve, reject) => {
         jQ.when(getHistoricalData(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
@@ -568,7 +679,5 @@ function checkVolumeCondtion(name) {
 }
 
 function updateScannerTable(rowId) {
-    console.log(scannerGlobalList)
-    console.log(scannerGlobalList[rowId])
     jQ('#stock-scanner-list-table').DataTable().row(rowId).data(scannerGlobalList[rowId]).draw(false);
 }

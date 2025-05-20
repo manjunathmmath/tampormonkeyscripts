@@ -217,7 +217,6 @@ function getAllBullsBearsCount() {
     let aso = 0;
     let bso = 0;
     jQ.each(FO_LIST, function (index, item) {
-        console.log(item)
         let data = infoMap[item]
         if (data['trends']) {
             if (jQ.inArray("ASO", data['trends']) != -1) {
@@ -974,10 +973,11 @@ async function callPlaceOrder(params, isAllowed) {
     if (isAllowed) {
         res = await placeOrder(params)
     } else {
-        res = 'success';
+        res = {}
+        res['status'] = 'success';
     }
 
-    if (res != 'error') {
+    if (res.status != 'error') {
         let trades = JSON.parse(localStorage.getItem("TRADES"));
         if (!trades) {
             trades = []
@@ -1164,11 +1164,13 @@ function showChart(quote, name, index, prevQuote) {
         ltp = infoMap[name]['currentPrice'];
         trends = infoMap[name]['trends'];
     }
+    /*
     console.log("dayOpen : " + dayOpen);
     console.log("dayHigh :" + dayHigh);
     console.log("dayLow : " + dayLow);
     console.log("ltp : " + ltp);
     console.log("previousClose: " + previousClose);
+    */
 
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
 
@@ -1367,6 +1369,7 @@ function clearLocalStorage() {
     localStorage.removeItem("TRADES")
     localStorage.removeItem("ORDERBOOK")
     localStorage.removeItem("VIX_QUOTE")
+    localStorage.removeItem("OHL_TREND")
     for (let i = 0; i < FO_LIST.length; i++) {
         let name = FO_LIST[i]
         name = name.replaceAll(" ", "-")
