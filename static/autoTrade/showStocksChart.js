@@ -21,16 +21,16 @@ async function showAllInChart(type) {
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
                     isTrending = true;
-                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
                 }
 
                 if (jQ.inArray("BSO", info['trends']) != -1) {
                     isTrending = true;
-                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
                 }
             }
             if (isTrending) {
-                let ohlTrend = '<span id="ohl-trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                let ohlTrend = '<span id="ohl-trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
                 html += '<div class="col-md-4">'
                 html += '<h5 style="text-align:center;">'
                 html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
@@ -52,7 +52,7 @@ async function showAllInChart(type) {
 
                 html += " " + trends + " " + ohlTrend + " " + ohlHtml
                 html += '</h5>'
-                html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-") + '">'
+                html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '">'
                 html += '</div>'
                 html += '</div>'
                 count++;
@@ -119,7 +119,11 @@ async function showAllInChart(type) {
             if (isTrending) {
                 let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
                 await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
-                let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
+
+                let tempName = FO_LIST[i].replaceAll(" ", "-")
+                tempName = tempName.replaceAll("&", "-")
+
+                let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
                 let quote = []
                 jQ.each(data.data.candles, function (index, item) {
                     let map = {}
@@ -201,7 +205,11 @@ async function showOnlyAllInCharts(type, tempName) {
             if (isTrending) {
                 let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
                 await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
-                let previousQuote = JSON.parse(localStorage.getItem(FO_LIST[i] + "_PREVIOUS_DAY_QUOTE"));
+
+                let tempName = FO_LIST[i].replaceAll(" ", "-")
+                tempName = tempName.replaceAll("&", "-")
+
+                let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
                 let quote = []
                 jQ.each(data.data.candles, function (index, item) {
                     let map = {}
@@ -308,7 +316,7 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     let dayLow = 0
 
     let data = getStrikeDetails(instrumentsMap[name], name);
-    let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-");
+    let chartId = 'all-in-one-chart-' + name.replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-");
 
     let categoryList = []
     let dateIndex = 0
@@ -423,8 +431,8 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     }
 
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
-    let ohl = '#ohl-trend-' + name.replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-")
-    let trend = '#trend-' + name.replaceAll(" ", "-").replaceAll("&","-") + '-' + type.replaceAll(" ", "-")
+    let ohl = '#ohl-trend-' + name.replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-")
+    let trend = '#trend-' + name.replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-")
     if (trends.length > 0) {
         if (jQ.inArray("ASO", trends) != -1) {
             jQ(trend).html('<span  class="trend-type badge bg-success">' + trends.join(",") + '</span>')
