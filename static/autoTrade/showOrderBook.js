@@ -57,7 +57,7 @@ function showOrderBook() {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('order-book', html, "Order Book", 900, 650);
+    showPopUpWindow('order-book', html, "Order Book", 1150, 650);
     var divId = "popup-custom-style-order-book";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     commonGenerateTable();
@@ -185,8 +185,6 @@ function generateOrderBook(orderBook) {
         "bPaginate": false,
         "data": orderBook,
         "bDestroy": true,
-        "scrollX": true,
-        "scrollY": "500px",
         "columnDefs": [
             {
                 "targets": [],

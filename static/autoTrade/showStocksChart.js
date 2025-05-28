@@ -6,8 +6,12 @@ jQ(document).on("click", ".show-all-stock-charts", function (e) {
 
 async function showAllInChart(type) {
 
-    let trades = JSON.parse(localStorage.getItem("TRADES"));
-    console.log(trades)
+    /*let trades = JSON.parse(localStorage.getItem("TRADES"));*/
+    
+    let trades = [];
+    jQ.each(instrumentsMap, function (index, item) {
+        trades.push(item.name)
+    });
 
     clearInterval(window['refreshChart' + type])
     let html = ''
@@ -35,7 +39,7 @@ async function showAllInChart(type) {
                 html += '<h5 style="text-align:center;">'
                 html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
                 if (jQ.inArray(FO_LIST[i], trades) !== -1) {
-                    html += '<span class="badge bg-warning" title="Already traded">' + FO_LIST[i] + '</span>'
+                    html += '<span class="badge bg-primary" title="Already traded">' + FO_LIST[i] + '</span>'
                 } else {
                     html += FO_LIST[i];
                 }
@@ -74,19 +78,24 @@ async function showAllInChart(type) {
     let title = ''
 
     title += '<div class="row">'
-    title += '<div class="col-md-2">'
+    title += '<div class="col-md-1">'
     title += type + '<span class="pop-title-extra"></span>'
     title += '</div>'
     title += '<div class="col-md-2">'
     title += 'Trades: <span class="badge bg-success asoTradeCount">0</span>/<span class="badge bg-danger bsoTradeCount">0</span>'
     title += '</div>'
+
+    title += '<div class="col-md-2">'
+    title += 'ASO: <span class="all-aso">0</span> BSO: <span class="all-bso">0</span>'
+    title += '</div>'
+
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<a  data-type="' + type + '" data-name="' + tempName + '"  id="start-auto-refresh-' + tempName + '" class="all-stock-chart-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
     title += '</div>'
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<span style="margin-left:.5rem;" id="refresh-timer-' + tempName + '">00:00</span>'
     title += '</div>'
-    title += '<div class="col-md-3 pop-title-extra">'
+    title += '<div class="col-md-2 pop-title-extra">'
     title += '<span id="last-refresh-time-' + tempName + '">Last @ 00:00:00</span>'
     title += '</div>'
     title += '</div>'
@@ -188,7 +197,13 @@ jQ(document).on("click", ".all-stock-chart-refresh", function () {
 
 async function showOnlyAllInCharts(type, tempName) {
     let count = 0;
-    let trades = JSON.parse(localStorage.getItem("TRADES"));
+    /*let trades = JSON.parse(localStorage.getItem("TRADES"));*/
+    
+    let trades = [];
+    jQ.each(instrumentsMap, function (index, item) {
+        trades.push(item.name)
+    });
+    console.log(trades)
     for (let i = 0; i < FO_LIST.length; i++) {
         if (jQ.inArray(FO_LIST[i], trades) !== -1) {
             let info = infoMap[FO_LIST[i]]
@@ -450,6 +465,13 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     } else {
         ohlHtml += '<span class="badge bg-danger">' + res[2] + '</span>'
         ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
+    }
+
+    let lastQuote = quote[quote.length-1]
+    if(lastQuote.close < previousClose){
+        ohlHtml += '<span class="badge bg-danger">-ve</span>'
+    }else{
+        ohlHtml += '<span class="badge bg-success">+ve</span>'
     }
 
     let chartMax = '<span data-price="' + ltp + '" data-index="1" data-trend="' + trends.join(",") + '" data-name="' + name + '" class="badge bg-secondary show-chart">c</span>'

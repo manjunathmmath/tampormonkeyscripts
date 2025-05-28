@@ -230,11 +230,11 @@ function getAllBullsBearsCount() {
     });
 
     aso = '<span class="badge bg-success">' + aso + '</span>'
-    jQ("#all-aso").html(aso);
+    jQ(".all-aso").html(aso);
 
 
     bso = '<span class="badge bg-danger">' + bso + '</span>'
-    jQ("#all-bso").html(bso);
+    jQ(".all-bso").html(bso);
 
 }
 
@@ -338,11 +338,11 @@ function showAutoTrade() {
 
 
     html += '<div class="col-md-2">'
-    html += 'ASO: <span id="all-aso">0</span>'
+    html += 'ASO: <span class="all-aso">0</span>'
     html += '</div>'
 
     html += '<div class="col-md-2">'
-    html += 'BSO: <span id="all-bso">0</span>'
+    html += 'BSO: <span class="all-bso">0</span>'
     html += '</div>'
 
     html += '</div>'
