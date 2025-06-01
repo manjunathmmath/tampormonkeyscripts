@@ -95,6 +95,7 @@ async function showAllInChart(type) {
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<span style="margin-left:.5rem;" id="refresh-timer-' + tempName + '">00:00</span>'
     title += '</div>'
+    
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<span id="last-refresh-time-' + tempName + '">Last @ 00:00:00</span>'
     title += '</div>'
@@ -303,7 +304,7 @@ function startTimerChartsAllInOne(display, name) {
         var h = d.getHours();
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
         if (s == 59) {
-            jQ("#start-auto-refresh-" + name).trigger("click");
+            /*jQ("#start-auto-refresh-" + name).trigger("click");*/
         }
     }, 1000);
 
@@ -312,7 +313,7 @@ function startTimerChartsAllInOne(display, name) {
 
 function showChartAllInOne(quote, name, type, prevQuote) {
 
-    let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
+    /*let prevFiveMinutes = moment().subtract(5, "minutes").format("HH:mm")
 
     let last = {};
     jQ.each(quote, function (index, item) {
@@ -323,7 +324,7 @@ function showChartAllInOne(quote, name, type, prevQuote) {
 
     if (!last) {
         return;
-    }
+    }*/
 
     let dayOpen = parseFloat(instrumentsMap[name]['price']);
     let previousClose = parseFloat(instrumentsMap[name].prevPrice);

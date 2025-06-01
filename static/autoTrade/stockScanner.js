@@ -2,7 +2,7 @@ jQ(document).on("click", "#show-stock-scanner", function () {
     showStockScanner();
 })
 
-function showStockScanner() {
+async function showStockScanner() {
     let html = ''
 
     html += '<div class="row">'
@@ -10,7 +10,7 @@ function showStockScanner() {
     html += '<div class="col-md-5">'
     html += '<div class="card" >'
     html += '<div class="card-header">'
-    html += '<span class="stock-filter-instruments filter-type" data-index-name="ALL">ALL: </span> <span id="stock-all-bulls" class="badge bg-success"></span> <span id="stock-all-bears" class="badge bg-danger"></span>'
+    html += '<span class="stock-filter-instruments filter-type" data-index-name="ALL">ALL </span>'
     html += 'ASO: <span class="stock-filter-instruments" data-trend-type="ASO" data-index-name="ALL" id="stock-all-aso">0</span></span>'
     html += 'BSO: <span class="stock-filter-instruments" data-trend-type="BSO" data-index-name="ALL" id="stock-all-bso">0</span></span>'
     html += 'AST: <span class="stock-filter-instruments" data-trend-type="AST" data-index-name="ALL" id="stock-all-ast">0</span></span>'
@@ -25,15 +25,23 @@ function showStockScanner() {
     html += '<div class="col-md-2">'
     html += '<span class="filter-type" ><input value="-1" type="text" id="price-moved" placeholder="" class="form-control form-control-sm"/></span>'
     html += '</div>'
-    html += '<div class="col-md-4">'
-    html += '<span class="filter-type" >HIDE TRADED: <input type="checkbox" id="currently-traded"/></span>'
+    html += '<div class="col-md-2">'
+    html += '<span class="filter-type" >HIDE:<input title="Hide Traded" type="checkbox" id="currently-traded"/></span>'
     html += '</div>'
-    html += '<div class="col-md-4">'
-    html += '<span class="filter-type" >MOVEMENT: <input checked type="checkbox" id="movement-stocks"/></span>'
+    html += '<div class="col-md-3">'
+    html += '<span class="filter-type" >MOVE:<input title="Show only movementum stocks" type="checkbox" id="movement-stocks"/></span>'
     html += '</div>'
     html += '<div class="col-md-2">'
-    html += '<span>OHL: <input checked type="checkbox" id="ohl-trend"/></span>'
+    html += '<span>OHL:<input title="Fetch and show OHL Trend" type="checkbox" id="ohl-trend"/></span>'
     html += '</div>'
+    html += '<div class="col-md-2">'
+    html += '<select id="instrument-type" class="form-control form-control-sm">'
+    html += '<option value="ALL">ALL</option>'
+    html += '<option value="NIFTY" selected>NIFTY</option>'
+    html += '<option value="BANK">BANK</option>'
+    html += '</select>'
+    html += '</div>'
+
     html += '</div>'
     html += '</div>'
 
@@ -41,6 +49,44 @@ function showStockScanner() {
 
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+
+
+    html += '<div class="row">'
+
+    html += '<div class="col-md-1">'
+    html += 'Sell: <span data-name="Sell" class="badge bg-danger ohl-filter" id="ohl-sell">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Strong Sell(OH): <span data-name="Strong Sell(OH)" class="badge bg-danger ohl-filter" id="strong-sell-oh">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Strong Sell(Lower High): <span data-name="Strong Sell(Lower High)" class="badge bg-danger ohl-filter" id="strong-sell-lower-high">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'Buy: <span data-name="Buy" class="badge bg-success" id="ohl-buy ohl-filter">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Strong Buy(Higher High): <span data-name="Strong Buy(Higher High)" class="badge bg-success ohl-filter" id="strong-buy-higher-higher">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'Strong Buy(OL): <span data-name="Strong Buy(OL)" class="badge bg-success ohl-filter" id="strong-buy-ol">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += '<span data-name="ALL BUY" class="ohl-filter badge bg-success" id="total-buy">0</span>'
+    html += '/'
+    html += '<span data-name="ALL SELL" class="ohl-filter badge bg-danger" id="total-sell">0</span>'
+    html += '</div>'
+
+    html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+
     html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<table  class="" id="stock-scanner-list-table" style="width: 100%;display: none;">'
@@ -114,35 +160,31 @@ jQ(document).on("click", "#stock-scanner-start-auto-refresh", function () {
 });
 
 function refreshStockScannerTable() {
-    generateStockScanner('');
+    clearInterval(stockScannerTimerInstance)
+    let instrumentType = jQ("#instrument-type selected:option").val()
+    if (!instrumentType) {
+        instrumentType = "NIFTY"
+    }
+    generateStockScanner('', instrumentType);
     getStockScannerAllBullsBearsCount();
-    clearInterval(stockScannerTimerInstance);
-    stockScannerStartRefresh();
+
     jQ("#stock-scanner-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
 
 function stockScannerStartRefresh() {
     var display = document.querySelector('#stock-scanner-refresh-timer-one');
-    stockScannerStartStTimer(REFRESH_TIME, display);
+    stockScannerStartStTimer(display);
 };
 
-function stockScannerStartStTimer(duration, display) {
-    if (!duration) {
-        duration = 60
-    }
-    duration = 180
-    var timer = duration, minutes, seconds;
+function stockScannerStartStTimer(display) {
     stockScannerTimerInstance = setInterval(function () {
-        minutes = parseInt(timer / 60, 10);
-        seconds = parseInt(timer % 60, 10);
-
-        display.textContent = minutes + ":" + seconds;
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-        if (--timer < 0) {
-            refreshStockScannerTable()
-            timer = duration;
+        var d = new Date();
+        var s = d.getSeconds();
+        var m = d.getMinutes();
+        var h = d.getHours();
+        display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
+        if ((m % 5) == 0) {
+            refreshStockScannerTable();
         }
     }, 1000);
 }
@@ -151,19 +193,67 @@ function stockScannerStartStTimer(duration, display) {
 jQ(document).on("click", ".stock-filter-instruments", function (e) {
     clearInterval(stockScannerTimerInstance)
     let trendType = jQ(this).attr("data-trend-type");
-    generateStockScanner(trendType)
+    let instrumentType = jQ("#instrument-type option:selected").val()
+    generateStockScanner(trendType, instrumentType)
+});
+
+
+jQ(document).on("click", ".ohl-filter", function (e) {
+    let ohlFilter = jQ(this).attr("data-name");
+    let data = []
+    jQ.each(scannerGlobalList, function (index, item) {
+        if (ohlFilter == "ALL BUY" || ohlFilter == "ALL SELL") {
+            if (ohlFilter == "ALL BUY") {
+                if (item.OHL_TREND[2].includes("Buy")) {
+                    data.push(item)
+                }
+            }
+
+            if (ohlFilter == "ALL SELL") {
+                if (item.OHL_TREND[2].includes("Sell")) {
+                    data.push(item)
+                }
+            }
+        } else {
+            if (item.OHL_TREND[2] == ohlFilter) {
+                data.push(item)
+            }
+        }
+    });
+    generateStockScannerDataTable(data)
+});
+
+
+
+jQ(document).on("change", "#instrument-type", function (e) {
+    clearInterval(stockScannerTimerInstance)
+    let instrumentType = jQ("#instrument-type option:selected").val()
+    generateStockScanner('', instrumentType)
+    getStockScannerAllBullsBearsCount();
 });
 
 let scannerGlobalList = [];
-async function generateStockScanner(trendType) {
+async function generateStockScanner(trendType, instrumentType) {
     let listType = FO_LIST;
     let WEIGHTAGE = NIFTY_50_WEIGHT;
+
+    if (instrumentType == "NIFTY") {
+        listType = NIFTY_50_LIST;
+        WEIGHTAGE = NIFTY_50_WEIGHT;
+    }
+
+    if (instrumentType == "BANK") {
+        listType = NIFTY_BANK_LIST;
+        WEIGHTAGE = NIFTY_BANK_WEIGHT;
+    }
+
     let data = [];
     let priceMoved = jQ("#price-moved").val();
     let checkTraded = jQ("#currently-traded").is(":checked");
     let checkMovementStock = jQ("#movement-stocks").is(":checked");
     let ohlTrend = jQ("#ohl-trend").is(":checked");
     jQ.each(instrumentsMap, function (index, item) {
+
         if (jQ.inArray(index, listType) != -1) {
             let obj = {}
             obj['TRADINGSYMBOL'] = index
@@ -255,25 +345,69 @@ async function generateStockScanner(trendType) {
         data = filterData
 
     }
-    scannerGlobalList = data;
-    if (ohlTrend && trendType) {
+
+    let sell = 0;
+    let strongSellOH = 0
+    let strongSellLowerHigh = 0
+    let buy = 0;
+    let strongBuyOL = 0;
+    let strongBuyHigherHigh = 0;
+
+    if (ohlTrend && instrumentType != "ALL") {
         let delayCount = 0;
         for (let i = 0; i < data.length; i++) {
             let res = await checkOHLTrend(data[i]);
-            data[i]['OHL_TREND'] = res
-            data[i]['VOLUME'] = res[3]
-            if (parseFloat(res[3]) > STOCK_VOLUME){
-                data[i]['IS_TRADABLE'] ='Yes'
+
+            if (res[2] == "Strong Sell(OH)") {
+                strongSellOH++;
             }
 
-            if(delayCount == 3){
+            if (res[2] == "Strong Buy(OL)") {
+                strongBuyOL++;
+            }
+
+            if (res[2] == "Strong Sell(Lower High)") {
+                strongSellLowerHigh++;
+            }
+
+            if (res[2] == "Strong Buy(Higher High)") {
+                strongBuyHigherHigh++;
+            }
+
+            if (res[2] == "Buy") {
+                buy++;
+            }
+
+            if (res[2] == "Sell") {
+                sell++;
+            }
+
+            data[i]['OHL_TREND'] = res
+            data[i]['VOLUME'] = res[3]
+            if (parseFloat(res[3]) > STOCK_VOLUME) {
+                data[i]['IS_TRADABLE'] = 'Yes'
+            }
+
+            if (delayCount == 3) {
                 delayCount = 0;
                 await callSleepForAWhile(1000)
             }
             delayCount++;
         }
+        jQ("#ohl-sell").html(sell);
+        jQ("#strong-sell-oh").html(strongSellOH);
+        jQ("#strong-sell-lower-high").html(strongSellLowerHigh);
+        jQ("#ohl-buy").html(buy);
+        jQ("#strong-buy-higher-higher").html(strongBuyHigherHigh);
+        jQ("#strong-buy-ol").html(strongBuyOL);
+        let totalBuy = buy + strongBuyHigherHigh + strongBuyOL
+        let totalSell = sell + strongSellOH + strongSellLowerHigh
+        jQ("#total-buy").html(totalBuy)
+        jQ("#total-sell").html(totalSell)
+
         stockScannerStartRefresh();
     }
+    scannerGlobalList = data;
     generateStockScannerDataTable(data)
 }
 
@@ -344,7 +478,7 @@ async function checkOHLTrend(obj) {
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, obj['LTP'], previousClose);
     let last = quote[quote.length - 1];
     res.push(last.volume);
-    return  res;
+    return res;
 
 }
 
@@ -357,52 +491,49 @@ function getStockScannerAllBullsBearsCount() {
     let aso = 0;
     let bso = 0;
     let bst = 0;
+    let instrumentType = jQ("#instrument-type option:selected").val()
+
+    let listType = FO_LIST;
+    if (instrumentType == "NIFTY") {
+        listType = NIFTY_50_LIST;
+    }
+
+    if (instrumentType == "BANK") {
+        listType = NIFTY_BANK_LIST;
+    }
 
     jQ.each(FO_LIST, function (index, item) {
-        let data = infoMap[item]
-        if (data['trends']) {
-            if (jQ.inArray("VIXL", data['trends']) != -1) {
-                vixl++
-            }
-            if (jQ.inArray("VIXU", data['trends']) != -1) {
-                vixu++
-            }
+        if (jQ.inArray(item, listType) != -1) {
+            let data = infoMap[item]
+            if (data['trends']) {
+                if (jQ.inArray("VIXL", data['trends']) != -1) {
+                    vixl++
+                }
+                if (jQ.inArray("VIXU", data['trends']) != -1) {
+                    vixu++
+                }
 
-            if (jQ.inArray("AST", data['trends']) != -1) {
-                ast++
-            }
-            if (jQ.inArray("ASO", data['trends']) != -1) {
-                aso++
-            }
+                if (jQ.inArray("AST", data['trends']) != -1) {
+                    ast++
+                }
+                if (jQ.inArray("ASO", data['trends']) != -1) {
+                    aso++
+                }
 
-            if (jQ.inArray("BST", data['trends']) != -1) {
-                bst++
+                if (jQ.inArray("BST", data['trends']) != -1) {
+                    bst++
+                }
+                if (jQ.inArray("BSO", data['trends']) != -1) {
+                    bso++
+                }
             }
-            if (jQ.inArray("BSO", data['trends']) != -1) {
-                bso++
-            }
-
         }
     });
-
-    let bulls = vixu + aso + bst
-    let bears = vixl + ast + bso
-
-    jQ("#stock-all-bulls").html(bulls);
-    jQ("#stock-all-bears").html(bears);
-
-    vixu = '<span class="badge bg-success">' + vixu + '</span>'
-    vixl = '<span class="badge bg-danger">' + vixl + '</span>'
-    jQ("#stock-all-vixu").html(vixu);
-    jQ("#stock-all-vixl").html(vixl);
-
 
     ast = '<span class="badge bg-danger">' + ast + '</span>'
     aso = '<span class="badge bg-success">' + aso + '</span>'
     jQ("#stock-all-ast").html(ast);
     jQ("#stock-all-aso").html(aso);
-
-
     bst = '<span class="badge bg-success">' + bst + '</span>'
     bso = '<span class="badge bg-danger">' + bso + '</span>'
     jQ("#stock-all-bst").html(bst);
@@ -423,7 +554,7 @@ function generateStockScannerDataTable(data) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [4,5],
+                "targets": [4, 5],
                 "visible": false,
                 "searchable": false
             }

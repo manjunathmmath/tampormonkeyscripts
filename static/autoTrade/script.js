@@ -154,7 +154,7 @@ function makeUIChanges() {
 
     html = '';
     html += '<a href="#" id="start-algo-trade" style="padding:10px;">'
-    html += 'Algo'
+    html += 'Bot'
     html += '</a>'
     jQ('body').first().find(".app-nav").append(html);
 }
@@ -189,7 +189,7 @@ async function autoRefreshEachTabs(instance) {
     clearInterval(timerInstance)
     let marketWatchSideBar = jQ(".marketwatch-pagination");
     let tabs = marketWatchSideBar.find(".pagination a.item");
-    for (let i = 0; i < (tabs.length - 5); i++) {
+    for (let i = 0; i < (tabs.length-1); i++) {
         jQ(".marketwatch-pagination a.item")[i].click();
         await callSleepForAWhile(1000);
         generateTrend();
@@ -197,7 +197,7 @@ async function autoRefreshEachTabs(instance) {
     }
     startStockAlgoTrades();
     /*Reset to first tab*/
-    jQ(".marketwatch-pagination a.item")[0].click();
+    jQ(".marketwatch-pagination a.item")[1].click();
     await callSleepForAWhile(1000);
     generateTrend();
     await callSleepForAWhile(1000);
@@ -288,28 +288,32 @@ function showAutoTrade() {
     let html = ''
 
     html += '<div class="row">'
-    html += '<div class="col-md-2">'
-    html += 'Prev. Date: <span class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
+    html += '<div class="col-md-1">'
+    html += '<span title="Previous Day Date" class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<span title="Current Day Date" class="badge bg-primary me-1">' + CURRENT_DAY + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<span title="Stock trend for algo trading" class="badge bg-primary me-1">' + STOCK_TREND_TO_TRADE + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<span title="Stock volume to check" class="badge bg-primary me-1">' + STOCK_VOLUME + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-4">'
+    html += '<span title="Margin for Algo trading" class="badge bg-primary me-1">' + MARGIN + '</span>'
     html += '</div>'
 
     html += '<div class="col-md-2">'
-    html += 'Curr. Date: <span class="badge bg-primary me-1">' + CURRENT_DAY + '</span>'
+    html += '<span title="ASO Traded Count" class="badge bg-success asoTradeCount">0</span>/<span title="BSO Traded Count" class="badge bg-danger bsoTradeCount">0</span>'
     html += '</div>'
 
     html += '<div class="col-md-2">'
-    html += 'Algo Trend: <span class="badge bg-primary me-1">' + STOCK_TREND_TO_TRADE + '</span>'
-    html += '</div>'
-
-    html += '<div class="col-md-2">'
-    html += 'Volume: <span class="badge bg-primary me-1">' + STOCK_VOLUME + '</span>'
-    html += '</div>'
-
-    html += '<div class="col-md-2">'
-    html += 'Margin: <span class="badge bg-primary me-1">' + MARGIN + '</span>'
-    html += '</div>'
-
-    html += '<div class="col-md-2">'
-    html += 'Trades: <span class="badge bg-success asoTradeCount">0</span>/<span class="badge bg-danger bsoTradeCount">0</span>'
+    html += '<span title="Total ASO Stocks" class="all-aso">0</span>/<span title="Total BSO Stocks" class="all-bso">0</span>'
     html += '</div>'
 
     html += '</div>'
@@ -324,27 +328,26 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
-    html += '<div class="col-md-2">'
+    html += '<div class="col-md-1">'
     html += '<button id="all-stock-charts" class="btn ms-1 badge bg-info show-all-stock-charts" data-type="ALL STOCK" type="submit">';
-    html += 'Stock Charts'
+    html += 'Charts'
     html += '</button>'
     html += '</div>'
 
     html += '<div class="col-md-1">'
     html += '<button id="show-order-book" class="btn ms-1 badge bg-info" type="submit">';
-    html += 'Order Book'
+    html += 'Orders'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="show-quick-scanner" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Quick'
     html += '</button>'
     html += '</div>'
 
 
-    html += '<div class="col-md-2">'
-    html += 'ASO: <span class="all-aso">0</span>'
-    html += '</div>'
-
-    html += '<div class="col-md-2">'
-    html += 'BSO: <span class="all-bso">0</span>'
-    html += '</div>'
-
+    
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
@@ -352,7 +355,7 @@ function showAutoTrade() {
     let title = ''
     title += '<div class="row">'
     title += '<div class="col-md-2">'
-    title += 'Auto Trade'
+    title += 'Trade Bot'
     title += '</div>'
     title += '<div class="col-md-1 pop-title-extra">'
     title += '<a  id="start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'

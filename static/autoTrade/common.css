@@ -253,3 +253,8 @@ span.bullsVersesBears {
 .check-volume{
   cursor: pointer;
 }
+
+.quick-check-history{
+  display: none;
+  cursor: pointer;
+}
