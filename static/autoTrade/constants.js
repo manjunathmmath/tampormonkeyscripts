@@ -224,10 +224,15 @@ let nseStrikeDiff = {
 	'GIFT NIFTY': '50,50',
 }
 
-let TESTING = [
-	'AARTIIND',
-	'ABB',
-	'ABCAPITAL'
+let TRACK_LIST = [
+	'NIFTY 50',
+	'NIFTY MID SELECT',
+	'NIFTY BANK',
+	'NIFTY FIN SERVICE',
+	'SENSEX',
+	'GIFT NIFTY',
+	'RELIANCE',
+	'HDFCBANK'
 ]
 
 let FO_LIST = [

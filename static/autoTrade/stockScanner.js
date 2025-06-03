@@ -32,7 +32,7 @@ async function showStockScanner() {
     html += '<span class="filter-type" >MOVE:<input title="Show only movementum stocks" type="checkbox" id="movement-stocks"/></span>'
     html += '</div>'
     html += '<div class="col-md-2">'
-    html += '<span>OHL:<input title="Fetch and show OHL Trend" type="checkbox" id="ohl-trend"/></span>'
+    html += '<span>OHL:<input title="Fetch and show OHL Trend" checked type="checkbox" id="ohl-trend"/></span>'
     html += '</div>'
     html += '<div class="col-md-2">'
     html += '<select id="instrument-type" class="form-control form-control-sm">'
@@ -95,6 +95,8 @@ async function showStockScanner() {
     html += '<th>INSTRUMENT</th>'
     html += '<th>TREND</th>'
     html += '<th>OHL</th>'
+    html += '<th>B %</th>'
+    html += '<th>S %</th>'
     html += '<th>MOVED</th>'
     html += '<th>WEIGHTAGE</th>'
     html += '<th>P.CLOSE</th>'
@@ -131,6 +133,9 @@ async function showStockScanner() {
     title += '</div>'
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span class="profit-loss">0.00</span>'
+    title += '</div>'
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<span id="processing"></span>'
     title += '</div>'
     title += '</div>'
 
@@ -184,7 +189,7 @@ function stockScannerStartStTimer(display) {
         var h = d.getHours();
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
         if ((m % 5) == 0) {
-            refreshStockScannerTable();
+            /*refreshStockScannerTable();*/
         }
     }, 1000);
 }
@@ -353,9 +358,11 @@ async function generateStockScanner(trendType, instrumentType) {
     let strongBuyOL = 0;
     let strongBuyHigherHigh = 0;
 
-    if (ohlTrend && instrumentType != "ALL") {
+    if (ohlTrend && data.length != FO_LIST.length && trendType) {
         let delayCount = 0;
+        let count = data.length;
         for (let i = 0; i < data.length; i++) {
+            jQ("#processing").html("Processing.... " + i+"/"+count);
             let res = await checkOHLTrend(data[i]);
 
             if (res[2] == "Strong Sell(OH)") {
@@ -406,6 +413,7 @@ async function generateStockScanner(trendType, instrumentType) {
         jQ("#total-sell").html(totalSell)
 
         stockScannerStartRefresh();
+        jQ("#processing").html("Done..")
     }
     scannerGlobalList = data;
     generateStockScannerDataTable(data)
@@ -554,7 +562,7 @@ function generateStockScannerDataTable(data) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [4, 5],
+                "targets": [6, 7,8,9],
                 "visible": false,
                 "searchable": false
             }
@@ -624,6 +632,28 @@ function generateStockScannerDataTable(data) {
             },
 
             {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        html += '<span class="badge bg-success">' +  + parseFloat(data[0]).toFixed(2) + '</span>'
+                    }
+                    return html
+                }
+            },
+
+            {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        html += '<span class="badge bg-danger">' +  + parseFloat(data[1]).toFixed(2) + '</span>'
+                    }
+                    return html
+                }
+            },
+
+            {
                 "data": "",
                 render: function (data, type, row, meta) {
                     let html = ''
@@ -668,7 +698,13 @@ function generateStockScannerDataTable(data) {
                     let prevClose = row['CLOSE'];
                     let change = (currentPrice - prevClose).toFixed(2);
                     let changePerc = ((change / prevClose) * 100).toFixed(2)
-                    return changePerc;
+                    let html = ''
+                    if (changePerc < 0) {
+                            html += '<span class="badge bg-danger">' + changePerc + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + changePerc + '</span>'
+                        }
+                    return html;
                 }
             },
             {

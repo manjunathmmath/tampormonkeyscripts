@@ -17,46 +17,46 @@ async function showAllInChart(type) {
     let html = ''
     html += '<div class="row" id="all-chart-container">'
     let count = 0;
-    for (let i = 0; i < FO_LIST.length; i++) {
-        if (jQ.inArray(FO_LIST[i], trades) !== -1) {
-            let info = infoMap[FO_LIST[i]]
+    for (let i = 0; i < TRACK_LIST.length; i++) {
+        if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
+            let info = infoMap[TRACK_LIST[i]]
             let trends = ''
             let isTrending = false;
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
                     isTrending = true;
-                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                    trends = '<span id="trend-' + TRACK_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
                 }
 
                 if (jQ.inArray("BSO", info['trends']) != -1) {
                     isTrending = true;
-                    trends = '<span id="trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                    trends = '<span id="trend-' + TRACK_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
                 }
             }
             if (isTrending) {
-                let ohlTrend = '<span id="ohl-trend-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
+                let ohlTrend = '<span id="ohl-trend-' + TRACK_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '"></span>'
                 html += '<div class="col-md-4">'
                 html += '<h5 style="text-align:center;">'
-                html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
-                if (jQ.inArray(FO_LIST[i], trades) !== -1) {
-                    html += '<span class="badge bg-primary" title="Already traded">' + FO_LIST[i] + '</span>'
+                html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + 'NSE' + '/' + TRACK_LIST[i] + '/' + instrumentTokens[TRACK_LIST[i]] + '"> '
+                if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
+                    html += '<span class="badge bg-primary" title="Already traded">' + TRACK_LIST[i] + '</span>'
                 } else {
-                    html += FO_LIST[i];
+                    html += TRACK_LIST[i];
                 }
                 html += '</a>'
 
                 let ohlHtml = ''
                 let exchange = "NSE"
-                if (FO_LIST[i] == "SENSEX") {
+                if (TRACK_LIST[i] == "SENSEX") {
                     exchange = "BSE"
                 }
-                ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + FO_LIST[i] + '/' + instrumentTokens[FO_LIST[i]] + '"> '
+                ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + TRACK_LIST[i] + '/' + instrumentTokens[TRACK_LIST[i]] + '"> '
                 ohlHtml += 'OC'
                 ohlHtml += '</a>'
 
                 html += " " + trends + " " + ohlTrend + " " + ohlHtml
                 html += '</h5>'
-                html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + FO_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '">'
+                html += '<div  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded" id="all-in-one-chart-' + TRACK_LIST[i].replaceAll(" ", "-").replaceAll("&", "-") + '-' + type.replaceAll(" ", "-") + '">'
                 html += '</div>'
                 html += '</div>'
                 count++;
@@ -112,10 +112,10 @@ async function showAllInChart(type) {
     var divClass = "popup-custom-style-" + tempName;
     jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
     count = 0;
-    for (let i = 0; i < FO_LIST.length; i++) {
-        if (jQ.inArray(FO_LIST[i], trades) !== -1) {
+    for (let i = 0; i < TRACK_LIST.length; i++) {
+        if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
 
-            let info = infoMap[FO_LIST[i]]
+            let info = infoMap[TRACK_LIST[i]]
             let isTrending = false;
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
@@ -127,10 +127,10 @@ async function showAllInChart(type) {
                 }
             }
             if (isTrending) {
-                let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-                await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
+                let data = await getHistoricalDataUsingPromise(instrumentTokens[TRACK_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+                await savePreviousStockQuote(TRACK_LIST[i], instrumentTokens[TRACK_LIST[i]])
 
-                let tempName = FO_LIST[i].replaceAll(" ", "-")
+                let tempName = TRACK_LIST[i].replaceAll(" ", "-")
                 tempName = tempName.replaceAll("&", "-")
 
                 let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
@@ -150,10 +150,10 @@ async function showAllInChart(type) {
                 if (quote.length == 0) {
                     let map = {}
                     map['date'] = moment().format("HH:mm:ss")
-                    map.open = instrumentsMap[FO_LIST[i]]['price']
-                    map.high = instrumentsMap[FO_LIST[i]]['price']
-                    map.low = instrumentsMap[FO_LIST[i]]['price']
-                    map.close = instrumentsMap[FO_LIST[i]]['price']
+                    map.open = instrumentsMap[TRACK_LIST[i]]['price']
+                    map.high = instrumentsMap[TRACK_LIST[i]]['price']
+                    map.low = instrumentsMap[TRACK_LIST[i]]['price']
+                    map.close = instrumentsMap[TRACK_LIST[i]]['price']
                     map.volume = 0
                     quote.push(map);
                 }
@@ -170,7 +170,7 @@ async function showAllInChart(type) {
                     prevQuote.push(map);
                 });
 
-                showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
+                showChartAllInOne(quote, TRACK_LIST[i], type, prevQuote)
                 count++;
                 if (count % 3 == 0) {
                     await callSleepForAWhile(3000)
@@ -205,9 +205,9 @@ async function showOnlyAllInCharts(type, tempName) {
         trades.push(item.name)
     });
     console.log(trades)
-    for (let i = 0; i < FO_LIST.length; i++) {
-        if (jQ.inArray(FO_LIST[i], trades) !== -1) {
-            let info = infoMap[FO_LIST[i]]
+    for (let i = 0; i < TRACK_LIST.length; i++) {
+        if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
+            let info = infoMap[TRACK_LIST[i]]
             let isTrending = false;
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
@@ -219,10 +219,10 @@ async function showOnlyAllInCharts(type, tempName) {
                 }
             }
             if (isTrending) {
-                let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-                await savePreviousStockQuote(FO_LIST[i], instrumentTokens[FO_LIST[i]])
+                let data = await getHistoricalDataUsingPromise(instrumentTokens[TRACK_LIST[i]], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+                await savePreviousStockQuote(TRACK_LIST[i], instrumentTokens[TRACK_LIST[i]])
 
-                let tempName = FO_LIST[i].replaceAll(" ", "-")
+                let tempName = TRACK_LIST[i].replaceAll(" ", "-")
                 tempName = tempName.replaceAll("&", "-")
 
                 let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
@@ -242,10 +242,10 @@ async function showOnlyAllInCharts(type, tempName) {
                 if (quote.length == 0) {
                     let map = {}
                     map['date'] = moment().format("HH:mm:ss")
-                    map.open = instrumentsMap[FO_LIST[i]]['price']
-                    map.high = instrumentsMap[FO_LIST[i]]['price']
-                    map.low = instrumentsMap[FO_LIST[i]]['price']
-                    map.close = instrumentsMap[FO_LIST[i]]['price']
+                    map.open = instrumentsMap[TRACK_LIST[i]]['price']
+                    map.high = instrumentsMap[TRACK_LIST[i]]['price']
+                    map.low = instrumentsMap[TRACK_LIST[i]]['price']
+                    map.close = instrumentsMap[TRACK_LIST[i]]['price']
                     map.volume = 0
                     quote.push(map);
                 }
@@ -263,7 +263,7 @@ async function showOnlyAllInCharts(type, tempName) {
                 });
 
 
-                showChartAllInOne(quote, FO_LIST[i], type, prevQuote)
+                showChartAllInOne(quote, TRACK_LIST[i], type, prevQuote)
                 count++;
                 if (count % 3 == 0) {
                     await callSleepForAWhile(3000)
