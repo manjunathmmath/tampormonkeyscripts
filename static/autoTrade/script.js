@@ -788,7 +788,7 @@ function showStockData(quote, name, prevQuote) {
             dayLow = item.low
         }
 
-        let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, ltp, previousClose);
+        let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, item.close, previousClose);
         item.trend = res
         item.dayHigh = dayHigh
         item.dayLow = dayLow

@@ -58,7 +58,7 @@ async function showStockScanner() {
     html += '</div>'
 
     html += '<div class="col-md-2">'
-    html += 'Strong Sell(OH): <span data-name="Strong Sell(OH)" class="badge bg-danger ohl-filter" id="strong-sell-oh">0</span>'
+    html += 'Strong Sell(OH): <span data-name="Strong Sell(OH)" class="badge bg-danger ohl-filter" id="strong-sell-ohl">0</span>'
     html += '</div>'
 
     html += '<div class="col-md-2">'
@@ -66,7 +66,7 @@ async function showStockScanner() {
     html += '</div>'
 
     html += '<div class="col-md-1">'
-    html += 'Buy: <span data-name="Buy" class="badge bg-success" id="ohl-buy ohl-filter">0</span>'
+    html += 'Buy: <span data-name="Buy" class="badge bg-success ohl-filter" id="ohl-buy">0</span>'
     html += '</div>'
 
     html += '<div class="col-md-2">'
@@ -395,7 +395,7 @@ async function generateStockScanner(trendType, instrumentType) {
             delayCount++;
         }
         jQ("#ohl-sell").html(sell);
-        jQ("#strong-sell-oh").html(strongSellOH);
+        jQ("#strong-sell-ohl").html(strongSellOH);
         jQ("#strong-sell-lower-high").html(strongSellLowerHigh);
         jQ("#ohl-buy").html(buy);
         jQ("#strong-buy-higher-higher").html(strongBuyHigherHigh);
