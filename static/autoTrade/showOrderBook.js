@@ -18,6 +18,8 @@ function showOrderBook() {
     html += '<th>ORDER DATE</th>'
     html += '<th>TRENDS</th>'
     html += '<th>OHL</th>'
+    html += '<th>B %</th>'
+    html += '<th>S %</th>'
     html += '<th>TYPE</th>'
     html += '<th>QUANTITY</th>'
     html += '<th>PRICE</th>'
@@ -187,7 +189,7 @@ function generateOrderBook(orderBook) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [],
+                "targets": [6,7,8,9,10],
                 "visible": false,
                 "searchable": false
             }
@@ -222,11 +224,34 @@ function generateOrderBook(orderBook) {
                             } else {
                                 html += '<span class="badge bg-success">' + trend[2] + '</span>'
                             }
-                            html += '<span class="badge bg-info">' + ' [B:' + parseFloat(trend[0]).toFixed(2) + ' S:' + parseFloat(trend[1]).toFixed(2) + ']' + '</span>'
                         }
 
                     }
                     return html;
+                }
+            },
+
+
+            {
+                "data": "",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (ohlTrend) {
+                        let trend = ohlTrend[row.SYMBOL]
+                        html += '<span class="badge bg-success">' +  + parseFloat(trend[0]).toFixed(2) + '</span>'
+                    }
+                    return html
+                }
+            },
+            {
+                "data": "",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (ohlTrend) {
+                        let trend = ohlTrend[row.SYMBOL]
+                        html += '<span class="badge bg-danger">' +  + parseFloat(trend[1]).toFixed(2) + '</span>'
+                    }
+                    return html
                 }
             },
 

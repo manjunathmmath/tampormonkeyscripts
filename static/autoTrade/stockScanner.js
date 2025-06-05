@@ -513,7 +513,7 @@ function getStockScannerAllBullsBearsCount() {
     jQ.each(FO_LIST, function (index, item) {
         if (jQ.inArray(item, listType) != -1) {
             let data = infoMap[item]
-            if (data['trends']) {
+            if (data) {
                 if (jQ.inArray("VIXL", data['trends']) != -1) {
                     vixl++
                 }
@@ -624,7 +624,6 @@ function generateStockScannerDataTable(data) {
                         } else {
                             html += '<span class="badge bg-success">' + data[2] + '</span>'
                         }
-                        html += '<span class="badge bg-info">' + ' [B:' + parseFloat(data[0]).toFixed(2) + ' S:' + parseFloat(data[1]).toFixed(2) + ']' + '</span>'
                     }
 
                     return html

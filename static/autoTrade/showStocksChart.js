@@ -21,7 +21,7 @@ async function showAllInChart(type) {
         if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
             let info = infoMap[TRACK_LIST[i]]
             let trends = ''
-            let isTrending = false;
+            let isTrending = true;
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
                     isTrending = true;
@@ -116,7 +116,7 @@ async function showAllInChart(type) {
         if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
 
             let info = infoMap[TRACK_LIST[i]]
-            let isTrending = false;
+            let isTrending = true;
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
                     isTrending = true;
@@ -208,7 +208,7 @@ async function showOnlyAllInCharts(type, tempName) {
     for (let i = 0; i < TRACK_LIST.length; i++) {
         if (jQ.inArray(TRACK_LIST[i], trades) !== -1) {
             let info = infoMap[TRACK_LIST[i]]
-            let isTrending = false;
+            let isTrending = true;
             if (info['trends'].length > 0) {
                 if (jQ.inArray("ASO", info['trends']) != -1) {
                     isTrending = true;
