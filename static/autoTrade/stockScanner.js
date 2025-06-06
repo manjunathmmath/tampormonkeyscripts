@@ -296,7 +296,7 @@ async function generateStockScanner(trendType, instrumentType) {
                         if (trendType == "ASO") {
                             let asoPrice = 0;
                             let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
-                            aso = aso / 2
+                            aso = aso / 3
                             asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - aso;
                             let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                             if (ASO_MOVED <= priceMoved) {
@@ -307,7 +307,7 @@ async function generateStockScanner(trendType, instrumentType) {
                         if (trendType == "BSO") {
                             let bsoPrice = 0;
                             let bso = parseFloat(obj['PRICE']) - parseFloat(obj['STRIKEDATA']['bstrikeOne']);
-                            bso = bso / 2
+                            bso = bso / 3
                             bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']) + bso;
                             let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
                             if (BSO_MOVED <= priceMoved) {
@@ -662,7 +662,7 @@ function generateStockScannerDataTable(data) {
                             if (item == "ASO") {
                                 let asoPrice = 0;
                                 let aso = parseFloat(row['STRIKEDATA']['ustrikeOne']) - parseFloat(row['PRICE']);
-                                aso = aso / 2
+                                aso = aso / 3
                                 asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']) - aso;
                                 let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                                 if (ASO_MOVED >= 0) {
@@ -673,7 +673,7 @@ function generateStockScannerDataTable(data) {
                             if (item == "BSO") {
                                 let bsoPrice = 0;
                                 let bso = parseFloat(row['PRICE']) - parseFloat(row['STRIKEDATA']['bstrikeOne']);
-                                bso = bso / 2
+                                bso = bso / 3
                                 bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne']) + bso;
                                 let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed();
                                 if (BSO_MOVED >= 0) {

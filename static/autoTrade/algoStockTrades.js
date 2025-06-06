@@ -199,11 +199,11 @@ async function executeTrendTrade(trend, obj) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
-    aso = aso / 2
+    aso = aso / 3
     asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - aso;
 
     let bso = parseFloat(obj['PRICE']) - parseFloat(obj['STRIKEDATA']['bstrikeOne']);
-    bso = bso / 2
+    bso = bso / 3
     bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']) + bso;
 
 

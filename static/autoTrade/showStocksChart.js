@@ -489,11 +489,11 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 2
+    aso = aso / 3
     asoPrice = parseFloat(data.ustrikeOne) - aso;
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
-    bso = bso / 2
+    bso = bso / 3
     bsoPrice = parseFloat(data.bstrikeOne) + bso;
 
     let lines = [];

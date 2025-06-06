@@ -678,11 +678,11 @@ async function generateTrend() {
                         let asoPrice = 0;
                         let bsoPrice = 0;
                         let aso = parseFloat(strikeData['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-                        aso = aso / 2
+                        aso = aso / 3
                         asoPrice = parseFloat(strikeData['ustrikeOne']) - aso;
 
                         let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(strikeData['bstrikeOne']);
-                        bso = bso / 2
+                        bso = bso / 3
                         bsoPrice = parseFloat(strikeData['bstrikeOne']) + bso;
 
                         let trend = "NA"
@@ -1434,11 +1434,11 @@ function showChart(quote, name, index, prevQuote) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 2
+    aso = aso / 3
     asoPrice = parseFloat(data.ustrikeOne) - aso;
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
-    bso = bso / 2
+    bso = bso / 3
     bsoPrice = parseFloat(data.bstrikeOne) + bso;
 
     if (index == 0) {
@@ -1545,11 +1545,11 @@ jQ(document).on("click", ".show-info", function () {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data['strikeData']['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 2
+    aso = aso / 3
     asoPrice = parseFloat(data['strikeData']['ustrikeOne']) - aso;
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data['strikeData']['bstrikeOne']);
-    bso = bso / 2
+    bso = bso / 3
     bsoPrice = parseFloat(data['strikeData']['bstrikeOne']) + bso;
 
     let html = ''
