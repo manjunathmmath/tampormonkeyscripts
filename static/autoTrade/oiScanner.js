@@ -48,6 +48,11 @@ async function showOIScanner(name) {
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
 
+
+    html += '<div class="row" id="oi-chart-conatiner">'
+    html += '</div>'
+
+
     let title = ''
     title += '<div class="row">'
     title += '<div class="col-md-2">'
@@ -83,6 +88,8 @@ function fillInstruments(name) {
     htmlMarkup += '<option value="">Choose</option>'
     let EXTRA_LIST = FO_LIST
     EXTRA_LIST.push("NIFTY")
+    EXTRA_LIST.push("BANKNIFTY")
+    EXTRA_LIST.push("MIDCPNIFTY")
     jQ.each(EXTRA_LIST, function (index, item) {
         let selected = ''
         if (name) {
@@ -100,7 +107,9 @@ function fillInstruments(name) {
     jQ("#instruments").trigger("change")
 }
 
-jQ(document).on("change", "#oi-scanner-start-auto-refresh", function (e) {
+jQ(document).on("click", "#oi-scanner-start-auto-refresh", function (e) {
+    e.preventDefault()
+    alert(1)
     jQ("#instruments").trigger("change")
 });
 
@@ -112,7 +121,7 @@ jQ(document).on("change", "#instruments", function (e) {
 });
 
 
-let strikToShow = 1
+let strikToShow = 3
 let strikeData = []
 let selectedStrike = []
 async function showOI(instrument) {
@@ -124,7 +133,11 @@ async function showOI(instrument) {
     let info;
     if (instrument == "NIFTY") {
         info = infoMap["NIFTY 50"]
-    } else {
+    } else if (instrument == "BANKNIFTY") {
+        info = infoMap["NIFTY BANK"]
+    } else if (instrument == "MIDCPNIFTY") {
+        info = infoMap["NIFTY MID SELECT"]
+    }  else {
         info = infoMap[instrument]
     }
 
@@ -269,14 +282,21 @@ async function showOIDetails() {
         obj['OI_PE'] = parseFloat(OI_PE / 100000).toFixed(1)
         obj['CHG_OI_PE'] = parseFloat((OI_PE - PREV_OI_PE) / 100000).toFixed(1)
         obj['ATM_STRIKE'] = item.ATM_STRIKE
-        obj['CE'] = item.CE.tradingsymbol
-        obj['PE'] = item.PE.tradingsymbol
-        obj['CE_TOKEN'] = item.CE.instrument_token
-        obj['PE_TOKEN'] = item.PE.instrument_token
+        obj['CE'] = item.CE
+        obj['PE'] = item.PE
+
+        obj['currDataCE'] = currDataCE
+        obj['currDataPE'] = currDataPE
+
+        obj['prevDataCE'] = prevDataCE
+        obj['prevDataPE'] = prevDataPE
+
         tableData.push(obj)
     });
 
     generateOITable(tableData)
+
+    generateOICharts(tableData)
 
     jQ("#oi-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
@@ -291,8 +311,6 @@ function generateOITable(data) {
         "bPaginate": false,
         "data": data,
         "bDestroy": true,
-        "scrollX": true,
-        "scrollY": "500px",
         "columnDefs": [
             {
                 "targets": [0, 4],
@@ -317,11 +335,11 @@ function generateOITable(data) {
                         html += data
                     }
                     html += '<div>'
-                    html += '<a href="' + link.replaceAll("##INSTRUMENT##", row.CE).replaceAll("##TOKEN##", row.CE_TOKEN) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;display:block;">'
-                    html += row.CE
+                    html += '<a href="' + link.replaceAll("##INSTRUMENT##", row.CE.tradingsymbol).replaceAll("##TOKEN##", row.CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;display:block;">'
+                    html += row.CE.tradingsymbol
                     html += '</a>'
-                    html += '<a href="' + link.replaceAll("##INSTRUMENT##", row.PE).replaceAll("##TOKEN##", row.PE_TOKEN) + '" target="_blank" style="font-size:xx-small;display:block;">'
-                    html += row.PE
+                    html += '<a href="' + link.replaceAll("##INSTRUMENT##", row.PE.tradingsymbol).replaceAll("##TOKEN##", row.PE.instrument_token) + '" target="_blank" style="font-size:xx-small;display:block;">'
+                    html += row.PE.tradingsymbol
                     html += '</a>'
                     html += '</div>'
                     return html
@@ -334,5 +352,89 @@ function generateOITable(data) {
         "fnInitComplete": function (oSettings, json) {
         }
     });
+}
+
+
+function generateOICharts(data) {
+
+    
+    jQ("#oi-chart-conatiner").html('')
+    jQ.each(data, function (index, item) {
+        let html = ''
+
+        html += '<div class="col-md-4">'
+        html += '<h5 style="text-align:center;">'
+        if (item.ATM_STRIKE) {
+            html += '<span class="badge bg-success">' + item.STRIKE + '</span>'
+        } else {
+            html += item.STRIKE
+        }
+        html += '</h5>'
+        html += '<div id="chart-oi-' + item.STRIKE + '">'
+        html += '</div>'
+        html += '</div>'
+
+        jQ("#oi-chart-conatiner").append(html);
+
+        let PREV_OI_CE = item.prevDataCE
+        let PREV_OI_PE = item.prevDataPE
+        let preCEOI = PREV_OI_CE[PREV_OI_CE.length-1]
+        let prePEOI = PREV_OI_PE[PREV_OI_PE.length-1]
+
+        let OI_CE = item.currDataCE
+        let OI_PE = item.currDataPE
+
+        let CESeries = {}
+        CESeries['seriesname'] = "CE"
+        CESeries['data'] = []
+
+        let PESeries = {}
+        PESeries['seriesname'] = "PE"
+        PESeries['data'] = []
+
+        let categoryList = [];
+        jQ.each(OI_CE, function (Cindex, Citem) {
+            let map = {}
+            map.label = moment(Citem[0]).format("HH:mm:ss");
+            categoryList.push(map)
+            let val = {}
+            val['color']='#da3224'
+            val['value'] = parseFloat((Citem[6] - preCEOI[6]) / 100000).toFixed(1)
+            CESeries['data'].push(val)
+        })
+
+        jQ.each(OI_PE, function (Pindex, Pitem) {
+            let val = {}
+            val['color']='#37a009'
+            val['value'] = parseFloat((Pitem[6] - prePEOI[6]) / 100000).toFixed(1)
+            PESeries['data'].push(val)
+        })
+
+        jQ("#chart-oi-" + item.STRIKE).insertFusionCharts({
+            type: "mscolumn2d",
+            width: "100%",
+            dataFormat: "json",
+            dataSource: {
+                chart: {
+                    "thousandSeparatorPosition": "2,3",
+                    "formatNumberScale": "0",
+                    "theme": "fusion",
+                    "adjustDiv": "0",
+                    showvalues: "0",
+                    labeldisplay: "ROTATE",
+                    rotatelabels: "1",
+                     "paletteColors": " #da3224, #37a009"
+                },
+                "categories": [{
+                    "category": categoryList
+                }],
+                dataset: [
+                    CESeries,
+                    PESeries
+                ]
+            }
+        });
+    });
+
 }
 
