@@ -54,6 +54,7 @@
 // @require      http://localhost:3000/autoTrade/showStocksChart.js
 // @require      http://localhost:3000/autoTrade/stockScanner.js
 // @require      http://localhost:3000/autoTrade/quickScanner.js
+// @require      http://localhost:3000/autoTrade/oiScanner.js
 // @require      http://localhost:3000/autoTrade/algoStockTrades.js
 // @require      http://localhost:3000/autoTrade/showOrderBook.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js

@@ -197,7 +197,7 @@ async function autoRefreshEachTabs(instance) {
     }
     startStockAlgoTrades();
     /*Reset to first tab*/
-    jQ(".marketwatch-pagination a.item")[1].click();
+    jQ(".marketwatch-pagination a.item")[0].click();
     await callSleepForAWhile(1000);
     generateTrend();
     await callSleepForAWhile(1000);
@@ -346,6 +346,12 @@ function showAutoTrade() {
     html += '<div class="col-md-1">'
     html += '<button id="show-quick-scanner" class="btn ms-1 badge bg-info" type="submit">';
     html += 'Quick'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="show-oi-scanner" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'OI'
     html += '</button>'
     html += '</div>'
 
@@ -1412,6 +1418,10 @@ function showChart(quote, name, index, prevQuote) {
     let ohlHtml = ''
 
     ohlHtml += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/option-chain/' + exchange + '/' + name + '/' + instrumentTokens[name] + '"> '
+    ohlHtml += 'OS'
+    ohlHtml += '</a>'
+
+    ohlHtml += '<a data-name="'+name+'" class="show-option-change"> '
     ohlHtml += 'OC'
     ohlHtml += '</a>'
 

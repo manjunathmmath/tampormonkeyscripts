@@ -6,7 +6,9 @@ let asoData = []
 var quickBsoScannerTable = null;
 var quickAsoScannerTable = null;
 let quickTimerInstance=null;
-function showQuickScanner() {
+async function showQuickScanner() {
+    jQ(".marketwatch-pagination a.item")[1].click();
+    await callSleepForAWhile(1000);
     quickBsoScannerTable = null;
     quickAsoScannerTable = null;
 
