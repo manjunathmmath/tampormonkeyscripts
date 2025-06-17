@@ -258,3 +258,11 @@ span.bullsVersesBears {
   display: none;
   cursor: pointer;
 }
+
+.analyse-instrument{
+  cursor: pointer;
+}
+
+.odd td,.even td{
+  border-bottom: 1px solid #bdbdbd;
+}

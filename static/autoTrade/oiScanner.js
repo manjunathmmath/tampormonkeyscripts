@@ -66,7 +66,7 @@ async function showOIScanner(name) {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('oi-scanner', html, "OI Scanner", 800, 550);
+    showPopUpWindow('oi-scanner', html, "OI Scanner",  950, 550);
 
     var divId = "popup-custom-style-oi-scanner";
 
@@ -109,7 +109,6 @@ function fillInstruments(name) {
 
 jQ(document).on("click", "#oi-scanner-start-auto-refresh", function (e) {
     e.preventDefault()
-    alert(1)
     jQ("#instruments").trigger("change")
 });
 
@@ -121,11 +120,11 @@ jQ(document).on("change", "#instruments", function (e) {
 });
 
 
-let strikToShow = 3
+
 let strikeData = []
 let selectedStrike = []
 async function showOI(instrument) {
-
+    let strikToShow = 2
     strikeData = []
     selectedStrike = []
 
@@ -137,8 +136,12 @@ async function showOI(instrument) {
         info = infoMap["NIFTY BANK"]
     } else if (instrument == "MIDCPNIFTY") {
         info = infoMap["NIFTY MID SELECT"]
-    }  else {
+    } else {
         info = infoMap[instrument]
+    }
+
+    if (instrument.includes("NIFTY")) {
+        strikToShow = 3
     }
 
     let atmStrike = 0;
@@ -171,7 +174,6 @@ async function showOI(instrument) {
             }
         }
     });
-
 
     for (let i = 1; i <= strikToShow; i++) {
         if (upperStrikes[i]) {
@@ -220,8 +222,6 @@ async function showOI(instrument) {
         }
 
     }
-    console.log(strikeData)
-
     showOIDetails()
 
 }
@@ -231,34 +231,34 @@ async function showOIDetails() {
     for (let i = 0; i < strikeData.length; i++) {
         let CE = ''
         let PE = ''
+        if (strikeData[i]['STRIKE'] != 0) {
+            for (let j = 0; j < selectedStrike.length; j++) {
+                if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
+                    && selectedStrike[j].instrument_type == 'CE') {
+                    CE = selectedStrike[j]
+                }
 
-        for (let j = 0; j < selectedStrike.length; j++) {
-            if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
-                && selectedStrike[j].instrument_type == 'CE') {
-                CE = selectedStrike[j]
+                if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
+                    && selectedStrike[j].instrument_type == 'PE') {
+                    PE = selectedStrike[j]
+                }
             }
+            let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+            let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
 
-            if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
-                && selectedStrike[j].instrument_type == 'PE') {
-                PE = selectedStrike[j]
-            }
+            let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+            let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+            strikeMap[strikeData[i]['STRIKE']] = {}
+            strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
+            strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
+            strikeMap[strikeData[i]['STRIKE']]['prevDataPE'] = prevDataPE
+            strikeMap[strikeData[i]['STRIKE']]['currDataPE'] = currDataPE
+            strikeMap[strikeData[i]['STRIKE']]['INDEX'] = i
+            strikeMap[strikeData[i]['STRIKE']]['ATM_STRIKE'] = strikeData[i]['ATM_STRIKE']
+
+            strikeMap[strikeData[i]['STRIKE']]['CE'] = CE
+            strikeMap[strikeData[i]['STRIKE']]['PE'] = PE
         }
-
-        let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
-        let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-
-        let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
-        let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        strikeMap[strikeData[i]['STRIKE']] = {}
-        strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
-        strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
-        strikeMap[strikeData[i]['STRIKE']]['prevDataPE'] = prevDataPE
-        strikeMap[strikeData[i]['STRIKE']]['currDataPE'] = currDataPE
-        strikeMap[strikeData[i]['STRIKE']]['INDEX'] = i
-        strikeMap[strikeData[i]['STRIKE']]['ATM_STRIKE'] = strikeData[i]['ATM_STRIKE']
-
-        strikeMap[strikeData[i]['STRIKE']]['CE'] = CE
-        strikeMap[strikeData[i]['STRIKE']]['PE'] = PE
     }
 
     let tableData = []
@@ -268,6 +268,14 @@ async function showOIDetails() {
 
         let prevDataCE = item['prevDataCE']['data']['candles']
         let prevDataPE = item['prevDataPE']['data']['candles']
+
+        if (currDataCE.length == 0) {
+            currDataCE = prevDataCE
+        }
+
+        if (currDataPE.length == 0) {
+            currDataPE = currDataPE
+        }
 
         let OI_CE = currDataCE[currDataCE.length - 1][6]
         let OI_PE = currDataPE[currDataPE.length - 1][6]
@@ -300,11 +308,11 @@ async function showOIDetails() {
 
     jQ("#oi-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
-
+let quickOIScannerTable = null
 function generateOITable(data) {
     let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
     jQ("#quick-oi-list-table").show()
-    quickBsoScannerTable = jQ('#quick-oi-list-table').DataTable({
+    quickOIScannerTable = jQ('#quick-oi-list-table').DataTable({
         "processing": true,
         "order": [],
         "pageLength": 50,
@@ -357,7 +365,7 @@ function generateOITable(data) {
 
 function generateOICharts(data) {
 
-    
+
     jQ("#oi-chart-conatiner").html('')
     jQ.each(data, function (index, item) {
         let html = ''
@@ -378,11 +386,20 @@ function generateOICharts(data) {
 
         let PREV_OI_CE = item.prevDataCE
         let PREV_OI_PE = item.prevDataPE
-        let preCEOI = PREV_OI_CE[PREV_OI_CE.length-1]
-        let prePEOI = PREV_OI_PE[PREV_OI_PE.length-1]
+        let preCEOI = PREV_OI_CE[PREV_OI_CE.length - 1]
+        let prePEOI = PREV_OI_PE[PREV_OI_PE.length - 1]
 
         let OI_CE = item.currDataCE
         let OI_PE = item.currDataPE
+
+        if (OI_CE.length == 0) {
+            OI_CE = preCEOI
+        }
+
+        if (OI_PE.length == 0) {
+            OI_PE = prePEOI
+        }
+
 
         let CESeries = {}
         CESeries['seriesname'] = "CE"
@@ -398,14 +415,14 @@ function generateOICharts(data) {
             map.label = moment(Citem[0]).format("HH:mm:ss");
             categoryList.push(map)
             let val = {}
-            val['color']='#da3224'
+            val['color'] = '#da3224'
             val['value'] = parseFloat((Citem[6] - preCEOI[6]) / 100000).toFixed(1)
             CESeries['data'].push(val)
         })
 
         jQ.each(OI_PE, function (Pindex, Pitem) {
             let val = {}
-            val['color']='#37a009'
+            val['color'] = '#37a009'
             val['value'] = parseFloat((Pitem[6] - prePEOI[6]) / 100000).toFixed(1)
             PESeries['data'].push(val)
         })
@@ -423,7 +440,7 @@ function generateOICharts(data) {
                     showvalues: "0",
                     labeldisplay: "ROTATE",
                     rotatelabels: "1",
-                     "paletteColors": " #da3224, #37a009"
+                    "paletteColors": " #da3224, #37a009"
                 },
                 "categories": [{
                     "category": categoryList

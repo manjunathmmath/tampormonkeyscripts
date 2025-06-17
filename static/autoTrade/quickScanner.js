@@ -68,7 +68,7 @@ async function showQuickScanner() {
     title += '</div>'
 
 
-    showPopUpWindow('quick-scanner', html, "Quick Scanner", 1150, 650);
+    showPopUpWindow('quick-scanner', html, "Quick Scanner",  950, 550);
     var divId = "popup-custom-style-quick-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
 
@@ -126,11 +126,11 @@ function generateQuickStockList() {
         let asoPrice = 0;
         let bsoPrice = 0;
         let aso = parseFloat(strikeData['ustrikeOne']) - parseFloat(mapScripts[name]['price']);
-        aso = aso / 3
+        aso = aso / 5
         asoPrice = parseFloat(strikeData['ustrikeOne']) - aso;
 
         let bso = parseFloat(mapScripts[name]['price']) - parseFloat(strikeData['bstrikeOne']);
-        bso = bso / 3
+        bso = bso / 5
         bsoPrice = parseFloat(strikeData['bstrikeOne']) + bso;
 
         let trend = "NA"

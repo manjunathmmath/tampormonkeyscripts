@@ -197,7 +197,7 @@ async function autoRefreshEachTabs(instance) {
     }
     startStockAlgoTrades();
     /*Reset to first tab*/
-    jQ(".marketwatch-pagination a.item")[0].click();
+    jQ(".marketwatch-pagination a.item")[1].click();
     await callSleepForAWhile(1000);
     generateTrend();
     await callSleepForAWhile(1000);
@@ -352,6 +352,12 @@ function showAutoTrade() {
     html += '<div class="col-md-1">'
     html += '<button id="show-oi-scanner" class="btn ms-1 badge bg-info" type="submit">';
     html += 'OI'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="show-trending-intruments" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Trending'
     html += '</button>'
     html += '</div>'
 
@@ -684,11 +690,11 @@ async function generateTrend() {
                         let asoPrice = 0;
                         let bsoPrice = 0;
                         let aso = parseFloat(strikeData['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-                        aso = aso / 3
+                        aso = aso / 5
                         asoPrice = parseFloat(strikeData['ustrikeOne']) - aso;
 
                         let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(strikeData['bstrikeOne']);
-                        bso = bso / 3
+                        bso = bso / 5
                         bsoPrice = parseFloat(strikeData['bstrikeOne']) + bso;
 
                         let trend = "NA"
@@ -938,7 +944,7 @@ async function commonShowChart(name, trends, index, price) {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow(tempName, html, name + " : " + trends.join(","), 1020, 650);
+    showPopUpWindow(tempName, html, name + " : " + trends.join(","),  950, 550);
 
     var divClass = "popup-custom-style-" + tempName;
     jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
@@ -1444,11 +1450,11 @@ function showChart(quote, name, index, prevQuote) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 3
+    aso = aso / 5
     asoPrice = parseFloat(data.ustrikeOne) - aso;
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
-    bso = bso / 3
+    bso = bso / 5
     bsoPrice = parseFloat(data.bstrikeOne) + bso;
 
     if (index == 0) {
@@ -1555,11 +1561,11 @@ jQ(document).on("click", ".show-info", function () {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data['strikeData']['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 3
+    aso = aso / 5
     asoPrice = parseFloat(data['strikeData']['ustrikeOne']) - aso;
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data['strikeData']['bstrikeOne']);
-    bso = bso / 3
+    bso = bso / 5
     bsoPrice = parseFloat(data['strikeData']['bstrikeOne']) + bso;
 
     let html = ''
@@ -1607,6 +1613,7 @@ function clearLocalStorage() {
     localStorage.removeItem("ORDERBOOK")
     localStorage.removeItem("VIX_QUOTE")
     localStorage.removeItem("OHL_TREND")
+    localStorage.removeItem("VALID_INSTRUMENTS")
     for (let i = 0; i < FO_LIST.length; i++) {
         let name = FO_LIST[i]
         name = name.replaceAll(" ", "-")
@@ -1622,6 +1629,7 @@ function clearLocalStorage() {
 }
 
 function getStrikeDetails(item, instrument) {
+    console.log("Strike : " + instrument)
     let strikeDiff = getStrikeDiff(instrument);
     strikeDiff = strikeDiff.split(",");
     let strikeOne = parseInt(strikeDiff[0])

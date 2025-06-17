@@ -191,6 +191,7 @@ async function executeTrendTrade(trend, obj) {
         return;
     }
 
+
     let previousClose = parseFloat(instrumentsMap[obj.TRADINGSYMBOL].prevPrice);
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, obj['CURRENT_PRICE'], previousClose);
 
@@ -199,12 +200,22 @@ async function executeTrendTrade(trend, obj) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
-    aso = aso / 3
+    aso = aso / 5
     asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - aso;
 
     let bso = parseFloat(obj['PRICE']) - parseFloat(obj['STRIKEDATA']['bstrikeOne']);
-    bso = bso / 3
+    bso = bso / 5
     bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']) + bso;
+
+    if (last.close > asoPrice || last.close < bsoPrice) {
+        let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));
+
+        if (!validIntruments) {
+            validIntruments = {}
+        }
+        validIntruments[obj.TRADINGSYMBOL] = obj
+        localStorage.setItem("VALID_INSTRUMENTS", JSON.stringify(validIntruments));
+    }
 
 
     let isValidClose = false;
@@ -216,6 +227,9 @@ async function executeTrendTrade(trend, obj) {
             if (last.close > asoPrice) {
                 isValidClose = true
             }
+
+
+
             if (CHECK_VOLume) {
                 if (last.volume > STOCK_VOLUME && isValidClose) {
                     await triggerAlgoOrder(obj, 'BUY');
@@ -293,11 +307,11 @@ async function triggerAlgoOrder(obj, transaction_type) {
         let res = await callPlaceOrder(params, ENABLE_ALGO_TRADE)
         if (res.status == "success") {
             let ohlTrend = JSON.parse(localStorage.getItem("OHL_TREND"));
-            
+
             if (!ohlTrend) {
                 ohlTrend = {}
             }
-            ohlTrend[obj.TRADINGSYMBOL] =  obj['OHL_TREND']
+            ohlTrend[obj.TRADINGSYMBOL] = obj['OHL_TREND']
             localStorage.setItem("OHL_TREND", JSON.stringify(ohlTrend));
             if (ENABLE_SL && ENABLE_ALGO_TRADE) {
                 await setStopLoss(obj, transaction_type, quantity)

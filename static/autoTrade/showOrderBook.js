@@ -59,7 +59,7 @@ function showOrderBook() {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('order-book', html, "Order Book", 1150, 650);
+    showPopUpWindow('order-book', html, "Order Book",  950, 550);
     var divId = "popup-custom-style-order-book";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     commonGenerateTable();
@@ -114,11 +114,11 @@ async function commonGenerateTable() {
         let asoPrice = 0;
         let bsoPrice = 0;
         let aso = parseFloat(info['strikeData']['ustrikeOne']) - parseFloat(currentInfo['instrument']['price']);
-        aso = aso / 3
+        aso = aso / 5
         asoPrice = parseFloat(info['strikeData']['ustrikeOne']) - aso;
 
         let bso = parseFloat(currentInfo['instrument']['price']) - parseFloat(info['strikeData']['bstrikeOne']);
-        bso = bso / 3
+        bso = bso / 5
         bsoPrice = parseFloat(info['strikeData']['bstrikeOne']) + bso;
 
         obj.SYMBOL = item
