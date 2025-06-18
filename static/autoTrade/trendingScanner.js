@@ -14,12 +14,13 @@ async function showTrendingStocks() {
     html += '<thead>'
     html += '<tr>'
     html += '<th>SYMBOL</th>'
-    html += '<th>TREND</th>'
+    html += '<th>CH%</th>'
     html += '<th>MOVED</th>'
+    html += '<th>TREND</th>'
     html += '<th>OHL</th>'
     html += '<th>B %</th>'
     html += '<th>S %</th>'
-    html += '<th>CH%</th>'
+    html += '<th>VOLUME</th>'
     html += '<th>LTP</th>'
     html += '<th>OI</th>'
     html += '<th>ACTIONS</th>'
@@ -74,6 +75,7 @@ async function showTrendingStocks() {
 
         obj['OHL_TREND'] = ''
         obj['OI_TREND'] = ''
+        obj['VOLUME'] = ''
         let priceMoved = 0;
 
         let asoPrice = 0;
@@ -100,14 +102,45 @@ async function showTrendingStocks() {
 
     if (scripts.length > 0) {
         generateTrendingStockTable(trendingStocks)
-        
+
     }
+}
+
+jQ(document).on("click", "#add-volume", function (e) {
+    fillVolume()
+});
+
+
+async function fillVolume() {
+    let temp = trendingStocks
+    let count = temp.length;
+    for (let i = 0; i < temp.length; i++) {
+        jQ("#processing-trend").html("Processing.... " + i + "/" + count);
+        let data = await getHistoricalDataUsingPromise(instrumentTokens[temp[i].TRADINGSYMBOL], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let quote = []
+        jQ.each(data.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("HH:mm:ss")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            map['time'] = moment(item[0]).format("HH:mm")
+            quote.push(map);
+        });
+        let last = quote[quote.length - 1];
+        trendingStocks[i]['VOLUME'] = last.volume
+        await callSleepForAWhile(1000)
+    }
+    jQ("#processing-trend").html("Done..")
+    generateTrendingStockTable(trendingStocks)
 }
 
 jQ(document).on("click", "#trending-scanner-start-auto-refresh", function (e) {
     let temp = trendingStocks
 
-    jQ.each(temp,function(index,item){
+    jQ.each(temp, function (index, item) {
         let info = infoMap[item['TRADINGSYMBOL']]
         trendingStocks[index]['LTP'] = info['currentPrice']
 
@@ -141,7 +174,7 @@ function generateTrendingStockTable(data) {
     jQ("#trending-stock-list-table").show()
     trendingScannerTable = jQ('#trending-stock-list-table').DataTable({
         "processing": true,
-        "order": [],
+        "order": [[7, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
@@ -158,7 +191,7 @@ function generateTrendingStockTable(data) {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
-                        {
+            {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
@@ -174,8 +207,24 @@ function generateTrendingStockTable(data) {
                     return html;
                 }
             },
-            { "data": "TREND" },
+            {
+                "data": 'PERC',
+                render: function (data, type, row, meta) {
+                    let currentPrice = row['LTP'];
+                    let prevClose = row['CLOSE'];
+                    let change = (currentPrice - prevClose).toFixed(2);
+                    let changePerc = ((change / prevClose) * 100).toFixed(2)
+                    let html = ''
+                    if (changePerc < 0) {
+                        html += '<span class="badge bg-danger">' + changePerc + '</span>'
+                    } else {
+                        html += '<span class="badge bg-success">' + changePerc + '</span>'
+                    }
+                    return html;
+                }
+            },
             { "data": "PRICE_MOVED" },
+            { "data": "TREND" },
             {
                 "data": "OHL_TREND",
                 render: function (data, type, row, meta) {
@@ -213,25 +262,11 @@ function generateTrendingStockTable(data) {
                     return html
                 }
             },
-            {
-                "data": 'PERC',
-                render: function (data, type, row, meta) {
-                    let currentPrice = row['LTP'];
-                    let prevClose = row['CLOSE'];
-                    let change = (currentPrice - prevClose).toFixed(2);
-                    let changePerc = ((change / prevClose) * 100).toFixed(2)
-                    let html = ''
-                    if (changePerc < 0) {
-                        html += '<span class="badge bg-danger">' + changePerc + '</span>'
-                    } else {
-                        html += '<span class="badge bg-success">' + changePerc + '</span>'
-                    }
-                    return html;
-                }
-            },
-             { "data": "LTP" },
+            { "data": "VOLUME" },
+            { "data": "LTP" },
+
             { "data": "OI_TREND" },
-           
+
             {
                 "data": '',
                 render: function (data, type, row, meta) {
@@ -242,7 +277,7 @@ function generateTrendingStockTable(data) {
                     html += '<span data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
                     html += 'Chart'
                     html += '</span>'
-                    html += '<span data-name="'+row['TRADINGSYMBOL']+'" class="show-option-change badge bg-warning"> '
+                    html += '<span data-name="' + row['TRADINGSYMBOL'] + '" class="show-option-change badge bg-warning"> '
                     html += 'OC'
                     html += '</span>'
                     return html;
@@ -250,10 +285,52 @@ function generateTrendingStockTable(data) {
             }
         ],
         "fnInitComplete": function (oSettings, json) {
+            let asoCount = 0;
+            let bsoCount = 0;
+            let allCount = 0;
+            jQ.each(data, function (index, item) {
+                if (jQ.inArray("ASO", item['TREND']) != -1) {
+                    asoCount++;
+                }
+                if (jQ.inArray("BSO", item['TREND']) != -1) {
+                    bsoCount++;
+                }
+                allCount++;
+
+            });
+            jQ(".dt-buttons").append('<button class="dt-button" type="button" id="add-volume"><span>VOLUME</span></button>')
+  
+            jQ(".dt-buttons").append('<button data-trend="all" class="dt-button trend-filter" type="button"><span>ALL(' + allCount + ')</span></button>')
+            jQ(".dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter" type="button"><span>BSO (' + bsoCount + ')</span></button>')
+            jQ(".dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter" type="button"><span>ASO(' + asoCount + ')</span></button>')
         }
     });
     jQ("#trending-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+
+
+
 }
+
+
+jQ(document).on("click", ".trend-filter", function (e) {
+    let name = jQ(this).attr("data-trend");
+    let temp = []
+    jQ.each(trendingStocks, function (index, item) {
+        if (name == "aso") {
+            if (jQ.inArray("ASO", item['TREND']) != -1) {
+                temp.push(item)
+            }
+        } else if (name == "bso") {
+            if (jQ.inArray("BSO", item['TREND']) != -1) {
+                temp.push(item)
+            }
+        } else {
+            temp.push(item)
+        }
+    });
+    generateTrendingStockTable(temp)
+});
+
 
 jQ(document).on("click", ".analyse-instrument", function () {
     let name = jQ(this).attr("data-name");
@@ -325,6 +402,8 @@ async function callAnalyseTrend(name, rowId, rowData) {
         }
     });
 
+
+
     let previousClose = parseFloat(instrumentsMap[name].prevPrice);
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, infoMap[name]['currentPrice'], previousClose);
     trendingStocks[rowId]['OHL_TREND'] = res;
@@ -334,12 +413,12 @@ async function callAnalyseTrend(name, rowId, rowData) {
     let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
     jQ.each(strikes, function (index, item) {
         oiHtml += '<div style="width:10rem;">'
-        let className ='bg-info'
+        let className = 'bg-info'
         if (item.ATM_STRIKE) {
-            className ='bg-primary'
-        } 
+            className = 'bg-primary'
+        }
         oiHtml += '<span class="badge bg-danger">' + item.CHG_OI_CE + '</span>'
-        oiHtml += '<span class="badge '+className+'">' + item.STRIKE + '</span>'
+        oiHtml += '<span class="badge ' + className + '">' + item.STRIKE + '</span>'
         oiHtml += '<span class="badge bg-success">' + item.CHG_OI_PE + '</span>'
         oiHtml += '<span>'
         oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", item.CE.tradingsymbol).replaceAll("##TOKEN##", item.CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;display:block;">'
@@ -352,6 +431,10 @@ async function callAnalyseTrend(name, rowId, rowData) {
         oiHtml += '</div>'
     });
     trendingStocks[rowId]['OI_TREND'] = oiHtml;
+
+    let last = quote[quote.length - 1];
+    /*trendingStocks[rowId]['VOLUME'] = last.volume*/
+
     updateTrendingTable(rowId)
     jQ("#processing-trend").html("Done...");
 }

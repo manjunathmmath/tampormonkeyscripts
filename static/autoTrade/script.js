@@ -372,6 +372,7 @@ function showAutoTrade() {
     html += '<table  class="" id="stock-track-list-table" style="width: 100%;display: none;">'
     html += '<thead>'
     html += '<tr>'
+    html += '<th>ORDER</th>'
     html += '<th>INSTRUMENT</th>'
     html += '<th>TREND</th>'
     html += '<th>OHL</th>'
@@ -533,18 +534,16 @@ async function generateStockDataTable() {
                 obj['TREND'] = info['trends'];
                 obj['OHL_TREND'] = res;
                 obj['LTP'] = ltp;
+                obj['ORDER'] = i;
                 dataList.push(obj)
-
             }
-
         }
     }
-
 
     jQ("#stock-track-list-table").show()
     stockTable = jQ('#stock-track-list-table').DataTable({
         "processing": true,
-        "order": [[0, "desc"]],
+        "order": [[0, "asc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": dataList,
@@ -553,12 +552,13 @@ async function generateStockDataTable() {
         "scrollY": "300px",
         "columnDefs": [
             {
-                "targets": [],
+                "targets": [0],
                 "visible": false,
                 "searchable": false
             }
         ],
         "columns": [
+            { "data": "ORDER" },
             { "data": "TRADINGSYMBOL" },
             { "data": "TREND" },
             {
