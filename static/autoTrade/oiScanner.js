@@ -27,14 +27,14 @@ async function showOIScanner(name) {
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
 
     html += '<div class="row">'
-    html += '<div class="col-md-3"></div>'
-    html += '<div class="col-md-6">'
+    html += '<div class="col-md-1"></div>'
+    html += '<div class="col-md-10">'
     html += '<table  class="" id="quick-oi-list-table" style="width: 100%;display: none;">'
     html += '<thead>'
     html += '<tr>'
     html += '<th>OI</th>'
     html += '<th>CH.OI</th>'
-    html += '<th>STRIKE</th>'
+    html += '<th style="text-align:center;">STRIKE</th>'
     html += '<th>CH.OI</th>'
     html += '<th>OI</th>'
     html += '</tr>'
@@ -44,7 +44,7 @@ async function showOIScanner(name) {
     html += '</table>'
     html += '</div>'
     html += '</div>'
-
+    html += '<div class="col-md-1"></div>'
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
 
@@ -66,7 +66,7 @@ async function showOIScanner(name) {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('oi-scanner', html, "OI Scanner",  950, 550);
+    showPopUpWindow('oi-scanner', html, "OI Scanner", 950, 550);
 
     var divId = "popup-custom-style-oi-scanner";
 
@@ -118,8 +118,6 @@ jQ(document).on("change", "#instruments", function (e) {
     let instrument = jQ("#instruments option:selected").val()
     showOI(instrument)
 });
-
-
 
 let strikeData = []
 let selectedStrike = []
@@ -220,7 +218,6 @@ async function showOI(instrument) {
             obj['PE_TOKEN'] = ''
             strikeData.push(obj)
         }
-
     }
     showOIDetails()
 
@@ -258,6 +255,7 @@ async function showOIDetails() {
 
             strikeMap[strikeData[i]['STRIKE']]['CE'] = CE
             strikeMap[strikeData[i]['STRIKE']]['PE'] = PE
+
         }
     }
 
@@ -274,7 +272,7 @@ async function showOIDetails() {
         }
 
         if (currDataPE.length == 0) {
-            currDataPE = currDataPE
+            currDataPE = prevDataPE
         }
 
         let OI_CE = currDataCE[currDataCE.length - 1][6]
@@ -308,6 +306,7 @@ async function showOIDetails() {
 
     jQ("#oi-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
+
 let quickOIScannerTable = null
 function generateOITable(data) {
     let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
@@ -332,11 +331,21 @@ function generateOITable(data) {
         ],
         "columns": [
             { "data": "OI_CE" },
-            { "data": "CHG_OI_CE" },
+            { "data": "CHG_OI_CE" ,
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if(parseFloat(data) > parseFloat(row.CHG_OI_PE)){
+                        html += '<span class="badge bg-danger">' + data + '</span>'
+                    }else{
+                        html += data
+                    }
+                    return html
+                }
+            },
             {
                 "data": "STRIKE",
                 render: function (data, type, row, meta) {
-                    let html = ''
+                    let html = '<div style="text-align:center;">'
                     if (row.ATM_STRIKE) {
                         html += '<span class="badge bg-success">' + data + '</span>'
                     } else {
@@ -350,10 +359,23 @@ function generateOITable(data) {
                     html += row.PE.tradingsymbol
                     html += '</a>'
                     html += '</div>'
+
+                    html += '<div id="chart-oi-' + data +'">Chart</div>'
+
+                    html += '</div>'
                     return html
                 }
             },
-            { "data": "CHG_OI_PE" },
+            { "data": "CHG_OI_PE" ,
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if(parseFloat(data) > parseFloat(row.CHG_OI_CE)){
+                        html += '<span class="badge bg-success">' + data + '</span>'
+                    }else{
+                        html += data
+                    }
+                    return html
+                }},
             { "data": "OI_PE" },
 
         ],
@@ -362,28 +384,8 @@ function generateOITable(data) {
     });
 }
 
-
 function generateOICharts(data) {
-
-
-    jQ("#oi-chart-conatiner").html('')
     jQ.each(data, function (index, item) {
-        let html = ''
-
-        html += '<div class="col-md-4">'
-        html += '<h5 style="text-align:center;">'
-        if (item.ATM_STRIKE) {
-            html += '<span class="badge bg-success">' + item.STRIKE + '</span>'
-        } else {
-            html += item.STRIKE
-        }
-        html += '</h5>'
-        html += '<div id="chart-oi-' + item.STRIKE + '">'
-        html += '</div>'
-        html += '</div>'
-
-        jQ("#oi-chart-conatiner").append(html);
-
         let PREV_OI_CE = item.prevDataCE
         let PREV_OI_PE = item.prevDataPE
         let preCEOI = PREV_OI_CE[PREV_OI_CE.length - 1]
@@ -440,7 +442,8 @@ function generateOICharts(data) {
                     showvalues: "0",
                     labeldisplay: "ROTATE",
                     rotatelabels: "1",
-                    "paletteColors": " #da3224, #37a009"
+                    "paletteColors": " #da3224, #37a009",
+                    "showLabels": 0
                 },
                 "categories": [{
                     "category": categoryList

@@ -47,6 +47,7 @@
 // @resource     COMMON_CSS http://localhost:3000/autoTrade/common.css
 // @require      http://localhost:3000/autoTrade/common/common.js
 // @require      http://localhost:3000/autoTrade/constants.js
+// @require      http://localhost:3000/autoTrade/optionStrike.js
 // @require      http://localhost:3000/autoTrade/script.js
 // @require      http://localhost:3000/autoTrade/showStocksChart.js
 // @require      http://localhost:3000/autoTrade/stockScanner.js
