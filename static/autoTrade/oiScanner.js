@@ -261,43 +261,48 @@ async function showOIDetails() {
 
     let tableData = []
     jQ.each(strikeMap, function (index, item) {
-        let currDataCE = item['currDataCE']['data']['candles']
-        let currDataPE = item['currDataPE']['data']['candles']
+        try {
+            let currDataCE = item['currDataCE']['data']['candles']
+            let currDataPE = item['currDataPE']['data']['candles']
 
-        let prevDataCE = item['prevDataCE']['data']['candles']
-        let prevDataPE = item['prevDataPE']['data']['candles']
+            let prevDataCE = item['prevDataCE']['data']['candles']
+            let prevDataPE = item['prevDataPE']['data']['candles']
 
-        if (currDataCE.length == 0) {
-            currDataCE = prevDataCE
+            if (currDataCE.length == 0) {
+                currDataCE = prevDataCE
+            }
+
+            if (currDataPE.length == 0) {
+                currDataPE = prevDataPE
+            }
+
+            let OI_CE = currDataCE[currDataCE.length - 1][6]
+            let OI_PE = currDataPE[currDataPE.length - 1][6]
+
+            let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]
+            let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
+
+            let obj = {}
+            obj['OI_CE'] = parseFloat(OI_CE / 100000).toFixed(1)
+            obj['CHG_OI_CE'] = parseFloat((OI_CE - PREV_OI_CE) / 100000).toFixed(1)
+            obj['STRIKE'] = index
+            obj['OI_PE'] = parseFloat(OI_PE / 100000).toFixed(1)
+            obj['CHG_OI_PE'] = parseFloat((OI_PE - PREV_OI_PE) / 100000).toFixed(1)
+            obj['ATM_STRIKE'] = item.ATM_STRIKE
+            obj['CE'] = item.CE
+            obj['PE'] = item.PE
+
+            obj['currDataCE'] = currDataCE
+            obj['currDataPE'] = currDataPE
+
+            obj['prevDataCE'] = prevDataCE
+            obj['prevDataPE'] = prevDataPE
+
+            tableData.push(obj)
+        } catch (err) {
+            console.log("Error while fetching strike : " + index)
         }
 
-        if (currDataPE.length == 0) {
-            currDataPE = prevDataPE
-        }
-
-        let OI_CE = currDataCE[currDataCE.length - 1][6]
-        let OI_PE = currDataPE[currDataPE.length - 1][6]
-
-        let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]
-        let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
-
-        let obj = {}
-        obj['OI_CE'] = parseFloat(OI_CE / 100000).toFixed(1)
-        obj['CHG_OI_CE'] = parseFloat((OI_CE - PREV_OI_CE) / 100000).toFixed(1)
-        obj['STRIKE'] = index
-        obj['OI_PE'] = parseFloat(OI_PE / 100000).toFixed(1)
-        obj['CHG_OI_PE'] = parseFloat((OI_PE - PREV_OI_PE) / 100000).toFixed(1)
-        obj['ATM_STRIKE'] = item.ATM_STRIKE
-        obj['CE'] = item.CE
-        obj['PE'] = item.PE
-
-        obj['currDataCE'] = currDataCE
-        obj['currDataPE'] = currDataPE
-
-        obj['prevDataCE'] = prevDataCE
-        obj['prevDataPE'] = prevDataPE
-
-        tableData.push(obj)
     });
 
     generateOITable(tableData)
@@ -331,12 +336,13 @@ function generateOITable(data) {
         ],
         "columns": [
             { "data": "OI_CE" },
-            { "data": "CHG_OI_CE" ,
+            {
+                "data": "CHG_OI_CE",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    if(parseFloat(data) > parseFloat(row.CHG_OI_PE)){
+                    if (parseFloat(data) > parseFloat(row.CHG_OI_PE)) {
                         html += '<span class="badge bg-danger">' + data + '</span>'
-                    }else{
+                    } else {
                         html += data
                     }
                     return html
@@ -360,22 +366,24 @@ function generateOITable(data) {
                     html += '</a>'
                     html += '</div>'
 
-                    html += '<div id="chart-oi-' + data +'">Chart</div>'
+                    html += '<div id="chart-oi-' + data + '">Chart</div>'
 
                     html += '</div>'
                     return html
                 }
             },
-            { "data": "CHG_OI_PE" ,
+            {
+                "data": "CHG_OI_PE",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    if(parseFloat(data) > parseFloat(row.CHG_OI_CE)){
+                    if (parseFloat(data) > parseFloat(row.CHG_OI_CE)) {
                         html += '<span class="badge bg-success">' + data + '</span>'
-                    }else{
+                    } else {
                         html += data
                     }
                     return html
-                }},
+                }
+            },
             { "data": "OI_PE" },
 
         ],

@@ -1,200 +1,206 @@
-.popupwindow_container{
-    z-index: 9;
+.popupwindow_container {
+  z-index: 9;
 }
 
-.trend-class{
-    display: inline-block;
-    margin: .3rem;
+.trend-class {
+  display: inline-block;
+  margin: .3rem;
 }
 
 span.bullsVersesBears {
-    padding: .1rem;
-    color: #000;
-    font-weight: bold;
+  padding: .1rem;
+  color: #000;
+  font-weight: bold;
 }
-.marketwatch-sidebar .marketwatch-selector a.item{
-    padding: 10px 10px;
-    text-decoration: none !important;
+
+.marketwatch-sidebar .marketwatch-selector a.item {
+  padding: 10px 10px;
+  text-decoration: none !important;
 }
-.draw-points{
-    cursor: pointer;
-}
-.show-info{
+
+.draw-points {
   cursor: pointer;
 }
 
-.show-chart{
+.show-info {
   cursor: pointer;
 }
 
-.place-order{
+.show-chart {
   cursor: pointer;
 }
 
-.clear-order{
-  cursor: pointer;
-}
-#clean-storage{
+.place-order {
   cursor: pointer;
 }
 
-.create-future-alerts{
+.clear-order {
   cursor: pointer;
 }
 
-.show-future-chart{
+#clean-storage {
+  cursor: pointer;
+}
+
+.create-future-alerts {
+  cursor: pointer;
+}
+
+.show-future-chart {
   cursor: pointer;
   margin-right: .2rem;
 }
 
-.place-sl-order{
+.place-sl-order {
   cursor: pointer;
 }
 
-.trend-class{
-    cursor: pointer;
+.trend-class {
+  cursor: pointer;
 }
 
-.create-alerts{
+.create-alerts {
   cursor: pointer;
 }
 
 .badge {
-    display: inline-block;
-    font-size: 0.65em;
+  display: inline-block;
+  font-size: 0.65em;
 }
 
-.add-to-basket{
-    cursor: pointer;
-    margin: .3rem;
+.add-to-basket {
+  cursor: pointer;
+  margin: .3rem;
 }
 
-.marketwatch-sidebar .instruments .instrument .info{
-    --min-price-width:unset;
+.marketwatch-sidebar .instruments .instrument .info {
+  --min-price-width: unset;
 }
 
-.add-all-scripts{
-    background-color: #ffc107 !important;
-    margin: .1rem;
-    padding: .1rem;
-    font-weight: bold;
+.add-all-scripts {
+  background-color: #ffc107 !important;
+  margin: .1rem;
+  padding: .1rem;
+  font-weight: bold;
 }
+
 .badge {
-    display: inline-block;
-    padding: 0.35em 0.65em;
-    font-size: 0.75em;
-    font-weight: 700;
-    line-height: 1;
-    color: #fff;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: baseline;
-    border-radius: 0.25rem;
-    margin: .1rem;
-  }
-
-  .bg-primary {
-    background-color: #0d6efd !important;
-  }
-  
-  .bg-secondary {
-    background-color: #6c757d !important;
-  }
-  
-  .bg-success {
-    background-color: #198754 !important;
-  }
-  
-  .bg-info {
-    background-color: #0dcaf0 !important;
-  }
-  
-  .bg-warning {
-    background-color: #ffc107 !important;
-  }
-  
-  .bg-danger {
-    background-color: #dc3545 !important;
-  }
-  
-  .bg-light {
-    background-color: #f8f9fa !important;
-  }
-  
-  .bg-dark {
-    background-color: #212529 !important;
-  }
-  
-  .bg-body {
-    background-color: #fff !important;
-  }
-  
-  .bg-white {
-    background-color: #fff !important;
-  }
-  
-  .bg-transparent {
-    background-color: transparent !important;
-  }
-  
-  .bg-gradient {
-    background-image: var(--bs-gradient) !important;
-  }
-
-  .info-wrapper .badge{
-    margin-right:.2rem ;
-  }
-
-  .above-strike-one{
-    background-color: #e8cf13 !important;
-    color: #000;
-  }
-
-  .above-strike-two{
-    background-color: #e86231 !important;
-    color: #000;
-  }
-
-  .below-strike-one{
-    background-color: #c0f56b !important;
-    color: #000;
-  }
-
-  .below-strike-two{
-    background-color: #48ed27 !important;
-    color: #000;
-  }
-  .ai-prediction img{
-    max-width: 25px !important;
-    max-height: 25px !important;
-  }
-
-  .historical-future-data-analyzer img{
-    max-width: 15px !important;
-    max-height: 15px !important;
-  }
-
-  .popupwindow_content{
-    overflow-x: hidden !important;
-  }
-
-  .ai-prediction {
-    margin: 0rem .1rem;
+  display: inline-block;
+  padding: 0.35em 0.65em;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 0.25rem;
+  margin: .1rem;
 }
 
-.popupwindow{
+.bg-primary {
+  background-color: #0d6efd !important;
+}
+
+.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+.bg-success {
+  background-color: #198754 !important;
+}
+
+.bg-info {
+  background-color: #0dcaf0 !important;
+}
+
+.bg-warning {
+  background-color: #ffc107 !important;
+}
+
+.bg-danger {
+  background-color: #dc3545 !important;
+}
+
+.bg-light {
+  background-color: #f8f9fa !important;
+}
+
+.bg-dark {
+  background-color: #212529 !important;
+}
+
+.bg-body {
+  background-color: #fff !important;
+}
+
+.bg-white {
+  background-color: #fff !important;
+}
+
+.bg-transparent {
+  background-color: transparent !important;
+}
+
+.bg-gradient {
+  background-image: var(--bs-gradient) !important;
+}
+
+.info-wrapper .badge {
+  margin-right: .2rem;
+}
+
+.above-strike-one {
+  background-color: #e8cf13 !important;
+  color: #000;
+}
+
+.above-strike-two {
+  background-color: #e86231 !important;
+  color: #000;
+}
+
+.below-strike-one {
+  background-color: #c0f56b !important;
+  color: #000;
+}
+
+.below-strike-two {
+  background-color: #48ed27 !important;
+  color: #000;
+}
+
+.ai-prediction img {
+  max-width: 25px !important;
+  max-height: 25px !important;
+}
+
+.historical-future-data-analyzer img {
+  max-width: 15px !important;
+  max-height: 15px !important;
+}
+
+.popupwindow_content {
+  overflow-x: hidden !important;
+}
+
+.ai-prediction {
+  margin: 0rem .1rem;
+}
+
+.popupwindow {
   background-color: #ccc !important;
 }
 
-.filter-instruments{
+.filter-instruments {
   cursor: pointer;
 }
 
-#pop-up-window-trend-analysis ul li{
+#pop-up-window-trend-analysis ul li {
   margin-bottom: unset !important;
 }
 
-.chart-max-wh{
+.chart-max-wh {
   max-width: 45rem;
   max-height: 30rem;
   overflow-x: hidden;
@@ -202,71 +208,134 @@ span.bullsVersesBears {
   height: 40rem;
 }
 
-.filter-type{
+.filter-type {
   margin-right: .5rem;
 }
 
-.strike-info{
+.strike-info {
   margin-right: .2rem;
 }
 
-#show-stock-scanner{
+#show-stock-scanner {
   margin-left: .3rem;
   cursor: pointer;
 }
 
-.card-header{
+.card-header {
   padding: 0.2rem 1rem;
 }
 
-.show-all-in-one{
+.show-all-in-one {
   cursor: pointer;
 }
 
-.exit-trade{
+.exit-trade {
   cursor: pointer;
 }
-.dt-buttons{
+
+.dt-buttons {
   position: absolute;
 }
 
-.dt-button{
+.dt-button {
   padding: .1rem .3rem;
 }
 
-.shadow-lg{
+.shadow-lg {
   background-color: #fff !important;
 }
-#all-chart-container h5{
+
+#all-chart-container h5 {
   font-size: 12px;
   font-weight: 600;
 }
-.trend-type{
+
+.trend-type {
   font-size: xx-small;
 }
 
-.stock-filter-instruments{
+.stock-filter-instruments {
   cursor: pointer;
   margin-right: 0.5rem;
 }
 
-.check-volume{
+.check-volume {
   cursor: pointer;
 }
 
-.quick-check-history{
+.quick-check-history {
   display: none;
   cursor: pointer;
 }
 
-.analyse-instrument{
+.analyse-instrument {
   cursor: pointer;
 }
 
-.odd td,.even td{
+.odd td,
+.even td {
   border-bottom: 1px solid #bdbdbd;
 }
 
-.trend-filter{
+.trend-filter {
   margin-right: .2rem;
+}
+
+.strike-colspan-class {
+  text-align: center !important;
+}
+
+.atm-col-class {
+  background-color: #f3d778 !important;
+}
+
+.otm-col-class {
+  background-color: #f58e6b !important;
+}
+
+.itm-col-class {
+  background-color: #c1e882 !important;
+}
+
+.number-align {
+  text-align: left !important;
+}
+
+.text-align {
+  text-align: center !important;
+}
+
+.table> :not(:last-child)> :last-child>* {
+  border-bottom-color: inherit !important;
+}
+
+.strike-class {
+  border-bottom: unset !important;
+  border: 1px solid #ce1616;
+}
+
+.bg-info-color {
+  color: #0dcaf0 !important;
+}
+
+.bg-success-color {
+  color: #198754 !important;
+}
+
+.bg-danger-color {
+  color: #dc3545 !important;
+}
+
+.bg-warning-color {
+  color: #ffc107 !important;
+}
+
+.bg-primary-color {
+  color: #ffc107 !important;
+}
+
+.popupwindow_container{
+  font-family: sans-serif !important;
+  font-size: 14px;
+  
 }

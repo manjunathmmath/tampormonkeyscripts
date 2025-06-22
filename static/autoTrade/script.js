@@ -1629,7 +1629,7 @@ function clearLocalStorage() {
 }
 
 function getStrikeDetails(item, instrument) {
-    console.log("Strike : " + instrument)
+    /*console.log("Strike : " + instrument)*/
     let strikeDiff = getStrikeDiff(instrument);
     strikeDiff = strikeDiff.split(",");
     let strikeOne = parseInt(strikeDiff[0])
