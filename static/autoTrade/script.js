@@ -361,6 +361,12 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
+        html += '<div class="col-md-1">'
+    html += '<button id="show-ohl-opening-trend" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'OHL Open Trend'
+    html += '</button>'
+    html += '</div>'
+
 
 
     html += '</div>'
@@ -1861,7 +1867,7 @@ function calculateVixRange(type, prevQuoteData, prevVixData) {
     var previousClose = prevVixData
     var chg;
     if (type == "DAILY") {
-        chg = parseFloat(previousClose) / Math.sqrt(365 - 104 - 14)
+        chg = parseFloat(previousClose) / Math.sqrt(365 - 104 - 15)
     }
     if (type == "MONTHLY") {
         chg = parseFloat(previousClose) / Math.sqrt(12)

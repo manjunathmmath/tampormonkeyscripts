@@ -718,6 +718,7 @@ async function callAnalyseTrend() {
 
 
             let previousClose = parseFloat(instrumentsMap[name].prevPrice);
+            trendingStocks[rowId]['LTP'] = infoMap[name]['currentPrice']
             let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, infoMap[name]['currentPrice'], previousClose);
             trendingStocks[rowId]['OHL_TREND'] = res;
             let strikes = await showTrendingOI(name)
