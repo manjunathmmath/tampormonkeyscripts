@@ -490,11 +490,11 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     let bsoPrice = 0;
     let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
     aso = aso / 5
-    asoPrice = parseFloat(data.ustrikeOne) - aso;
+    asoPrice = parseFloat(data.ustrikeOne);
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
     bso = bso / 5
-    bsoPrice = parseFloat(data.bstrikeOne) + bso;
+    bsoPrice = parseFloat(data.bstrikeOne);
 
     let lines = [];
     let line = {};
@@ -504,11 +504,6 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     line.displayvalue = "AST" + data.ustrikeTwo;
     lines.push(line);
 
-    line = {};
-    line.color = "#198754";
-    line.startvalue = data.ustrikeOne;
-    line.displayvalue = "ASO ST-1: " + data.ustrikeOne;
-    lines.push(line);
 
 
     line = {};
@@ -522,12 +517,6 @@ function showChartAllInOne(quote, name, type, prevQuote) {
     line.color = "#ff6f91";
     line.startvalue = bsoPrice;
     line.displayvalue = "BSO: " + bsoPrice.toFixed(2);
-    lines.push(line);
-
-    line = {};
-    line.color = "#dc3545";
-    line.startvalue = data.bstrikeOne;
-    line.displayvalue = "BSO ST-1: " + data.bstrikeOne;
     lines.push(line);
 
     line = {};

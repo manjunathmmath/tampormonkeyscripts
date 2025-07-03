@@ -297,7 +297,7 @@ async function generateStockScanner(trendType, instrumentType) {
                             let asoPrice = 0;
                             let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
                             aso = aso / 5
-                            asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - aso;
+                            asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
                             let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                             if (ASO_MOVED <= priceMoved) {
                                 data.push(obj)
@@ -663,7 +663,7 @@ function generateStockScannerDataTable(data) {
                                 let asoPrice = 0;
                                 let aso = parseFloat(row['STRIKEDATA']['ustrikeOne']) - parseFloat(row['PRICE']);
                                 aso = aso / 5
-                                asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']) - aso;
+                                asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']);
                                 let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed();
                                 if (ASO_MOVED >= 0) {
                                     html += ASO_MOVED

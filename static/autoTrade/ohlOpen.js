@@ -36,10 +36,13 @@ async function showOHLOpeningTrendScanner() {
     showPopUpWindow('ohl-openin-trend-scanner', html, "OHL Opening Trend Scanner", 950, 550);
     var divId = "popup-custom-style-ohl-openin-trend-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
-    generateOHLOpeningTrendDataTable();
+    let allInstruments = FO_LIST;
+    allInstruments.push('NIFTY 50')
+    allInstruments.push('NIFTY BANK')
+    generateOHLOpeningTrendDataTable(allInstruments);
 }
 
-async function generateOHLOpeningTrendDataTable() {
+async function generateOHLOpeningTrendDataTable(stockList) {
     let data = []
     let instru = []
     jQ.each(instrumentsMap, function (index, item) {
@@ -48,7 +51,7 @@ async function generateOHLOpeningTrendDataTable() {
 
     for (let i = 0; i < instru.length; i++) {
         let name = instru[i].name
-        if (jQ.inArray(name, FO_LIST) != -1) {
+        if (jQ.inArray(name, stockList) != -1) {
             try {
                 let obj = {}
                 obj['TRADINGSYMBOL'] = name;
@@ -219,7 +222,15 @@ async function generateOHLOpeningTrendDataTable() {
             jQ(".dt-buttons").append('<button title="Strong Buy(Higher High)" data-name="SBHH"  style="margin-right: .2rem;" class="dt-button badge-success" type="button"><span>SBHH(' + SBHH + ')</span></button>')
             jQ(".dt-buttons").append('<button title="Buy" data-name="B"  style="margin-right: .2rem;" class="dt-button badge-success" type="button"><span>B(' + B + ')</span></button>')
             jQ(".dt-buttons").append('<button title="Sell" data-name=S"  style="margin-right: .2rem;" class="dt-button badge-danger" type="button"><span>S(' + S + ')</span></button>')
+            jQ(".dt-buttons").append('<button data-name=N"  style="margin-right: .2rem;" class="dt-button badge-info filter-nifty" type="button"><span>N</span></button>')
+
         },
     });
 }
+
+jQ(document).on("click", ".filter-nifty", function () {
+    generateOHLOpeningTrendDataTable(NIFTY_50_LIST);
+})
+
+
 

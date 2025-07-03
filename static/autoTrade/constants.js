@@ -230,9 +230,14 @@ let nseStrikeDiff = {
 
 let TRACK_LIST = [
 	'NIFTY 50',
-	'RELIANCE',
 	'HDFCBANK',
+	'ICICIBANK',
+	'RELIANCE',
+	'INFY',
 	'NIFTY BANK',
+	'AXISBANK',
+	'SBIN',
+	'KOTAKBANK',
 	'NIFTY MID SELECT',
 	'NIFTY FIN SERVICE',
 	'SENSEX',

@@ -171,11 +171,11 @@ async function showTrendingStocks() {
         let bsoPrice = 0;
         let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
         aso = aso / 5
-        asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - aso;
+        asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
 
         let bso = parseFloat(obj['PRICE']) - parseFloat(obj['STRIKEDATA']['bstrikeOne']);
         bso = bso / 5
-        bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']) + bso;
+        bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']);
 
         if (jQ.inArray("ASO", obj['TREND']) != -1) {
             priceMoved = parseFloat(info['currentPrice']) - asoPrice
@@ -211,11 +211,11 @@ jQ(document).on("click", "#trending-scanner-start-auto-refresh", function (e) {
 
         let aso = parseFloat(trendingStocks[index]['STRIKEDATA']['ustrikeOne']) - parseFloat(trendingStocks[index]['PRICE']);
         aso = aso / 5
-        asoPrice = parseFloat(trendingStocks[index]['STRIKEDATA']['ustrikeOne']) - aso;
+        asoPrice = parseFloat(trendingStocks[index]['STRIKEDATA']['ustrikeOne']);
 
         let bso = parseFloat(trendingStocks[index]['PRICE']) - parseFloat(trendingStocks[index]['STRIKEDATA']['bstrikeOne']);
         bso = bso / 5
-        bsoPrice = parseFloat(trendingStocks[index]['STRIKEDATA']['bstrikeOne']) + bso;
+        bsoPrice = parseFloat(trendingStocks[index]['STRIKEDATA']['bstrikeOne']);
 
         if (jQ.inArray("ASO", trendingStocks[index]['TREND']) != -1) {
             priceMoved = parseFloat(info['currentPrice']) - asoPrice
@@ -341,7 +341,7 @@ function generateTrendingStockTable(data) {
                 render: function (data, type, row, meta) {
                     let html = ''
                     if (data) {
-                        html += '<span class=" bg-success-color">' + + parseFloat(data[0]).toFixed(2) + '</span>'
+                        html += '<span class=" bg-success-color">' + parseFloat(data[0]).toFixed(2) + '</span>'
                     }
                     return html
                 }
@@ -352,7 +352,7 @@ function generateTrendingStockTable(data) {
                 render: function (data, type, row, meta) {
                     let html = ''
                     if (data) {
-                        html += '<span class=" bg-danger-color">' + + parseFloat(data[1]).toFixed(2) + '</span>'
+                        html += '<span class=" bg-danger-color">' +  parseFloat(data[1]).toFixed(2) + '</span>'
                     }
                     return html
                 }

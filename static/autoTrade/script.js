@@ -28,6 +28,14 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: moment().format("YYYY-MM-DD")
         },
+        start_month_day_date: {
+            type: 'text',
+            default: moment().startOf('month').format("YYYY-MM-DD")
+        },
+         start_week_day_date: {
+            type: 'text',
+            default: moment().weekday(1).format("YYYY-MM-DD")
+        },
         margin: {
             type: 'text',
             default: 10000
@@ -107,6 +115,9 @@ const ENABLE_ALGO_TRADE = g_config.get('enable_algo_trade');
 const STOCK_LIMIT = g_config.get('stock_limit');
 const REFRESH_TIME = g_config.get('refresh_time');
 const USE_MOVEMENT_STOCKS = g_config.get('movement_stocks');
+
+const START_MONTH_DAY_DATE = g_config.get('start_month_day_date');
+const START_WEEK_DAY_DATE = g_config.get('start_week_day_date');
 
 async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
@@ -197,7 +208,7 @@ async function autoRefreshEachTabs(instance) {
     }
     startStockAlgoTrades();
     /*Reset to first tab*/
-    jQ(".marketwatch-pagination a.item")[1].click();
+    jQ(".marketwatch-pagination a.item")[0].click();
     await callSleepForAWhile(1000);
     generateTrend();
     await callSleepForAWhile(1000);
@@ -291,6 +302,15 @@ function showAutoTrade() {
     let html = ''
 
     html += '<div class="row">'
+
+    html += '<div class="col-md-1">'
+    html += '<span title="Month start Date" class="badge bg-primary me-1">' + START_MONTH_DAY_DATE + '</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<span title="Week start Date" class="badge bg-primary me-1">' + START_WEEK_DAY_DATE + '</span>'
+    html += '</div>'
+
     html += '<div class="col-md-1">'
     html += '<span title="Previous Day Date" class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
     html += '</div>'
@@ -307,7 +327,7 @@ function showAutoTrade() {
     html += '<span title="Stock volume to check" class="badge bg-primary me-1">' + STOCK_VOLUME + '</span>'
     html += '</div>'
 
-    html += '<div class="col-md-4">'
+    html += '<div class="col-md-1">'
     html += '<span title="Margin for Algo trading" class="badge bg-primary me-1">' + MARGIN + '</span>'
     html += '</div>'
 
@@ -361,9 +381,15 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
-        html += '<div class="col-md-1">'
+    html += '<div class="col-md-2">'
     html += '<button id="show-ohl-opening-trend" class="btn ms-1 badge bg-info" type="submit">';
     html += 'OHL Open Trend'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="show-breakout-intruments" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Breakout'
     html += '</button>'
     html += '</div>'
 
@@ -696,12 +722,12 @@ async function generateTrend() {
                         let asoPrice = 0;
                         let bsoPrice = 0;
                         let aso = parseFloat(strikeData['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-                        aso = aso / 5
-                        asoPrice = parseFloat(strikeData['ustrikeOne']) - aso;
+                        aso = aso
+                        asoPrice = parseFloat(strikeData['ustrikeOne']);
 
                         let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(strikeData['bstrikeOne']);
-                        bso = bso / 5
-                        bsoPrice = parseFloat(strikeData['bstrikeOne']) + bso;
+                        bso = bso 
+                        bsoPrice = parseFloat(strikeData['bstrikeOne']);
 
                         let trend = "NA"
                         let trends = []
@@ -1456,12 +1482,12 @@ function showChart(quote, name, index, prevQuote) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 5
-    asoPrice = parseFloat(data.ustrikeOne) - aso;
+    aso = aso 
+    asoPrice = parseFloat(data.ustrikeOne);
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
-    bso = bso / 5
-    bsoPrice = parseFloat(data.bstrikeOne) + bso;
+    bso = bso 
+    bsoPrice = parseFloat(data.bstrikeOne);
 
     if (index == 0) {
         line.color = "#8be73a";
@@ -1482,12 +1508,6 @@ function showChart(quote, name, index, prevQuote) {
     line.displayvalue = "AST" + data.ustrikeTwo;
     lines.push(line);
 
-    line = {};
-    line.color = "#198754";
-    line.startvalue = data.ustrikeOne;
-    line.displayvalue = "ASO ST-1: " + data.ustrikeOne;
-    lines.push(line);
-
 
     line = {};
     line.color = "#d65db1";
@@ -1502,11 +1522,6 @@ function showChart(quote, name, index, prevQuote) {
     line.displayvalue = "BSO: " + bsoPrice.toFixed(2);
     lines.push(line);
 
-    line = {};
-    line.color = "#dc3545";
-    line.startvalue = data.bstrikeOne;
-    line.displayvalue = "BSO ST-1: " + data.bstrikeOne;
-    lines.push(line);
 
     line = {};
     line.color = "#dc3545";
@@ -1567,12 +1582,12 @@ jQ(document).on("click", ".show-info", function () {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data['strikeData']['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso / 5
-    asoPrice = parseFloat(data['strikeData']['ustrikeOne']) - aso;
+    aso = aso 
+    asoPrice = parseFloat(data['strikeData']['ustrikeOne']);
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data['strikeData']['bstrikeOne']);
-    bso = bso / 5
-    bsoPrice = parseFloat(data['strikeData']['bstrikeOne']) + bso;
+    bso = bso 
+    bsoPrice = parseFloat(data['strikeData']['bstrikeOne']);
 
     let html = ''
     html += '<div style="text-align:center;">'

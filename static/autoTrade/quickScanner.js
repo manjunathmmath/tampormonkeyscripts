@@ -127,11 +127,11 @@ function generateQuickStockList() {
         let bsoPrice = 0;
         let aso = parseFloat(strikeData['ustrikeOne']) - parseFloat(mapScripts[name]['price']);
         aso = aso / 5
-        asoPrice = parseFloat(strikeData['ustrikeOne']) - aso;
+        asoPrice = parseFloat(strikeData['ustrikeOne']);
 
         let bso = parseFloat(mapScripts[name]['price']) - parseFloat(strikeData['bstrikeOne']);
         bso = bso / 5
-        bsoPrice = parseFloat(strikeData['bstrikeOne']) + bso;
+        bsoPrice = parseFloat(strikeData['bstrikeOne']);
 
         let trend = "NA"
         let trends = []

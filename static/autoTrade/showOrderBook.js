@@ -115,11 +115,11 @@ async function commonGenerateTable() {
         let bsoPrice = 0;
         let aso = parseFloat(info['strikeData']['ustrikeOne']) - parseFloat(currentInfo['instrument']['price']);
         aso = aso / 5
-        asoPrice = parseFloat(info['strikeData']['ustrikeOne']) - aso;
+        asoPrice = parseFloat(info['strikeData']['ustrikeOne']);
 
         let bso = parseFloat(currentInfo['instrument']['price']) - parseFloat(info['strikeData']['bstrikeOne']);
         bso = bso / 5
-        bsoPrice = parseFloat(info['strikeData']['bstrikeOne']) + bso;
+        bsoPrice = parseFloat(info['strikeData']['bstrikeOne']);
 
         obj.SYMBOL = item
         obj.TRANSACTION_TYPE = book.transaction_type

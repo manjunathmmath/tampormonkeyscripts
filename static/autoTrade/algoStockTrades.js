@@ -201,11 +201,11 @@ async function executeTrendTrade(trend, obj) {
     let bsoPrice = 0;
     let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
     aso = aso / 5
-    asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - aso;
+    asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
 
     let bso = parseFloat(obj['PRICE']) - parseFloat(obj['STRIKEDATA']['bstrikeOne']);
     bso = bso / 5
-    bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']) + bso;
+    bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']);
 
     if (last.close > asoPrice || last.close < bsoPrice) {
         let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));

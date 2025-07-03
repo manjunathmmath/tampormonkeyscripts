@@ -60,6 +60,7 @@
 // @require      http://localhost:3000/autoTrade/algoStockTrades.js
 // @require      http://localhost:3000/autoTrade/showOrderBook.js
 // @require      http://localhost:3000/autoTrade/ohlOpen.js
+// @require      http://localhost:3000/autoTrade/breakoutScanner.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js
 // ==/UserScript==
