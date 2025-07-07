@@ -1,61 +1,50 @@
+
+async function autoBreakOutScanner() {
+
+    if (!ENABLE_BREAKOUT_SCANNER) {
+        console.log("-------------------[SCANNER DISABLED]------------------");
+        return
+    }
+
+    let currentTime = moment().format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:10:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+
+    console.log("Scanner starts  @ " + checkTime + "AM.  current time is :" + currentTime);
+
+    if (currentTime >= endTime) {
+        console.log("------------------------[SCANNER  - MARKET CLOSED]----------------------------------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
+    if (!(currentTime >= checkTime)) {
+        console.log("--------------------[SCANNER  - CHECKING FOR 9:15 MINUTES SCAN CONDITION]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
+    let currentMinute = moment().format("mm")
+    if ((currentMinute % 5) != 0) {
+        console.log("-----------------[SCANNER CHECKING FOR 5 MINUTES INTERVAL SCAN CONDITION]-----------");
+        console.log("current Minute :" + currentMinute);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
+    commonBreakOutLogic(true)
+    callAnalyseBreakout(true);
+}
+
 jQ(document).on("click", "#show-breakout-intruments", function () {
     showBreakOutStocks();
-})
-
+});
 
 let breakOutStocks = []
-async function showBreakOutStocks() {
-    breakOutStocks = []
-    let html = ''
-
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<table  class="table" id="breakout-stock-list-table" style="width: 100%;display: none;">'
-
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th>O</th>'
-    html += '<th>SYMBOL</th>'
-    html += '<th>CH%</th>'
-    html += '<th  title="Price Moved">M</th>'
-    html += '<th  title="Trend">T</th>'
-    html += '<th  title="OHL Trend">OHL</th>'
-    html += '<th>B %</th>'
-    html += '<th>S %</th>'
-    html += '<th  title="Volume">V</th>'
-    html += '<th>LTP</th>'
-    html += '<th>BREAKOUT</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
-    html += '</table>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-
-    let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'Breakout Scanner'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<a id="breakout-scanner-start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
-    title += '</div>'
-    title += '<div class="col-md-3 pop-title-extra">'
-    title += '<span id="breakout-last-refresh-time">Last @ 00:00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span id="processing-breakout"></span>'
-    title += '</div>'
-    title += '</div>'
-
-    showPopUpWindow('breakout-scanner', html, "Breakout Scanner", 950, 550);
-
-    var divId = "popup-custom-style-breakout-scanner";
-
-    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+function commonBreakOutLogic(auto) {
+    breakOutStocks = [];
     let instru = [];
     let scripts = []
     let checkInstr = []
@@ -88,7 +77,6 @@ async function showBreakOutStocks() {
     }
 
     let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));
-    console.log(checkInstr)
     jQ.each(validIntruments, function (index, item) {
         if (jQ.inArray(index, checkInstr) === -1) {
             scripts.push(item)
@@ -148,12 +136,67 @@ async function showBreakOutStocks() {
         obj['PRICE_MOVED'] = parseFloat(priceMoved).toFixed(1)
         breakOutStocks.push(obj)
         orderRow++;
-
     }
 
-    if (scripts.length > 0) {
+    if (scripts.length > 0 && !auto) {
         generateBreakOutStockTable(breakOutStocks)
     }
+}
+
+
+
+async function showBreakOutStocks() {
+
+    let html = ''
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table  class="table" id="breakout-stock-list-table" style="width: 100%;display: none;">'
+
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>O</th>'
+    html += '<th>SYMBOL</th>'
+    html += '<th>CH%</th>'
+    html += '<th  title="Price Moved">M</th>'
+    html += '<th  title="Trend">T</th>'
+    html += '<th  title="OHL Trend">OHL</th>'
+    html += '<th>B %</th>'
+    html += '<th>S %</th>'
+    html += '<th  title="Volume">V</th>'
+    html += '<th>LTP</th>'
+    html += '<th>BREAKOUT</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+
+    let title = ''
+    title += '<div class="row">'
+    title += '<div class="col-md-2">'
+    title += 'Breakout Scanner'
+    title += '</div>'
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<a id="breakout-scanner-start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+    title += '</div>'
+    title += '<div class="col-md-3 pop-title-extra">'
+    title += '<span id="breakout-last-refresh-time">Last @ 00:00:00</span>'
+    title += '</div>'
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<span id="processing-breakout"></span>'
+    title += '</div>'
+    title += '</div>'
+
+    showPopUpWindow('breakout-scanner', html, "Breakout Scanner", 950, 550);
+    var divId = "popup-custom-style-breakout-scanner";
+    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    commonBreakOutLogic(false)
+
 }
 
 
@@ -428,15 +471,20 @@ function generateBreakOutStockTable(data) {
 
 jQ(document).on("click", ".analyse-breakout-instrument", function () {
     jQ("#processing-breakout").html("Processing.... ");
-    callAnalyseBreakout()
+    callAnalyseBreakout(false)
 });
 
-async function callAnalyseBreakout() {
+async function callAnalyseBreakout(auto) {
     let count = 0;
     let scriptsCount = breakOutStocks.length
     for (let i = 0; i < breakOutStocks.length; i++) {
         try {
-            jQ("#processing-breakout").html("Processing.... " + (i + 1) + "/" + scriptsCount);
+            if (!auto) {
+                jQ("#processing-breakout").html("Processing.... " + (i + 1) + "/" + scriptsCount);
+            } else {
+                jQ("#processing-breakout-scanner").html("Processing.... " + (i + 1) + "/" + scriptsCount);
+            }
+
             let name = breakOutStocks[i]['TRADINGSYMBOL']
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
@@ -618,14 +666,44 @@ async function callAnalyseBreakout() {
             breakOutStocks[rowId]['isMonthlyCloseGreaterMonthlyOpen'] = isMonthlyCloseGreaterMonthlyOpen;
             breakOutStocks[rowId]['oneDayAgoVolumeGreater'] = oneDayAgoVolumeGreater;
 
-            updateBreakouTable(rowId)
-
+            if (!auto) {
+                updateBreakouTable(rowId)
+            }
+            showAlertForBreakout(breakOutStocks[rowId])
         } catch (err) {
             console.log("Error while analyzing stock : " + breakOutStocks[i]['TRADINGSYMBOL'])
             console.log(err)
         }
     }
     jQ("#processing-breakoutt").html("Done...");
+}
+
+function showAlertForBreakout(row) {
+    let link = '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + row['TRADINGSYMBOL'] + '/' + instrumentTokens[row['TRADINGSYMBOL']] + '"> '
+    link += row['TRADINGSYMBOL']
+    link += '</a>'
+    if (
+        row.isOneDayAgo
+        && row.isTwoDayAgo
+        && row.isThreeDayAgo
+        && row.isFourDayAgo
+        && row.isFiveDayAgo
+        && row.isSixDayAgo
+        && row.isSevenDayAgo
+        && row.isDayCloseGreaterDayOpen
+        && row.isDayCloseGreaterOneDayAgoClose
+        && row.isWeeklyCloseGreaterWeeklyOpen
+        && row.isMonthlyCloseGreaterMonthlyOpen
+        && row.oneDayAgoVolumeGreater
+    ) {
+        let html = ''
+        html += '<div style="text-align:center;">'
+        html += 'BREAKOUT : ' + link
+        html += '</div>'
+        callSackBar(html);
+        let alrtSound = new Audio(alertSound);
+        alrtSound.play();
+    }
 }
 
 

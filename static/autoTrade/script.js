@@ -32,7 +32,7 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: moment().startOf('month').format("YYYY-MM-DD")
         },
-         start_week_day_date: {
+        start_week_day_date: {
             type: 'text',
             default: moment().weekday(1).format("YYYY-MM-DD")
         },
@@ -65,6 +65,10 @@ const g_config = new MonkeyConfig({
         enable_algo_trade: {
             type: 'checkbox',
             default: false
+        },
+        enable_breakout_scanner: {
+            type: 'checkbox',
+            default: true
         },
         movement_stocks: {
             type: 'checkbox',
@@ -118,6 +122,7 @@ const USE_MOVEMENT_STOCKS = g_config.get('movement_stocks');
 
 const START_MONTH_DAY_DATE = g_config.get('start_month_day_date');
 const START_WEEK_DAY_DATE = g_config.get('start_week_day_date');
+const ENABLE_BREAKOUT_SCANNER = g_config.get('enable_breakout_scanner');
 
 async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
@@ -220,6 +225,7 @@ async function autoRefreshEachTabs(instance) {
         jQ("a#refresh-order-book").trigger("click")
     }
     generateStockDataTable();
+    autoBreakOutScanner();
     if (instance) {
         instance.attr("disabled", false)
     }
@@ -331,12 +337,16 @@ function showAutoTrade() {
     html += '<span title="Margin for Algo trading" class="badge bg-primary me-1">' + MARGIN + '</span>'
     html += '</div>'
 
-    html += '<div class="col-md-2">'
+    html += '<div class="col-md-1">'
     html += '<span title="ASO Traded Count" class="badge bg-success asoTradeCount">0</span>/<span title="BSO Traded Count" class="badge bg-danger bsoTradeCount">0</span>'
     html += '</div>'
 
-    html += '<div class="col-md-2">'
+    html += '<div class="col-md-1">'
     html += '<span title="Total ASO Stocks" class="all-aso">0</span>/<span title="Total BSO Stocks" class="all-bso">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<span class="badge bg-primary me-1" title="Breakout Scanner" id="processing-breakout-scanner">'+ENABLE_BREAKOUT_SCANNER.toString().toUpperCase()+'</span>'
     html += '</div>'
 
     html += '</div>'
@@ -381,9 +391,9 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
-    html += '<div class="col-md-2">'
-    html += '<button id="show-ohl-opening-trend" class="btn ms-1 badge bg-info" type="submit">';
-    html += 'OHL Open Trend'
+    html += '<div class="col-md-1">'
+    html += '<button title="OHL Opening Trend" id="show-ohl-opening-trend" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'OHL OT'
     html += '</button>'
     html += '</div>'
 
@@ -581,7 +591,6 @@ async function generateStockDataTable() {
         "data": dataList,
         "bDestroy": true,
         "scrollX": true,
-        "scrollY": "300px",
         "columnDefs": [
             {
                 "targets": [0],
@@ -726,7 +735,7 @@ async function generateTrend() {
                         asoPrice = parseFloat(strikeData['ustrikeOne']);
 
                         let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(strikeData['bstrikeOne']);
-                        bso = bso 
+                        bso = bso
                         bsoPrice = parseFloat(strikeData['bstrikeOne']);
 
                         let trend = "NA"
@@ -976,7 +985,7 @@ async function commonShowChart(name, trends, index, price) {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow(tempName, html, name + " : " + trends.join(","),  950, 550);
+    showPopUpWindow(tempName, html, name + " : " + trends.join(","), 950, 550);
 
     var divClass = "popup-custom-style-" + tempName;
     jQ("." + divClass).find(".popupwindow_titlebar_text").html(title);
@@ -1459,7 +1468,7 @@ function showChart(quote, name, index, prevQuote) {
     ohlHtml += 'OS'
     ohlHtml += '</a>'
 
-    ohlHtml += '<a data-name="'+name+'" class="show-option-change"> '
+    ohlHtml += '<a data-name="' + name + '" class="show-option-change"> '
     ohlHtml += 'OC'
     ohlHtml += '</a>'
 
@@ -1482,11 +1491,11 @@ function showChart(quote, name, index, prevQuote) {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data.ustrikeOne) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso 
+    aso = aso
     asoPrice = parseFloat(data.ustrikeOne);
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data.bstrikeOne);
-    bso = bso 
+    bso = bso
     bsoPrice = parseFloat(data.bstrikeOne);
 
     if (index == 0) {
@@ -1582,11 +1591,11 @@ jQ(document).on("click", ".show-info", function () {
     let asoPrice = 0;
     let bsoPrice = 0;
     let aso = parseFloat(data['strikeData']['ustrikeOne']) - parseFloat(instrumentsMap[name]['price']);
-    aso = aso 
+    aso = aso
     asoPrice = parseFloat(data['strikeData']['ustrikeOne']);
 
     let bso = parseFloat(instrumentsMap[name]['price']) - parseFloat(data['strikeData']['bstrikeOne']);
-    bso = bso 
+    bso = bso
     bsoPrice = parseFloat(data['strikeData']['bstrikeOne']);
 
     let html = ''
@@ -1607,9 +1616,10 @@ function callSackBar(message) {
     SnackBar({
         message: message,
         status: "alert",
-        timeout: 20000,
+        timeout: 60000,
         actions: [],
-        container: "app"
+        container: "app",
+        position: 'bd'
     });
 }
 
