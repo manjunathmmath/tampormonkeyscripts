@@ -144,9 +144,17 @@ async function showOI(instrument) {
 
     let atmStrike = 0;
     jQ.each(OPTION_STRIKE_LIST, function (index, item) {
-        let date = moment(item.expiry, 'DD-MM-YYYY').format("DD-MM-YYYY")
-        if (item.name == instrument && date >= currentTime) {
-            selectedStrike.push(item)
+        let date = moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD")
+        if (item.name == instrument) {
+            if (instrument == "NIFTY") {
+                if (date == NIFTY_EXPIRY_DATE) {
+                    selectedStrike.push(item)
+                }
+            } else {
+                if (date == STOCK_EXPIRY_DATE) {
+                    selectedStrike.push(item)
+                }
+            }
         }
     });
 

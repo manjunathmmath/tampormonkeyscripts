@@ -16,12 +16,17 @@
 // @resource     DATATABLE_CSS http://localhost:3000/autoTrade/global/vendor/datatables/datatables.min.css
 // @resource     BOOTSTRAP_ICON_CSS http://localhost:3000/autoTrade/dist/font/bootstrap-icons.css
 // @resource     POPUP_WINDOW_CSS http://localhost:3000/autoTrade/common/popupwindow/popupwindow.css
+// @resource     FIXED_COLUMN_CSS http://localhost:3000/autoTrade/global/vendor/datatables/fixedColumns.dataTables.min.css
+
 // @require      http://localhost:3000/autoTrade/global/vendor/jquery/jquery.js
 // @require      http://localhost:3000/autoTrade/dist/js/bootstrap.js
 // @require      http://localhost:3000/autoTrade/common/toastify-js.js
 // @require      http://localhost:3000/autoTrade/common/popupwindow/popupwindow.js
 // @require      http://localhost:3000/autoTrade/global/vendor/datatables/jquery.dataTables.min.js
+// @require      http://localhost:3000/autoTrade/global/vendor/datatables/dataTables.fixedColumns.min.js
+// @require      http://localhost:3000/autoTrade/global/vendor/datatables/fixedColumns.dataTables.js
 // @require      http://localhost:3000/autoTrade/global/vendor/datatables/dataTables.buttons.min.js
+
 // @require      http://localhost:3000/autoTrade/global/vendor/buttons/buttons.html5.min.js
 // @require      http://localhost:3000/autoTrade/global/vendor/buttons/buttons.print.min.js
 // @require      http://localhost:3000/autoTrade/global/vendor/buttons/jszip.min.js

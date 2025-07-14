@@ -7,7 +7,7 @@ jQ(document).on("click", ".show-all-stock-charts", function (e) {
 async function showAllInChart(type) {
 
     /*let trades = JSON.parse(localStorage.getItem("TRADES"));*/
-    
+
     let trades = [];
     jQ.each(instrumentsMap, function (index, item) {
         trades.push(item.name)
@@ -95,7 +95,7 @@ async function showAllInChart(type) {
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<span style="margin-left:.5rem;" id="refresh-timer-' + tempName + '">00:00</span>'
     title += '</div>'
-    
+
     title += '<div class="col-md-2 pop-title-extra">'
     title += '<span id="last-refresh-time-' + tempName + '">Last @ 00:00:00</span>'
     title += '</div>'
@@ -199,7 +199,7 @@ jQ(document).on("click", ".all-stock-chart-refresh", function () {
 async function showOnlyAllInCharts(type, tempName) {
     let count = 0;
     /*let trades = JSON.parse(localStorage.getItem("TRADES"));*/
-    
+
     let trades = [];
     jQ.each(instrumentsMap, function (index, item) {
         trades.push(item.name)
@@ -468,10 +468,10 @@ function showChartAllInOne(quote, name, type, prevQuote) {
         ohlHtml += '<span class="badge bg-info">' + ' [B:' + parseFloat(res[0]).toFixed(2) + ' S:' + parseFloat(res[1]).toFixed(2) + ']' + '</span>'
     }
 
-    let lastQuote = quote[quote.length-1]
-    if(lastQuote.close < previousClose){
+    let lastQuote = quote[quote.length - 1]
+    if (lastQuote.close < previousClose) {
         ohlHtml += '<span class="badge bg-danger">-ve</span>'
-    }else{
+    } else {
         ohlHtml += '<span class="badge bg-success">+ve</span>'
     }
 
@@ -585,6 +585,9 @@ function getHistoricalDataUsingPromise(code, fromDate, toDate, interval) {
             cache: false,
             success: function (data) {
                 resolve(data);
+            },
+            error: function (request, status, error) {
+                resolve([]);
             }
         });
     })

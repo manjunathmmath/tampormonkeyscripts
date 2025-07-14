@@ -334,8 +334,16 @@ span.bullsVersesBears {
   color: #ffc107 !important;
 }
 
-.popupwindow_container{
+.popupwindow_container  *{
   font-family: sans-serif !important;
-  font-size: 14px;
+  scrollbar-width: thin !important;
   
+}
+
+.show-option-change{
+  cursor: pointer;
+}
+
+.ltp-claass{
+  font-weight: bold;
 }

@@ -7,7 +7,7 @@ async function autoBreakOutScanner() {
     }
 
     let currentTime = moment().format("HH:mm")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
     let endTime = moment(PREVIOUS_DAY_DATE + " 15:10:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     console.log("Scanner starts  @ " + checkTime + "AM.  current time is :" + currentTime);
@@ -698,7 +698,10 @@ function showAlertForBreakout(row) {
     ) {
         let html = ''
         html += '<div style="text-align:center;">'
-        html += 'BREAKOUT : ' + link
+        html += 'BREAKOUT : '
+        html += '<span data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
+        html += row['TRADINGSYMBOL']
+        html += '</span>'
         html += '</div>'
         callSackBar(html);
         let alrtSound = new Audio(alertSound);

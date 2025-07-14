@@ -1,96 +1,15 @@
-jQ(document).on("click", "#show-trending-intruments", function () {
-    showTrendingStocks();
-})
-
-
 let trendingStocks = []
+let allTrendingStocks = []
 async function showTrendingStocks() {
     trendingStocks = []
-    let html = ''
-
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<table  class="table" id="trending-stock-list-table" style="width: 100%;display: none;">'
-
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th rowspan="2">O</th>'
-    html += '<th rowspan="2">SYMBOL</th>'
-    html += '<th rowspan="2">CH%</th>'
-    html += '<th rowspan="2" title="Price Moved" >M</th>'
-    html += '<th rowspan="2" title="Trend" >T</th>'
-    html += '<th rowspan="2" title="OHL Trend" >OHL</th>'
-    html += '<th rowspan="2">B %</th>'
-    html += '<th rowspan="2">S %</th>'
-    html += '<th rowspan="2" title="Volume" >V</th>'
-    html += '<th rowspan="2">LTP</th>'
-    html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class atm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '</tr>'
-
-    html += '<tr>'
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-
-
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-    html += '</tr>'
-
-    html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
-    html += '</table>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-
-    let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'Trending Scanner'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<a id="trending-scanner-start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
-    title += '</div>'
-    title += '<div class="col-md-3 pop-title-extra">'
-    title += '<span id="trending-last-refresh-time">Last @ 00:00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span id="processing-trend"></span>'
-    title += '</div>'
-    title += '</div>'
-
-    showPopUpWindow('trending-scanner', html, "Trending Scanner", 950, 550);
-
-    var divId = "popup-custom-style-trending-scanner";
-
-    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    allTrendingStocks = []
     let instru = [];
     let scripts = []
     let checkInstr = []
     let orderRow = 1;
     jQ.each(instrumentsMap, function (index, item) {
-        if (jQ.inArray(index, checkInstr) === -1) {
-            if (index == "NIFTY 50" || index == "NIFTY BANK" || index == "RELIANCE" || index == "HDFCBANK") {
+        if (index != 'INDIA VIX') {
+            if (jQ.inArray(index, checkInstr) === -1) {
                 instru.push(instrumentsMap[index])
                 checkInstr.push(index)
             }
@@ -115,17 +34,6 @@ async function showTrendingStocks() {
         scripts.push(obj)
     }
 
-    let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));
-    console.log(checkInstr)
-    jQ.each(validIntruments, function (index, item) {
-        if (jQ.inArray(index, checkInstr) === -1) {
-            scripts.push(item)
-            checkInstr.push(index)
-        }
-    })
-
-    /*scripts.sort((a, b) => a.TRADINGSYMBOL.toLowerCase() > b.TRADINGSYMBOL.toLowerCase() ? 1 : -1);*/
-
     for (let i = 0; i < scripts.length; i++) {
         let obj = {}
 
@@ -137,7 +45,12 @@ async function showTrendingStocks() {
         obj['CLOSE'] = scripts[i]['CLOSE']
         obj['PRICE'] = scripts[i]['PRICE']
         obj['PERC'] = scripts[i]['PERC']
-        obj['ORDER'] = orderRow;
+
+        if (instrumentOrder[scripts[i]['TRADINGSYMBOL']]) {
+            obj['ORDER'] = instrumentOrder[scripts[i]['TRADINGSYMBOL']];
+        } else {
+            obj['ORDER'] = orderRow * 1000;
+        }
 
         obj['OHL_TREND'] = ''
         obj['OI_TREND'] = ''
@@ -163,10 +76,25 @@ async function showTrendingStocks() {
         obj['STRIKE_UPPER_TWO_CE'] = ''
         obj['STRIKE_UPPER_TWO'] = ''
         obj['STRIKE_UPPER_TWO_PE'] = ''
+        obj['BREAK_OUT'] = ''
+        obj['ACTIONS'] = ''
 
+        obj['WEIGHTAGE'] = ''
+
+        obj['isOneDayAgo'] = false;
+        obj['isTwoDayAgo'] = false;
+        obj['isThreeDayAgo'] = false;
+        obj['isFourDayAgo'] = false;
+        obj['isFiveDayAgo'] = false;
+        obj['isSixDayAgo'] = false;
+        obj['isSevenDayAgo'] = false;
+        obj['isDayCloseGreaterDayOpen'] = false;
+        obj['isDayCloseGreaterOneDayAgoClose'] = false;
+        obj['isWeeklyCloseGreaterWeeklyOpen'] = false;
+        obj['isMonthlyCloseGreaterMonthlyOpen'] = false;
+        obj['oneDayAgoVolumeGreater'] = false;
 
         let priceMoved = 0;
-
         let asoPrice = 0;
         let bsoPrice = 0;
         let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
@@ -186,76 +114,63 @@ async function showTrendingStocks() {
         }
 
         obj['PRICE_MOVED'] = parseFloat(priceMoved).toFixed(1)
+
+        let weightageHtml = ''
+
+        if (NIFTY_50_WEIGHT[scripts[i]['TRADINGSYMBOL']]) {
+            weightageHtml += '<span title="Nifty weightage" class="badge bg-info ">N: ' + NIFTY_50_WEIGHT[scripts[i]['TRADINGSYMBOL']] + '</span>'
+        }
+
+        if (NIFTY_BANK_WEIGHT[scripts[i]['TRADINGSYMBOL']]) {
+            weightageHtml += '<span title="Bank nifty weightage" class="badge bg-info ">B: ' + NIFTY_BANK_WEIGHT[scripts[i]['TRADINGSYMBOL']] + '</span>'
+        }
+
+        obj['WEIGHTAGE'] = weightageHtml
+
         trendingStocks.push(obj)
         orderRow++;
 
     }
 
     /*trendingStocks.sort((a, b) => a.TRADINGSYMBOL.toLowerCase() > b.TRADINGSYMBOL.toLowerCase() ? 1 : -1);*/
-
+    allTrendingStocks = trendingStocks;
     if (scripts.length > 0) {
         generateTrendingStockTable(trendingStocks)
     }
 }
-
-
-jQ(document).on("click", "#trending-scanner-start-auto-refresh", function (e) {
-    let temp = trendingStocks
-    jQ.each(temp, function (index, item) {
-        let info = infoMap[item['TRADINGSYMBOL']]
-        trendingStocks[index]['LTP'] = info['currentPrice']
-
-        let priceMoved = 0;
-        let asoPrice = 0;
-        let bsoPrice = 0;
-
-        let aso = parseFloat(trendingStocks[index]['STRIKEDATA']['ustrikeOne']) - parseFloat(trendingStocks[index]['PRICE']);
-        aso = aso / 5
-        asoPrice = parseFloat(trendingStocks[index]['STRIKEDATA']['ustrikeOne']);
-
-        let bso = parseFloat(trendingStocks[index]['PRICE']) - parseFloat(trendingStocks[index]['STRIKEDATA']['bstrikeOne']);
-        bso = bso / 5
-        bsoPrice = parseFloat(trendingStocks[index]['STRIKEDATA']['bstrikeOne']);
-
-        if (jQ.inArray("ASO", trendingStocks[index]['TREND']) != -1) {
-            priceMoved = parseFloat(info['currentPrice']) - asoPrice
-        }
-
-        if (jQ.inArray("BSO", trendingStocks[index]['TREND']) != -1) {
-            priceMoved = bsoPrice - parseFloat(info['currentPrice'])
-        }
-        trendingStocks[index]['PRICE_MOVED'] = parseFloat(priceMoved).toFixed(1)
-    });
-
-    generateTrendingStockTable(trendingStocks)
-});
 
 let trendingScannerTable = null
 function generateTrendingStockTable(data) {
     let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
     jQ("#trending-stock-list-table").show()
     trendingScannerTable = jQ('#trending-stock-list-table').DataTable({
+        fixedColumns: {
+            start: 1,
+            end: 1
+        },
         "processing": true,
-        "order": [[0, 'asc']],
+        "order": [[1, 'asc']],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
+        "scrollX": true,
+        scrollCollapse: true,
+        "scrollY": "480px",
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [],
+                "targets": [1],
                 "visible": false,
                 "searchable": false
             }
         ],
+
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
-            {
-                "data": "ORDER"
-            },
+
             {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
@@ -270,12 +185,23 @@ function generateTrendingStockTable(data) {
                     }
                     html += '</a>'
 
-                    html += '<span style="font-size:xx-small;display:block;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
+                    html += '<span style="font-size:xx-small;position:absolute;right:0" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
                     html += 'Chart'
+                    html += '</span>'
+
+                    let symbol = row['TRADINGSYMBOL']
+                    if (row['TRADINGSYMBOL'] == "NIFTY 50") {
+                        symbol = "NIFTY"
+                    }
+                    html += '<span style="font-size:xx-small;position:absolute;right:2rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color show-option-change">'
+                    html += 'OI'
                     html += '</span>'
 
                     return html;
                 }
+            },
+            {
+                "data": "ORDER"
             },
             {
                 "data": 'PERC',
@@ -294,42 +220,70 @@ function generateTrendingStockTable(data) {
                 }
             },
             { "data": "PRICE_MOVED" },
-            { "data": "TREND" },
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "ASO") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
+                            }
+
+                            if (item == "VIXU") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">VIXU</span>'
+                            }
+
+                            if (item == "VIXL") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">VIXL</span>'
+                            }
+
+                            if (item == "AST") {
+                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+                            }
+                        });
+                    }
+                    return html
+                }
+
+            },
             {
                 "data": "OHL_TREND",
                 render: function (data, type, row, meta) {
                     let html = ''
                     if (data) {
-                        let ohl = ''
 
                         if (data[2] == "Strong Sell(OH)") {
-                            ohl = "SSOH"
+                            html += '<span title="' + data[2] + '" class="badge bg-danger">SSOH</span>'
                         }
 
                         if (data[2] == "Strong Buy(OL)") {
-                            ohl = "SBOL"
+                            html += '<span title="' + data[2] + '" class="badge bg-success">SBOL</span>'
+
                         }
 
                         if (data[2] == "Strong Sell(Lower High)") {
-                            ohl = "SSLH"
+                            html += '<span title="' + data[2] + '" class="badge bg-danger">SSLH</span>'
                         }
 
                         if (data[2] == "Strong Buy(Higher High)") {
-                            ohl = "SBHH"
+                            html += '<span title="' + data[2] + '" class="badge bg-success">SBHH</span>'
                         }
 
                         if (data[2] == "Buy") {
-                            ohl = "B"
+                            html += '<span title="' + data[2] + '" class="badge bg-success">B</span>'
                         }
 
                         if (data[2] == "Sell") {
-                            ohl = "S"
-                        }
-
-                        if (data[2].includes("Sell")) {
-                            html += '<span title="' + data[2] + '" class=" bg-danger-color">' + ohl + '</span>'
-                        } else {
-                            html += '<span title="' + data[2] + '" class=" bg-success-color">' + ohl + '</span>'
+                            html += '<span title="' + data[2] + '" class="badge bg-danger">S</span>'
                         }
                     }
                     return html
@@ -352,13 +306,25 @@ function generateTrendingStockTable(data) {
                 render: function (data, type, row, meta) {
                     let html = ''
                     if (data) {
-                        html += '<span class=" bg-danger-color">' +  parseFloat(data[1]).toFixed(2) + '</span>'
+                        html += '<span class=" bg-danger-color">' + parseFloat(data[1]).toFixed(2) + '</span>'
                     }
                     return html
                 }
             },
             { "data": "VOLUME" },
-            { "data": "LTP" },
+            {
+                "data": "LTP",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        let name = row['TRADINGSYMBOL']
+                        let tempName = name.replaceAll(" ", "-")
+                        tempName = tempName.replaceAll("&", "-")
+                        html += '<span class="ltp-claass " id="trending-ltp-price-' + tempName + '">' + data + '</span>'
+                    }
+                    return html
+                }
+            },
 
             {
                 "data": "STRIKE_LOWER_ONE_CE",
@@ -580,103 +546,516 @@ function generateTrendingStockTable(data) {
                 }
             },
 
+            {
+                "data": "BREAK_OUT",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    let isOneDayAgoClass = 'badge bg-warning'
+                    let isTwoDayAgoClass = 'badge bg-warning'
+                    let isThreeDayAgoClass = 'badge bg-warning'
+                    let isFourDayAgoClass = 'badge bg-warning'
+                    let isFiveDayAgoClass = 'badge bg-warning'
+                    let isSixDayAgoClass = 'badge bg-warning'
+                    let isSevenDayAgoClass = 'badge bg-warning'
+                    let isDayCloseGreaterDayOpenClass = 'badge bg-warning'
+                    let isDayCloseGreaterOneDayAgoCloseClass = 'badge bg-warning'
+                    let isWeeklyCloseGreaterWeeklyOpenClass = 'badge bg-warning'
+                    let isMonthlyCloseGreaterMonthlyOpenClass = 'badge bg-warning'
+                    let oneDayAgoVolumeGreaterClass = 'badge bg-warning'
+
+                    if (row.isOneDayAgo) {
+                        isOneDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isTwoDayAgo) {
+                        isTwoDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isThreeDayAgo) {
+                        isThreeDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isFourDayAgo) {
+                        isFourDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isFiveDayAgo) {
+                        isFiveDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isSixDayAgo) {
+                        isSixDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isSevenDayAgo) {
+                        isSevenDayAgoClass = 'badge bg-success'
+                    }
+
+                    if (row.isDayCloseGreaterDayOpen) {
+                        isDayCloseGreaterDayOpenClass = 'badge bg-success'
+                    }
+
+                    if (row.isDayCloseGreaterOneDayAgoClose) {
+                        isDayCloseGreaterOneDayAgoCloseClass = 'badge bg-success'
+                    }
+
+
+                    if (row.isWeeklyCloseGreaterWeeklyOpen) {
+                        isWeeklyCloseGreaterWeeklyOpenClass = 'badge bg-success'
+                    }
+
+
+                    if (row.isMonthlyCloseGreaterMonthlyOpen) {
+                        isMonthlyCloseGreaterMonthlyOpenClass = 'badge bg-success'
+                    }
+
+
+                    if (row.oneDayAgoVolumeGreater) {
+                        oneDayAgoVolumeGreaterClass = 'badge bg-success'
+                    }
+
+                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+                    let trueCount = 0;
+                    let falseCount = 0;
+                    if (isOneDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isTwoDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+
+                    if (isThreeDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFourDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFiveDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSixDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSevenDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterDayOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (oneDayAgoVolumeGreaterValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    html += '<span class="' + isOneDayAgoClass + '">' + isOneDayAgoValue + '</span>'
+                    html += '<span class="' + isTwoDayAgoClass + '">' + isTwoDayAgoValue + '</span>'
+                    html += '<span class="' + isThreeDayAgoClass + '">' + isThreeDayAgoValue + '</span>'
+                    html += '<span class="' + isFourDayAgoClass + '">' + isFourDayAgoValue + '</span>'
+                    html += '<span class="' + isFiveDayAgoClass + '">' + isFiveDayAgoValue + '</span>'
+                    html += '<span class="' + isSixDayAgoClass + '">' + isSixDayAgoValue + '</span>'
+                    html += '<span class="' + isSevenDayAgoClass + '">' + isSevenDayAgoValue + '</span>'
+                    html += '<span class="' + isDayCloseGreaterDayOpenClass + '">' + isDayCloseGreaterDayOpenValue + '</span>'
+                    html += '<span class="' + isDayCloseGreaterOneDayAgoCloseClass + '">' + isDayCloseGreaterOneDayAgoCloseValue + '</span>'
+                    html += '<span class="' + isWeeklyCloseGreaterWeeklyOpenClass + '">' + isWeeklyCloseGreaterWeeklyOpenValue + '</span>'
+                    html += '<span class="' + isMonthlyCloseGreaterMonthlyOpenClass + '">' + isMonthlyCloseGreaterMonthlyOpenValue + '</span>'
+                    html += '<span class="' + oneDayAgoVolumeGreaterClass + '">' + oneDayAgoVolumeGreaterValue + '</span>'
+
+                    /*
+                    html += ' ( <span class="badge bg-success">' + trueCount + '</span> )'
+                    html += ' ( <span class="badge bg-warning">' + falseCount + '</span> )'
+                    */
+
+                    return html
+                }
+            },
+            {
+                "data": "BREAK_OUT",
+                render: function (data, type, row, meta) {
+                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+                    let trueCount = 0;
+                    let falseCount = 0;
+                    if (isOneDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isTwoDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+
+                    if (isThreeDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFourDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFiveDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSixDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSevenDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterDayOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (oneDayAgoVolumeGreaterValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    return trueCount
+                }
+            },
+            {
+                "data": "BREAK_OUT",
+                render: function (data, type, row, meta) {
+                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+                    let trueCount = 0;
+                    let falseCount = 0;
+                    if (isOneDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isTwoDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+
+                    if (isThreeDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFourDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFiveDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSixDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSevenDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterDayOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (oneDayAgoVolumeGreaterValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+                    return falseCount
+                }
+            },
+            {
+                "data": "WEIGHTAGE"
+            }
+
         ],
         "fnInitComplete": function (oSettings, json) {
-            let asoCount = 0;
-            let bsoCount = 0;
-            let allCount = 0;
-            jQ.each(data, function (index, item) {
-                if (jQ.inArray("ASO", item['TREND']) != -1) {
-                    asoCount++;
-                }
-                if (jQ.inArray("BSO", item['TREND']) != -1) {
-                    bsoCount++;
-                }
-                allCount++;
-
-            });
-            jQ(".dt-buttons").append('<button data-trend="all" class="dt-button trend-filter" type="button"><span>ALL(' + allCount + ')</span></button>')
-            jQ(".dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter" type="button"><span>BSO (' + bsoCount + ')</span></button>')
-            jQ(".dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter" type="button"><span>ASO(' + asoCount + ')</span></button>')
-            jQ(".dt-buttons").append('<button data-name="NIFTY"  style="margin-right: .2rem;" class="dt-button show-option-change" type="button"><span>N-OI</span></button>')
-            jQ(".dt-buttons").append('<button data-name="BANKNIFTY"  style="margin-right: .2rem;" class="dt-button show-option-change" type="button"><span>B-OI</span></button>')
-            jQ(".dt-buttons").append('<button data-name="RELIANCE"  style="margin-right: .2rem;" class="dt-button show-option-change" type="button"><span>R-OI</span></button>')
-            jQ(".dt-buttons").append('<button data-name="HDFCBANK"  style="margin-right: .2rem;" class="dt-button show-option-change" type="button"><span>H-OI</span></button>')
-            jQ(".dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-instrument" type="button"><span>Analyze</span></button>')
-
+            showTrendCount()
         },
         "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
             for (var i in aData) {
-                jQ('td:eq(' + 11 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 14 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 17 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 20 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 23 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 10 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 13 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 16 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 19 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 22 + ')', nRow).addClass('strike-class');
 
             }
         }
     });
     jQ("#trending-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
+}
 
+function showTrendCount() {
+    let asoCount = 0;
+    let bsoCount = 0;
+    let allCount = 0;
+    jQ.each(allTrendingStocks, function (index, item) {
+        if (jQ.inArray("ASO", item['TREND']) != -1) {
+            asoCount++;
+        }
+        if (jQ.inArray("BSO", item['TREND']) != -1) {
+            bsoCount++;
+        }
+        allCount++;
+
+    });
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filte r" type="button"><span>N50</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter" type="button"><span>BN</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter" type="button"><span>TRENDING</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="TREND" style="margin-right: .2rem;" class="dt-button analyse-instrument" type="button"><span>ANALYZE TREND</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument" type="button"><span>ANALYZE OI</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span id="processing-trend"></span>')
 
 }
 
-
 jQ(document).on("click", ".trend-filter", function (e) {
     let name = jQ(this).attr("data-trend");
-    let temp = []
-    jQ.each(trendingStocks, function (index, item) {
+    trendingStocks = []
+    jQ.each(allTrendingStocks, function (index, item) {
         if (name == "aso") {
             if (jQ.inArray("ASO", item['TREND']) != -1) {
-                temp.push(item)
+                trendingStocks.push(item)
             }
         } else if (name == "bso") {
             if (jQ.inArray("BSO", item['TREND']) != -1) {
-                temp.push(item)
+                trendingStocks.push(item)
+            }
+        } else if (name == "n50") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_50_LIST) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "bank") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_BANK_LIST) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "trending") {
+            if (jQ.inArray("ASO", item['TREND']) != -1) {
+                trendingStocks.push(item)
+            }
+            if (jQ.inArray("BSO", item['TREND']) != -1) {
+                trendingStocks.push(item)
             }
         } else {
-            temp.push(item)
+            trendingStocks.push(item)
         }
     });
-    generateTrendingStockTable(temp)
+    generateTrendingStockTable(trendingStocks)
 });
-
 
 jQ(document).on("click", ".analyse-instrument", function () {
+    var that = jQ(this);
+    that.attr("disabled", true);
     jQ("#processing-trend").html("Processing.... ");
-    callAnalyseTrend()
+    let type = jQ(this).attr("data-type");
+    commonAnalyzeTrend(type, that)
+
 });
 
-async function callAnalyseTrend() {
+
+async function commonAnalyzeTrend(type, that) {
+    await callAnalyseTrend(type, [])
+    that.attr("disabled", false)
+}
+
+async function callAnalyseTrend(type, REFRESH_STOCKS) {
+    console.log(REFRESH_STOCKS)
     let count = 0;
     let scriptsCount = trendingStocks.length
-    for (let i = 0; i < trendingStocks.length; i++) {
-        try {
+    let refreshCount = REFRESH_STOCKS.length
+    let tableData
+    let refreshIndex = 1;
+    for (let i = 0; i < scriptsCount; i++) {
+        console.log(trendingStocks[i]['TRADINGSYMBOL'])
+        if (REFRESH_STOCKS.length > 0) {
+            if (!(jQ.inArray(trendingStocks[i]['TRADINGSYMBOL'], REFRESH_STOCKS) !== -1)) {
+                continue;
+            } else {
+                jQ("#processing-trend").html("Processing.... " + refreshIndex + "/" + refreshCount);
+                refreshIndex++;
+            }
+        } else {
             jQ("#processing-trend").html("Processing.... " + i + "/" + scriptsCount);
+        }
+
+        try {
+
             let name = trendingStocks[i]['TRADINGSYMBOL']
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
             let rowId = i
-            await savePreviousStockQuote(name, instrumentTokens[name])
-            let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
-            let prevQuote = []
-            jQ.each(previousQuote.data.candles, function (index, item) {
+
+            let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-10, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
+            let candles = []
+            jQ.each(data.data.candles, function (index, item) {
                 let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map['date'] = moment(item[0]).format("YYYY-MM-DD")
                 map.open = item[1]
                 map.high = item[2]
                 map.low = item[3]
                 map.close = item[4]
                 map.volume = item[5]
-                prevQuote.push(map);
+                candles.push(map);
             });
 
+
+            let size = candles.length;
 
             let dayHigh = 0
             let dayLow = 0
             let dayOpen = parseFloat(instrumentsMap[name]['price']);
-            jQ.each(prevQuote, function (index, item) {
+            let prevDay = [candles[size - 2]];
+            jQ.each(prevDay, function (index, item) {
                 if (index == 0) {
                     dayHigh = item.high
                     dayLow = item.low
@@ -691,21 +1070,8 @@ async function callAnalyseTrend() {
                 }
             });
 
-            let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-            let quote = []
-            jQ.each(data.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                map['time'] = moment(item[0]).format("HH:mm")
-                quote.push(map);
-            });
-
-            jQ.each(quote, function (index, item) {
+            let currentDay = [candles[size - 1]]
+            jQ.each(currentDay, function (index, item) {
                 if (item.high > dayHigh) {
                     dayHigh = item.high
                 }
@@ -716,153 +1082,262 @@ async function callAnalyseTrend() {
             });
 
 
-
             let previousClose = parseFloat(instrumentsMap[name].prevPrice);
             trendingStocks[rowId]['LTP'] = infoMap[name]['currentPrice']
             let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, infoMap[name]['currentPrice'], previousClose);
             trendingStocks[rowId]['OHL_TREND'] = res;
-            let strikes = await showTrendingOI(name)
+            if (type == "OI") {
+                let strikes = await showTrendingOI(name)
+                let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
+                if (strikes[0]) {
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
 
-            let oiHtml = ''
-            let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
-            jQ.each(strikes, function (index, item) {
-                oiHtml += '<div style="width:10rem;">'
-                let className = 'bg-info-color'
-                if (item.ATM_STRIKE) {
-                    className = 'bg-primary-color'
+                    oiHtml = ''
+                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += 'CE'
+                    oiHtml += '</a>'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += 'PE'
+                    oiHtml += '</a>'
+                    if (trendingStocks[rowId]['LTP'] < strikes[0]['STRIKE']) {
+                        oiHtml += '<a data-price="' + strikes[0]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                    }
+                    oiHtml += '</div>'
+
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE'] = strikes[0]['STRIKE'] + oiHtml
+
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_PE'] = strikes[0]['CHG_OI_PE']
                 }
-                oiHtml += '<span class=" bg-danger-color">' + item.CHG_OI_CE + '</span>'
-                oiHtml += '<span class=" ' + className + '">' + item.STRIKE + '</span>'
-                oiHtml += '<span class=" bg-success-color">' + item.CHG_OI_PE + '</span>'
-                oiHtml += '<span>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", item.CE.tradingsymbol).replaceAll("##TOKEN##", item.CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-                oiHtml += item.CE.tradingsymbol
-                oiHtml += '</a>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", item.PE.tradingsymbol).replaceAll("##TOKEN##", item.PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-                oiHtml += item.PE.tradingsymbol
-                oiHtml += '</a>'
-                oiHtml += '</span>'
-                oiHtml += '</div>'
-            });
-            trendingStocks[rowId]['OI_TREND'] = oiHtml;
 
-            if (strikes[0]) {
-                trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
+                if (strikes[1]) {
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_CE'] = strikes[1]['CHG_OI_CE']
 
-                oiHtml = ''
-                oiHtml += '<div style="display:flex;">'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-                oiHtml += 'CE'
-                oiHtml += '</a>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-                oiHtml += 'PE'
-                oiHtml += '</a>'
-                if (trendingStocks[rowId]['LTP'] < strikes[0]['STRIKE']) {
-                    oiHtml += '<a data-price="' + strikes[0]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                    oiHtml = ''
+                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += 'CE'
+                    oiHtml += '</a>'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += 'PE'
+                    oiHtml += '</a>'
+                    if (trendingStocks[rowId]['LTP'] < strikes[1]['STRIKE']) {
+                        oiHtml += '<a data-price="' + strikes[1]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                    }
+
+                    oiHtml += '</div>'
+
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO'] = strikes[1]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_PE'] = strikes[1]['CHG_OI_PE']
                 }
-                oiHtml += '</div>'
 
-                trendingStocks[rowId]['STRIKE_LOWER_ONE'] = strikes[0]['STRIKE'] + oiHtml
+                if (strikes[2]) {
+                    trendingStocks[rowId]['STRIKE_ATM_CE'] = strikes[2]['CHG_OI_CE']
 
-                trendingStocks[rowId]['STRIKE_LOWER_ONE_PE'] = strikes[0]['CHG_OI_PE']
+                    oiHtml = ''
+                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += 'CE'
+                    oiHtml += '</a>'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += 'PE'
+                    oiHtml += '</a>'
+                    if (trendingStocks[rowId]['LTP'] < strikes[2]['STRIKE']) {
+                        oiHtml += '<a data-price="' + strikes[2]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                    }
+
+                    oiHtml += '</div>'
+
+                    trendingStocks[rowId]['STRIKE_ATM'] = strikes[2]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_ATM_PE'] = strikes[2]['CHG_OI_PE']
+                }
+
+                if (strikes[3]) {
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_CE'] = strikes[3]['CHG_OI_CE']
+
+                    oiHtml = ''
+                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += 'CE'
+                    oiHtml += '</a>'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += 'PE'
+                    oiHtml += '</a>'
+                    if (trendingStocks[rowId]['LTP'] < strikes[3]['STRIKE']) {
+                        oiHtml += '<a data-price="' + strikes[3]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                    }
+
+                    oiHtml += '</div>'
+
+
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE'] = strikes[3]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_PE'] = strikes[3]['CHG_OI_PE']
+                }
+
+                if (strikes[4]) {
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_CE'] = strikes[4]['CHG_OI_CE']
+
+                    oiHtml = ''
+                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += 'CE'
+                    oiHtml += '</a>'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += 'PE'
+                    oiHtml += '</a>'
+
+                    if (trendingStocks[rowId]['LTP'] < strikes[4]['STRIKE']) {
+                        oiHtml += '<a data-price="' + strikes[4]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                    }
+
+                    oiHtml += '</div>'
+
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO'] = strikes[4]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_PE'] = strikes[4]['CHG_OI_PE']
+                }
             }
 
-            if (strikes[1]) {
-                trendingStocks[rowId]['STRIKE_LOWER_TWO_CE'] = strikes[1]['CHG_OI_CE']
-
-                oiHtml = ''
-                oiHtml += '<div style="display:flex;">'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-                oiHtml += 'CE'
-                oiHtml += '</a>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-                oiHtml += 'PE'
-                oiHtml += '</a>'
-                if (trendingStocks[rowId]['LTP'] < strikes[1]['STRIKE']) {
-                    oiHtml += '<a data-price="' + strikes[1]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
-                }
-
-                oiHtml += '</div>'
-
-
-                trendingStocks[rowId]['STRIKE_LOWER_TWO'] = strikes[1]['STRIKE'] + oiHtml
-                trendingStocks[rowId]['STRIKE_LOWER_TWO_PE'] = strikes[1]['CHG_OI_PE']
-            }
-
-            if (strikes[2]) {
-                trendingStocks[rowId]['STRIKE_ATM_CE'] = strikes[2]['CHG_OI_CE']
-
-                oiHtml = ''
-                oiHtml += '<div style="display:flex;">'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-                oiHtml += 'CE'
-                oiHtml += '</a>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-                oiHtml += 'PE'
-                oiHtml += '</a>'
-                if (trendingStocks[rowId]['LTP'] < strikes[2]['STRIKE']) {
-                    oiHtml += '<a data-price="' + strikes[2]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
-                }
-
-                oiHtml += '</div>'
-
-
-
-                trendingStocks[rowId]['STRIKE_ATM'] = strikes[2]['STRIKE'] + oiHtml
-                trendingStocks[rowId]['STRIKE_ATM_PE'] = strikes[2]['CHG_OI_PE']
-            }
-
-            if (strikes[3]) {
-                trendingStocks[rowId]['STRIKE_UPPER_ONE_CE'] = strikes[3]['CHG_OI_CE']
-
-                oiHtml = ''
-                oiHtml += '<div style="display:flex;">'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-                oiHtml += 'CE'
-                oiHtml += '</a>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-                oiHtml += 'PE'
-                oiHtml += '</a>'
-                if (trendingStocks[rowId]['LTP'] < strikes[3]['STRIKE']) {
-                    oiHtml += '<a data-price="' + strikes[3]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
-                }
-
-                oiHtml += '</div>'
-
-
-
-                trendingStocks[rowId]['STRIKE_UPPER_ONE'] = strikes[3]['STRIKE'] + oiHtml
-                trendingStocks[rowId]['STRIKE_UPPER_ONE_PE'] = strikes[3]['CHG_OI_PE']
-            }
-
-            if (strikes[4]) {
-                trendingStocks[rowId]['STRIKE_UPPER_TWO_CE'] = strikes[4]['CHG_OI_CE']
-
-                oiHtml = ''
-                oiHtml += '<div style="display:flex;">'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-                oiHtml += 'CE'
-                oiHtml += '</a>'
-                oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-                oiHtml += 'PE'
-                oiHtml += '</a>'
-
-                if (trendingStocks[rowId]['LTP'] < strikes[4]['STRIKE']) {
-                    oiHtml += '<a data-price="' + strikes[4]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
-                }
-
-                oiHtml += '</div>'
-
-
-                trendingStocks[rowId]['STRIKE_UPPER_TWO'] = strikes[4]['STRIKE'] + oiHtml
-                trendingStocks[rowId]['STRIKE_UPPER_TWO_PE'] = strikes[4]['CHG_OI_PE']
-            }
-
-            let last = quote[quote.length - 1];
+            let last = candles[candles.length - 1];
             trendingStocks[rowId]['VOLUME'] = last.volume
 
             let info = infoMap[name]
             trendingStocks[rowId]['LTP'] = info['currentPrice']
+
+            let isOpenOfTheMonth = false;
+            let isOpenOfTheWeek = false;
+
+            let openOfTheMonth = {}
+            let closeOfTheMonth = candles[size - 1]
+
+            let openOfTheWeek = {}
+            let closeOfTheWeek = candles[size - 1]
+
+            jQ.each(candles, function (index, item) {
+                let date = moment(item.date).format("YYYY-MM-DD");
+                if (date >= START_MONTH_DAY_DATE && !isOpenOfTheMonth) {
+                    openOfTheMonth = item
+                    isOpenOfTheMonth = true
+                }
+
+                if (date >= START_WEEK_DAY_DATE && !isOpenOfTheWeek) {
+                    openOfTheWeek = item
+                    isOpenOfTheWeek = true
+                }
+            });
+
+            let oneDayAgo = candles[size - 2]
+            let twoDayAgo = candles[size - 3]
+            let threeDayAgo = candles[size - 4]
+            let fourDayAgo = candles[size - 5]
+            let fiveDayAgo = candles[size - 6]
+            let sixDayAgo = candles[size - 7]
+            let sevenDayAgo = candles[size - 8]
+            let current = candles[size - 1];
+
+            let oneDayHighLow = oneDayAgo['high'] - oneDayAgo['low'];
+            let twoDayHighLow = twoDayAgo['high'] - twoDayAgo['low'];
+            let threeDayHighLow = threeDayAgo['high'] - threeDayAgo['low'];
+            let fourDayHighLow = fourDayAgo['high'] - fourDayAgo['low'];
+            let fiveDayHighLow = fiveDayAgo['high'] - fiveDayAgo['low'];
+            let sixDayHighLow = sixDayAgo['high'] - sixDayAgo['low'];
+            let sevenDayHighLow = sevenDayAgo['high'] - sevenDayAgo['low'];
+
+            let dayHighLow = current.high - current.low
+
+            let isOneDayAgo = false;
+            let isTwoDayAgo = false
+            let isThreeDayAgo = false
+            let isFourDayAgo = false
+            let isFiveDayAgo = false
+            let isSixDayAgo = false
+            let isSevenDayAgo = false
+            let isDayCloseGreaterDayOpen = false
+            let isDayCloseGreaterOneDayAgoClose = false
+            let isWeeklyCloseGreaterWeeklyOpen = false
+            let isMonthlyCloseGreaterMonthlyOpen = false
+            let oneDayAgoVolumeGreater = false
+
+
+            if (dayHighLow > oneDayHighLow) {
+                isOneDayAgo = true
+            }
+
+            if (dayHighLow > twoDayHighLow) {
+                isTwoDayAgo = true
+            }
+
+            if (dayHighLow > threeDayHighLow) {
+                isThreeDayAgo = true
+            }
+
+            if (dayHighLow > fourDayHighLow) {
+                isFourDayAgo = true
+            }
+
+            if (dayHighLow > fiveDayHighLow) {
+                isFiveDayAgo = true
+            }
+
+            if (dayHighLow > sixDayHighLow) {
+                isSixDayAgo = true
+            }
+
+            if (dayHighLow > sevenDayHighLow) {
+                isSevenDayAgo = true
+            }
+
+            if (current.close > current.open) {
+                isDayCloseGreaterDayOpen = true
+            }
+
+            if (current.close > oneDayAgo.close) {
+                isDayCloseGreaterOneDayAgoClose = true
+            }
+
+            if (closeOfTheWeek.close > openOfTheWeek.open) {
+                isWeeklyCloseGreaterWeeklyOpen = true
+            }
+
+            if (closeOfTheMonth.close > openOfTheMonth.open) {
+                isMonthlyCloseGreaterMonthlyOpen = true
+            }
+
+            if (oneDayAgo.volume > 10000) {
+                oneDayAgoVolumeGreater = true;
+            }
+
+            trendingStocks[rowId]['isOneDayAgo'] = isOneDayAgo;
+            trendingStocks[rowId]['isTwoDayAgo'] = isTwoDayAgo;
+            trendingStocks[rowId]['isThreeDayAgo'] = isThreeDayAgo;
+            trendingStocks[rowId]['isFourDayAgo'] = isFourDayAgo;
+            trendingStocks[rowId]['isFiveDayAgo'] = isFiveDayAgo;
+            trendingStocks[rowId]['isSixDayAgo'] = isSixDayAgo;
+            trendingStocks[rowId]['isSevenDayAgo'] = isSevenDayAgo;
+            trendingStocks[rowId]['isDayCloseGreaterDayOpen'] = isDayCloseGreaterDayOpen;
+            trendingStocks[rowId]['isDayCloseGreaterOneDayAgoClose'] = isDayCloseGreaterOneDayAgoClose;
+            trendingStocks[rowId]['isWeeklyCloseGreaterWeeklyOpen'] = isWeeklyCloseGreaterWeeklyOpen;
+            trendingStocks[rowId]['isMonthlyCloseGreaterMonthlyOpen'] = isMonthlyCloseGreaterMonthlyOpen;
+            trendingStocks[rowId]['oneDayAgoVolumeGreater'] = oneDayAgoVolumeGreater;
+
+            let priceMoved = 0;
+            let asoPrice = 0;
+            let bsoPrice = 0;
+            let aso = parseFloat(trendingStocks[rowId]['STRIKEDATA']['ustrikeOne']) - parseFloat(trendingStocks[rowId]['PRICE']);
+            aso = aso / 5
+            asoPrice = parseFloat(trendingStocks[rowId]['STRIKEDATA']['ustrikeOne']) - aso;
+
+            let bso = parseFloat(trendingStocks[rowId]['PRICE']) - parseFloat(trendingStocks[rowId]['STRIKEDATA']['bstrikeOne']);
+            bso = bso / 5
+            bsoPrice = parseFloat(trendingStocks[rowId]['STRIKEDATA']['bstrikeOne']) + bso;
+
+            if (jQ.inArray("ASO", trendingStocks[rowId]['TREND']) != -1) {
+                priceMoved = parseFloat(info['currentPrice']) - asoPrice
+            }
+
+            if (jQ.inArray("BSO", trendingStocks[rowId]['TREND']) != -1) {
+                priceMoved = bsoPrice - parseFloat(info['currentPrice'])
+            }
+            trendingStocks[rowId]['PRICE_MOVED'] = parseFloat(priceMoved).toFixed(1)
 
             updateTrendingTable(rowId)
             count++;
@@ -876,6 +1351,7 @@ async function callAnalyseTrend() {
         }
     }
     jQ("#processing-trend").html("Done...");
+
 }
 
 async function showTrendingOI(instrument) {
@@ -888,12 +1364,6 @@ async function showTrendingOI(instrument) {
     if (instrument == "NIFTY" || instrument == "NIFTY 50") {
         info = infoMap["NIFTY 50"]
         instrument = "NIFTY"
-    } else if (instrument == "BANKNIFTY" || instrument == "NIFTY BANK") {
-        info = infoMap["NIFTY BANK"]
-        instrument = "BANKNIFTY"
-    } else if (instrument == "MIDCPNIFTY" || instrument == "NIFTY MID SELECT") {
-        info = infoMap["NIFTY MID SELECT"]
-        instrument = "MIDCPNIFTY"
     } else {
         info = infoMap[instrument]
     }
@@ -904,9 +1374,17 @@ async function showTrendingOI(instrument) {
 
     let atmStrike = 0;
     jQ.each(OPTION_STRIKE_LIST, function (index, item) {
-        let date = moment(item.expiry, 'DD-MM-YYYY').format("DD-MM-YYYY")
-        if (item.name == instrument && date >= currentTime) {
-            selectedStrike.push(item)
+        let date = moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD")
+        if (item.name == instrument) {
+            if (instrument == "NIFTY") {
+                if (date == NIFTY_EXPIRY_DATE) {
+                    selectedStrike.push(item)
+                }
+            } else {
+                if (date == STOCK_EXPIRY_DATE) {
+                    selectedStrike.push(item)
+                }
+            }
         }
     });
 
@@ -986,35 +1464,39 @@ async function showTrendingOI(instrument) {
 async function showOITrendingDetails(strikeData, selectedStrike) {
     let strikeMap = {}
     for (let i = 0; i < strikeData.length; i++) {
-        let CE = ''
-        let PE = ''
-        if (strikeData[i]['STRIKE'] != 0) {
-            for (let j = 0; j < selectedStrike.length; j++) {
-                if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
-                    && selectedStrike[j].instrument_type == 'CE') {
-                    CE = selectedStrike[j]
-                }
+        try {
+            let CE = ''
+            let PE = ''
+            if (strikeData[i]['STRIKE'] != 0) {
+                for (let j = 0; j < selectedStrike.length; j++) {
+                    if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
+                        && selectedStrike[j].instrument_type == 'CE') {
+                        CE = selectedStrike[j]
+                    }
 
-                if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
-                    && selectedStrike[j].instrument_type == 'PE') {
-                    PE = selectedStrike[j]
+                    if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
+                        && selectedStrike[j].instrument_type == 'PE') {
+                        PE = selectedStrike[j]
+                    }
                 }
+                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+
+                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+                strikeMap[strikeData[i]['STRIKE']] = {}
+                strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
+                strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
+                strikeMap[strikeData[i]['STRIKE']]['prevDataPE'] = prevDataPE
+                strikeMap[strikeData[i]['STRIKE']]['currDataPE'] = currDataPE
+                strikeMap[strikeData[i]['STRIKE']]['INDEX'] = i
+                strikeMap[strikeData[i]['STRIKE']]['ATM_STRIKE'] = strikeData[i]['ATM_STRIKE']
+
+                strikeMap[strikeData[i]['STRIKE']]['CE'] = CE
+                strikeMap[strikeData[i]['STRIKE']]['PE'] = PE
             }
-            let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
-            let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-
-            let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
-            let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-            strikeMap[strikeData[i]['STRIKE']] = {}
-            strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
-            strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
-            strikeMap[strikeData[i]['STRIKE']]['prevDataPE'] = prevDataPE
-            strikeMap[strikeData[i]['STRIKE']]['currDataPE'] = currDataPE
-            strikeMap[strikeData[i]['STRIKE']]['INDEX'] = i
-            strikeMap[strikeData[i]['STRIKE']]['ATM_STRIKE'] = strikeData[i]['ATM_STRIKE']
-
-            strikeMap[strikeData[i]['STRIKE']]['CE'] = CE
-            strikeMap[strikeData[i]['STRIKE']]['PE'] = PE
+        } catch (err) {
+            console.log("Error while fetching strike : " + strikeData[i]['STRIKE'])
         }
     }
 
@@ -1072,7 +1554,6 @@ function updateTrendingTable(rowId) {
     jQ('#trending-stock-list-table').DataTable().row(rowId).data(trendingStocks[rowId]).draw(false);
 }
 
-
 jQ(document).on("click", ".create-alerts", function () {
     let name = jQ(this).attr("data-name");
     let price = jQ(this).attr("data-price");
@@ -1085,7 +1566,6 @@ jQ(document).on("click", ".create-alerts", function () {
 
     createAlert(name + "-" + 'PRICE_ALERT', lhs_tradingsymbol, price, ">=", lhs_exchange)
 });
-
 
 function createAlert(name, lhs_tradingsymbol, rhs_constant, operator, lhs_exchange) {
     jQ.ajaxSetup({

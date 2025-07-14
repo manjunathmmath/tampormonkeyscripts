@@ -228,6 +228,18 @@ let nseStrikeDiff = {
 	'GIFT NIFTY': '50,50',
 }
 
+let REFRESH_LIST = [
+	'NIFTY 50',
+	'RELIANCE',
+	'HDFCBANK',
+	"ICICIBANK",
+	"INFY",
+	"KOTAKBANK",
+	"AXISBANK",
+	"SBIN",
+]
+
+
 let TRACK_LIST = [
 	'NIFTY 50',
 	'HDFCBANK',
@@ -924,3 +936,14 @@ let MOVEMENTSTOCKS = [
 	'POONAWALLA',
 	'IREDA',
 ];
+
+let instrumentOrder = {
+	'NIFTY 50': 1,
+	'RELIANCE': 2,
+	'HDFCBANK': 3,
+	"ICICIBANK": 4,
+	"INFY": 5,
+	"KOTAKBANK": 6,
+	"AXISBANK": 7,
+	"SBIN": 8,
+}

@@ -60,7 +60,6 @@ async function generateOHLOpeningTrendDataTable(stockList) {
 
                 let tempName = name.replaceAll(" ", "-")
                 tempName = tempName.replaceAll("&", "-")
-                console.log("Data for : " + name)
                 await savePreviousStockQuote(name, instrumentTokens[name])
                 let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
                 let prevQuote = []
@@ -216,13 +215,13 @@ async function generateOHLOpeningTrendDataTable(stockList) {
                 }
             });
 
-            jQ(".dt-buttons").append('<button title="Strong Sell(OH)" data-name="SSOH"  style="margin-right: .2rem;" class="dt-button badge-danger" type="button"><span>SSOH(' + SSOH + ')</span></button>')
-            jQ(".dt-buttons").append('<button title="Strong Buy(OL)" data-name="SBOL"  style="margin-right: .2rem;" class="dt-button badge-success" type="button"><span>SBOL(' + SBOL + ')</span></button>')
-            jQ(".dt-buttons").append('<button title="Strong Sell(Lower High)" data-name="SSLH"  style="margin-right: .2rem;" class="dt-button badge-danger" type="button"><span>SSLH(' + SSLH + ')</span></button>')
-            jQ(".dt-buttons").append('<button title="Strong Buy(Higher High)" data-name="SBHH"  style="margin-right: .2rem;" class="dt-button badge-success" type="button"><span>SBHH(' + SBHH + ')</span></button>')
-            jQ(".dt-buttons").append('<button title="Buy" data-name="B"  style="margin-right: .2rem;" class="dt-button badge-success" type="button"><span>B(' + B + ')</span></button>')
-            jQ(".dt-buttons").append('<button title="Sell" data-name=S"  style="margin-right: .2rem;" class="dt-button badge-danger" type="button"><span>S(' + S + ')</span></button>')
-            jQ(".dt-buttons").append('<button data-name=N"  style="margin-right: .2rem;" class="dt-button badge-info filter-nifty" type="button"><span>N</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button title="Strong Sell(OH)" data-name="SSOH"  style="margin-right: .2rem;" class="dt-button bg-danger" type="button"><span>SSOH(' + SSOH + ')</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button title="Strong Buy(OL)" data-name="SBOL"  style="margin-right: .2rem;" class="dt-button bg-success" type="button"><span>SBOL(' + SBOL + ')</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button title="Strong Sell(Lower High)" data-name="SSLH"  style="margin-right: .2rem;" class="dt-button bg-danger" type="button"><span>SSLH(' + SSLH + ')</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button title="Strong Buy(Higher High)" data-name="SBHH"  style="margin-right: .2rem;" class="dt-button bg-success" type="button"><span>SBHH(' + SBHH + ')</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button title="Buy" data-name="B"  style="margin-right: .2rem;" class="dt-button bg-success" type="button"><span>B(' + B + ')</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button title="Sell" data-name=S"  style="margin-right: .2rem;" class="dt-button bg-danger" type="button"><span>S(' + S + ')</span></button>')
+            jQ("#ohl-trend-scanner-list-table_wrapper .dt-buttons").append('<button data-name=N"  style="margin-right: .2rem;" class="dt-button bg-info filter-nifty" type="button"><span>N</span></button>')
 
         },
     });
