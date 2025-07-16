@@ -55,7 +55,17 @@ async function showTrendingStocks() {
         obj['OHL_TREND'] = ''
         obj['OI_TREND'] = ''
         obj['VOLUME'] = ''
+        obj['INDEX'] = ''
 
+        let indexType= []
+        if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_50_LIST) !== -1) {
+            indexType.push("NIFTY")
+        } 
+        if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_BANK_LIST) !== -1) {
+            indexType.push("BANK")
+        } 
+
+        obj['INDEX'] = indexType.join(",")
         obj['STRIKE_LOWER_ONE_CE'] = ''
         obj['STRIKE_LOWER_ONE'] = ''
         obj['STRIKE_LOWER_ONE_PE'] = ''
@@ -149,17 +159,16 @@ function generateTrendingStockTable(data) {
             end: 1
         },
         "processing": true,
-        "order": [[1, 'asc']],
+        "order": [[28, 'asc']],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
         "scrollX": true,
         scrollCollapse: true,
-        "scrollY": "480px",
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [1],
+                "targets": [],
                 "visible": false,
                 "searchable": false
             }
@@ -200,9 +209,7 @@ function generateTrendingStockTable(data) {
                     return html;
                 }
             },
-            {
-                "data": "ORDER"
-            },
+            
             {
                 "data": 'PERC',
                 render: function (data, type, row, meta) {
@@ -912,7 +919,12 @@ function generateTrendingStockTable(data) {
             },
             {
                 "data": "WEIGHTAGE"
-            }
+            },{
+                "data": "ORDER"
+            },
+            {
+                "data": "INDEX"
+            },
 
         ],
         "fnInitComplete": function (oSettings, json) {
@@ -950,12 +962,13 @@ function showTrendCount() {
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filte r" type="button"><span>N50</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter" type="button"><span>BN</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter" type="button"><span>TRENDING</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="TREND" style="margin-right: .2rem;" class="dt-button analyse-instrument" type="button"><span>ANALYZE TREND</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument" type="button"><span>ANALYZE OI</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span id="processing-trend"></span>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info" type="button"><span>N50</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info" type="button"><span>BN</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="TREND" style="margin-right: .2rem;" class="dt-button analyse-instrument  bg-info" type="button"><span>ANALYZE TREND</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
 
 }
 
@@ -1351,6 +1364,7 @@ async function callAnalyseTrend(type, REFRESH_STOCKS) {
         }
     }
     jQ("#processing-trend").html("Done...");
+    jQ("#last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
 }
 

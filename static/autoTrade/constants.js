@@ -946,4 +946,13 @@ let instrumentOrder = {
 	"KOTAKBANK": 6,
 	"AXISBANK": 7,
 	"SBIN": 8,
+	"LT": 9,
+	"ITC": 10,
+	"TCS": 11,
+	"BHARTIARTL": 12,
+	"INDUSINDBK": 13,
+	"BANKBARODA": 14,
+	"AUBANK": 15,
+	"FEDERALBNK": 16,
+	"IDFCFIRSTB": 17,
 }

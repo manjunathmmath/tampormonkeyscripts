@@ -80,6 +80,10 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: true
         },
+        enable_sound: {
+            type: 'checkbox',
+            default: false
+        },
         movement_stocks: {
             type: 'checkbox',
             default: true
@@ -135,6 +139,7 @@ const START_WEEK_DAY_DATE = g_config.get('start_week_day_date');
 const ENABLE_BREAKOUT_SCANNER = g_config.get('enable_breakout_scanner');
 const NIFTY_EXPIRY_DATE = g_config.get("nifty_expiry_date")
 const STOCK_EXPIRY_DATE = g_config.get("stock_expiry_date")
+const ENABLE_SOUND = g_config.get('enable_sound');
 
 async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
@@ -301,6 +306,24 @@ function startRefresh() {
 };
 
 function startTimer(duration, display) {
+    let currentTime = moment().format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:25:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+
+    if (!(currentTime >= checkTime)) {
+        console.log("-------------------------[WAITING FOR MARKET TO OPEN FOR PRICE REFRESH]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("----------------------------------------------------------------------------------");
+        return
+    }
+
+     if (currentTime >= endTime) {
+        console.log("----------------------------[MARKET CLOSED PRICE REFRESH STOPPED]--------------------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        return
+    }
+
     timerInstance = setInterval(function () {
         var d = new Date();
         var s = d.getSeconds();
@@ -427,7 +450,7 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
-    html += '<div class="col-md-1" style="display:none;">'
+    html += '<div class="col-md-1" >'
     html += '<button id="show-breakout-intruments" class="btn ms-1 badge bg-info" type="submit" >';
     html += 'Breakout'
     html += '</button>'
@@ -444,7 +467,7 @@ function showAutoTrade() {
     html += '<tr>'
 
     html += '<th rowspan="2">SYMBOL</th>'
-    html += '<th rowspan="2">O</th>'
+
     html += '<th rowspan="2">CH%</th>'
     html += '<th rowspan="2" title="Price Moved" >M</th>'
     html += '<th rowspan="2" title="Trend" >T</th>'
@@ -485,6 +508,8 @@ function showAutoTrade() {
     html += '<th>B_T</th>'
     html += '<th>B_F</th>'
     html += '<th>W</th>'
+    html += '<th>O</th>'
+    html += '<th>INDEX</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'

@@ -49,14 +49,28 @@ function commonBreakOutLogic(auto) {
     let scripts = []
     let checkInstr = []
     let orderRow = 1;
-    jQ.each(instrumentsMap, function (index, item) {
-        if (jQ.inArray(index, checkInstr) === -1) {
-            if (index == "NIFTY 50" || index == "NIFTY BANK" || index == "RELIANCE" || index == "HDFCBANK") {
-                instru.push(instrumentsMap[index])
-                checkInstr.push(index)
+
+    if (auto) {
+        jQ.each(instrumentsMap, function (index, item) {
+            if (jQ.inArray(index, checkInstr) === -1) {
+                if (index == "NIFTY 50" || index == "NIFTY BANK" || index == "RELIANCE" || index == "HDFCBANK") {
+                    instru.push(instrumentsMap[index])
+                    checkInstr.push(index)
+                }
             }
-        }
-    });
+        });
+    } else {
+        jQ.each(instrumentsMap, function (index, item) {
+            if (index != 'INDIA VIX') {
+                if (jQ.inArray(index, checkInstr) === -1) {
+                    instru.push(instrumentsMap[index])
+                    checkInstr.push(index)
+                }
+            }
+        });
+
+    }
+
 
     for (let i = 0; i < instru.length; i++) {
         let data = instru[i];
@@ -76,13 +90,15 @@ function commonBreakOutLogic(auto) {
         scripts.push(obj)
     }
 
-    let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));
-    jQ.each(validIntruments, function (index, item) {
-        if (jQ.inArray(index, checkInstr) === -1) {
-            scripts.push(item)
-            checkInstr.push(index)
-        }
-    })
+    if (auto) {
+        let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));
+        jQ.each(validIntruments, function (index, item) {
+            if (jQ.inArray(index, checkInstr) === -1) {
+                scripts.push(item)
+                checkInstr.push(index)
+            }
+        })
+    }
 
 
     for (let i = 0; i < scripts.length; i++) {
@@ -243,7 +259,7 @@ function generateBreakOutStockTable(data) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [],
+                "targets": [2,3,4,5,6,7,8,9],
                 "visible": false,
                 "searchable": false
             }
@@ -669,7 +685,7 @@ async function callAnalyseBreakout(auto) {
             if (!auto) {
                 updateBreakouTable(rowId)
             }
-            showAlertForBreakout(breakOutStocks[rowId])
+            showAlertForBreakout(breakOutStocks[rowId],auto)
         } catch (err) {
             console.log("Error while analyzing stock : " + breakOutStocks[i]['TRADINGSYMBOL'])
             console.log(err)
@@ -678,7 +694,7 @@ async function callAnalyseBreakout(auto) {
     jQ("#processing-breakoutt").html("Done...");
 }
 
-function showAlertForBreakout(row) {
+function showAlertForBreakout(row,auto) {
     let link = '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + row['TRADINGSYMBOL'] + '/' + instrumentTokens[row['TRADINGSYMBOL']] + '"> '
     link += row['TRADINGSYMBOL']
     link += '</a>'
@@ -704,8 +720,10 @@ function showAlertForBreakout(row) {
         html += '</span>'
         html += '</div>'
         callSackBar(html);
-        let alrtSound = new Audio(alertSound);
-        alrtSound.play();
+        if(ENABLE_SOUND && auto){
+            let alrtSound = new Audio(alertSound);
+            alrtSound.play();
+        }
     }
 }
 
