@@ -182,6 +182,8 @@ async function showBreakOutStocks() {
     html += '<th  title="Volume">V</th>'
     html += '<th>LTP</th>'
     html += '<th>BREAKOUT</th>'
+    html += '<th>B_T</th>'
+    html += '<th>B_F</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'
@@ -259,7 +261,7 @@ function generateBreakOutStockTable(data) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [2,3,4,5,6,7,8,9],
+                "targets": [2, 3, 4, 5, 6, 7, 8, 9],
                 "visible": false,
                 "searchable": false
             }
@@ -456,6 +458,193 @@ function generateBreakOutStockTable(data) {
                     html += '<span class="' + oneDayAgoVolumeGreaterClass + '">' + row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0) + '</span>'
 
                     return html
+                }
+            },
+            {
+                "data": "",
+                render: function (data, type, row, meta) {
+                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+                    let trueCount = 0;
+                    let falseCount = 0;
+                    if (isOneDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isTwoDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+
+                    if (isThreeDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFourDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFiveDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSixDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSevenDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterDayOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (oneDayAgoVolumeGreaterValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    return trueCount
+                }
+            },
+            {
+                "data": "",
+                render: function (data, type, row, meta) {
+                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+                    let trueCount = 0;
+                    let falseCount = 0;
+                    if (isOneDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isTwoDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+
+                    if (isThreeDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFourDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isFiveDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSixDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isSevenDayAgoValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterDayOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+
+                    if (oneDayAgoVolumeGreaterValue == 'T') {
+                        trueCount++
+                    } else {
+                        falseCount++
+                    }
+                    return falseCount
                 }
             },
         ],
@@ -685,7 +874,7 @@ async function callAnalyseBreakout(auto) {
             if (!auto) {
                 updateBreakouTable(rowId)
             }
-            showAlertForBreakout(breakOutStocks[rowId],auto)
+            showAlertForBreakout(breakOutStocks[rowId], auto)
         } catch (err) {
             console.log("Error while analyzing stock : " + breakOutStocks[i]['TRADINGSYMBOL'])
             console.log(err)
@@ -694,7 +883,7 @@ async function callAnalyseBreakout(auto) {
     jQ("#processing-breakoutt").html("Done...");
 }
 
-function showAlertForBreakout(row,auto) {
+function showAlertForBreakout(row, auto) {
     let link = '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + row['TRADINGSYMBOL'] + '/' + instrumentTokens[row['TRADINGSYMBOL']] + '"> '
     link += row['TRADINGSYMBOL']
     link += '</a>'
@@ -720,7 +909,7 @@ function showAlertForBreakout(row,auto) {
         html += '</span>'
         html += '</div>'
         callSackBar(html);
-        if(ENABLE_SOUND && auto){
+        if (ENABLE_SOUND && auto) {
             let alrtSound = new Audio(alertSound);
             alrtSound.play();
         }
