@@ -22,6 +22,10 @@ async function showOIScanner(name) {
     html += '<span id="current-price">'
     html += '</span>'
     html += '</div>'
+    html += '<div class="col-md-2">'
+    html += 'PCR : <span id="current-pcr">'
+    html += '</span>'
+    html += '</div>'
     html += '</div>'
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
@@ -90,6 +94,9 @@ function fillInstruments(name) {
     EXTRA_LIST.push("NIFTY")
     EXTRA_LIST.push("BANKNIFTY")
     EXTRA_LIST.push("MIDCPNIFTY")
+    EXTRA_LIST.push("FINNIFTY")
+    EXTRA_LIST.push("SENSEX")
+    EXTRA_LIST.push("BANKEX")
     jQ.each(EXTRA_LIST, function (index, item) {
         let selected = ''
         if (name) {
@@ -128,12 +135,18 @@ async function showOI(instrument) {
 
     let currentTime = moment().format("DD-MM-YYYY")
     let info;
-    if (instrument == "NIFTY") {
+    if (instrument == "NIFTY" || instrument == "NIFTY 50") {
         info = infoMap["NIFTY 50"]
-    } else if (instrument == "BANKNIFTY") {
+        instrument = "NIFTY"
+    } else if (instrument == "BANKNIFTY" || instrument == "NIFTY BANK") {
         info = infoMap["NIFTY BANK"]
-    } else if (instrument == "MIDCPNIFTY") {
+        instrument = "BANKNIFTY"
+    } else if (instrument == "FINNIFTY" || instrument == "NIFTY FIN SERVICE") {
+        info = infoMap["NIFTY FIN SERVICE"]
+        instrument = "FINNIFTY"
+    } else if (instrument == "MIDCPNIFTY" || instrument == "NIFTY MID SELECT") {
         info = infoMap["NIFTY MID SELECT"]
+        instrument = "MIDCPNIFTY"
     } else {
         info = infoMap[instrument]
     }
@@ -146,14 +159,19 @@ async function showOI(instrument) {
     jQ.each(OPTION_STRIKE_LIST, function (index, item) {
         let date = moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD")
         if (item.name == instrument) {
-            if (instrument == "NIFTY") {
+           if (instrument == "NIFTY") {
                 if (date == NIFTY_EXPIRY_DATE) {
                     selectedStrike.push(item)
                 }
-            } else {
-                if (date == STOCK_EXPIRY_DATE) {
+            } else if (instrument == "SENSEX") {
+                if (date == SENSEX_EXPIRY_DATE) {
                     selectedStrike.push(item)
                 }
+            } else {
+                /*if (date == STOCK_EXPIRY_DATE) {
+                    selectedStrike.push(item)
+                }*/
+                selectedStrike.push(item)
             }
         }
     });
@@ -268,6 +286,12 @@ async function showOIDetails() {
     }
 
     let tableData = []
+    let totalCEOI = 0;
+    let totalPEOI = 0;
+
+    let chCEOI = 0;
+    let chPEOI = 0;
+
     jQ.each(strikeMap, function (index, item) {
         try {
             let currDataCE = item['currDataCE']['data']['candles']
@@ -286,6 +310,8 @@ async function showOIDetails() {
 
             let OI_CE = currDataCE[currDataCE.length - 1][6]
             let OI_PE = currDataPE[currDataPE.length - 1][6]
+            totalCEOI = totalCEOI + OI_CE
+            totalPEOI = totalPEOI + OI_PE
 
             let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]
             let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
@@ -300,6 +326,9 @@ async function showOIDetails() {
             obj['CE'] = item.CE
             obj['PE'] = item.PE
 
+            chCEOI = chCEOI + (OI_CE - PREV_OI_CE)
+            chPEOI = chPEOI + (OI_PE - PREV_OI_PE)
+
             obj['currDataCE'] = currDataCE
             obj['currDataPE'] = currDataPE
 
@@ -312,6 +341,24 @@ async function showOIDetails() {
         }
 
     });
+
+    let pcr = parseFloat(totalPEOI / totalCEOI).toFixed(2);
+    let chPcr = parseFloat(chPEOI/chCEOI).toFixed(2);
+    let pcrHtml = ''
+    let chPcrHtml = ''
+    if (pcr < 0.9) {
+        pcrHtml += '<span class="badge bg-success">' + pcr + '</span>'
+    } else {
+        pcrHtml += '<span class="badge bg-danger">' + pcr + '</span>'
+    }
+
+      if (chPcr < 0.9) {
+        chPcrHtml += '<span class="badge bg-success">' + chPcr + '</span>'
+    } else {
+        chPcrHtml += '<span class="badge bg-danger">' + chPcr + '</span>'
+    }
+
+    jQ("#current-pcr").html(pcrHtml + ' ('+chPcrHtml+')')
 
     generateOITable(tableData)
 

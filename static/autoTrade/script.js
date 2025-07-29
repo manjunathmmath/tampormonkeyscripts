@@ -42,7 +42,11 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: moment().format("YYYY-MM-DD")
         },
-        stock_expiry_date: {
+        /*: {
+            type: 'text',
+            default: moment().format("YYYY-MM-DD")
+        },*/
+        sensex_expiry_date: {
             type: 'text',
             default: moment().format("YYYY-MM-DD")
         },
@@ -100,6 +104,10 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: false
         },
+        analyze_future_trend: {
+            type: 'checkbox',
+            default: false
+        },
         order_type: {
             type: 'select',
             choices: ['LIMIT', 'MARKET'],
@@ -138,8 +146,10 @@ const START_MONTH_DAY_DATE = g_config.get('start_month_day_date');
 const START_WEEK_DAY_DATE = g_config.get('start_week_day_date');
 const ENABLE_BREAKOUT_SCANNER = g_config.get('enable_breakout_scanner');
 const NIFTY_EXPIRY_DATE = g_config.get("nifty_expiry_date")
-const STOCK_EXPIRY_DATE = g_config.get("stock_expiry_date")
+/*const STOCK_EXPIRY_DATE = g_config.get("stock_expiry_date")*/
 const ENABLE_SOUND = g_config.get('enable_sound');
+const SENSEX_EXPIRY_DATE = g_config.get('sensex_expiry_date');
+const ANALYZE_FUTURE_TREND = g_config.get('analyze_future_trend');
 
 async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
@@ -218,40 +228,68 @@ let instrumentsMap = {}
 let timerInstance = null
 let infoMap = {}
 
-async function autoRefreshEachTabs(instance) {
+async function autoRefreshEachTabs(instance, isManual) {
     clearInterval(timerInstance)
-    let marketWatchSideBar = jQ(".marketwatch-pagination");
-    let tabs = marketWatchSideBar.find(".pagination a.item");
-    for (let i = 0; i < (tabs.length - 1); i++) {
-        jQ(".marketwatch-pagination a.item")[i].click();
+
+    let currentTime = moment().format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:25:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let allow = true;
+
+    if (!(currentTime >= checkTime)) {
+        console.log("-------------------------[WAITING FOR MARKET TO OPEN FOR PRICE REFRESH]-----------");
+        console.log("current Time :" + currentTime);
+        console.log("----------------------------------------------------------------------------------");
+        allow = false;
+    }
+
+    if (currentTime >= endTime) {
+        console.log("----------------------------[MARKET CLOSED PRICE REFRESH STOPPED]--------------------");
+        console.log("current Time :" + currentTime);
+        console.log("------------------------------------------------------------------------------------");
+        allow = false;
+    }
+
+    if (allow || isManual) {
+        let marketWatchSideBar = jQ(".marketwatch-pagination");
+        let tabs = marketWatchSideBar.find(".pagination a.item");
+        for (let i = 0; i < (tabs.length - 1); i++) {
+            jQ(".marketwatch-pagination a.item")[i].click();
+            await callSleepForAWhile(1000);
+            generateTrend();
+            /*await callSleepForAWhile(1000);*/
+        }
+        await startStockAlgoTrades();
+        /*Reset to first tab*/
+        jQ(".marketwatch-pagination a.item")[0].click();
+
         await callSleepForAWhile(1000);
         generateTrend();
-        /*await callSleepForAWhile(1000);*/
-    }
-    await startStockAlgoTrades();
-    /*Reset to first tab*/
-    jQ(".marketwatch-pagination a.item")[0].click();
+        await callSleepForAWhile(1000);
+        showOrderTypeCount();
+        getAllBullsBearsCount()
+        jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
-    await callSleepForAWhile(1000);
-    generateTrend();
-    await callSleepForAWhile(1000);
-    showOrderTypeCount();
-    getAllBullsBearsCount()
-    jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+        if (jQ("a#refresh-order-book").is(":visible")) {
+            jQ("a#refresh-order-book").trigger("click")
+        }
+        startQuickToUpdateLtps()
+        await autoBreakOutScanner();
+        let currentMinute = moment().format("mm")
+        if ((currentMinute % 5) == 0) {
+            await callAnalyseTrend("OI", REFRESH_LIST)
+        }
+        if (instance) {
+            instance.attr("disabled", false)
+        }
+    }
     startRefresh();
-    if (jQ("a#refresh-order-book").is(":visible")) {
-        jQ("a#refresh-order-book").trigger("click")
-    }
-    startQuickToUpdateLtps()
-    await autoBreakOutScanner();
-    let currentMinute = moment().format("mm")
-    if ((currentMinute % 5) == 0) {
-        await callAnalyseTrend("OI", REFRESH_LIST)
-    }
-    if (instance) {
-        instance.attr("disabled", false)
-    }
 }
+
+jQ(document).on("click", ".refresh-refresh-list", function () {
+   callAnalyseTrend("OI", REFRESH_LIST)
+});
+
 
 function getAllBullsBearsCount() {
     let aso = 0;
@@ -281,12 +319,12 @@ function getAllBullsBearsCount() {
 jQ(document).on("click", "#start-auto-refresh", function () {
     var that = jQ(this);
     that.attr("disabled", true);
-    commonRefresh(that)
+    commonRefresh(that, true)
 });
 
-async function commonRefresh(that) {
+async function commonRefresh(that, isManual) {
     clearInterval(timerInstance)
-    await autoRefreshEachTabs(that);
+    await autoRefreshEachTabs(that, isManual);
     generateStockDataTable();
 }
 
@@ -306,24 +344,6 @@ function startRefresh() {
 };
 
 function startTimer(duration, display) {
-    let currentTime = moment().format("HH:mm")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 15:25:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-
-    if (!(currentTime >= checkTime)) {
-        console.log("-------------------------[WAITING FOR MARKET TO OPEN FOR PRICE REFRESH]-----------");
-        console.log("current Time :" + currentTime);
-        console.log("----------------------------------------------------------------------------------");
-        return
-    }
-
-     if (currentTime >= endTime) {
-        console.log("----------------------------[MARKET CLOSED PRICE REFRESH STOPPED]--------------------");
-        console.log("current Time :" + currentTime);
-        console.log("------------------------------------------------------------------------------------");
-        return
-    }
-
     timerInstance = setInterval(function () {
         var d = new Date();
         var s = d.getSeconds();
@@ -332,8 +352,8 @@ function startTimer(duration, display) {
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
         if (s == 59) {
             autoRefreshEachTabs();
+            updatePrfitLoss();
         }
-        updatePrfitLoss();
     }, 1000);
 }
 
@@ -444,9 +464,15 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
-    html += '<div class="col-md-1">'
+    html += '<div class="col-md-1" style="display:none;">'
     html += '<button title="OHL Opening Trend" id="show-ohl-opening-trend" class="btn ms-1 badge bg-info" type="submit">';
     html += 'OHL OT'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="show-futures" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Futures'
     html += '</button>'
     html += '</div>'
 
@@ -455,6 +481,20 @@ function showAutoTrade() {
     html += 'Breakout'
     html += '</button>'
     html += '</div>'
+
+    html += '<div class="col-md-2" >'
+    html += 'All: <span class="badge bg-success" style="margin-right: .2rem;" id="all-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="all-bear-trend">' + 0 + ' %</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2" >'
+    html += 'Nifty: <span class="badge bg-success" style="margin-right: .2rem;" id="nifty-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="nifty-bear-trend">' + 0 + ' %</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2" >'
+    html += 'Bank: <span class="badge bg-success" style="margin-right: .2rem;" id="bank-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="bank-bear-trend">' + 0 + ' %</span>'
+    html += '</div>'
+
+
 
     html += '</div>'
 
@@ -510,6 +550,7 @@ function showAutoTrade() {
     html += '<th>W</th>'
     html += '<th>O</th>'
     html += '<th>INDEX</th>'
+    html += '<th>FUTURES</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'

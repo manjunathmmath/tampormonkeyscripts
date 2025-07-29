@@ -1,0 +1,18 @@
+select  
+    name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
+from 
+    kite_instruments 
+where 
+    instrument_type='FUT' 
+    and expiry  like'%-07-2025%' 
+    and exchange in('NFO','BFO');
+
+
+select 
+name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
+from 
+    kite_instruments 
+where 
+    segment in('NFO','BFO') 
+    and  expiry like'%-07-2025%' 
+    order by name;

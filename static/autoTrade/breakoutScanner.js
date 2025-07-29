@@ -35,7 +35,7 @@ async function autoBreakOutScanner() {
     }
 
     commonBreakOutLogic(true)
-    callAnalyseBreakout(true);
+    await callAnalyseBreakout(true);
 }
 
 jQ(document).on("click", "#show-breakout-intruments", function () {
@@ -261,7 +261,7 @@ function generateBreakOutStockTable(data) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [2, 3, 4, 5, 6, 7, 8, 9],
+                "targets": [2, 3, 4, 5, 6, 7, 9],
                 "visible": false,
                 "searchable": false
             }
@@ -662,7 +662,7 @@ function generateBreakOutStockTable(data) {
                 allCount++;
 
             });
-            jQ(".dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument" type="button"><span>Analyze</span></button>')
+            jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument" type="button"><span>Analyze</span></button>')
 
         },
         "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {

@@ -7,6 +7,21 @@ async function showTrendingStocks() {
     let scripts = []
     let checkInstr = []
     let orderRow = 1;
+
+    let futuresMap = {}
+    jQ.each(futureInstrumentsList, function (index, item) {
+        if (item.name == "SENSEX") {
+            let date = moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD")
+            if (SENSEX_EXPIRY_DATE == date) {
+                futuresMap[item.name] = item
+            }
+        } else {
+            futuresMap[item.name] = item
+        }
+
+    })
+    console.log(futuresMap)
+
     jQ.each(instrumentsMap, function (index, item) {
         if (index != 'INDIA VIX') {
             if (jQ.inArray(index, checkInstr) === -1) {
@@ -31,6 +46,25 @@ async function showTrendingStocks() {
             obj['STRIKEDATA'] = infoMap[data.name]['strikeData'];
             obj['CURRENT_PRICE'] = infoMap[data.name]['currentPrice'];
         }
+
+        let instrument = data.name
+        if (data.name == "NIFTY 50") {
+            instrument = "NIFTY"
+        } else if (data.name == "NIFTY BANK") {
+            instrument = "BANKNIFTY"
+        } else if (data.name == "NIFTY FIN SERVICE") {
+            instrument = "FINNIFTY"
+        } else if (data.name == "NIFTY MID SELECT") {
+            instrument = "MIDCPNIFTY"
+        }
+        obj['FUTURES_NAME'] = ''
+        obj['FUTURES_TOKEN'] = ''
+        if (instrument != "GIFT NIFTY") {
+            obj['FUTURES_NAME'] = futuresMap[instrument]['name']
+            obj['FUTURES_TOKEN'] = futuresMap[instrument]['instrument_token']
+        }
+
+
         scripts.push(obj)
     }
 
@@ -45,6 +79,28 @@ async function showTrendingStocks() {
         obj['CLOSE'] = scripts[i]['CLOSE']
         obj['PRICE'] = scripts[i]['PRICE']
         obj['PERC'] = scripts[i]['PERC']
+        let name = scripts[i]['TRADINGSYMBOL']
+
+        let instrument = name
+        if (name == "NIFTY 50") {
+            instrument = "NIFTY"
+        } else if (name == "NIFTY BANK") {
+            instrument = "BANKNIFTY"
+        } else if (name == "NIFTY FIN SERVICE") {
+            instrument = "FINNIFTY"
+        } else if (name == "NIFTY MID SELECT") {
+            instrument = "MIDCPNIFTY"
+        }
+        obj['FUTURES_NAME'] = ''
+        obj['FUTURES_TOKEN'] = ''
+        obj['FUTURES_TREND'] = ''
+        if (instrument != "GIFT NIFTY") {
+            obj['FUTURES_TRADING_SYMBOL'] = futuresMap[instrument]['tradingsymbol']
+            obj['FUTURES_TOKEN'] = futuresMap[instrument]['instrument_token']
+            obj['FUTURES_EXPIRY'] = futuresMap[instrument]['expiry']
+            obj['FUTURES_NAME'] = futuresMap[instrument]['name']
+            obj['FUTURES_LOT_SIZE'] = futuresMap[instrument]['lot_size']
+        }
 
         if (instrumentOrder[scripts[i]['TRADINGSYMBOL']]) {
             obj['ORDER'] = instrumentOrder[scripts[i]['TRADINGSYMBOL']];
@@ -57,13 +113,13 @@ async function showTrendingStocks() {
         obj['VOLUME'] = ''
         obj['INDEX'] = ''
 
-        let indexType= []
+        let indexType = []
         if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_50_LIST) !== -1) {
             indexType.push("NIFTY")
-        } 
+        }
         if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_BANK_LIST) !== -1) {
             indexType.push("BANK")
-        } 
+        }
 
         obj['INDEX'] = indexType.join(",")
         obj['STRIKE_LOWER_ONE_CE'] = ''
@@ -206,10 +262,14 @@ function generateTrendingStockTable(data) {
                     html += 'OI'
                     html += '</span>'
 
+                    html += '<span style="font-size:xx-small;position:absolute;right:3rem;"  data-lot-size="' + row['FUTURES_LOT_SIZE'] + '" data-token="' + row['FUTURES_TOKEN'] + '" data-name="' + row['FUTURES_NAME'] + '" class="bg-info-color show-future-chart">'
+                    html += 'Fut'
+                    html += '</span>'
+
                     return html;
                 }
             },
-            
+
             {
                 "data": 'PERC',
                 render: function (data, type, row, meta) {
@@ -919,11 +979,23 @@ function generateTrendingStockTable(data) {
             },
             {
                 "data": "WEIGHTAGE"
-            },{
+            }, {
                 "data": "ORDER"
             },
             {
                 "data": "INDEX"
+            },
+            {
+                "data": "FUTURES_NAME",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (row['FUTURES_TREND']) {
+                        console.log(row['FUTURES_TREND'])
+                        html += row['FUTURES_TREND']['TREND']['PLUS']
+                        html += row['FUTURES_TREND']['TREND']['MINUS']
+                    }
+                    return html
+                }
             },
 
         ],
@@ -957,8 +1029,8 @@ function showTrendCount() {
             bsoCount++;
         }
         allCount++;
-
     });
+
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
@@ -967,8 +1039,10 @@ function showTrendCount() {
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="TREND" style="margin-right: .2rem;" class="dt-button analyse-instrument  bg-info" type="button"><span>ANALYZE TREND</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button refresh-refresh-list bg-info" type="button"><span>REFRESH</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
+
 
 }
 
@@ -1015,21 +1089,18 @@ jQ(document).on("click", ".analyse-instrument", function () {
 
 });
 
-
 async function commonAnalyzeTrend(type, that) {
     await callAnalyseTrend(type, [])
     that.attr("disabled", false)
 }
 
 async function callAnalyseTrend(type, REFRESH_STOCKS) {
-    console.log(REFRESH_STOCKS)
     let count = 0;
     let scriptsCount = trendingStocks.length
     let refreshCount = REFRESH_STOCKS.length
     let tableData
     let refreshIndex = 1;
     for (let i = 0; i < scriptsCount; i++) {
-        console.log(trendingStocks[i]['TRADINGSYMBOL'])
         if (REFRESH_STOCKS.length > 0) {
             if (!(jQ.inArray(trendingStocks[i]['TRADINGSYMBOL'], REFRESH_STOCKS) !== -1)) {
                 continue;
@@ -1099,8 +1170,12 @@ async function callAnalyseTrend(type, REFRESH_STOCKS) {
             trendingStocks[rowId]['LTP'] = infoMap[name]['currentPrice']
             let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, infoMap[name]['currentPrice'], previousClose);
             trendingStocks[rowId]['OHL_TREND'] = res;
-            if (type == "OI") {
+            if (type == "OI" && name != 'GIFT NIFTY') {
                 let strikes = await showTrendingOI(name)
+                if (ANALYZE_FUTURE_TREND) {
+                    let futureTrend = await showFutureTrend(trendingStocks[rowId])
+                    trendingStocks[rowId]['FUTURES_TREND'] = futureTrend
+                }
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
                 if (strikes[0]) {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
@@ -1363,12 +1438,1114 @@ async function callAnalyseTrend(type, REFRESH_STOCKS) {
             console.log(err)
         }
     }
+
+    if (REFRESH_STOCKS.length == 0) {
+        let allBull = 0;
+        let allBear = 0;
+        let niftyBull = 0;
+        let niftyBear = 0;
+        let bankBull = 0;
+        let bankBear = 0;
+        jQ.each(trendingStocks, function (index, row) {
+            let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+            let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+            let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+            let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+            let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+            let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+            let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+            let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+            let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+            let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+            let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+            let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+            if (isOneDayAgoValue == 'T') {
+                allBull++
+
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isTwoDayAgoValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+
+            if (isThreeDayAgoValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isFourDayAgoValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isFiveDayAgoValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isSixDayAgoValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isSevenDayAgoValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isDayCloseGreaterDayOpenValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+
+            if (oneDayAgoVolumeGreaterValue == 'T') {
+                allBull++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBull++
+                }
+
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBull++
+                }
+            } else {
+                allBear++
+                if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                    niftyBear++
+                }
+                if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                    bankBear++
+                }
+            }
+        });
+
+        let allBullPerc = allBull / (12 * 227) * 100
+        let allBearPerc = allBear / (12 * 227) * 100
+
+
+        let niftyBullPerc = niftyBull / (12 * 50) * 100
+        let niftyBearPerc = niftyBear / (12 * 50) * 100
+
+
+        let bankBullPerc = bankBull / (12 * 12) * 100
+        let bankBearPerc = bankBear / (12 * 12) * 100
+
+        jQ("#all-bull-trend").html(parseFloat(allBullPerc).toFixed(2) + '%')
+        jQ("#all-bear-trend").html(parseFloat(allBearPerc).toFixed(2) + '%')
+        jQ("#nifty-bull-trend").html(parseFloat(niftyBullPerc).toFixed(2) + '%')
+        jQ("#nifty-bear-trend").html(parseFloat(niftyBearPerc).toFixed(2) + '%')
+        jQ("#bank-bull-trend").html(parseFloat(bankBullPerc).toFixed(2) + '%')
+        jQ("#bank-bear-trend").html(parseFloat(bankBearPerc).toFixed(2) + '%')
+
+    }
     jQ("#processing-trend").html("Done...");
     jQ("#last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
 }
 
+async function showFutureTrend(row) {
+    let pres = await getHistoricalDataUsingPromise(row.FUTURES_TOKEN, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+    let cres = await getHistoricalDataUsingPromise(row.FUTURES_TOKEN, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+    let trend;
+    let moreInfo;
+    if (row['TRADINGSYMBOL'] == "NIFTY BANK") {
+        trend = showAiBankNiftyPrediction(cres, pres, row);
+        moreInfo = bankNiftyFutureAnalysis(cres, pres, row)
+    } else {
+        trend = showAiNiftyPrediction(cres, pres, row)
+        moreInfo = niftyFutureAnalysis(cres, pres, row)
+    }
+    let result = {}
+    result['TREND'] = trend
+    result['MORE_INFO'] = moreInfo
+    return result
+}
+
+function showAiNiftyPrediction(currentQuoteData, prevQuoteData, row) {
+    let futuresData = {};
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
+    if (!currentData) {
+        return;
+    }
+
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5; // price spike adjustment
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / row['FUTURES_LOT_SIZE'];
+    var previousOI = prevQuote['oi'] / row['FUTURES_LOT_SIZE']
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+    var dogImgContainer = '<span class="badge bg-light ai-prediction">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="badge bg-light ai-prediction">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="badge bg-light ai-prediction">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="badge bg-light ai-prediction">' + captain + '</span>'
+    var lokiImgContainer = '<span class="badge bg-light ai-prediction">' + loki + '</span>'
+    var ironManImgContainer = '<span class="badge bg-light ai-prediction">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="badge bg-light ai-prediction">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="badge bg-light ai-prediction">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+    if (price == "+" && oi == "+") {
+        remark = '<span class="badge bg-success ai-prediction">Long</span>'
+        display = "+";
+    } else if (price == "-" && oi == "+") {
+        remark = '<span class="badge bg-danger ai-prediction">Short</span>'
+        display = "-";
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<span class="badge bg-success ai-prediction">Short Covering</span>'
+        display = "+";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<span class="badge bg-danger ai-prediction">Long Unwinding</span>'
+        display = "-";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger ai-prediction">Bears Coming,Sell On Rise</span>'
+        display = "-";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Gambling! Buy,News & Events</span>'
+        display = "+";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Caution! Writers Eroding Premium</span>'
+        display = "+";
+    } else {
+        remark = captainImgContainer + '<span class="badge bg-danger ai-prediction">Defence,Buy On Decline</span>'
+        display = "+";
+    }
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    if (display == "+") {
+        marketTrendPlus = '<span class="blinking badge bg-success ai-prediction">Hulk Arrived (+)</span>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<span class="blinking badge bg-warning ai-prediction">Doctor Strange Arrived (+)</span>'
+            imageBullPlus = doctorStrangeImgContainer
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to buy Calls</span>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    futuresData['PLUS'] = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<span class="blinking badge bg-danger ai-prediction">Chitauri Army Arrived (-)</span>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to Short Calls</span>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+
+    futuresData['MINUS'] = imageBearMinus + bearRemark + marketTrendMinus
+
+    return futuresData;
+}
+
+function showAiBankNiftyPrediction(currentQuoteData, prevQuoteData, row) {
+    let futuresData = {};
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
+
+    if (!currentData) {
+        return;
+    }
+
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var close = quote.close;
+    var lastPrice = quote.close;
+
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5; // price spike adjustment
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / row['FUTURES_LOT_SIZE'];
+    var previousOI = prevQuote['oi'] / row['FUTURES_LOT_SIZE']
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+
+    var dogImgContainer = '<span class="badge bg-light ai-prediction">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="badge bg-light ai-prediction">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="badge bg-light ai-prediction">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="badge bg-light ai-prediction">' + captain + '</span>'
+    var lokiImgContainer = '<span class="badge bg-light ai-prediction">' + loki + '</span>'
+    var ironManImgContainer = '<span class="badge bg-light ai-prediction">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="badge bg-light ai-prediction">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="badge bg-light ai-prediction">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="badge bg-light ai-prediction">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+
+    if (price == "+" && oi == "+") {
+        remark = '<span class="badge bg-success ai-prediction">Long</span>'
+        display = "+";
+    } else if (price == "-" && oi == "+") {
+        remark = '<span class="badge bg-danger ai-prediction">Short</span>'
+        display = "-";
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<span class="badge bg-success ai-prediction">Short Covering</span>'
+        display = "+";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<span class="badge bg-danger ai-prediction">Long Unwinding</span>'
+        display = "-";
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger ai-prediction">Bears Coming,Sell On Rise</span>'
+        display = "-";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Gambling! Buy,News & Events</span>'
+        display = "+";
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<span class="badge bg-danger ai-prediction">Caution! Writers Eroding Premium</span>'
+        display = "+";
+    } else {
+        remark = captainImgContainer + '<span class="badge bg-danger ai-prediction">Defence,Buy On Decline</span>'
+        display = "+";
+    }
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    var openInterestMarkupBull = openInterestMarkup
+    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
+    var openInterestChangeMarkupBull = openInterestChangeMarkup
+    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
+    var niftyOILabelPlusBull = "NIFTY-OI"
+    if (display == "+") {
+        marketTrendPlus = '<span class="blinking badge bg-success ai-prediction">Hulk Arrived (+)</span>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<span class="blinking badge bg-warning ai-prediction">Doctor Strange Arrived (+)</span>'
+            imageBullPlus = doctorStrangeImgContainer
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to buy Calls</span>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    futuresData['PLUS'] = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<span class="blinking badge bg-danger ai-prediction">Chitauri Army Arrived (-)</span>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<span class=" blinking badge bg-danger ai-prediction">Strongly Not Recommended to Short Calls</span>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+    futuresData['MINUS'] = imageBearMinus + bearRemark + marketTrendMinus
+
+    return futuresData;
+}
+
+function niftyFutureAnalysis(currentQuoteData, prevQuoteData, row) {
+    let futuresData = {};
+
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
+
+    if (!currentData) {
+        return;
+    }
+
+    let currentChangeInOi = ''
+    if (currentQuoteData.data['candles'].length > 1) {
+        let secondData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 2];
+        var latestOI = (currentData[6] / row['FUTURES_LOT_SIZE']).toFixed(0);
+        var previousLatestOi = (secondData[6] / row['FUTURES_LOT_SIZE']).toFixed(0);
+        let diff = latestOI - previousLatestOi
+        if (diff > 0) {
+            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
+        } else {
+            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
+        }
+        /*if (Math.abs(diff) > 100) {
+            let alrtSound = new Audio(alertSound);
+            alrtSound.play();
+        }*/
+
+    }
+
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var close = quote.close;
+    var lastPrice = quote.close;
+
+    var lastUpdateTime = quote.date;
+    var prevClose = prevQuote['close']
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose)
+    var booleanValue = false;
+
+    var correctedVwap = vwap;
+
+    var vvapTextOne = ''
+    var vvapTextTwo = ''
+    var vvapTextThree = ''
+    var vvapTextFour = ''
+
+    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+    var upTriangle = '<i class="bi bi-caret-up"></i>'
+
+    if (vwap <= lastPrice) {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
+        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = true;
+    } else {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
+        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = false;
+    }
+    futuresData.VWAP = vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour
+
+    var buyResult = Math.abs(openPrice - lowPrice);
+    var sellResult = Math.abs(openPrice - highPrice);
+    var diffNiftyOpenPrevOpen = Math.abs(openPrice - prevClose);
+    var diffNiftyOpenPrevOpenResult = false;
+    if (diffNiftyOpenPrevOpen >= 1 && diffNiftyOpenPrevOpen <= 11) {
+        diffNiftyOpenPrevOpenResult = true
+    }
+
+    var textOpen = '<span class="badge bg-dark">' + openPrice + '</span>'
+    var textLow = '<span class="badge bg-danger">' + lowPrice + '</span>'
+    var textHigh = '<span class="badge bg-success">' + highPrice + '</span>'
+    var textPreviousClose = '<span class="badge bg-success">' + previousClose + '</span>'
+
+
+    futuresData.OPEN = textOpen
+    futuresData.HIGH = textHigh
+    futuresData.LOW = textLow
+    futuresData.CLOSE = textPreviousClose
+    futuresData.TIMESTAMP = lastUpdateTime
+
+
+    var futureTrend = ''
+    var futureDirection = ''
+    if (buyResult >= 0 && buyResult <= 11 && booleanValue == true) {
+        var trend = "Strong BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (sellResult >= 0 && sellResult <= 9 && booleanValue == false) {
+        var trend = "Strong SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    } else if (openPrice > prevClose && lastPrice > openPrice
+        && booleanValue == true) {
+        var trend = "BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (diffNiftyOpenPrevOpenResult == true
+        && booleanValue == true && lastPrice > openPrice) {
+        var trend = "BUY On Decline";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        var trend = "SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    futuresData.SIGNAL = futureTrend + " " + futureDirection
+
+    var price = ''
+    var priceChang = ''
+    var priceChangDirection = ''
+    var pricePer = ''
+    if (change > 0) {
+        price += '<span class="badge bg-success">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-success">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        price += '<span class="badge bg-danger">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-danger">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pChange > 0) {
+        pricePer += '<span class="badge bg-success">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    } else {
+        pricePer += '<span class="badge bg-danger">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    }
+    futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
+
+    var openInterest = (quote.oi / row['FUTURES_LOT_SIZE']).toFixed(0);
+    var previousOI = prevQuote['oi'] / row['FUTURES_LOT_SIZE']
+    var changeinOpenInterest = (openInterest - previousOI)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100);
+
+    var oiPrice = ''
+    var oiPriceChang = ''
+    var oiPriceChangDirection = ''
+    var oiPricePer = ''
+    if (changeinOpenInterest > 0) {
+        oiPrice += '<span class="badge bg-success">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-success">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+
+    } else {
+        oiPrice += '<span class="badge bg-danger">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-danger">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        oiPricePer += '<span class="badge bg-success">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    } else {
+        oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    }
+
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang + " " + currentChangeInOi
+
+    return futuresData;
+}
+
+function bankNiftyFutureAnalysis(currentQuoteData, prevQuoteData, row) {
+    let futuresData = {};
+
+    let prevData = prevQuoteData.data['candles'][0];
+    let currentData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 1];
+
+    if (!currentData) {
+        return;
+    }
+
+    let currentChangeInOi = ''
+    if (currentQuoteData.data['candles'].length > 1) {
+        let secondData = currentQuoteData.data['candles'][currentQuoteData.data['candles'].length - 2];
+        var latestOI = (currentData[6] / row['FUTURES_LOT_SIZE']).toFixed(0);
+        var previousLatestOi = (secondData[6] / row['FUTURES_LOT_SIZE']).toFixed(0);
+        let diff = latestOI - previousLatestOi
+        if (diff > 0) {
+            currentChangeInOi += '<span class="badge bg-success">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
+        } else {
+            currentChangeInOi += '<span class="badge bg-danger">' + parseFloat(diff).toFixed(2) + ' [' + moment(currentData[0]).format("HH:mm") + ']' + '</span>'
+        }
+        /*if (Math.abs(diff) > 100) {
+            let alrtSound = new Audio(alertSound);
+            alrtSound.play();
+        }*/
+    }
+
+    var quote = {}
+    quote['open'] = currentData[1]
+    quote['high'] = currentData[2]
+    quote['low'] = currentData[3]
+    quote['close'] = currentData[4]
+    quote['volume'] = currentData[5]
+    quote['oi'] = currentData[6]
+
+
+    var prevQuote = {}
+    prevQuote['open'] = prevData[1]
+    prevQuote['high'] = prevData[2]
+    prevQuote['low'] = prevData[3]
+    prevQuote['close'] = prevData[4]
+    prevQuote['volume'] = prevData[5]
+    prevQuote['oi'] = prevData[6]
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+    var lastUpdateTime = quote.date;
+    var prevClose = prevQuote['close']
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose)
+    var booleanValue = false;
+
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5;
+
+    var vvapTextOne = ''
+    var vvapTextTwo = ''
+    var vvapTextThree = ''
+    var vvapTextFour = ''
+
+    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+    var upTriangle = '<i class="bi bi-caret-up"></i>'
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap - 5;
+    if (correctedVwap <= lastPrice) {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
+        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = true;
+    } else {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
+        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(lastPrice) - parseFloat(vwap)).toFixed(2) + '</span>'
+        booleanValue = false;
+    }
+    futuresData.VWAP = vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour
+
+    var buyResult = Math.abs(openPrice - lowPrice);
+    var sellResult = Math.abs(openPrice - highPrice);
+
+    var textOpen = '<span class="badge bg-dark">' + openPrice + '</span>'
+    var textLow = '<span class="badge bg-danger">' + lowPrice + '</span>'
+    var textHigh = '<span class="badge bg-success">' + highPrice + '</span>'
+    var textPreviousClose = '<span class="badge bg-success">' + previousClose + '</span>'
+
+
+    futuresData.OPEN = textOpen
+    futuresData.HIGH = textHigh
+    futuresData.LOW = textLow
+    futuresData.CLOSE = textPreviousClose
+    futuresData.TIMESTAMP = lastUpdateTime
+
+    var futureTrend = ''
+    var futureDirection = ''
+    if (buyResult >= 0 && buyResult <= 30 && booleanValue == true) {
+        var trend = "Strong BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (sellResult >= 0 && sellResult <= 30 && booleanValue == false) {
+        var trend = "Strong SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    } else if (openPrice > prevClose && lastPrice >= openPrice
+        && booleanValue == true) {
+        var trend = "BUY";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else if (booleanValue == true && lastPrice > openPrice) {
+        var trend = "BUY On Decline";
+        futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        var trend = "SELL";
+        futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+        futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    futuresData.SIGNAL = futureTrend + " " + futureDirection
+
+    var price = ''
+    var priceChang = ''
+    var priceChangDirection = ''
+    var pricePer = ''
+    if (change > 0) {
+        price += '<span class="badge bg-success">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-success">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+    } else {
+        price += '<span class="badge bg-danger">' + lastPrice + '</span>'
+        priceChang += '<span class="badge bg-danger">' + parseFloat(change).toFixed(2) + '</span>'
+        priceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pChange > 0) {
+        pricePer += '<span class="badge bg-success">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    } else {
+        pricePer += '<span class="badge bg-danger">' + parseFloat(pChange).toFixed(2) + '%</span>'
+    }
+    futuresData.PRICE = price + " " + priceChangDirection + " " + pricePer + " " + priceChang
+
+    var openInterest = (quote.oi / row['FUTURES_LOT_SIZE']).toFixed(0);
+    var previousOI = prevQuote['oi'] / row['FUTURES_LOT_SIZE']
+    var changeinOpenInterest = (openInterest - previousOI)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+
+    var oiPrice = ''
+    var oiPriceChang = ''
+    var oiPriceChangDirection = ''
+    var oiPricePer = ''
+    if (changeinOpenInterest > 0) {
+        oiPrice += '<span class="badge bg-success">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-success">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+
+    } else {
+        oiPrice += '<span class="badge bg-danger">' + openInterest + '</span>'
+        oiPriceChang += '<span class="badge bg-danger">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+        oiPriceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        oiPricePer += '<span class="badge bg-success">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    } else {
+        oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+    }
+
+    futuresData.OI = oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang + " " + currentChangeInOi
+
+    return futuresData;
+
+}
+
 async function showTrendingOI(instrument) {
+
     let strikToShow = 2
     let strikeData = []
     let selectedStrike = []
@@ -1378,12 +2555,21 @@ async function showTrendingOI(instrument) {
     if (instrument == "NIFTY" || instrument == "NIFTY 50") {
         info = infoMap["NIFTY 50"]
         instrument = "NIFTY"
+        strikToShow = 3
+    } else if (instrument == "BANKNIFTY" || instrument == "NIFTY BANK") {
+        info = infoMap["NIFTY BANK"]
+        instrument = "BANKNIFTY"
+        strikToShow = 3
+    } else if (instrument == "FINNIFTY" || instrument == "NIFTY FIN SERVICE") {
+        info = infoMap["NIFTY FIN SERVICE"]
+        instrument = "FINNIFTY"
+        strikToShow = 3
+    } else if (instrument == "MIDCPNIFTY" || instrument == "NIFTY MID SELECT") {
+        info = infoMap["NIFTY MID SELECT"]
+        instrument = "MIDCPNIFTY"
+        strikToShow = 3
     } else {
         info = infoMap[instrument]
-    }
-
-    if (instrument.includes("NIFTY")) {
-        strikToShow = 3
     }
 
     let atmStrike = 0;
@@ -1394,10 +2580,15 @@ async function showTrendingOI(instrument) {
                 if (date == NIFTY_EXPIRY_DATE) {
                     selectedStrike.push(item)
                 }
-            } else {
-                if (date == STOCK_EXPIRY_DATE) {
+            } else if (instrument == "SENSEX") {
+                if (date == SENSEX_EXPIRY_DATE) {
                     selectedStrike.push(item)
                 }
+            } else {
+                selectedStrike.push(item)
+                /*if (date == STOCK_EXPIRY_DATE) {
+                    selectedStrike.push(item)
+                }*/
             }
         }
     });
