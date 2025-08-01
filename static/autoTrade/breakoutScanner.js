@@ -8,7 +8,7 @@ async function autoBreakOutScanner() {
 
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 15:10:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 23:59:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     console.log("Scanner starts  @ " + checkTime + "AM.  current time is :" + currentTime);
 
@@ -38,7 +38,8 @@ async function autoBreakOutScanner() {
     await callAnalyseBreakout(true);
 }
 
-jQ(document).on("click", "#show-breakout-intruments", function () {
+jQ(document).on("click", "#show-breakout-intruments", function (e) {
+    e.preventDefault();
     showBreakOutStocks();
 });
 
@@ -51,42 +52,38 @@ function commonBreakOutLogic(auto) {
     let orderRow = 1;
 
     if (auto) {
-        jQ.each(instrumentsMap, function (index, item) {
+        jQ.each(instrumentTokens, function (index, item) {
             if (jQ.inArray(index, checkInstr) === -1) {
                 if (index == "NIFTY 50" || index == "NIFTY BANK" || index == "RELIANCE" || index == "HDFCBANK") {
-                    instru.push(instrumentsMap[index])
+                    instru.push(index)
                     checkInstr.push(index)
                 }
             }
         });
     } else {
-        jQ.each(instrumentsMap, function (index, item) {
+        jQ.each(instrumentTokens, function (index, item) {
             if (index != 'INDIA VIX') {
                 if (jQ.inArray(index, checkInstr) === -1) {
-                    instru.push(instrumentsMap[index])
+                    instru.push(index)
                     checkInstr.push(index)
                 }
             }
         });
-
     }
 
-
+    let scriptData = generateTrends()
     for (let i = 0; i < instru.length; i++) {
-        let data = instru[i];
+        let name = instru[i];
         let obj = {}
-        obj['TRADINGSYMBOL'] = data.name;
-        obj['CLOSE'] = data['prevPrice'];
-        obj['PRICE'] = data['price'];
-        obj['PERC'] = data['perc'];
-        obj['TREND'] = '';
-        obj['LTP'] = 0;
-        if (infoMap[data.name]) {
-            obj['TREND'] = infoMap[data.name]['trends'];
-            obj['LTP'] = infoMap[data.name]['currentPrice'];
-            obj['STRIKEDATA'] = infoMap[data.name]['strikeData'];
-            obj['CURRENT_PRICE'] = infoMap[data.name]['currentPrice'];
-        }
+        obj['TRADINGSYMBOL'] = name;
+        obj['CLOSE'] = scriptData[name]['prevPrice'];
+        obj['PRICE'] = scriptData[name]['price'];
+        obj['PERC'] = scriptData[name]['perc'];
+        obj['TREND'] = scriptData[name]['trends'];
+        obj['LTP'] = scriptData[name]['ltp'];
+        obj['STRIKEDATA'] = scriptData[name]['strikeData'];
+        obj['CURRENT_PRICE'] = scriptData[name]['ltp'];
+        obj['TREND'] = scriptData[name]['trends'];
         scripts.push(obj)
     }
 
@@ -105,8 +102,7 @@ function commonBreakOutLogic(auto) {
         let obj = {}
 
         obj['TRADINGSYMBOL'] = scripts[i]['TRADINGSYMBOL']
-        let info = infoMap[scripts[i]['TRADINGSYMBOL']]
-        obj['LTP'] = info['currentPrice']
+        obj['LTP'] = scripts[i]['LTP']
         obj['TREND'] = scripts[i]['TREND']
         obj['STRIKEDATA'] = scripts[i]['STRIKEDATA']
         obj['CLOSE'] = scripts[i]['CLOSE']
@@ -115,6 +111,16 @@ function commonBreakOutLogic(auto) {
         obj['ORDER'] = orderRow;
         obj['VOLUME'] = ''
         obj['OHL_TREND'] = ''
+        obj['BREAKOUT'] = ''
+        let indexType = []
+        if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_50_LIST) !== -1) {
+            indexType.push("NIFTY")
+        }
+        if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_BANK_LIST) !== -1) {
+            indexType.push("BANK")
+        }
+
+        obj['INDEX'] = indexType.join(",")
 
         obj['isOneDayAgo'] = false;
         obj['isTwoDayAgo'] = false;
@@ -133,20 +139,15 @@ function commonBreakOutLogic(auto) {
 
         let asoPrice = 0;
         let bsoPrice = 0;
-        let aso = parseFloat(obj['STRIKEDATA']['ustrikeOne']) - parseFloat(obj['PRICE']);
-        aso = aso / 5
         asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
-
-        let bso = parseFloat(obj['PRICE']) - parseFloat(obj['STRIKEDATA']['bstrikeOne']);
-        bso = bso / 5
         bsoPrice = parseFloat(obj['STRIKEDATA']['bstrikeOne']);
 
         if (jQ.inArray("ASO", obj['TREND']) != -1) {
-            priceMoved = parseFloat(info['currentPrice']) - asoPrice
+            priceMoved = parseFloat(obj['LTP']) - asoPrice
         }
 
         if (jQ.inArray("BSO", obj['TREND']) != -1) {
-            priceMoved = bsoPrice - parseFloat(info['currentPrice'])
+            priceMoved = bsoPrice - parseFloat(obj['LTP'])
         }
 
         obj['PRICE_MOVED'] = parseFloat(priceMoved).toFixed(1)
@@ -166,12 +167,26 @@ async function showBreakOutStocks() {
     let html = ''
 
     html += '<div class="row">'
+    html += '<div class="col-md-4" ></div>'
+    html += '<div class="col-md-2" >'
+    html += 'All: <span class="badge bg-success" style="margin-right: .2rem;" id="all-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="all-bear-trend">' + 0 + ' %</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2" >'
+    html += 'Nifty: <span class="badge bg-success" style="margin-right: .2rem;" id="nifty-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="nifty-bear-trend">' + 0 + ' %</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-2" >'
+    html += 'Bank: <span class="badge bg-success" style="margin-right: .2rem;" id="bank-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="bank-bear-trend">' + 0 + ' %</span>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<table  class="table" id="breakout-stock-list-table" style="width: 100%;display: none;">'
 
     html += '<thead>'
     html += '<tr>'
-    html += '<th>O</th>'
     html += '<th>SYMBOL</th>'
     html += '<th>CH%</th>'
     html += '<th  title="Price Moved">M</th>'
@@ -200,7 +215,6 @@ async function showBreakOutStocks() {
     title += 'Breakout Scanner'
     title += '</div>'
     title += '<div class="col-md-1 pop-title-extra">'
-    title += '<a id="breakout-scanner-start-auto-refresh">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
     title += '</div>'
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="breakout-last-refresh-time">Last @ 00:00:00</span>'
@@ -214,54 +228,28 @@ async function showBreakOutStocks() {
     var divId = "popup-custom-style-breakout-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     commonBreakOutLogic(false)
-
 }
 
-
-jQ(document).on("click", "#breakout-scanner-start-auto-refresh", function (e) {
-    let temp = breakOutStocks
-    jQ.each(temp, function (index, item) {
-        let info = infoMap[item['TRADINGSYMBOL']]
-        breakOutStocks[index]['LTP'] = info['currentPrice']
-
-        let priceMoved = 0;
-        let asoPrice = 0;
-        let bsoPrice = 0;
-
-        let aso = parseFloat(breakOutStocks[index]['STRIKEDATA']['ustrikeOne']) - parseFloat(breakOutStocks[index]['PRICE']);
-        aso = aso / 5
-        asoPrice = parseFloat(breakOutStocks[index]['STRIKEDATA']['ustrikeOne']);
-
-        let bso = parseFloat(breakOutStocks[index]['PRICE']) - parseFloat(breakOutStocks[index]['STRIKEDATA']['bstrikeOne']);
-        bso = bso / 5
-        bsoPrice = parseFloat(breakOutStocks[index]['STRIKEDATA']['bstrikeOne']);
-
-        if (jQ.inArray("ASO", breakOutStocks[index]['TREND']) != -1) {
-            priceMoved = parseFloat(info['currentPrice']) - asoPrice
-        }
-
-        if (jQ.inArray("BSO", breakOutStocks[index]['TREND']) != -1) {
-            priceMoved = bsoPrice - parseFloat(info['currentPrice'])
-        }
-        breakOutStocks[index]['PRICE_MOVED'] = parseFloat(priceMoved).toFixed(1)
-    });
-
-    generateBreakOutStockTable(breakOutStocks)
-});
 
 let breakOutScannerTable = null
 function generateBreakOutStockTable(data) {
     jQ("#breakout-stock-list-table").show()
     breakOutScannerTable = jQ('#breakout-stock-list-table').DataTable({
+        fixedColumns: {
+            start: 1,
+            end: 1
+        },
         "processing": true,
         "order": [[0, 'asc']],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
+        "scrollX": true,
+        scrollCollapse: true,
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [2, 3, 4, 5, 6, 7, 9],
+                "targets": [],
                 "visible": false,
                 "searchable": false
             }
@@ -271,9 +259,6 @@ function generateBreakOutStockTable(data) {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
-            {
-                "data": "ORDER"
-            },
             {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
@@ -288,8 +273,16 @@ function generateBreakOutStockTable(data) {
                     }
                     html += '</a>'
 
-                    html += '<span style="font-size:xx-small;display:block;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
+                    html += '<span style="font-size:xx-small;position:absolute;right:0" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
                     html += 'Chart'
+                    html += '</span>'
+
+                    let symbol = row['TRADINGSYMBOL']
+                    if (row['TRADINGSYMBOL'] == "NIFTY 50") {
+                        symbol = "NIFTY"
+                    }
+                    html += '<span style="font-size:xx-small;position:absolute;right:2rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color show-option-change">'
+                    html += 'OI'
                     html += '</span>'
 
                     return html;
@@ -376,7 +369,7 @@ function generateBreakOutStockTable(data) {
             { "data": "VOLUME" },
             { "data": "LTP" },
             {
-                "data": "",
+                "data": "BREAKOUT",
                 render: function (data, type, row, meta) {
                     let html = ''
                     let isOneDayAgoClass = 'badge bg-warning'
@@ -461,7 +454,7 @@ function generateBreakOutStockTable(data) {
                 }
             },
             {
-                "data": "",
+                "data": "BREAKOUT",
                 render: function (data, type, row, meta) {
                     let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
                     let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
@@ -555,7 +548,7 @@ function generateBreakOutStockTable(data) {
                 }
             },
             {
-                "data": "",
+                "data": "BREAKOUT",
                 render: function (data, type, row, meta) {
                     let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
                     let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
@@ -674,7 +667,8 @@ function generateBreakOutStockTable(data) {
     jQ("#breakout-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
 
-jQ(document).on("click", ".analyse-breakout-instrument", function () {
+jQ(document).on("click", ".analyse-breakout-instrument", function (e) {
+    e.preventDefault();
     jQ("#processing-breakout").html("Processing.... ");
     callAnalyseBreakout(false)
 });
@@ -682,6 +676,7 @@ jQ(document).on("click", ".analyse-breakout-instrument", function () {
 async function callAnalyseBreakout(auto) {
     let count = 0;
     let scriptsCount = breakOutStocks.length
+    let scriptData = generateTrends()
     for (let i = 0; i < breakOutStocks.length; i++) {
         try {
             if (!auto) {
@@ -712,7 +707,7 @@ async function callAnalyseBreakout(auto) {
 
             let dayHigh = 0
             let dayLow = 0
-            let dayOpen = parseFloat(instrumentsMap[name]['price']);
+            let dayOpen = parseFloat(scriptData[name]['price']);
             let prevDay = [candles[size - 2]];
             jQ.each(prevDay, function (index, item) {
                 if (index == 0) {
@@ -740,17 +735,16 @@ async function callAnalyseBreakout(auto) {
                 }
             });
 
-            let previousClose = parseFloat(instrumentsMap[name].prevPrice);
-            breakOutStocks[rowId]['LTP'] = infoMap[name]['currentPrice']
-            let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, infoMap[name]['currentPrice'], previousClose);
+            let previousClose = parseFloat(scriptData[name].prevPrice);
+            breakOutStocks[rowId]['LTP'] = scriptData[name]['ltp'];
+            let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, scriptData[name]['ltp'], previousClose);
             breakOutStocks[rowId]['OHL_TREND'] = res;
 
 
             let last = candles[candles.length - 1];
             breakOutStocks[rowId]['VOLUME'] = last.volume
 
-            let info = infoMap[name]
-            breakOutStocks[rowId]['LTP'] = info['currentPrice']
+            breakOutStocks[rowId]['LTP'] = scriptData[name]['ltp']
 
 
             let isOpenOfTheMonth = false;
@@ -880,7 +874,282 @@ async function callAnalyseBreakout(auto) {
             console.log(err)
         }
     }
+    if (!auto) {
+        showMarketSentiment()
+    }
     jQ("#processing-breakoutt").html("Done...");
+}
+
+function showMarketSentiment() {
+    let allBull = 0;
+    let allBear = 0;
+    let niftyBull = 0;
+    let niftyBear = 0;
+    let bankBull = 0;
+    let bankBear = 0;
+    jQ.each(breakOutStocks, function (index, row) {
+        let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+        let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+        let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+        let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+        let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+        let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+        let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+        let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+        let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+        let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+        let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+        let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+        if (isOneDayAgoValue == 'T') {
+            allBull++
+
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isTwoDayAgoValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+
+        if (isThreeDayAgoValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isFourDayAgoValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isFiveDayAgoValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isSixDayAgoValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isSevenDayAgoValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isDayCloseGreaterDayOpenValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+
+        if (oneDayAgoVolumeGreaterValue == 'T') {
+            allBull++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBull++
+            }
+
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBull++
+            }
+        } else {
+            allBear++
+            if (row.INDEX == "NIFTY" || row.INDEX == "NIFTY,BANK") {
+                niftyBear++
+            }
+            if (row.INDEX == "BANK" || row.INDEX == "NIFTY,BANK") {
+                bankBear++
+            }
+        }
+    });
+
+    let allBullPerc = allBull / (12 * 227) * 100
+    let allBearPerc = allBear / (12 * 227) * 100
+
+
+    let niftyBullPerc = niftyBull / (12 * 50) * 100
+    let niftyBearPerc = niftyBear / (12 * 50) * 100
+
+
+    let bankBullPerc = bankBull / (12 * 12) * 100
+    let bankBearPerc = bankBear / (12 * 12) * 100
+
+    jQ("#all-bull-trend").html(parseFloat(allBullPerc).toFixed(2) + '%')
+    jQ("#all-bear-trend").html(parseFloat(allBearPerc).toFixed(2) + '%')
+    jQ("#nifty-bull-trend").html(parseFloat(niftyBullPerc).toFixed(2) + '%')
+    jQ("#nifty-bear-trend").html(parseFloat(niftyBearPerc).toFixed(2) + '%')
+    jQ("#bank-bull-trend").html(parseFloat(bankBullPerc).toFixed(2) + '%')
+    jQ("#bank-bear-trend").html(parseFloat(bankBearPerc).toFixed(2) + '%')
+
 }
 
 function showAlertForBreakout(row, auto) {

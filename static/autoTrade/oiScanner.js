@@ -1,10 +1,12 @@
-jQ(document).on("click", ".show-option-change", function () {
+jQ(document).on("click", ".show-option-change", function (e) {
+    e.preventDefault();
     let name = jQ(this).attr("data-name");
     showOIScanner(name);
 })
 
 
-jQ(document).on("click", "#show-oi-scanner", function () {
+jQ(document).on("click", "#show-oi-scanner", function (e) {
+    e.preventDefault();
     showOIScanner();
 })
 
@@ -121,7 +123,6 @@ jQ(document).on("click", "#oi-scanner-start-auto-refresh", function (e) {
 
 
 jQ(document).on("change", "#instruments", function (e) {
-    clearInterval(stockScannerTimerInstance)
     let instrument = jQ("#instruments option:selected").val()
     showOI(instrument)
 });
@@ -133,23 +134,25 @@ async function showOI(instrument) {
     strikeData = []
     selectedStrike = []
 
-    let currentTime = moment().format("DD-MM-YYYY")
-    let info;
+    let name;
     if (instrument == "NIFTY" || instrument == "NIFTY 50") {
-        info = infoMap["NIFTY 50"]
+        name = "NIFTY 50"
         instrument = "NIFTY"
     } else if (instrument == "BANKNIFTY" || instrument == "NIFTY BANK") {
-        info = infoMap["NIFTY BANK"]
+        name = "NIFTY BANK"
         instrument = "BANKNIFTY"
     } else if (instrument == "FINNIFTY" || instrument == "NIFTY FIN SERVICE") {
-        info = infoMap["NIFTY FIN SERVICE"]
+        name = "NIFTY FIN SERVICE"
         instrument = "FINNIFTY"
     } else if (instrument == "MIDCPNIFTY" || instrument == "NIFTY MID SELECT") {
-        info = infoMap["NIFTY MID SELECT"]
+        name = "NIFTY MID SELECT"
         instrument = "MIDCPNIFTY"
     } else {
-        info = infoMap[instrument]
+        name = instrument
     }
+
+    let res = generateTrend(name)
+
 
     if (instrument.includes("NIFTY")) {
         strikToShow = 3
@@ -159,7 +162,7 @@ async function showOI(instrument) {
     jQ.each(OPTION_STRIKE_LIST, function (index, item) {
         let date = moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD")
         if (item.name == instrument) {
-           if (instrument == "NIFTY") {
+            if (instrument == "NIFTY") {
                 if (date == NIFTY_EXPIRY_DATE) {
                     selectedStrike.push(item)
                 }
@@ -168,15 +171,12 @@ async function showOI(instrument) {
                     selectedStrike.push(item)
                 }
             } else {
-                /*if (date == STOCK_EXPIRY_DATE) {
-                    selectedStrike.push(item)
-                }*/
                 selectedStrike.push(item)
             }
         }
     });
 
-    let currentPrice = parseFloat(info['currentPrice'])
+    let currentPrice = res['ltp']
     jQ("#current-price").html(currentPrice)
     selectedStrike.sort(function (a, b) { return a.strike - b.strike })
     let upperStrikes = []
@@ -343,7 +343,7 @@ async function showOIDetails() {
     });
 
     let pcr = parseFloat(totalPEOI / totalCEOI).toFixed(2);
-    let chPcr = parseFloat(chPEOI/chCEOI).toFixed(2);
+    let chPcr = parseFloat(chPEOI / chCEOI).toFixed(2);
     let pcrHtml = ''
     let chPcrHtml = ''
     if (pcr < 0.9) {
@@ -352,13 +352,13 @@ async function showOIDetails() {
         pcrHtml += '<span class="badge bg-danger">' + pcr + '</span>'
     }
 
-      if (chPcr < 0.9) {
+    if (chPcr < 0.9) {
         chPcrHtml += '<span class="badge bg-success">' + chPcr + '</span>'
     } else {
         chPcrHtml += '<span class="badge bg-danger">' + chPcr + '</span>'
     }
 
-    jQ("#current-pcr").html(pcrHtml + ' ('+chPcrHtml+')')
+    jQ("#current-pcr").html(pcrHtml + ' (' + chPcrHtml + ')')
 
     generateOITable(tableData)
 

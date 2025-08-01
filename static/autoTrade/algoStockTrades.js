@@ -2,7 +2,7 @@
 async function startStockAlgoTrades() {
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 15:10:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:00:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     console.log("Algo starts executing orders @ " + checkTime + "AM.  current time is :" + currentTime);
 
@@ -40,29 +40,25 @@ async function startStockAlgoTrades() {
     if (USE_MOVEMENT_STOCKS) {
         listType = MOVEMENTSTOCKS
     }
+    let scriptData = generateTrends()
     let allInstruments = [];
-    jQ.each(instrumentsMap, function (index, item) {
-        allInstruments.push(instrumentsMap[index])
+    jQ.each(instrumentTokens, function (index, item) {
+        allInstruments.push(index)
     });
 
     for (let i = 0; i < allInstruments.length; i++) {
-        let data = allInstruments[i];
-        if (jQ.inArray(data.name, listType) != -1) {
+        let name = allInstruments[i];
+        if (jQ.inArray(name, listType) != -1) {
             let obj = {}
-            obj['TRADINGSYMBOL'] = data.name;
-            obj['CLOSE'] = data['prevPrice'];
-            obj['PRICE'] = data['price'];
-            obj['PERC'] = data['perc'];
-            obj['TREND'] = '';
-            obj['LTP'] = 0;
+            obj['TRADINGSYMBOL'] = name;
+            obj['CLOSE'] = scriptData[name]['prevPrice'];
+            obj['PRICE'] = scriptData[name]['price'];
+            obj['PERC'] = scriptData[name]['perc'];
+            obj['TREND'] = scriptData[name]['trends'];
+            obj['LTP'] = scriptData[name]['ltp'];
+            obj['STRIKEDATA'] = scriptData[name]['strikeData'];
+            obj['CURRENT_PRICE'] = scriptData[name]['ltp'];
             obj['prevFiveMinutes'] = prevFiveMinutes;
-
-            if (infoMap[data.name]) {
-                obj['TREND'] = infoMap[data.name]['trends'];
-                obj['LTP'] = infoMap[data.name]['currentPrice'];
-                obj['STRIKEDATA'] = infoMap[data.name]['strikeData'];
-                obj['CURRENT_PRICE'] = infoMap[data.name]['currentPrice'];
-            }
 
             if (STOCK_TREND_TO_TRADE == "ALL") {
                 if (jQ.inArray("ASO", obj['TREND']) != -1) {
@@ -155,7 +151,7 @@ async function executeTrendTrade(trend, obj) {
 
     let dayHigh = 0
     let dayLow = 0
-    let dayOpen = parseFloat(instrumentsMap[obj.TRADINGSYMBOL]['price']);
+    let dayOpen = parseFloat(obj['PRICE']);
     jQ.each(prevQuote, function (index, item) {
         if (index == 0) {
             dayHigh = item.high
@@ -192,7 +188,7 @@ async function executeTrendTrade(trend, obj) {
     }
 
 
-    let previousClose = parseFloat(instrumentsMap[obj.TRADINGSYMBOL].prevPrice);
+    let previousClose = parseFloat(obj['CLOSE']);
     let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, obj['CURRENT_PRICE'], previousClose);
 
     obj['OHL_TREND'] = res;

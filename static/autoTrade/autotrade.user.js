@@ -58,17 +58,15 @@
 // @require      http://localhost:3000/autoTrade/common/alertSound.js
 // @require      http://localhost:3000/autoTrade/constants.js
 // @require      http://localhost:3000/autoTrade/optionStrike.js
+// @require      http://localhost:3000/autoTrade/config.js
+// @require      http://localhost:3000/autoTrade/monkeyStyle.js
+// @require      http://localhost:3000/autoTrade/utils.js
 // @require      http://localhost:3000/autoTrade/script.js
-// @require      http://localhost:3000/autoTrade/showStocksChart.js
-// @require      http://localhost:3000/autoTrade/stockScanner.js
-// @require      http://localhost:3000/autoTrade/quickScanner.js
 // @require      http://localhost:3000/autoTrade/oiScanner.js
-// @require      http://localhost:3000/autoTrade/trendingScanner.js
 // @require      http://localhost:3000/autoTrade/algoStockTrades.js
 // @require      http://localhost:3000/autoTrade/showOrderBook.js
-// @require      http://localhost:3000/autoTrade/ohlOpen.js
 // @require      http://localhost:3000/autoTrade/breakoutScanner.js
-// @require      http://localhost:3000/autoTrade/futures.js
+// @require      http://localhost:3000/autoTrade/oiViewer.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js
 // ==/UserScript==

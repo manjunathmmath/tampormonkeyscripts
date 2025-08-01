@@ -3,7 +3,7 @@ select
 from 
     kite_instruments 
 where 
-    instrument_type='FUT' 
+    segment in('BFO-FUT','NFO-FUT') 
     and expiry  like'%-07-2025%' 
     and exchange in('NFO','BFO');
 
@@ -13,6 +13,6 @@ name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol
 from 
     kite_instruments 
 where 
-    segment in('NFO','BFO') 
+    segment in('NFO-OPT','BFO-OPT') 
     and  expiry like'%-07-2025%' 
     order by name;
