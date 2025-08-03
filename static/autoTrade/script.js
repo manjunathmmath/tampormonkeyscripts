@@ -1010,9 +1010,9 @@ function showChart(quote, name, index, prevQuote) {
 
 
     line = {};
-    line.color = "#198754";
+    line.color = "#872b19ff";
     line.startvalue = scriptData['strikeData'].ustrikeTwo;
-    line.displayvalue = "AST" + scriptData['strikeData'].ustrikeTwo;
+    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
     lines.push(line);
 
 
@@ -1031,9 +1031,9 @@ function showChart(quote, name, index, prevQuote) {
 
 
     line = {};
-    line.color = "#dc3545";
+    line.color = "#35dc35ff";
     line.startvalue = scriptData['strikeData'].bstrikeTwo;
-    line.displayvalue = "BST: " + scriptData['strikeData'].bstrikeTwo;
+    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
     lines.push(line);
 
 
