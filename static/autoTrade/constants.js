@@ -240,6 +240,13 @@ let REFRESH_LIST = [
 	"SBIN",
 ]
 
+let INDEX_LIST = [
+	'NIFTY 50',
+	'NIFTY BANK',
+	'RELIANCE',
+	'HDFCBANK',
+]
+
 let TRACK_LIST = [
 	'NIFTY 50',
 	'HDFCBANK',

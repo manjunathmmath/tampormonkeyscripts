@@ -674,6 +674,7 @@ function showBreakoutTrendCount() {
     jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info" type="button"><span>MASTER</span></button>')
 
     jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter  bg-info" type="button"><span>BREAKOUT</span></button>')
 
     jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument" type="button"><span>Analyze</span></button>')
     jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
@@ -686,6 +687,7 @@ jQ(document).on("click", "#breakout-stock-list-table_wrapper .trend-filter", fun
     let name = jQ(this).attr("data-trend");
     breakOutStocks = []
     let VALID_STOCKS = getAllValidStocks();
+    let BREAKOUT_STOCKS = getAllValidBreakOutStocks();
     jQ.each(allBreakoutStocks, function (index, item) {
         if (name == "aso") {
             if (jQ.inArray("ASO", item['TREND']) != -1) {
@@ -709,6 +711,10 @@ jQ(document).on("click", "#breakout-stock-list-table_wrapper .trend-filter", fun
             }
         } else if (name == "valid") {
             if (jQ.inArray(item['TRADINGSYMBOL'], VALID_STOCKS) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "breakout") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], BREAKOUT_STOCKS) != -1) {
                 breakOutStocks.push(item)
             }
         } else if (name == "trending") {
@@ -1229,6 +1235,11 @@ function showAlertForBreakout(row, auto) {
         && row.isMonthlyCloseGreaterMonthlyOpen
         && row.oneDayAgoVolumeGreater
     ) {
+        let validBreakouts = JSON.parse(localStorage.getItem("VALID_BREAKOUT"));
+
+        if (!validBreakouts) {
+            validBreakouts = []
+        }
         let html = ''
         html += '<div style="text-align:center;">'
         html += 'BREAKOUT : '
@@ -1240,6 +1251,10 @@ function showAlertForBreakout(row, auto) {
         if (ENABLE_SOUND && auto) {
             let alrtSound = new Audio(alertSound);
             alrtSound.play();
+        }
+        if (jQ.inArray(row['TRADINGSYMBOL'], validBreakouts) === -1) {
+            validBreakouts.push(row['TRADINGSYMBOL'])
+            localStorage.setItem("VALID_BREAKOUT", JSON.stringify(validBreakouts));
         }
     }
 }

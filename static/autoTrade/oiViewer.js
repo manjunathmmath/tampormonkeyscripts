@@ -3,6 +3,43 @@ jQ(document).on("click", "#show-oi-viewer", function (e) {
     showOiViewer();
 });
 
+jQ(document).on("click", "#start-auto-refresh-oi-viewer", function (e) {
+    e.preventDefault();
+    var that = jQ(this);
+    that.attr("disabled", true);
+    clearInterval(oiViewerTimerInstance)
+    jQ("#trending-stock-list-table_wrapper .analyse-instrument").trigger("click")
+});
+
+function startOiViewerRefresh() {
+    var display = document.querySelector('#oi-viewer-scanner-refresh-timer-one');
+    startTimer(REFRESH_TIME, display);
+};
+
+let oiViewerTimerInstance = null
+function startTimer(duration, display) {
+    oiViewerTimerInstance = setInterval(function () {
+        var d = new Date();
+        var s = d.getSeconds();
+        var m = d.getMinutes();
+        var h = d.getHours();
+        display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
+        let refreshInterval = jQ("#refresh-interval-oi-viewer option:selected").val();
+        if (refreshInterval == 1) {
+            if (s == 59) {
+                jQ("#trending-stock-list-table_wrapper .analyse-instrument").trigger("click")
+            }
+        }
+
+        if (refreshInterval == 5) {
+            let currentMinute = moment().format("mm")
+            if ((currentMinute % 5) == 0) {
+                jQ("#trending-stock-list-table_wrapper .analyse-instrument").trigger("click")
+            }
+        }
+    }, 1000);
+}
+
 function showOiViewer() {
 
     let html = ''
@@ -59,8 +96,23 @@ function showOiViewer() {
     title += '<div class="col-md-2">'
     title += 'OI VIEWER'
     title += '</div>'
-    title += '<div class="col-md-3 pop-title-extra">'
-    title += '<span id="oi-viewer-last-refresh-time">Last @ 00:00:00</span>'
+    title += '<div class="col-md-1">'
+    title += '<select id="api-data-interval" class="form-control form-control-sm">'
+    title += '<option value="5minute" selected>5minute</option>'
+    title += '<option value="minute">minute</option>'
+    title += '</select>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<select id="refresh-interval-oi-viewer" class="form-control form-control-sm">'
+    title += '<option value="1">1</option>'
+    title += '<option value="5" selected>5</option>'
+    title += '</select>'
+    title += '</div>'
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<a  id="start-auto-refresh-oi-viewer">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+    title += '</div>'
+    title += '<div class="col-md-1 pop-title-extra">'
+    title += '<span style="margin-left:.5rem;" id="oi-viewer-scanner-refresh-timer-one">00:00</span>'
     title += '</div>'
     title += '<div class="col-md-1 pop-title-extra">'
     title += '<span id="processing-oi-viewer"></span>'
@@ -68,7 +120,7 @@ function showOiViewer() {
     title += '</div>'
 
     showPopUpWindow('oi-viewer-scanner', html, "OI VIEWER", 950, 550);
-    var divId = "popup-custom-style-oi-viewer";
+    var divId = "popup-custom-style-oi-viewer-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     generateStockDataTable();
 }
@@ -511,18 +563,19 @@ function showOITrendCount() {
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info" type="button"><span>BN</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info" type="button"><span>MASTER</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>');
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter  bg-info" type="button"><span>BREAKOUT</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="index" class="dt-button trend-filter  bg-info" type="button"><span>INDEX</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
-
-
 }
 
 jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", function (e) {
     let name = jQ(this).attr("data-trend");
     trendingStocks = []
     let VALID_STOCKS = getAllValidStocks();
+    let BREAKOUT_STOCKS = getAllValidBreakOutStocks();
     jQ.each(allTrendingStocks, function (index, item) {
         if (name == "aso") {
             if (jQ.inArray("ASO", item['TREND']) != -1) {
@@ -548,6 +601,14 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", fun
             if (jQ.inArray(item['TRADINGSYMBOL'], VALID_STOCKS) != -1) {
                 trendingStocks.push(item)
             }
+        } else if (name == "breakout") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], BREAKOUT_STOCKS) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "index") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], INDEX_LIST) != -1) {
+                trendingStocks.push(item)
+            }
         } else if (name == "trending") {
             if (jQ.inArray("ASO", item['TREND']) != -1) {
                 trendingStocks.push(item)
@@ -562,7 +623,7 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", fun
     generateTrendingStockTable(trendingStocks)
 });
 
-jQ(document).on("click", ".analyse-instrument", function (e) {
+jQ(document).on("click", "#trending-stock-list-table_wrapper .analyse-instrument", function (e) {
     e.preventDefault();
     var that = jQ(this);
     that.attr("disabled", true);
@@ -719,6 +780,8 @@ async function callAnalyseTrend() {
 
     jQ("#trending-stock-list-table_wrapper  #processing-trend").html("Done...");
     jQ("#trending-stock-list-table_wrapper  #last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+    startOiViewerRefresh()
+    jQ("#start-auto-refresh-oi-viewer").removeAttr("disabled")
 
 }
 
@@ -852,11 +915,14 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
                         PE = selectedStrike[j]
                     }
                 }
-                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
 
-                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL);
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+                let HISTORICAL_DATA_INTERVAL_OVERRIDE = jQ("#api-data-interval option:selected").val()
+
+                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+
+                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
                 strikeMap[strikeData[i]['STRIKE']] = {}
                 strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
                 strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
@@ -940,26 +1006,3 @@ jQ(document).on("click", ".create-alerts", function (e) {
 
     createAlert(name + "-" + 'PRICE_ALERT', lhs_tradingsymbol, price, ">=", lhs_exchange)
 });
-
-function createAlert(name, lhs_tradingsymbol, rhs_constant, operator, lhs_exchange) {
-    jQ.ajaxSetup({
-        headers: {
-            'Authorization': `enctoken ${getCookie('enctoken')}`
-        }
-    });
-    return jQ.ajax({
-        url: BASE_URL + `/oms/alerts`,
-        type: 'POST',
-        data: {
-            name: name,
-            lhs_exchange: lhs_exchange,
-            lhs_tradingsymbol: lhs_tradingsymbol,
-            lhs_attribute: "LastTradedPrice",
-            operator: operator,
-            rhs_type: "constant",
-            type: "simple",
-            rhs_constant: rhs_constant
-
-        }
-    });
-}

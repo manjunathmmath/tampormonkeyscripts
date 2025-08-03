@@ -358,6 +358,7 @@ function clearLocalStorage() {
     localStorage.removeItem("OHL_TREND")
     localStorage.removeItem("VALID_INSTRUMENTS")
     localStorage.removeItem("INSTRUMENT_LTP_PRICE")
+    localStorage.removeItem("VALID_BREAKOUT")
     for (let i = 0; i < FO_LIST.length; i++) {
         let name = FO_LIST[i]
         name = name.replaceAll(" ", "-")
@@ -622,6 +623,18 @@ function getAllValidStocks() {
     jQ.each(validIntruments, function (index, item) {
         if (jQ.inArray(index, scripts) === -1) {
             scripts.push(index)
+        }
+    });
+    
+    return scripts;
+}
+
+function getAllValidBreakOutStocks() {
+    let validBreakouts = JSON.parse(localStorage.getItem("VALID_BREAKOUT"));
+    let scripts = []
+    jQ.each(validBreakouts, function (index, item) {
+        if (jQ.inArray(item, scripts) === -1) {
+            scripts.push(item)
         }
     });
     
