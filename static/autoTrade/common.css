@@ -351,3 +351,8 @@ span.bullsVersesBears {
 #last-refresh-trend{
   font-weight: bold;
 }
+
+#button-container button{
+  max-width: 70px;
+  min-width: 70px;
+}

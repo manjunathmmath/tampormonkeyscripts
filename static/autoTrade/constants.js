@@ -238,7 +238,6 @@ let REFRESH_LIST = [
 	"KOTAKBANK",
 	"AXISBANK",
 	"SBIN",
-	"GIFT NIFTY"
 ]
 
 let TRACK_LIST = [

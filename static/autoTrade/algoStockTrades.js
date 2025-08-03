@@ -209,6 +209,16 @@ async function executeTrendTrade(trend, obj) {
         if (!validIntruments) {
             validIntruments = {}
         }
+
+        let html = ''
+        html += '<div style="text-align:center;">'
+        html += 'TREND : ' +trend
+        html += '<span data-price="' + obj['LTP'] + '" data-index="' + 0 + '" data-trend="' + obj['TREND'] + '" data-name="' + obj['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
+        html += obj['TRADINGSYMBOL']
+        html += '</span>'
+        html += '</div>'
+        callSackBar(html);
+
         validIntruments[obj.TRADINGSYMBOL] = obj
         localStorage.setItem("VALID_INSTRUMENTS", JSON.stringify(validIntruments));
     }

@@ -1,3 +1,4 @@
+
 jQ(document).on("click", "#show-order-book", function () {
     showOrderBook();
 })
@@ -72,9 +73,9 @@ jQ(document).on("click", "#refresh-order-book", function () {
 
 let total = 0;
 async function commonGenerateTable() {
-    if (jQ.isEmptyObject(instrumentsMap)) {
-        return
-    }
+
+    let scriptData = generateTrends()
+
 
     let trendType = jQ("#trade-type option:selected").val();
     total = 0;
@@ -108,18 +109,10 @@ async function commonGenerateTable() {
         let obj = {}
 
         let book = orderBook[item]['ORDER']
-        let currentInfo = infoMap[item];
+        let currentInfo = scriptData[item];
 
 
-        let asoPrice = 0;
-        let bsoPrice = 0;
-        let aso = parseFloat(info['strikeData']['ustrikeOne']) - parseFloat(currentInfo['instrument']['price']);
-        aso = aso / 5
-        asoPrice = parseFloat(info['strikeData']['ustrikeOne']);
-
-        let bso = parseFloat(currentInfo['instrument']['price']) - parseFloat(info['strikeData']['bstrikeOne']);
-        bso = bso / 5
-        bsoPrice = parseFloat(info['strikeData']['bstrikeOne']);
+    
 
         obj.SYMBOL = item
         obj.TRANSACTION_TYPE = book.transaction_type
@@ -128,19 +121,19 @@ async function commonGenerateTable() {
         obj.TREND = info.trends.join(",")
         obj.STOPLOSS = 0;
         obj.COUNTER_TRANSACATION_TYPE = 'BUY'
-        obj.LTP = currentInfo.currentPrice
+        obj.LTP = currentInfo.ltp
         obj.ORDER_DATE = orderBook[item]['ORDER_DATE']
 
         if (book.transaction_type === "BUY") {
             obj.COUNTER_TRANSACATION_TYPE = 'SELL'
         }
         if (jQ.inArray("ASO", info['trends']) != -1) {
-            let stop = parseFloat(currentInfo['instrument']['price']);
+            let stop = parseFloat(currentInfo['price']);
             stop = stop
             obj.STOPLOSS = parseFloat(stop).toFixed(2);
 
         } else if (jQ.inArray("BSO", info['trends']) != -1) {
-            let stop = parseFloat(currentInfo['instrument']['price']);
+            let stop = parseFloat(currentInfo['price']);
             stop = stop
             obj.STOPLOSS = parseFloat(stop).toFixed(2);
         }

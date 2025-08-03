@@ -8,7 +8,7 @@ async function autoBreakOutScanner() {
 
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 23:59:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:00:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     console.log("Scanner starts  @ " + checkTime + "AM.  current time is :" + currentTime);
 
@@ -44,8 +44,10 @@ jQ(document).on("click", "#show-breakout-intruments", function (e) {
 });
 
 let breakOutStocks = []
+let allBreakoutStocks = []
 function commonBreakOutLogic(auto) {
     breakOutStocks = [];
+    allBreakoutStocks = []
     let instru = [];
     let scripts = []
     let checkInstr = []
@@ -155,12 +157,11 @@ function commonBreakOutLogic(auto) {
         orderRow++;
     }
 
+    allBreakoutStocks = breakOutStocks;
     if (scripts.length > 0 && !auto) {
         generateBreakOutStockTable(breakOutStocks)
     }
 }
-
-
 
 async function showBreakOutStocks() {
 
@@ -218,9 +219,6 @@ async function showBreakOutStocks() {
     title += '</div>'
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="breakout-last-refresh-time">Last @ 00:00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span id="processing-breakout"></span>'
     title += '</div>'
     title += '</div>'
 
@@ -642,21 +640,7 @@ function generateBreakOutStockTable(data) {
             },
         ],
         "fnInitComplete": function (oSettings, json) {
-            let asoCount = 0;
-            let bsoCount = 0;
-            let allCount = 0;
-            jQ.each(data, function (index, item) {
-                if (jQ.inArray("ASO", item['TREND']) != -1) {
-                    asoCount++;
-                }
-                if (jQ.inArray("BSO", item['TREND']) != -1) {
-                    bsoCount++;
-                }
-                allCount++;
-
-            });
-            jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument" type="button"><span>Analyze</span></button>')
-
+            showBreakoutTrendCount()
         },
         "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
             for (var i in aData) {
@@ -667,9 +651,83 @@ function generateBreakOutStockTable(data) {
     jQ("#breakout-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
 
+function showBreakoutTrendCount() {
+    let asoCount = 0;
+    let bsoCount = 0;
+    let allCount = 0;
+    jQ.each(allBreakoutStocks, function (index, item) {
+        if (jQ.inArray("ASO", item['TREND']) != -1) {
+            asoCount++;
+        }
+        if (jQ.inArray("BSO", item['TREND']) != -1) {
+            bsoCount++;
+        }
+        allCount++;
+    });
+
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info" type="button"><span>N50</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info" type="button"><span>BN</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info" type="button"><span>MASTER</span></button>')
+
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>')
+
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument" type="button"><span>Analyze</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
+
+
+}
+
+jQ(document).on("click", "#breakout-stock-list-table_wrapper .trend-filter", function (e) {
+    let name = jQ(this).attr("data-trend");
+    breakOutStocks = []
+    let VALID_STOCKS = getAllValidStocks();
+    jQ.each(allBreakoutStocks, function (index, item) {
+        if (name == "aso") {
+            if (jQ.inArray("ASO", item['TREND']) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "bso") {
+            if (jQ.inArray("BSO", item['TREND']) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "n50") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_50_LIST) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "bank") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_BANK_LIST) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "master") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], REFRESH_LIST) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "valid") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], VALID_STOCKS) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "trending") {
+            if (jQ.inArray("ASO", item['TREND']) != -1) {
+                breakOutStocks.push(item)
+            }
+            if (jQ.inArray("BSO", item['TREND']) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else {
+            breakOutStocks.push(item)
+        }
+    });
+    generateBreakOutStockTable(breakOutStocks)
+});
+
 jQ(document).on("click", ".analyse-breakout-instrument", function (e) {
     e.preventDefault();
-    jQ("#processing-breakout").html("Processing.... ");
+    jQ("#breakout-stock-list-table_wrapper #processing-trend").html("Processing.... ");
     callAnalyseBreakout(false)
 });
 
@@ -680,7 +738,7 @@ async function callAnalyseBreakout(auto) {
     for (let i = 0; i < breakOutStocks.length; i++) {
         try {
             if (!auto) {
-                jQ("#processing-breakout").html("Processing.... " + (i + 1) + "/" + scriptsCount);
+                jQ("#breakout-stock-list-table_wrapper #processing-trend").html("Processing.... " + (i + 1) + "/" + scriptsCount);
             } else {
                 jQ("#processing-breakout-scanner").html("Processing.... " + (i + 1) + "/" + scriptsCount);
             }
@@ -738,6 +796,7 @@ async function callAnalyseBreakout(auto) {
             let previousClose = parseFloat(scriptData[name].prevPrice);
             breakOutStocks[rowId]['LTP'] = scriptData[name]['ltp'];
             let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, scriptData[name]['ltp'], previousClose);
+            console.log(scriptData[name])
             breakOutStocks[rowId]['OHL_TREND'] = res;
 
 
@@ -877,7 +936,7 @@ async function callAnalyseBreakout(auto) {
     if (!auto) {
         showMarketSentiment()
     }
-    jQ("#processing-breakoutt").html("Done...");
+    jQ("#breakout-stock-list-table_wrapper  #last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
 
 function showMarketSentiment() {

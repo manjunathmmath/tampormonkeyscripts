@@ -45,7 +45,7 @@ function makeUIChanges() {
     html += 'OI'
     html += '</a>'
     html += '<a href="#" id="show-oi-viewer" style="padding:10px;">'
-    html += 'OI Analyzer'
+    html += 'Analyzer'
     html += '</a>'
     html += '<a href="#" id="show-breakout-intruments" style="padding:10px;">'
     html += 'Breakout'
@@ -108,6 +108,7 @@ function generateTrends() {
             let strikeData = getStrikeDetails(obj, name);
             let res = {}
             res['open'] = openDetail['price']
+            res['price'] = openDetail['price']
             res['strikeData'] = strikeData
             res['ltp'] = ltp
             res['prevPrice'] = openDetail['prevPrice']
@@ -185,6 +186,7 @@ function generateTrend(name) {
     res['strikeData'] = strikeData
     res['ltp'] = ltp
     res['open'] = openDetail['price']
+    res['price'] = openDetail['price']
     res['prevPrice'] = openDetail['prevPrice']
     res['perc'] = openDetail['perc']
 
@@ -578,7 +580,7 @@ async function callPlaceOrder(params, isAllowed) {
             trades.push(params.tradingsymbol);
             let obj = {}
             obj['ORDER'] = params
-            obj['INFO'] =generateTrend(params.tradingsymbol);
+            obj['INFO'] = generateTrend(params.tradingsymbol);
             obj['KITE_ORDER'] = res
             obj['ORDER_DATE'] = moment().format("DD-MM-YYYY HH:mm:ss");
             orderBook[params.tradingsymbol] = obj
@@ -588,4 +590,40 @@ async function callPlaceOrder(params, isAllowed) {
     }
 
     return res;
+}
+
+
+function createAlert(name, lhs_tradingsymbol, rhs_constant, operator, lhs_exchange) {
+    jQ.ajaxSetup({
+        headers: {
+            'Authorization': `enctoken ${getCookie('enctoken')}`
+        }
+    });
+    return jQ.ajax({
+        url: BASE_URL + `/oms/alerts`,
+        type: 'POST',
+        data: {
+            name: name,
+            lhs_exchange: lhs_exchange,
+            lhs_tradingsymbol: lhs_tradingsymbol,
+            lhs_attribute: "LastTradedPrice",
+            operator: operator,
+            rhs_type: "constant",
+            type: "simple",
+            rhs_constant: rhs_constant
+
+        }
+    });
+}
+
+function getAllValidStocks() {
+    let validIntruments = JSON.parse(localStorage.getItem("VALID_INSTRUMENTS"));
+    let scripts = []
+    jQ.each(validIntruments, function (index, item) {
+        if (jQ.inArray(index, scripts) === -1) {
+            scripts.push(index)
+        }
+    });
+    
+    return scripts;
 }

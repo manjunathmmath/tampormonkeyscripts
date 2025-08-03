@@ -3,7 +3,6 @@ jQ(document).on("click", "#show-oi-viewer", function (e) {
     showOiViewer();
 });
 
-
 function showOiViewer() {
 
     let html = ''
@@ -16,6 +15,7 @@ function showOiViewer() {
     html += '<tr>'
 
     html += '<th rowspan="2">SYMBOL</th>'
+    html += '<th rowspan="2">TREND</th>'
     html += '<th rowspan="2">LTP</th>'
     html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
@@ -71,17 +71,15 @@ function showOiViewer() {
     var divId = "popup-custom-style-oi-viewer";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     generateStockDataTable();
-
 }
 
 async function generateStockDataTable() {
-    showTrendingStocks();
+    showOiAnalyzer();
 }
-
 
 let trendingStocks = []
 let allTrendingStocks = []
-async function showTrendingStocks() {
+async function showOiAnalyzer() {
     trendingStocks = []
     allTrendingStocks = []
     let instru = [];
@@ -237,11 +235,7 @@ function generateTrendingStockTable(data) {
                     return html;
                 }
             },
-
-
-
-
-
+            { "data": "TREND" },
             {
                 "data": "LTP",
                 render: function (data, type, row, meta) {
@@ -478,16 +472,16 @@ function generateTrendingStockTable(data) {
 
         ],
         "fnInitComplete": function (oSettings, json) {
-            jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
+            showOITrendCount()
 
         },
         "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
             for (var i in aData) {
-                jQ('td:eq(' + 3 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 6 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 9 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 4 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 7 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 10 + ')', nRow).addClass('strike-class');
                 jQ('td:eq(' + 13 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 15 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 16 + ')', nRow).addClass('strike-class');
 
             }
         }
@@ -496,11 +490,83 @@ function generateTrendingStockTable(data) {
 
 }
 
+function showOITrendCount() {
+    let asoCount = 0;
+    let bsoCount = 0;
+    let allCount = 0;
+    jQ.each(allTrendingStocks, function (index, item) {
+        if (jQ.inArray("ASO", item['TREND']) != -1) {
+            asoCount++;
+        }
+        if (jQ.inArray("BSO", item['TREND']) != -1) {
+            bsoCount++;
+        }
+        allCount++;
+    });
+
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info" type="button"><span>N50</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info" type="button"><span>BN</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info" type="button"><span>MASTER</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
+
+
+}
+
+jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", function (e) {
+    let name = jQ(this).attr("data-trend");
+    trendingStocks = []
+    let VALID_STOCKS = getAllValidStocks();
+    jQ.each(allTrendingStocks, function (index, item) {
+        if (name == "aso") {
+            if (jQ.inArray("ASO", item['TREND']) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "bso") {
+            if (jQ.inArray("BSO", item['TREND']) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "n50") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_50_LIST) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "bank") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_BANK_LIST) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "master") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], REFRESH_LIST) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "valid") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], VALID_STOCKS) != -1) {
+                trendingStocks.push(item)
+            }
+        } else if (name == "trending") {
+            if (jQ.inArray("ASO", item['TREND']) != -1) {
+                trendingStocks.push(item)
+            }
+            if (jQ.inArray("BSO", item['TREND']) != -1) {
+                trendingStocks.push(item)
+            }
+        } else {
+            trendingStocks.push(item)
+        }
+    });
+    generateTrendingStockTable(trendingStocks)
+});
+
 jQ(document).on("click", ".analyse-instrument", function (e) {
     e.preventDefault();
     var that = jQ(this);
     that.attr("disabled", true);
-    jQ("#processing-trend").html("Processing.... ");
+    jQ("#trending-stock-list-table_wrapper #processing-trend").html("Processing.... ");
     commonAnalyzeTrend(that)
 
 });
@@ -515,7 +581,7 @@ async function callAnalyseTrend() {
     let scriptsCount = trendingStocks.length
 
     for (let i = 0; i < scriptsCount; i++) {
-        jQ("#processing-trend").html("Processing.... " + i + "/" + scriptsCount);
+        jQ("#trending-stock-list-table_wrapper  #processing-trend").html("Processing.... " + i + "/" + scriptsCount);
         try {
 
             let name = trendingStocks[i]['TRADINGSYMBOL']
@@ -651,8 +717,8 @@ async function callAnalyseTrend() {
         }
     }
 
-    jQ("#processing-trend").html("Done...");
-    jQ("#last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+    jQ("#trending-stock-list-table_wrapper  #processing-trend").html("Done...");
+    jQ("#trending-stock-list-table_wrapper  #last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
 }
 
@@ -672,10 +738,10 @@ async function showTrendingOI(instrument) {
     } else if (instrument == "NIFTY FIN SERVICE") {
         instrument = "FINNIFTY"
         strikToShow = 3
-    } else if ( instrument == "NIFTY MID SELECT") {
+    } else if (instrument == "NIFTY MID SELECT") {
         instrument = "MIDCPNIFTY"
         strikToShow = 3
-    } 
+    }
 
     let atmStrike = 0;
     jQ.each(OPTION_STRIKE_LIST, function (index, item) {

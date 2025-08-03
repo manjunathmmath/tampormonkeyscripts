@@ -5,7 +5,7 @@ async function autoRefreshEachTabs(instance, isManual) {
 
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 15:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 15:00:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
     let allow = true;
 
     if (!(currentTime >= checkTime)) {
@@ -144,7 +144,7 @@ function showAutoTrade() {
     html += '<span title="Margin for Algo trading" class="badge bg-primary me-1">' + MARGIN + '</span>'
     html += '</div>'
 
-    html += '<div class="col-md-1">'
+    html += '<div class="col-md-2">'
     html += '<span class="badge bg-primary me-1" title="Breakout Scanner" id="processing-breakout-scanner">' + ENABLE_BREAKOUT_SCANNER.toString().toUpperCase() + '</span>'
     html += '</div>'
 
@@ -160,7 +160,7 @@ function showAutoTrade() {
 
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
-    html += '<div class="row">'
+    html += '<div class="row" id="button-container">'
     
     html += '<div class="col-md-1">'
     html += '<button class="btn btn-secondary btn-sm" id="clean-storage" type="button">Clear</button>'
@@ -174,9 +174,9 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
-    html += '<div class="col-md-2">'
+    html += '<div class="col-md-1">'
     html += '<button id="show-oi-viewer" class="btn btn-secondary btn-sm" type="submit">';
-    html += 'OI Analyzer'
+    html += 'Analyzer'
     html += '</button>'
     html += '</div>'
 
@@ -194,7 +194,7 @@ function showAutoTrade() {
 
 
     html += '</div>'
-
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
 
     let title = ''
@@ -218,7 +218,7 @@ function showAutoTrade() {
 
 
     title += '</div>'
-    showPopUpWindow('trend-analysis', html, "Auto Trade", 950, 200);
+    showPopUpWindow('trend-analysis', html, "Auto Trade", 1000, 150);
     var divId = "popup-custom-style-trend-analysis";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     jQ("." + divId).on("close.popupwindow", function () {
@@ -347,16 +347,6 @@ async function commonShowChart(name, trends, index, price) {
         quote.push(map);
     });
 
-    if (quote.length == 0) {
-        let map = {}
-        map['date'] = moment().format("HH:mm:ss")
-        map.open = instrumentsMap[name]['price']
-        map.high = instrumentsMap[name]['price']
-        map.low = instrumentsMap[name]['price']
-        map.close = instrumentsMap[name]['price']
-        map.volume = 0
-        quote.push(map);
-    }
 
     let prevQuote = []
     jQ.each(previousQuote.data.candles, function (index, item) {
@@ -778,17 +768,6 @@ async function commonShowOnlyChart(name, trends, index, price) {
         map['time'] = moment(item[0]).format("HH:mm")
         quote.push(map);
     });
-
-    if (quote.length == 0) {
-        let map = {}
-        map['date'] = moment().format("HH:mm:ss")
-        map.open = instrumentsMap[name]['price']
-        map.high = instrumentsMap[name]['price']
-        map.low = instrumentsMap[name]['price']
-        map.close = instrumentsMap[name]['price']
-        map.volume = 0
-        quote.push(map);
-    }
 
     let prevQuote = []
     jQ.each(previousQuote.data.candles, function (index, item) {
