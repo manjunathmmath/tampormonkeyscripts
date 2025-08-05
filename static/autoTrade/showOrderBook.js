@@ -117,7 +117,7 @@ async function commonGenerateTable() {
         obj.SYMBOL = item
         obj.TRANSACTION_TYPE = book.transaction_type
         obj.QUNTITY = book.quantity
-        obj.PRICE = info.currentPrice
+        obj.PRICE = info.ltp
         obj.TREND = info.trends.join(",")
         obj.STOPLOSS = 0;
         obj.COUNTER_TRANSACATION_TYPE = 'BUY'

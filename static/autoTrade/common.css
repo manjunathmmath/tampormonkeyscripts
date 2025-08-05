@@ -334,25 +334,36 @@ span.bullsVersesBears {
   color: #ffc107 !important;
 }
 
-.popupwindow_container  *{
+.popupwindow_container * {
   font-family: sans-serif !important;
   scrollbar-width: thin !important;
-  
+
 }
 
-.show-option-change{
+.show-option-change {
   cursor: pointer;
 }
 
-.ltp-claass{
+.ltp-claass {
   font-weight: bold;
 }
 
-#last-refresh-trend{
+#last-refresh-trend {
   font-weight: bold;
 }
 
-#button-container button{
+#button-container button {
   max-width: 70px;
   min-width: 70px;
+}
+
+#breakout-trend-container .col-md-1 {
+  width: 7% !important;
+}
+
+#predition-result .badge {
+  height: 10rem !important;
+  width: 100% !important;
+  line-height: 10rem !important;
+  font-size: xx-large !important;
 }

@@ -5,6 +5,10 @@ jQ(document).on("click", "#show-oi-viewer", function (e) {
 
 jQ(document).on("click", "#start-auto-refresh-oi-viewer", function (e) {
     e.preventDefault();
+    let isEnabled = jQ("#enable-oi-refresh").is(':checked')
+    if(!isEnabled){
+        return false
+    }
     var that = jQ(this);
     that.attr("disabled", true);
     clearInterval(oiViewerTimerInstance)
@@ -13,11 +17,11 @@ jQ(document).on("click", "#start-auto-refresh-oi-viewer", function (e) {
 
 function startOiViewerRefresh() {
     var display = document.querySelector('#oi-viewer-scanner-refresh-timer-one');
-    startTimer(REFRESH_TIME, display);
+    startTimerOiViewer(REFRESH_TIME, display);
 };
 
 let oiViewerTimerInstance = null
-function startTimer(duration, display) {
+function startTimerOiViewer(duration, display) {
     oiViewerTimerInstance = setInterval(function () {
         var d = new Date();
         var s = d.getSeconds();
@@ -107,6 +111,9 @@ function showOiViewer() {
     title += '<option value="1">1</option>'
     title += '<option value="5" selected>5</option>'
     title += '</select>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<input type="checkbox" id="enable-oi-refresh">'
     title += '</div>'
     title += '<div class="col-md-1 pop-title-extra">'
     title += '<a  id="start-auto-refresh-oi-viewer">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
@@ -625,6 +632,10 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", fun
 
 jQ(document).on("click", "#trending-stock-list-table_wrapper .analyse-instrument", function (e) {
     e.preventDefault();
+    let isEnabled = jQ("#enable-oi-refresh").is(':checked')
+    if(!isEnabled){
+        return false
+    }
     var that = jQ(this);
     that.attr("disabled", true);
     jQ("#trending-stock-list-table_wrapper #processing-trend").html("Processing.... ");
@@ -654,6 +665,7 @@ async function callAnalyseTrend() {
             trendingStocks[rowId]['LTP'] = res['ltp']
             if (name != 'GIFT NIFTY') {
                 let strikes = await showTrendingOI(name)
+                strikes = strikes['tableData']
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
                 if (strikes[0]) {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
@@ -917,6 +929,9 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
                 }
 
                 let HISTORICAL_DATA_INTERVAL_OVERRIDE = jQ("#api-data-interval option:selected").val()
+                if(!HISTORICAL_DATA_INTERVAL_OVERRIDE){
+                    HISTORICAL_DATA_INTERVAL_OVERRIDE = '5minute'
+                }
 
                 let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
                 let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
@@ -940,6 +955,13 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
     }
 
     let tableData = []
+
+    let totalCEOI = 0;
+    let totalPEOI = 0;
+
+    let chCEOI = 0;
+    let chPEOI = 0;
+
     jQ.each(strikeMap, function (index, item) {
         try {
             let currDataCE = item['currDataCE']['data']['candles']
@@ -959,6 +981,9 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             let OI_CE = currDataCE[currDataCE.length - 1][6]
             let OI_PE = currDataPE[currDataPE.length - 1][6]
 
+             totalCEOI = totalCEOI + OI_CE
+            totalPEOI = totalPEOI + OI_PE
+
             let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]
             let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
 
@@ -971,6 +996,9 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             obj['ATM_STRIKE'] = item.ATM_STRIKE
             obj['CE'] = item.CE
             obj['PE'] = item.PE
+
+            chCEOI = chCEOI + (OI_CE - PREV_OI_CE)
+            chPEOI = chPEOI + (OI_PE - PREV_OI_PE)
 
             obj['currDataCE'] = currDataCE
             obj['currDataPE'] = currDataPE
@@ -985,8 +1013,16 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
 
     });
 
+    let pcr = parseFloat(totalPEOI / totalCEOI).toFixed(2);
+    let chPcr = parseFloat(chPEOI / chCEOI).toFixed(2);
+
+
     tableData.sort(function (a, b) { return parseFloat(a.STRIKE) - parseFloat(b.STRIKE) })
-    return tableData
+    let map = {}
+    map['tableData'] = tableData
+    map['pcr'] = pcr
+    map['chPcr'] = chPcr
+    return map
 }
 
 function updateTrendingTable(rowId) {

@@ -161,7 +161,7 @@ function showAutoTrade() {
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
 
     html += '<div class="row" id="button-container">'
-    
+
     html += '<div class="col-md-1">'
     html += '<button class="btn btn-secondary btn-sm" id="clean-storage" type="button">Clear</button>'
     html += '</div>'
@@ -189,6 +189,12 @@ function showAutoTrade() {
     html += '<div class="col-md-1">'
     html += '<button id="show-order-book" class="btn btn-secondary btn-sm" type="submit">';
     html += 'Orders'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<button id="show-predictor" class="btn btn-secondary btn-sm" type="submit">';
+    html += 'Prediction'
     html += '</button>'
     html += '</div>'
 
@@ -276,7 +282,7 @@ async function updateStrorageLtpPrice(instance) {
     for (let i = 0; i < (tabs.length - 1); i++) {
         jQ(".marketwatch-pagination a.item")[i].click();
         await callSleepForAWhile(1000);
-        scanLtpPrice();
+        await scanLtpPrice();
     }
     if (instance) {
         instance.attr("disabled", false)
@@ -295,23 +301,27 @@ async function scanLtpPrice() {
     }
 
     jQ.each(tabs, function (index, item) {
-        if (jQ(item).hasClass("selected")) {
-            jQ(instruments).each(function (iindex, iitem) {
-                let name = jQ(this).find(".symbol").find(".name").html();
+        if (index == 0 || index == 1) {
+            if (jQ(item).hasClass("selected")) {
+                if (instruments.length > 0) {
+                    jQ(instruments).each(function (iindex, iitem) {
+                        let name = jQ(this).find(".symbol").find(".name").html();
 
-                let price = jQ(this).find(".price").find(".last-price").html();
-                let obj = {}
-                if (name == "M&amp;M") {
-                    name = "M&M"
-                }
+                        let price = jQ(this).find(".price").find(".last-price").html();
+                        let obj = {}
+                        if (name == "M&amp;M") {
+                            name = "M&M"
+                        }
 
-                if (name == "M&amp;MFIN") {
-                    name = "M&MFIN"
+                        if (name == "M&amp;MFIN") {
+                            name = "M&MFIN"
+                        }
+                        obj['name'] = name.trim()
+                        obj['ltp'] = parseFloat(price.trim()).toFixed(2);
+                        storageLtpObj[name] = obj
+                    });
                 }
-                obj['name'] = name.trim()
-                obj['ltp'] = parseFloat(price.trim()).toFixed(2);
-                storageLtpObj[name] = obj
-            });
+            }
         }
     });
     localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));

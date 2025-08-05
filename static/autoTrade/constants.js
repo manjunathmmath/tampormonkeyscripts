@@ -245,6 +245,7 @@ let INDEX_LIST = [
 	'NIFTY BANK',
 	'RELIANCE',
 	'HDFCBANK',
+	'SENSEX'
 ]
 
 let TRACK_LIST = [

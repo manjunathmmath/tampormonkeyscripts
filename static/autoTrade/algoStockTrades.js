@@ -212,7 +212,7 @@ async function executeTrendTrade(trend, obj) {
 
         let html = ''
         html += '<div style="text-align:center;">'
-        html += 'TREND : ' +trend
+        html += trend + " :"
         html += '<span data-price="' + obj['LTP'] + '" data-index="' + 0 + '" data-trend="' + obj['TREND'] + '" data-name="' + obj['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
         html += obj['TRADINGSYMBOL']
         html += '</span>'

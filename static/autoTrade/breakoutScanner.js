@@ -167,8 +167,38 @@ async function showBreakOutStocks() {
 
     let html = ''
 
-    html += '<div class="row">'
-    html += '<div class="col-md-4" ></div>'
+    html += '<div class="row" id="breakout-trend-container">'
+    html += '<div class="col-md-1">'
+    html += 'S: <span title=="Sell" class="badge bg-danger" id="ohl-sell">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'SSLH: <span title="Strong Sell(Lower High)" class="badge bg-danger" id="strong-sell-lower-high">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'SSOH: <span title="Strong Sell(OH)" class="badge bg-danger" id="strong-sell-ohl">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'B: <span title=="Buy" class="badge bg-success" id="ohl-buy">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'SBHH: <span title="Strong Buy(Higher High)" class="badge bg-success" id="strong-buy-higher-higher">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += 'SBOL: <span title=="Strong Buy(OL)" class="badge bg-success" id="strong-buy-ol">0</span>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
+    html += '<span class="badge bg-success" id="total-buy">0</span>'
+    html += '/'
+    html += '<span class="badge bg-danger" id="total-sell">0</span>'
+    html += '</div>'
+
+
     html += '<div class="col-md-2" >'
     html += 'All: <span class="badge bg-success" style="margin-right: .2rem;" id="all-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="all-bear-trend">' + 0 + ' %</span>'
     html += '</div>'
@@ -181,7 +211,7 @@ async function showBreakOutStocks() {
     html += 'Bank: <span class="badge bg-success" style="margin-right: .2rem;" id="bank-bull-trend">' + 0 + ' %</span><span class="badge bg-danger" style="margin-right: .2rem;" id="bank-bear-trend">' + 0 + ' %</span>'
     html += '</div>'
     html += '</div>'
-
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
     html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<table  class="table" id="breakout-stock-list-table" style="width: 100%;display: none;">'
@@ -942,6 +972,7 @@ async function callAnalyseBreakout(auto) {
     if (!auto) {
         showMarketSentiment()
     }
+    jQ("#breakout-stock-list-table_wrapper  #processing-trend").html("Done...");
     jQ("#breakout-stock-list-table_wrapper  #last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 }
 
@@ -952,6 +983,14 @@ function showMarketSentiment() {
     let niftyBear = 0;
     let bankBull = 0;
     let bankBear = 0;
+
+    let sell = 0;
+    let strongSellOH = 0
+    let strongSellLowerHigh = 0
+    let buy = 0;
+    let strongBuyOL = 0;
+    let strongBuyHigherHigh = 0;
+
     jQ.each(breakOutStocks, function (index, row) {
         let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
         let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
@@ -1195,6 +1234,33 @@ function showMarketSentiment() {
                 bankBear++
             }
         }
+
+
+        if (row.OHL_TREND[2] == "Strong Sell(OH)") {
+            strongSellOH++;
+        }
+
+        if (row.OHL_TREND[2] == "Strong Buy(OL)") {
+            strongBuyOL++;
+        }
+
+        if (row.OHL_TREND[2] == "Strong Sell(Lower High)") {
+            strongSellLowerHigh++;
+        }
+
+        if (row.OHL_TREND[2] == "Strong Buy(Higher High)") {
+            strongBuyHigherHigh++;
+        }
+
+        if (row.OHL_TREND[2] == "Buy") {
+            buy++;
+        }
+
+        if (row.OHL_TREND[2] == "Sell") {
+            sell++;
+        }
+
+
     });
 
     let allBullPerc = allBull / (12 * 227) * 100
@@ -1214,6 +1280,21 @@ function showMarketSentiment() {
     jQ("#nifty-bear-trend").html(parseFloat(niftyBearPerc).toFixed(2) + '%')
     jQ("#bank-bull-trend").html(parseFloat(bankBullPerc).toFixed(2) + '%')
     jQ("#bank-bear-trend").html(parseFloat(bankBearPerc).toFixed(2) + '%')
+
+    jQ("#ohl-sell").html(sell);
+    jQ("#strong-sell-ohl").html(strongSellOH);
+    jQ("#strong-sell-lower-high").html(strongSellLowerHigh);
+    jQ("#ohl-buy").html(buy);
+    jQ("#strong-buy-higher-higher").html(strongBuyHigherHigh);
+    jQ("#strong-buy-ol").html(strongBuyOL);
+    let totalBuy = buy + strongBuyHigherHigh + strongBuyOL
+    let totalSell = sell + strongSellOH + strongSellLowerHigh
+    jQ("#total-buy").html(totalBuy)
+    jQ("#total-sell").html(totalSell)
+
+
+
+
 
 }
 
