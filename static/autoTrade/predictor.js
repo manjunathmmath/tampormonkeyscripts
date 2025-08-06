@@ -833,17 +833,6 @@ async function generatePredictionStockTable(data) {
                 render: function (data, type, row, meta) {
                     let html = ''
 
-                    let bull = 0;
-                    let bear = 0;
-                    if (jQ.inArray("ASO", row['TREND']) != -1) {
-                        bull++
-                    }
-
-                    if (jQ.inArray("BSO", row['TREND']) != -1) {
-                        bear++
-                    }
-
-
                     let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
                     let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
                     let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
@@ -932,6 +921,16 @@ async function generatePredictionStockTable(data) {
                         falseCount++
                     }
 
+                    let bull = 0;
+                    let bear = 0;
+                    if (jQ.inArray("ASO", row['TREND']) != -1) {
+                        bull++
+                    }
+
+                    if (jQ.inArray("BSO", row['TREND']) != -1) {
+                        bear++
+                    }
+
                     if (trueCount > falseCount) {
                         bull++;
                     } else {
@@ -978,7 +977,39 @@ async function generatePredictionStockTable(data) {
                         bear++;
                     }
 
+                    try {
+                        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])) {
+                            bear++;
+                        } else {
+                            bull++;
+                        }
+                        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
+                            bear++;
+                        } else {
+                            bull++;
+                        }
 
+                        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
+                            bear++;
+                        } else {
+                            bull++;
+                        }
+
+                        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
+                            bear++;
+                        } else {
+                            bull++;
+                        }
+
+                        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
+                            bear++;
+                        } else {
+                            bull++;
+                        }
+                    } catch (err) {
+                        console.log("Error while analysing strikes")
+                        console.log(err)
+                    }
 
                     if (bull > bear) {
                         html += '<span class="badge bg-success">Bullish</span>'
