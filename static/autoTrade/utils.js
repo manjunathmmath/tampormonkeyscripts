@@ -51,6 +51,14 @@ function makeUIChanges() {
     html += 'Breakout'
     html += '</a>'
 
+    html += '<a href="#" id="show-quick-scanner" style="padding:10px;">'
+    html += 'Quick'
+    html += '</a>'
+
+    html += '<a href="#" id="show-predictor" style="padding:10px;">'
+    html += 'Prediction'
+    html += '</a>'
+
     jQ('body').first().find(".app-nav").append(html);
 }
 
@@ -640,3 +648,26 @@ function getAllValidBreakOutStocks() {
     
     return scripts;
 }
+
+function getAllTrackingStocks() {
+    let tracking = JSON.parse(localStorage.getItem("TRACK_SCRIPTS"));
+    let scripts = []
+    jQ.each(tracking, function (index, item) {
+        if (jQ.inArray(item, scripts) === -1) {
+            scripts.push(item)
+        }
+    });
+    
+    return scripts;
+}
+
+jQ(document).on("click", ".track-next-day", function (e) {
+    let name = jQ(this).attr("data-name");
+    let trackScripts = JSON.parse(localStorage.getItem("TRACK_SCRIPTS"));
+    if (!trackScripts) {
+        trackScripts = []
+    }
+
+    trackScripts.push(name)
+    localStorage.setItem("TRACK_SCRIPTS", JSON.stringify(trackScripts));
+});

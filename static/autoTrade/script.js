@@ -198,9 +198,34 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
+    html += '<div class="col-md-1">'
+    html += '<button id="show-quick-scanner" class="btn btn-secondary btn-sm" type="submit">';
+    html += 'Quick'
+    html += '</button>'
+    html += '</div>'
+
 
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<h3>TRADE IDEAS/STRATEGIES</h3>'
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<p>'
+    html += 'ASO  Trade : Check if ASO breakout and PE OI  > CE OI. Then Go for CE'
+    html += '</p>'
+    html += '<p>'
+    html += 'ASO Reversal Trade : Check if ASO breakout and CE OI  > PE OI. Then Go for PE'
+    html += '</p>'
+    html += '<p>'
+    html += 'BSO Trade : Check if BSO breakout and CE OI  > PE OI. Then go for PE'
+    html += '</p>'
+    html += '<p>'
+    html += 'BSO Reversal Trade : Check if BSO breakout and PE OI  > CE OI. Then go for CE'
+    html += '</p>'
+    html += '<p>'
+    html += 'Above is for AST and BST Trades. Also check for Breakout True and False count. Check aslo the prediction logic'
+    html += '</p>'
+
+
 
 
     let title = ''
@@ -235,6 +260,7 @@ function showAutoTrade() {
     });
 }
 
+
 jQ(document).on("click", "#load-price", function (e) {
     e.preventDefault();
     let result = confirm("Are you sure you want to load the open price ?");
@@ -245,36 +271,98 @@ jQ(document).on("click", "#load-price", function (e) {
 
 async function loadOpenPrice() {
     await saveVixQuote();
-    let instru = []
-    jQ.each(instrumentTokens, function (index, item) {
-        let obj = {}
-        obj['TRADINGSYMBOL'] = index
-        obj['TOKEN'] = item
-        instru.push(obj)
-    });
-    let storageObj = {};
-    for (let i = 0; i < instru.length; i++) {
-        try {
-            let name = instru[i]['TRADINGSYMBOL']
-            let tempName = name.replaceAll(" ", "-")
-            tempName = tempName.replaceAll("&", "-")
-            let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY_DATE, CURRENT_DAY, 'day');
-            let previous = data.data.candles[0]
-            let current = data.data.candles[1]
-            let obj = {}
-            obj['name'] = name
-            obj['price'] = current[1]
-            obj['prevPrice'] = previous[4]
-            obj['perc'] = parseFloat(current[1] - previous[4]).toFixed(2)
-            storageObj[name] = obj
-        } catch (err) {
-            console.log("Error while loading stock : " + instru[i]['TRADINGSYMBOL'])
-            console.log(err)
-        }
+    let currentTime = moment().format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
+    if (currentTime < checkTime) {
+        await loadPreMarketOpenPrice()
+    } else {
+        let instru = []
+        jQ.each(instrumentTokens, function (index, item) {
+            let obj = {}
+            obj['TRADINGSYMBOL'] = index
+            obj['TOKEN'] = item
+            instru.push(obj)
+        });
+        let storageObj = {};
+        for (let i = 0; i < instru.length; i++) {
+            try {
+                let name = instru[i]['TRADINGSYMBOL']
+                let tempName = name.replaceAll(" ", "-")
+                tempName = tempName.replaceAll("&", "-")
+                let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY_DATE, CURRENT_DAY, 'day');
+                let previous = data.data.candles[0]
+                let current = data.data.candles[1]
+                let obj = {}
+                obj['name'] = name
+                obj['price'] = current[1]
+                obj['prevPrice'] = previous[4]
+                obj['perc'] = parseFloat(current[1] - previous[4]).toFixed(2)
+                storageObj[name] = obj
+            } catch (err) {
+                console.log("Error while loading stock : " + instru[i]['TRADINGSYMBOL'])
+                console.log(err)
+            }
+
+        }
+        localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
     }
-    localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
+
 }
+
+async function loadPreMarketOpenPrice() {
+    let marketWatchSideBar = jQ(".marketwatch-pagination");
+    let tabs = marketWatchSideBar.find(".pagination a.item");
+    for (let i = 0; i < (tabs.length - 1); i++) {
+        jQ(".marketwatch-pagination a.item")[i].click();
+        await callSleepForAWhile(1000);
+        await scanPreMarketpPrice();
+    }
+}
+
+async function scanPreMarketpPrice() {
+    await callSleepForAWhile(1000)
+    let marketWatchSideBar = jQ(".marketwatch-pagination");
+    let tabs = marketWatchSideBar.find(".pagination a.item");
+    let instrumentsWrapper = jQ(".draggable-wrapper");
+    let instruments = instrumentsWrapper.find(".items .item-wrapper");
+    let storageOpenPriceObj = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
+    if (!storageOpenPriceObj) {
+        storageOpenPriceObj = {}
+    }
+
+    jQ.each(tabs, function (index, item) {
+        if (index == 0 || index == 1) {
+            if (jQ(item).hasClass("selected")) {
+                if (instruments.length > 0) {
+                    jQ(instruments).each(function (iindex, iitem) {
+                        let name = jQ(this).find(".symbol").find(".name").html();
+                        let price = jQ(this).find(".price").find(".last-price").html();
+                        let perc = jQ(this).find(".price-change").find(".change-absolute").html();
+                        if (name == "M&amp;M") {
+                            name = "M&M"
+                        }
+
+                        if (name == "M&amp;MFIN") {
+                            name = "M&MFIN"
+                        }
+
+                        let obj = {}
+                        obj['name'] = name
+                        obj['price'] = parseFloat(price.trim()).toFixed(2)
+                        obj['perc'] = perc.trim();
+                        let prevPrice = parseFloat(price.trim()) - parseFloat(perc.trim());
+                        obj['prevPrice'] = parseFloat(prevPrice).toFixed(2);
+                        storageOpenPriceObj[name] = obj
+                    });
+                }
+            }
+        }
+    });
+
+    localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageOpenPriceObj));
+}
+
 
 async function updateStrorageLtpPrice(instance) {
     let marketWatchSideBar = jQ(".marketwatch-pagination");
@@ -306,7 +394,6 @@ async function scanLtpPrice() {
                 if (instruments.length > 0) {
                     jQ(instruments).each(function (iindex, iitem) {
                         let name = jQ(this).find(".symbol").find(".name").html();
-
                         let price = jQ(this).find(".price").find(".last-price").html();
                         let obj = {}
                         if (name == "M&amp;M") {

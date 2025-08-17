@@ -6,7 +6,7 @@ jQ(document).on("click", "#show-oi-viewer", function (e) {
 jQ(document).on("click", "#start-auto-refresh-oi-viewer", function (e) {
     e.preventDefault();
     let isEnabled = jQ("#enable-oi-refresh").is(':checked')
-    if(!isEnabled){
+    if (!isEnabled) {
         return false
     }
     var that = jQ(this);
@@ -85,6 +85,7 @@ function showOiViewer() {
     html += '<th class="number-align">CE</th>'
     html += '<th class="text-align">S</th>'
     html += '<th class="number-align">PE</th> '
+    html += '<th>PCR</th> '
 
     html += '</tr>'
     html += '</thead>'
@@ -222,6 +223,7 @@ async function showOiAnalyzer() {
         obj['STRIKE_UPPER_TWO_CE'] = ''
         obj['STRIKE_UPPER_TWO'] = ''
         obj['STRIKE_UPPER_TWO_PE'] = ''
+        obj['PCR'] = ''
 
         trendingStocks.push(obj)
         orderRow++;
@@ -289,6 +291,10 @@ function generateTrendingStockTable(data) {
                     }
                     html += '<span style="font-size:xx-small;position:absolute;right:2rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color show-option-change">'
                     html += 'OI'
+                    html += '</span>'
+
+                    html += '<span title="Track for next day" style="font-size:xx-small;position:absolute;right:4rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color track-next-day">'
+                    html += 'T'
                     html += '</span>'
 
                     return html;
@@ -528,6 +534,9 @@ function generateTrendingStockTable(data) {
                     return html
                 }
             },
+            {
+                "data": "PCR",
+            },
 
         ],
         "fnInitComplete": function (oSettings, json) {
@@ -573,16 +582,22 @@ function showOITrendCount() {
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>');
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter  bg-info" type="button"><span>BREAKOUT</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="index" class="dt-button trend-filter  bg-info" type="button"><span>INDEX</span></button>')
+
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="track" class="dt-button trend-filter  bg-info" type="button"><span>TRACK</span></button>')
+
+
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
     jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
 }
+
 
 jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", function (e) {
     let name = jQ(this).attr("data-trend");
     trendingStocks = []
     let VALID_STOCKS = getAllValidStocks();
     let BREAKOUT_STOCKS = getAllValidBreakOutStocks();
+    let TRACKING_SCRIPTS = getAllTrackingStocks();
     jQ.each(allTrendingStocks, function (index, item) {
         if (name == "aso") {
             if (jQ.inArray("ASO", item['TREND']) != -1) {
@@ -616,6 +631,10 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", fun
             if (jQ.inArray(item['TRADINGSYMBOL'], INDEX_LIST) != -1) {
                 trendingStocks.push(item)
             }
+        } else if (name == "track") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], TRACKING_SCRIPTS) != -1) {
+                trendingStocks.push(item)
+            }
         } else if (name == "trending") {
             if (jQ.inArray("ASO", item['TREND']) != -1) {
                 trendingStocks.push(item)
@@ -633,7 +652,7 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", fun
 jQ(document).on("click", "#trending-stock-list-table_wrapper .analyse-instrument", function (e) {
     e.preventDefault();
     let isEnabled = jQ("#enable-oi-refresh").is(':checked')
-    if(!isEnabled){
+    if (!isEnabled) {
         return false
     }
     var that = jQ(this);
@@ -664,8 +683,27 @@ async function callAnalyseTrend() {
             let res = generateTrend(name);
             trendingStocks[rowId]['LTP'] = res['ltp']
             if (name != 'GIFT NIFTY') {
-                let strikes = await showTrendingOI(name)
-                strikes = strikes['tableData']
+                let oiData = await showTrendingOI(name)
+                let strikes = oiData['tableData']
+
+                let pcrHtml = ''
+                let chPcrHtml = ''
+                if (oiData['pcr'] < 1) {
+                    pcrHtml += '<span class="badge bg-danger">' + oiData['pcr'] + '</span>'
+                } else {
+                    pcrHtml += '<span class="badge bg-success">' + oiData['pcr'] + '</span>'
+                }
+
+                if (oiData['chPcr'] < 1) {
+                    chPcrHtml += '<span class="badge bg-danger">' + oiData['chPcr'] + '</span>'
+                } else {
+                    chPcrHtml += '<span class="badge bg-success">' + oiData['chPcr'] + '</span>'
+                }
+
+                trendingStocks[rowId]['PCR'] = pcrHtml + ' : ' + chPcrHtml
+
+
+
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
                 if (strikes[0]) {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
@@ -929,7 +967,7 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
                 }
 
                 let HISTORICAL_DATA_INTERVAL_OVERRIDE = jQ("#api-data-interval option:selected").val()
-                if(!HISTORICAL_DATA_INTERVAL_OVERRIDE){
+                if (!HISTORICAL_DATA_INTERVAL_OVERRIDE) {
                     HISTORICAL_DATA_INTERVAL_OVERRIDE = '5minute'
                 }
 
@@ -981,7 +1019,7 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             let OI_CE = currDataCE[currDataCE.length - 1][6]
             let OI_PE = currDataPE[currDataPE.length - 1][6]
 
-             totalCEOI = totalCEOI + OI_CE
+            totalCEOI = totalCEOI + OI_CE
             totalPEOI = totalPEOI + OI_PE
 
             let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]

@@ -25,64 +25,113 @@ async function showPredictor(name) {
     html += '</div>'
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div id="predition-result">'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
     html += '<div class="row" >'
     html += '<div class="col-md-12">'
-    html += '<table  class="table display nowrap" id="predictor-stock-list-table" style="width: 100%;display: none;">'
+    html += '<table  class="table display nowrap" id="predictor-stock-list-table" style="width: 100%;">'
 
     html += '<thead>'
+
+
+
+    html += '<tr>'
+    html += '<th>SYMBOL</th>'
+    html += '<th id="symbol-prediction">SYMBOL NAME</th>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<th >CHANGE %</th>'
+    html += '<th id="change-prediction">CHANGE %</th>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<th  title="Price Moved" >PRICE MOVED</th>'
+    html += '<th id="price-moved-prediction">PRICE MOVED</th>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<th title="Strike Trend" >STRIKE TREND</th>'
+    html += '<th id="strike-trend-prediction">STRIKE TREND</th>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<th  title="OHL Trend" >OHL TREND</th>'
+    html += '<th id="ohl-trend-prediction">OHL TREND</th>'
+    html += '</tr>'
     html += '<tr>'
 
-    html += '<th rowspan="2">SYMBOL</th>'
+    html += '<th>OHL BUY %</th>'
+    html += '<th id="ohl-buy-perc-prediction">OHL BUY %</th>'
+    html += '</tr>'
+    html += '<tr>'
 
-    html += '<th rowspan="2">CH%</th>'
-    html += '<th rowspan="2" title="Price Moved" >M</th>'
-    html += '<th rowspan="2" title="Trend" >T</th>'
-    html += '<th rowspan="2" title="OHL Trend" >OHL</th>'
-    html += '<th rowspan="2">B %</th>'
-    html += '<th rowspan="2">S %</th>'
-    html += '<th rowspan="2" title="Volume" >V</th>'
-    html += '<th rowspan="2">LTP</th>'
+    html += '<th>OHL SELL %</th>'
+    html += '<th id="ohl-sell-perc-prediction">OHL SELL %</th>'
+    html += '</tr>'
+    html += '<tr>'
+
+    html += '<th title="Volume" >VOLUME</th>'
+    html += '<th id="volume-prediction">VOLUME</th>'
+    html += '</tr>'
+    html += '<tr>'
+
+    html += '<th>LTP</th>'
+    html += '<th id="ltp-prediction">LTP</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<th>PCR</th>'
+    html += '<th id="pcr-prediction">PCR</th>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<th>BREAKOUT</th>'
+    html += '<th id="breakout-prediction">BREAKOUT</th>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<th>PREDICTION</th>'
+    html += '<th id="prediction-prediction">PREDICTION</th>'
+    html += '</tr>'
+
+
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+
+
+    html += '<table  class="table display nowrap"  style="width: 100%;">'
+    html += '<thead>'
     html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class atm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
     html += '</tr>'
-
     html += '<tr>'
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
+    html += '<th id="STRIKE_LOWER_ONE_CE-prediction" class="number-align" >CE</th>'
+    html += '<th id="STRIKE_LOWER_ONE-prediction" class="text-align">S</th>'
+    html += '<th id="STRIKE_LOWER_ONE_PE-prediction" class="number-align">PE</th> '
 
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
+    html += '<th id="STRIKE_LOWER_TWO_CE-prediction" class="number-align">CE</th>'
+    html += '<th id="STRIKE_LOWER_TWO-prediction" class="text-align">S</th>'
+    html += '<th id="STRIKE_LOWER_TWO_PE-prediction" class="number-align">PE</th> '
 
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
+    html += '<th id="STRIKE_ATM_CE-prediction" class="number-align">CE</th>'
+    html += '<th id="STRIKE_ATM-prediction" class="text-align">S</th>'
+    html += '<th id="STRIKE_ATM_PE-prediction" class="number-align">PE</th> '
 
+    html += '<th id="STRIKE_UPPER_ONE_CE-prediction" class="number-align">CE</th>'
+    html += '<th id="STRIKE_UPPER_ONE-prediction" class="text-align">S</th>'
+    html += '<th id="STRIKE_UPPER_ONE_PE-prediction" class="number-align">PE</th> '
 
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align">CE</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align">PE</th> '
-    html += '<th>PCR</th>'
-    html += '<th>BREAKOUT</th>'
-    html += '<th>PREDICTION</th>'
-
-    html += '</tr>'
+    html += '<th id="STRIKE_UPPER_TWO_CE-prediction" class="number-align">CE</th>'
+    html += '<th id="STRIKE_UPPER_TWO-prediction" class="text-align">S</th>'
+    html += '<th id="STRIKE_UPPER_TWO_PE-prediction" class="number-align">PE</th> '
     html += '</thead>'
     html += '<tbody>'
     html += '</tbody>'
     html += '</table>'
+
     html += '</div>'
     html += '</div>'
 
@@ -95,7 +144,7 @@ async function showPredictor(name) {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('predictor', html, "Predictor", 950, 550);
+    showPopUpWindow('predictor', html, "Predictor", 950, 750);
 
     var divId = "popup-custom-style-predictor";
 
@@ -150,6 +199,7 @@ jQ(document).on("change", "#predictor-instruments", function (e) {
     let instrument = jQ("#predictor-instruments option:selected").val()
     showPrictionProbabilty(instrument)
 });
+
 let stock = []
 async function showPrictionProbabilty(name) {
     stock = []
@@ -191,7 +241,6 @@ async function showPrictionProbabilty(name) {
         obj['STRIKE_LOWER_TWO'] = ''
         obj['STRIKE_LOWER_TWO_PE'] = ''
 
-
         obj['STRIKE_ATM_CE'] = ''
         obj['STRIKE_ATM'] = ''
         obj['STRIKE_ATM_PE'] = ''
@@ -204,7 +253,6 @@ async function showPrictionProbabilty(name) {
         obj['STRIKE_UPPER_TWO'] = ''
         obj['STRIKE_UPPER_TWO_PE'] = ''
         obj['BREAK_OUT'] = ''
-
 
         obj['isOneDayAgo'] = false;
         obj['isTwoDayAgo'] = false;
@@ -220,7 +268,6 @@ async function showPrictionProbabilty(name) {
         obj['oneDayAgoVolumeGreater'] = false;
 
         let priceMoved = 0;
-
         let asoPrice = 0;
         let bsoPrice = 0;
         asoPrice = parseFloat(obj['STRIKEDATA']['ustrikeOne']);
@@ -239,815 +286,622 @@ async function showPrictionProbabilty(name) {
     }
 
     if (stock.length > 0) {
-        generatePredictionStockTable(stock)
-        jQ("#predition-result").hide()
+        await callPredictionAnalyseTrend();
+        generatePredictionUI(stock)
     }
 
 }
 
 
-let predictionTable = null
-async function generatePredictionStockTable(data) {
-    let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
-    jQ("#predictor-stock-list-table").show()
-    predictionTable = jQ('#predictor-stock-list-table').DataTable({
-        fixedColumns: {
-            start: 1,
-            end: 1
-        },
-        "processing": true,
-        "order": [],
-        "pageLength": 50,
-        "bPaginate": false,
-        "data": data,
-        "scrollX": true,
-        scrollCollapse: true,
-        "bDestroy": true,
-        "columnDefs": [
-            {
-                "targets": [],
-                "visible": false,
-                "searchable": false
+function generatePredictionUI(stock) {
+
+    let row = stock[0]
+
+    let html = ''
+    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + row['TRADINGSYMBOL'] + '/' + instrumentTokens[row['TRADINGSYMBOL']] + '"> '
+
+    let trades = JSON.parse(localStorage.getItem("TRADES"));
+    if (jQ.inArray(row['TRADINGSYMBOL'], trades) !== -1) {
+        html += '<span class=" bg-warning-color" title="Already traded">' + row['TRADINGSYMBOL'] + '</span>'
+    } else {
+        html += row['TRADINGSYMBOL'];
+    }
+    html += '</a>'
+
+    html += '<span style="font-size:xx-small;margin-left:2rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
+    html += 'Chart'
+    html += '</span>'
+
+    let symbol = row['TRADINGSYMBOL']
+    if (row['TRADINGSYMBOL'] == "NIFTY 50") {
+        symbol = "NIFTY"
+    }
+    html += '<span style="font-size:xx-small;margin-left:2rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color show-option-change">'
+    html += 'OI'
+    html += '</span>'
+    jQ("#symbol-prediction").html(html)
+
+
+    html = ''
+    let currentPrice = row['LTP'];
+    let prevClose = row['CLOSE'];
+    let change = (currentPrice - prevClose).toFixed(2);
+    let changePerc = ((change / prevClose) * 100).toFixed(2)
+    if (changePerc < 0) {
+        html += '<span class=" bg-danger-color">' + changePerc + '</span>'
+    } else {
+        html += '<span class=" bg-success-color">' + changePerc + '</span>'
+    }
+    jQ("#change-prediction").html(html)
+
+
+    jQ("#price-moved-prediction").html(row['PRICE_MOVED'])
+
+
+    html = ''
+    if (row['TREND'].length > 0) {
+        jQ.each(row['TREND'], function (index, item) {
+            if (item == "ASO") {
+                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
             }
-        ],
 
-        dom: 'Bfrtip',
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
-        ],
-        "columns": [
-
-            {
-                "data": "TRADINGSYMBOL",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
-
-                    let trades = JSON.parse(localStorage.getItem("TRADES"));
-                    if (jQ.inArray(data, trades) !== -1) {
-                        html += '<span class=" bg-warning-color" title="Already traded">' + data + '</span>'
-                    } else {
-                        html += data;
-                    }
-                    html += '</a>'
-
-                    html += '<span style="font-size:xx-small;position:absolute;right:0" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + row['TRADINGSYMBOL'] + '" class="bg-info-color show-chart">'
-                    html += 'Chart'
-                    html += '</span>'
-
-                    let symbol = row['TRADINGSYMBOL']
-                    if (row['TRADINGSYMBOL'] == "NIFTY 50") {
-                        symbol = "NIFTY"
-                    }
-                    html += '<span style="font-size:xx-small;position:absolute;right:2rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color show-option-change">'
-                    html += 'OI'
-                    html += '</span>'
-
-                    return html;
-                }
-            },
-
-            {
-                "data": 'PERC',
-                render: function (data, type, row, meta) {
-                    let currentPrice = row['LTP'];
-                    let prevClose = row['CLOSE'];
-                    let change = (currentPrice - prevClose).toFixed(2);
-                    let changePerc = ((change / prevClose) * 100).toFixed(2)
-                    let html = ''
-                    if (changePerc < 0) {
-                        html += '<span class=" bg-danger-color">' + changePerc + '</span>'
-                    } else {
-                        html += '<span class=" bg-success-color">' + changePerc + '</span>'
-                    }
-                    return html;
-                }
-            },
-            { "data": "PRICE_MOVED" },
-            {
-                "data": "TREND",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    if (data.length > 0) {
-                        jQ.each(data, function (index, item) {
-                            if (item == "ASO") {
-                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
-                            }
-
-                            if (item == "BSO") {
-                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
-                            }
-
-                            if (item == "VIXU") {
-                                html += '<span class="badge bg-info below-strike-one strike-info">VIXU</span>'
-                            }
-
-                            if (item == "VIXL") {
-                                html += '<span class="badge bg-info below-strike-one strike-info">VIXL</span>'
-                            }
-
-                            if (item == "AST") {
-                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
-                            }
-
-                            if (item == "BST") {
-                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
-                            }
-                        });
-                    }
-                    return html
-                }
-
-            },
-            {
-                "data": "OHL_TREND",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    if (data) {
-
-                        if (data[2] == "Strong Sell(OH)") {
-                            html += '<span title="' + data[2] + '" class="badge bg-danger">SSOH</span>'
-                        }
-
-                        if (data[2] == "Strong Buy(OL)") {
-                            html += '<span title="' + data[2] + '" class="badge bg-success">SBOL</span>'
-
-                        }
-
-                        if (data[2] == "Strong Sell(Lower High)") {
-                            html += '<span title="' + data[2] + '" class="badge bg-danger">SSLH</span>'
-                        }
-
-                        if (data[2] == "Strong Buy(Higher High)") {
-                            html += '<span title="' + data[2] + '" class="badge bg-success">SBHH</span>'
-                        }
-
-                        if (data[2] == "Buy") {
-                            html += '<span title="' + data[2] + '" class="badge bg-success">B</span>'
-                        }
-
-                        if (data[2] == "Sell") {
-                            html += '<span title="' + data[2] + '" class="badge bg-danger">S</span>'
-                        }
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "OHL_TREND",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    if (data) {
-                        html += '<span class=" bg-success-color">' + parseFloat(data[0]).toFixed(2) + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "OHL_TREND",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    if (data) {
-                        html += '<span class=" bg-danger-color">' + parseFloat(data[1]).toFixed(2) + '</span>'
-                    }
-                    return html
-                }
-            },
-            { "data": "VOLUME" },
-            {
-                "data": "LTP",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    if (data) {
-                        let name = row['TRADINGSYMBOL']
-                        let tempName = name.replaceAll(" ", "-")
-                        tempName = tempName.replaceAll("&", "-")
-                        html += '<span class="ltp-claass " id="predictor-ltp-price-' + tempName + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_LOWER_ONE_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
-                            className = " bg-danger-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_ONE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_ONE'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_LOWER_TWO'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_ONE_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_ONE_CE'])) {
-                            className = " bg-success-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_LOWER_TWO_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
-                            className = " bg-danger-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_TWO",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_TWO'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_ATM'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_TWO_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_TWO_CE'])) {
-                            className = " bg-success-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_ATM_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_ATM_PE'])) {
-                            className = " bg-danger-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_ATM",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_ATM'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_ONE'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_ATM_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_ATM_CE'])) {
-                            className = " bg-success-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_UPPER_ONE_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
-                            className = " bg-danger-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_UPPER_ONE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_UPPER_ONE'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_TWO'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_UPPER_ONE_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_ONE_CE'])) {
-                            className = " bg-success-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_UPPER_TWO_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
-                            className = " bg-danger-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_UPPER_TWO",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) > parseFloat(row['STRIKE_UPPER_TWO'])) {
-                            className = "bg-warning-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_UPPER_TWO_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_TWO_CE'])) {
-                            className = " bg-success-color"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "PCR",
-            },
-
-            {
-                "data": "BREAK_OUT",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let isOneDayAgoClass = 'badge bg-warning'
-                    let isTwoDayAgoClass = 'badge bg-warning'
-                    let isThreeDayAgoClass = 'badge bg-warning'
-                    let isFourDayAgoClass = 'badge bg-warning'
-                    let isFiveDayAgoClass = 'badge bg-warning'
-                    let isSixDayAgoClass = 'badge bg-warning'
-                    let isSevenDayAgoClass = 'badge bg-warning'
-                    let isDayCloseGreaterDayOpenClass = 'badge bg-warning'
-                    let isDayCloseGreaterOneDayAgoCloseClass = 'badge bg-warning'
-                    let isWeeklyCloseGreaterWeeklyOpenClass = 'badge bg-warning'
-                    let isMonthlyCloseGreaterMonthlyOpenClass = 'badge bg-warning'
-                    let oneDayAgoVolumeGreaterClass = 'badge bg-warning'
-
-                    if (row.isOneDayAgo) {
-                        isOneDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isTwoDayAgo) {
-                        isTwoDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isThreeDayAgo) {
-                        isThreeDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isFourDayAgo) {
-                        isFourDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isFiveDayAgo) {
-                        isFiveDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isSixDayAgo) {
-                        isSixDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isSevenDayAgo) {
-                        isSevenDayAgoClass = 'badge bg-success'
-                    }
-
-                    if (row.isDayCloseGreaterDayOpen) {
-                        isDayCloseGreaterDayOpenClass = 'badge bg-success'
-                    }
-
-                    if (row.isDayCloseGreaterOneDayAgoClose) {
-                        isDayCloseGreaterOneDayAgoCloseClass = 'badge bg-success'
-                    }
-
-
-                    if (row.isWeeklyCloseGreaterWeeklyOpen) {
-                        isWeeklyCloseGreaterWeeklyOpenClass = 'badge bg-success'
-                    }
-
-
-                    if (row.isMonthlyCloseGreaterMonthlyOpen) {
-                        isMonthlyCloseGreaterMonthlyOpenClass = 'badge bg-success'
-                    }
-
-
-                    if (row.oneDayAgoVolumeGreater) {
-                        oneDayAgoVolumeGreaterClass = 'badge bg-success'
-                    }
-
-                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
-                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
-                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
-                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
-                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
-                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
-                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
-                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
-                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
-                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
-                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
-                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
-
-                    let trueCount = 0;
-                    let falseCount = 0;
-                    if (isOneDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isTwoDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-
-                    if (isThreeDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isFourDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isFiveDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isSixDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isSevenDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isDayCloseGreaterDayOpenValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (oneDayAgoVolumeGreaterValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    html += '<span class="' + isOneDayAgoClass + '">' + isOneDayAgoValue + '</span>'
-                    html += '<span class="' + isTwoDayAgoClass + '">' + isTwoDayAgoValue + '</span>'
-                    html += '<span class="' + isThreeDayAgoClass + '">' + isThreeDayAgoValue + '</span>'
-                    html += '<span class="' + isFourDayAgoClass + '">' + isFourDayAgoValue + '</span>'
-                    html += '<span class="' + isFiveDayAgoClass + '">' + isFiveDayAgoValue + '</span>'
-                    html += '<span class="' + isSixDayAgoClass + '">' + isSixDayAgoValue + '</span>'
-                    html += '<span class="' + isSevenDayAgoClass + '">' + isSevenDayAgoValue + '</span>'
-                    html += '<span class="' + isDayCloseGreaterDayOpenClass + '">' + isDayCloseGreaterDayOpenValue + '</span>'
-                    html += '<span class="' + isDayCloseGreaterOneDayAgoCloseClass + '">' + isDayCloseGreaterOneDayAgoCloseValue + '</span>'
-                    html += '<span class="' + isWeeklyCloseGreaterWeeklyOpenClass + '">' + isWeeklyCloseGreaterWeeklyOpenValue + '</span>'
-                    html += '<span class="' + isMonthlyCloseGreaterMonthlyOpenClass + '">' + isMonthlyCloseGreaterMonthlyOpenValue + '</span>'
-                    html += '<span class="' + oneDayAgoVolumeGreaterClass + '">' + oneDayAgoVolumeGreaterValue + '</span>'
-
-
-                    html += ' ( <span class="badge bg-success">' + trueCount + '</span> )'
-                    html += ' ( <span class="badge bg-warning">' + falseCount + '</span> )'
-                    return html
-                }
-            },
-            {
-                "data": "PREDICTION",
-                render: function (data, type, row, meta) {
-                    let html = ''
-
-                    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
-                    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
-                    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
-                    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
-                    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
-                    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
-                    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
-                    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
-                    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
-                    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
-                    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
-                    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
-
-                    let trueCount = 0;
-                    let falseCount = 0;
-                    if (isOneDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isTwoDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-
-                    if (isThreeDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isFourDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isFiveDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isSixDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isSevenDayAgoValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isDayCloseGreaterDayOpenValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    if (oneDayAgoVolumeGreaterValue == 'T') {
-                        trueCount++
-                    } else {
-                        falseCount++
-                    }
-
-                    let bull = 0;
-                    let bear = 0;
-                    if (jQ.inArray("ASO", row['TREND']) != -1) {
-                        bull++
-                    }
-
-                    if (jQ.inArray("BSO", row['TREND']) != -1) {
-                        bear++
-                    }
-
-                    if (trueCount > falseCount) {
-                        bull++;
-                    } else {
-                        bear++;
-                    }
-
-                    if (row['PCR']) {
-                        let pcr = row['PCR'].split(":");
-                        if (parseFloat(pcr[1].trim()) < 95) {
-                            bull++;
-                        } else {
-                            bear++;
-                        }
-                        console.log(bull, bear, pcr)
-                    }
-
-                    if (row['OHL_TREND'][0] > row['OHL_TREND'][1]) {
-                        bull++;
-                    } else {
-                        bear++;
-                    }
-
-                    if (row['OHL_TREND'][2] == "Strong Sell(OH)") {
-                        bear++;
-                    }
-
-                    if (row['OHL_TREND'][2] == "Strong Buy(OL)") {
-                        bull++;
-                    }
-
-                    if (row['OHL_TREND'][2] == "Strong Sell(Lower High)") {
-                        bear++;
-                    }
-
-                    if (row['OHL_TREND'][2] == "Strong Buy(Higher High)") {
-                        bull++;
-                    }
-
-                    if (row['OHL_TREND'][2] == "Buy") {
-                        bull++;
-                    }
-
-                    if (row['OHL_TREND'][2] == "Sell") {
-                        bear++;
-                    }
-
-                    try {
-                        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])) {
-                            bear++;
-                        } else {
-                            bull++;
-                        }
-                        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
-                            bear++;
-                        } else {
-                            bull++;
-                        }
-
-                        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
-                            bear++;
-                        } else {
-                            bull++;
-                        }
-
-                        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
-                            bear++;
-                        } else {
-                            bull++;
-                        }
-
-                        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
-                            bear++;
-                        } else {
-                            bull++;
-                        }
-                    } catch (err) {
-                        console.log("Error while analysing strikes")
-                        console.log(err)
-                    }
-
-                    if (bull > bear) {
-                        html += '<span class="badge bg-success">Bullish</span>'
-                    } else {
-                        html += '<span class="badge bg-danger">Bearish</span>'
-                    }
-
-                    jQ("#predition-result").html(html)
-                    return html
-                }
-            },
-        ],
-        "fnInitComplete": function (oSettings, json) {
-        },
-        "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
-            for (var i in aData) {
-                jQ('td:eq(' + 10 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 13 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 16 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 19 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 22 + ')', nRow).addClass('strike-class');
-
+            if (item == "BSO") {
+                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
             }
+
+            if (item == "VIXU") {
+                html += '<span class="badge bg-info below-strike-one strike-info">VIXU</span>'
+            }
+
+            if (item == "VIXL") {
+                html += '<span class="badge bg-info below-strike-one strike-info">VIXL</span>'
+            }
+
+            if (item == "AST") {
+                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+            }
+
+            if (item == "BST") {
+                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+            }
+        });
+    } else {
+        html += '<span class="badge bg-info">No Trend</span>'
+    }
+    jQ("#strike-trend-prediction").html(html)
+
+
+    html = ''
+    if (row['OHL_TREND']) {
+
+        if (row['OHL_TREND'][2] == "Strong Sell(OH)") {
+            html += '<span title="' + row['OHL_TREND'][2] + '" class="badge bg-danger">SSOH</span>'
         }
-    });
-    jQ("#predition-result").html("")
-    await callPredictionAnalyseTrend();
-    jQ("#predition-result").show()
+
+        if (row['OHL_TREND'][2] == "Strong Buy(OL)") {
+            html += '<span title="' + row['OHL_TREND'][2] + '" class="badge bg-success">SBOL</span>'
+
+        }
+
+        if (row['OHL_TREND'][2] == "Strong Sell(Lower High)") {
+            html += '<span title="' + row['OHL_TREND'][2] + '" class="badge bg-danger">SSLH</span>'
+        }
+
+        if (row['OHL_TREND'][2] == "Strong Buy(Higher High)") {
+            html += '<span title="' + row['OHL_TREND'][2] + '" class="badge bg-success">SBHH</span>'
+        }
+
+        if (row['OHL_TREND'][2] == "Buy") {
+            html += '<span title="' + row['OHL_TREND'][2] + '" class="badge bg-success">B</span>'
+        }
+
+        if (row['OHL_TREND'][2] == "Sell") {
+            html += '<span title="' + row['OHL_TREND'][2] + '" class="badge bg-danger">S</span>'
+        }
+    }
+    jQ("#ohl-trend-prediction").html(html)
+
+
+    html = ''
+    if (row['OHL_TREND']) {
+        html += '<span class=" bg-success-color">' + parseFloat(row['OHL_TREND'][0]).toFixed(2) + '</span>'
+    }
+    jQ("#ohl-buy-perc-prediction").html(html)
+
+
+    html = ''
+    if (row['OHL_TREND']) {
+        html += '<span class=" bg-danger-color">' + parseFloat(row['OHL_TREND'][1]).toFixed(2) + '</span>'
+    }
+    jQ("#ohl-sell-perc-prediction").html(html);
+
+
+    jQ("#volume-prediction").html(row['VOLUME'])
+
+    jQ("#ltp-prediction").html(row['LTP'])
+
+
+    let pcr = row['PCR'].split(":");
+    let pcrHtml = ''
+    let chPcrHtml = ''
+
+
+    if (parseFloat(pcr[0].trim()) < 1 && parseFloat(pcr[0].trim()) > 0) {
+        pcrHtml += '<span class="badge bg-danger">' + pcr[0] + '</span>'
+    } else {
+        pcrHtml += '<span class="badge bg-success">' + pcr[0] + '</span>'
+    }
+
+    if (parseFloat(pcr[1].trim()) < 1 && parseFloat(pcr[1].trim()) > 0) {
+        chPcrHtml += '<span class="badge bg-danger">' + pcr[1] + '</span>'
+    } else {
+        chPcrHtml += '<span class="badge bg-success">' + pcr[1] + '</span>'
+    }
+
+    jQ("#pcr-prediction").html(pcrHtml + " : " + chPcrHtml);
+
+
+    let isOneDayAgoClass = 'badge bg-warning'
+    let isTwoDayAgoClass = 'badge bg-warning'
+    let isThreeDayAgoClass = 'badge bg-warning'
+    let isFourDayAgoClass = 'badge bg-warning'
+    let isFiveDayAgoClass = 'badge bg-warning'
+    let isSixDayAgoClass = 'badge bg-warning'
+    let isSevenDayAgoClass = 'badge bg-warning'
+    let isDayCloseGreaterDayOpenClass = 'badge bg-warning'
+    let isDayCloseGreaterOneDayAgoCloseClass = 'badge bg-warning'
+    let isWeeklyCloseGreaterWeeklyOpenClass = 'badge bg-warning'
+    let isMonthlyCloseGreaterMonthlyOpenClass = 'badge bg-warning'
+    let oneDayAgoVolumeGreaterClass = 'badge bg-warning'
+
+    if (row.isOneDayAgo) {
+        isOneDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isTwoDayAgo) {
+        isTwoDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isThreeDayAgo) {
+        isThreeDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isFourDayAgo) {
+        isFourDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isFiveDayAgo) {
+        isFiveDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isSixDayAgo) {
+        isSixDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isSevenDayAgo) {
+        isSevenDayAgoClass = 'badge bg-success'
+    }
+
+    if (row.isDayCloseGreaterDayOpen) {
+        isDayCloseGreaterDayOpenClass = 'badge bg-success'
+    }
+
+    if (row.isDayCloseGreaterOneDayAgoClose) {
+        isDayCloseGreaterOneDayAgoCloseClass = 'badge bg-success'
+    }
+
+
+    if (row.isWeeklyCloseGreaterWeeklyOpen) {
+        isWeeklyCloseGreaterWeeklyOpenClass = 'badge bg-success'
+    }
+
+
+    if (row.isMonthlyCloseGreaterMonthlyOpen) {
+        isMonthlyCloseGreaterMonthlyOpenClass = 'badge bg-success'
+    }
+
+
+    if (row.oneDayAgoVolumeGreater) {
+        oneDayAgoVolumeGreaterClass = 'badge bg-success'
+    }
+
+    let isOneDayAgoValue = row.isOneDayAgo.toString().toUpperCase().charAt(0)
+    let isTwoDayAgoValue = row.isTwoDayAgo.toString().toUpperCase().charAt(0)
+    let isThreeDayAgoValue = row.isThreeDayAgo.toString().toUpperCase().charAt(0)
+    let isFourDayAgoValue = row.isFourDayAgo.toString().toUpperCase().charAt(0)
+    let isFiveDayAgoValue = row.isFiveDayAgo.toString().toUpperCase().charAt(0)
+    let isSixDayAgoValue = row.isSixDayAgo.toString().toUpperCase().charAt(0)
+    let isSevenDayAgoValue = row.isSevenDayAgo.toString().toUpperCase().charAt(0)
+    let isDayCloseGreaterDayOpenValue = row.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+    let isDayCloseGreaterOneDayAgoCloseValue = row.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+    let isWeeklyCloseGreaterWeeklyOpenValue = row.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+    let isMonthlyCloseGreaterMonthlyOpenValue = row.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+    let oneDayAgoVolumeGreaterValue = row.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+    let trueCount = 0;
+    let falseCount = 0;
+    if (isOneDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isTwoDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+
+    if (isThreeDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isFourDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isFiveDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isSixDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isSevenDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isDayCloseGreaterDayOpenValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (oneDayAgoVolumeGreaterValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    html = ''
+
+    html += '<span class="' + isOneDayAgoClass + '">' + isOneDayAgoValue + '</span>'
+    html += '<span class="' + isTwoDayAgoClass + '">' + isTwoDayAgoValue + '</span>'
+    html += '<span class="' + isThreeDayAgoClass + '">' + isThreeDayAgoValue + '</span>'
+    html += '<span class="' + isFourDayAgoClass + '">' + isFourDayAgoValue + '</span>'
+    html += '<span class="' + isFiveDayAgoClass + '">' + isFiveDayAgoValue + '</span>'
+    html += '<span class="' + isSixDayAgoClass + '">' + isSixDayAgoValue + '</span>'
+    html += '<span class="' + isSevenDayAgoClass + '">' + isSevenDayAgoValue + '</span>'
+    html += '<span class="' + isDayCloseGreaterDayOpenClass + '">' + isDayCloseGreaterDayOpenValue + '</span>'
+    html += '<span class="' + isDayCloseGreaterOneDayAgoCloseClass + '">' + isDayCloseGreaterOneDayAgoCloseValue + '</span>'
+    html += '<span class="' + isWeeklyCloseGreaterWeeklyOpenClass + '">' + isWeeklyCloseGreaterWeeklyOpenValue + '</span>'
+    html += '<span class="' + isMonthlyCloseGreaterMonthlyOpenClass + '">' + isMonthlyCloseGreaterMonthlyOpenValue + '</span>'
+    html += '<span class="' + oneDayAgoVolumeGreaterClass + '">' + oneDayAgoVolumeGreaterValue + '</span>'
+
+
+    html += ' ( <span class="badge bg-success">' + trueCount + '</span> )'
+    html += ' ( <span class="badge bg-warning">' + falseCount + '</span> )'
+
+    jQ("#breakout-prediction").html(html);
+
+    html = ''
+
+
+    let bull = 0;
+    let bear = 0;
+    if (jQ.inArray("ASO", row['TREND']) != -1) {
+        bull++
+    }
+
+    if (jQ.inArray("BSO", row['TREND']) != -1) {
+        bear++
+    }
+
+    if (trueCount > falseCount) {
+        bull++;
+    } else {
+        bear++;
+    }
+
+    if (row['PCR']) {
+        let pcr = row['PCR'].split(":");
+        if (parseFloat(pcr[1].trim()) > 1) {
+            bull++;
+        } else {
+            bear++;
+        }
+    }
+
+    if (row['OHL_TREND'][0] > row['OHL_TREND'][1]) {
+        bull++;
+    } else {
+        bear++;
+    }
+
+    if (row['OHL_TREND'][2] == "Strong Sell(OH)") {
+        bear++;
+    }
+
+    if (row['OHL_TREND'][2] == "Strong Buy(OL)") {
+        bull++;
+    }
+
+    if (row['OHL_TREND'][2] == "Strong Sell(Lower High)") {
+        bear++;
+    }
+
+    if (row['OHL_TREND'][2] == "Strong Buy(Higher High)") {
+        bull++;
+    }
+
+    if (row['OHL_TREND'][2] == "Buy") {
+        bull++;
+    }
+
+    if (row['OHL_TREND'][2] == "Sell") {
+        bear++;
+    }
+
+    try {
+        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+    } catch (err) {
+        console.log("Error while analysing strikes")
+        console.log(err)
+    }
+
+    if (bull > bear) {
+        html += '<span class="badge bg-success">Bullish</span>'
+    } else {
+        html += '<span class="badge bg-danger">Bearish</span>'
+    }
+
+    jQ("#prediction-prediction").html(html);
+
+
+
+
+    html = ''
+
+    let className = ""
+
+    if (row['STRIKE_LOWER_ONE_CE']) {
+        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_CE'] + '</span>'
+    }
+    jQ("#STRIKE_LOWER_ONE_CE-prediction").html(html);
+
+    html = ''
+    className = ""
+    if (row['STRIKE_LOWER_ONE']) {
+        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_ONE'])
+            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_LOWER_TWO'])) {
+            className = "bg-danger-color"
+        }
+        html += '<span class="text-align ' + className + '">' + row['STRIKE_LOWER_ONE'] + '</span>'
+    }
+    jQ("#STRIKE_LOWER_ONE-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_LOWER_ONE_PE']) {
+        if (parseFloat(row['STRIKE_LOWER_ONE_PE']) > parseFloat(row['STRIKE_LOWER_ONE_CE'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_PE'] + '</span>'
+    }
+    jQ("#STRIKE_LOWER_ONE_PE-prediction").html(html);
+
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_LOWER_TWO_CE']) {
+        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_CE'] + '</span>'
+    }
+    jQ("#STRIKE_LOWER_TWO_CE-prediction").html(html);
+
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_LOWER_TWO']) {
+        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_TWO'])
+            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_ATM'])) {
+            className = "bg-danger-color"
+        }
+        html += '<span class="text-align ' + className + '">' + row['STRIKE_LOWER_TWO'] + '</span>'
+    }
+    jQ("#STRIKE_LOWER_TWO-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_LOWER_TWO_PE']) {
+        if (parseFloat(row['STRIKE_LOWER_TWO_PE']) > parseFloat(row['STRIKE_LOWER_TWO_CE'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_PE'] + '</span>'
+    }
+    jQ("#STRIKE_LOWER_TWO_PE-prediction").html(html);
+
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_ATM_CE']) {
+        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_CE'] + '</span>'
+    }
+    jQ("#STRIKE_ATM_CE-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_ATM']) {
+        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_ATM'])
+            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_ONE'])) {
+            className = "bg-danger-color"
+        }
+        html += '<span class="text-align ' + className + '">' + row['STRIKE_ATM'] + '</span>'
+    }
+    jQ("#STRIKE_ATM-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_ATM_PE']) {
+        if (parseFloat(row['STRIKE_ATM_PE']) > parseFloat(row['STRIKE_ATM_CE'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_PE'] + '</span>'
+    }
+    jQ("#STRIKE_ATM_PE-prediction").html(html);
+
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_UPPER_ONE_CE']) {
+        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_CE'] + '</span>'
+    }
+    jQ("#STRIKE_UPPER_ONE_CE-prediction").html(html);
+
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_UPPER_ONE']) {
+        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_UPPER_ONE'])
+            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_TWO'])) {
+            className = "bg-danger-color"
+        }
+        html += '<span class="text-align ' + className + '">' + row['STRIKE_UPPER_ONE'] + '</span>'
+    }
+    jQ("#STRIKE_UPPER_ONE-prediction").html(html);
+
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_UPPER_ONE_PE']) {
+        if (parseFloat(row['STRIKE_UPPER_ONE_PE']) > parseFloat(row['STRIKE_UPPER_ONE_CE'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_PE'] + '</span>'
+    }
+    jQ("#STRIKE_UPPER_ONE_PE-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_UPPER_TWO_CE']) {
+        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_CE'] + '</span>'
+    }
+    jQ("#STRIKE_UPPER_TWO_CE-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_UPPER_TWO']) {
+        if (parseFloat(row['LTP']) > parseFloat(row['STRIKE_UPPER_TWO'])) {
+            className = "bg-warning-color"
+        }
+        html += '<span class="text-align ' + className + '">' + row['STRIKE_UPPER_TWO'] + '</span>'
+    }
+
+    jQ("#STRIKE_UPPER_TWO-prediction").html(html);
+
+
+    html = ''
+    className = ""
+    if (row['STRIKE_UPPER_TWO_PE']) {
+        if (parseFloat(row['STRIKE_UPPER_TWO_PE']) > parseFloat(row['STRIKE_UPPER_TWO_CE'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE'] + '</span>'
+    }
+    jQ("#STRIKE_UPPER_TWO_PE-prediction").html(html);
+
+
 }
 
-async function callPredictionAnalyseTrend() {
+async function callPredictionAnalyseTrend(html) {
     let count = 0;
     let scriptsCount = stock.length
 
     for (let i = 0; i < scriptsCount; i++) {
-
         try {
-
             let name = stock[i]['TRADINGSYMBOL']
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
@@ -1119,7 +973,6 @@ async function callPredictionAnalyseTrend() {
 
             let openOfTheWeek = {}
             let closeOfTheWeek = candles[size - 1]
-
 
             jQ.each(candles, function (index, item) {
                 let date = moment(item.date).format("YYYY-MM-DD");
@@ -1215,7 +1068,6 @@ async function callPredictionAnalyseTrend() {
                 oneDayAgoVolumeGreater = true;
             }
 
-
             stock[rowId]['isOneDayAgo'] = isOneDayAgo;
             stock[rowId]['isTwoDayAgo'] = isTwoDayAgo;
             stock[rowId]['isThreeDayAgo'] = isThreeDayAgo;
@@ -1238,7 +1090,7 @@ async function callPredictionAnalyseTrend() {
                     stock[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
 
                     oiHtml = ''
-                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<div>'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
@@ -1259,7 +1111,7 @@ async function callPredictionAnalyseTrend() {
                     stock[rowId]['STRIKE_LOWER_TWO_CE'] = strikes[1]['CHG_OI_CE']
 
                     oiHtml = ''
-                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<div>'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
@@ -1280,7 +1132,7 @@ async function callPredictionAnalyseTrend() {
                     stock[rowId]['STRIKE_ATM_CE'] = strikes[2]['CHG_OI_CE']
 
                     oiHtml = ''
-                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<div>'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
@@ -1301,7 +1153,7 @@ async function callPredictionAnalyseTrend() {
                     stock[rowId]['STRIKE_UPPER_ONE_CE'] = strikes[3]['CHG_OI_CE']
 
                     oiHtml = ''
-                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<div>'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
@@ -1323,7 +1175,7 @@ async function callPredictionAnalyseTrend() {
                     stock[rowId]['STRIKE_UPPER_TWO_CE'] = strikes[4]['CHG_OI_CE']
 
                     oiHtml = ''
-                    oiHtml += '<div style="display:flex;">'
+                    oiHtml += '<div>'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
@@ -1342,23 +1194,11 @@ async function callPredictionAnalyseTrend() {
                 }
             }
 
-
-            res = generateTrend(name);
+            let res = generateTrend(name);
             stock[rowId]['LTP'] = res['ltp']
-            updatePredictionTable(rowId)
-            count++;
-            if (count == 3) {
-                /*await callSleepForAWhile(1000)*/
-                count = 0;
-            }
         } catch (err) {
             console.log("Error while analyzing stock : " + stock[i]['TRADINGSYMBOL'])
             console.log(err)
         }
     }
-
-}
-
-function updatePredictionTable(rowId) {
-    jQ('#predictor-stock-list-table').DataTable().row(rowId).data(stock[rowId]).draw(false);
 }

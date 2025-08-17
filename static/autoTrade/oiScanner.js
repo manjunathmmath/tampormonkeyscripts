@@ -347,16 +347,16 @@ async function showOIDetails() {
     let chPcr = parseFloat(chPEOI / chCEOI).toFixed(2);
     let pcrHtml = ''
     let chPcrHtml = ''
-    if (pcr < 0.9) {
-        pcrHtml += '<span class="badge bg-success">' + pcr + '</span>'
-    } else {
+    if (pcr < 1) {
         pcrHtml += '<span class="badge bg-danger">' + pcr + '</span>'
+    } else {
+        pcrHtml += '<span class="badge bg-success">' + pcr + '</span>'
     }
 
-    if (chPcr < 0.9) {
-        chPcrHtml += '<span class="badge bg-success">' + chPcr + '</span>'
-    } else {
+    if (chPcr < 1) {
         chPcrHtml += '<span class="badge bg-danger">' + chPcr + '</span>'
+    } else {
+        chPcrHtml += '<span class="badge bg-success">' + chPcr + '</span>'
     }
 
     jQ("#current-pcr").html(pcrHtml + ' (' + chPcrHtml + ')')

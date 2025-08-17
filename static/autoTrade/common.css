@@ -367,3 +367,11 @@ span.bullsVersesBears {
   line-height: 10rem !important;
   font-size: xx-large !important;
 }
+
+.track-next-day{
+  cursor: pointer;
+}
+
+.show-predictor{
+  cursor: pointer;
+}
