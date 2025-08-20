@@ -86,6 +86,7 @@ function showOiViewer() {
     html += '<th class="text-align">S</th>'
     html += '<th class="number-align">PE</th> '
     html += '<th>PCR</th> '
+    html += '<th>OVERALL TREND</th> '
 
     html += '</tr>'
     html += '</thead>'
@@ -204,26 +205,38 @@ async function showOiAnalyzer() {
         }
 
         obj['STRIKE_LOWER_ONE_CE'] = ''
+        obj['STRIKE_LOWER_ONE_OBV'] = ''
         obj['STRIKE_LOWER_ONE'] = ''
         obj['STRIKE_LOWER_ONE_PE'] = ''
+        obj['STRIKE_LOWER_ONE_PE_OBV'] = ''
 
         obj['STRIKE_LOWER_TWO_CE'] = ''
+        obj['STRIKE_LOWER_TWO_CE_OBV'] = ''
         obj['STRIKE_LOWER_TWO'] = ''
         obj['STRIKE_LOWER_TWO_PE'] = ''
+        obj['STRIKE_LOWER_TWO_PE_OBV'] = ''
 
 
         obj['STRIKE_ATM_CE'] = ''
+        obj['STRIKE_ATM_CE_OBV'] = ''
         obj['STRIKE_ATM'] = ''
         obj['STRIKE_ATM_PE'] = ''
+        obj['STRIKE_ATM_PE_OBV'] = ''
 
         obj['STRIKE_UPPER_ONE_CE'] = ''
+        obj['STRIKE_UPPER_ONE_CE_OBV'] = ''
         obj['STRIKE_UPPER_ONE'] = ''
         obj['STRIKE_UPPER_ONE_PE'] = ''
+        obj['STRIKE_UPPER_ONE_PE_OBV'] = ''
 
         obj['STRIKE_UPPER_TWO_CE'] = ''
+        obj['STRIKE_UPPER_TWO_CE_OBV'] = ''
         obj['STRIKE_UPPER_TWO'] = ''
         obj['STRIKE_UPPER_TWO_PE'] = ''
+        obj['STRIKE_UPPER_TWO_PE_OBV'] = ''
         obj['PCR'] = ''
+        obj['OHL_BREAKOUT'] = ''
+        obj['OVERALL_TREND'] = ''
 
         trendingStocks.push(obj)
         orderRow++;
@@ -326,6 +339,7 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
                     return html
                 }
             },
@@ -355,6 +369,15 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_LOWER_ONE_CE_OBV']) < parseFloat(row['STRIKE_LOWER_ONE_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) + ']</span>'
+
                     return html
                 }
             },
@@ -370,6 +393,15 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_LOWER_TWO_CE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_LOWER_TWO_CE_OBV']) + ']</span>'
+
                     return html
                 }
             },
@@ -399,6 +431,14 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_LOWER_TWO_CE_OBV']) < parseFloat(row['STRIKE_LOWER_TWO_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) + ']</span>'
+
                     return html
                 }
             },
@@ -414,6 +454,14 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_ATM_CE_OBV']) > parseFloat(row['STRIKE_ATM_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_ATM_CE_OBV']) + ']</span>'
+
                     return html
                 }
             },
@@ -444,6 +492,15 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_ATM_CE_OBV']) < parseFloat(row['STRIKE_ATM_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_ATM_PE_OBV']) + ']</span>'
+
+
                     return html
                 }
             },
@@ -459,6 +516,15 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_UPPER_ONE_CE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_UPPER_ONE_CE_OBV']) + ']</span>'
+
+
                     return html
                 }
             },
@@ -488,6 +554,15 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_UPPER_ONE_CE_OBV']) < parseFloat(row['STRIKE_UPPER_ONE_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) + ']</span>'
+
+
                     return html
                 }
             },
@@ -503,6 +578,14 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_UPPER_TWO_CE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_UPPER_TWO_CE_OBV']) + ']</span>'
+
                     return html
                 }
             },
@@ -531,11 +614,23 @@ function generateTrendingStockTable(data) {
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
+
+                    let obvClass = 'bg-danger-color'
+                    if (parseFloat(row['STRIKE_UPPER_TWO_CE_OBV']) < parseFloat(row['STRIKE_UPPER_TWO_PE_OBV'])) {
+                        obvClass = 'bg-success-color'
+                    }
+
+                    html += ' <span class="obv-class number-align ' + obvClass + '">[' + parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) + ']</span>'
+
+
                     return html
                 }
             },
             {
                 "data": "PCR",
+            },
+             {
+                "data": "OVERALL_TREND",
             },
 
         ],
@@ -680,21 +775,23 @@ async function callAnalyseTrend() {
             tempName = tempName.replaceAll("&", "-")
             let rowId = i
 
+            let ohlBreakout = await getOHLAndBreakOutTrend(name)
+            trendingStocks[rowId]['OHL_BREAKOUT'] = ohlBreakout
+
             let res = generateTrend(name);
             trendingStocks[rowId]['LTP'] = res['ltp']
             if (name != 'GIFT NIFTY') {
                 let oiData = await showTrendingOI(name)
                 let strikes = oiData['tableData']
-
                 let pcrHtml = ''
                 let chPcrHtml = ''
-                if (oiData['pcr'] < 1) {
+                if (parseFloat(oiData['pcr'].trim()) < 1 && parseFloat(oiData['pcr'].trim()) > 0) {
                     pcrHtml += '<span class="badge bg-danger">' + oiData['pcr'] + '</span>'
                 } else {
                     pcrHtml += '<span class="badge bg-success">' + oiData['pcr'] + '</span>'
                 }
 
-                if (oiData['chPcr'] < 1) {
+                if (parseFloat(oiData['chPcr'].trim()) < 1 && parseFloat(oiData['chPcr'].trim()) > 0) {
                     chPcrHtml += '<span class="badge bg-danger">' + oiData['chPcr'] + '</span>'
                 } else {
                     chPcrHtml += '<span class="badge bg-success">' + oiData['chPcr'] + '</span>'
@@ -702,12 +799,10 @@ async function callAnalyseTrend() {
 
                 trendingStocks[rowId]['PCR'] = pcrHtml + ' : ' + chPcrHtml
 
-
-
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
                 if (strikes[0]) {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
-
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_CE_OBV'] = strikes[0]['CE_OBV']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
@@ -724,11 +819,12 @@ async function callAnalyseTrend() {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE'] = strikes[0]['STRIKE'] + oiHtml
 
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_PE'] = strikes[0]['CHG_OI_PE']
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_PE_OBV'] = strikes[0]['PE_OBV']
                 }
 
                 if (strikes[1]) {
                     trendingStocks[rowId]['STRIKE_LOWER_TWO_CE'] = strikes[1]['CHG_OI_CE']
-
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_CE_OBV'] = strikes[1]['CE_OBV']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
@@ -745,11 +841,12 @@ async function callAnalyseTrend() {
 
                     trendingStocks[rowId]['STRIKE_LOWER_TWO'] = strikes[1]['STRIKE'] + oiHtml
                     trendingStocks[rowId]['STRIKE_LOWER_TWO_PE'] = strikes[1]['CHG_OI_PE']
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_PE_OBV'] = strikes[1]['PE_OBV']
                 }
 
                 if (strikes[2]) {
                     trendingStocks[rowId]['STRIKE_ATM_CE'] = strikes[2]['CHG_OI_CE']
-
+                    trendingStocks[rowId]['STRIKE_ATM_CE_OBV'] = strikes[2]['CE_OBV']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
@@ -766,11 +863,12 @@ async function callAnalyseTrend() {
 
                     trendingStocks[rowId]['STRIKE_ATM'] = strikes[2]['STRIKE'] + oiHtml
                     trendingStocks[rowId]['STRIKE_ATM_PE'] = strikes[2]['CHG_OI_PE']
+                    trendingStocks[rowId]['STRIKE_ATM_PE_OBV'] = strikes[2]['PE_OBV']
                 }
 
                 if (strikes[3]) {
                     trendingStocks[rowId]['STRIKE_UPPER_ONE_CE'] = strikes[3]['CHG_OI_CE']
-
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_CE_OBV'] = strikes[3]['CE_OBV']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
@@ -788,11 +886,12 @@ async function callAnalyseTrend() {
 
                     trendingStocks[rowId]['STRIKE_UPPER_ONE'] = strikes[3]['STRIKE'] + oiHtml
                     trendingStocks[rowId]['STRIKE_UPPER_ONE_PE'] = strikes[3]['CHG_OI_PE']
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_PE_OBV'] = strikes[3]['PE_OBV']
                 }
 
                 if (strikes[4]) {
                     trendingStocks[rowId]['STRIKE_UPPER_TWO_CE'] = strikes[4]['CHG_OI_CE']
-
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_CE_OBV'] = strikes[4]['CE_OBV']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
@@ -810,12 +909,18 @@ async function callAnalyseTrend() {
 
                     trendingStocks[rowId]['STRIKE_UPPER_TWO'] = strikes[4]['STRIKE'] + oiHtml
                     trendingStocks[rowId]['STRIKE_UPPER_TWO_PE'] = strikes[4]['CHG_OI_PE']
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_PE_OBV'] = strikes[4]['PE_OBV']
                 }
             }
 
 
             res = generateTrend(name);
             trendingStocks[rowId]['LTP'] = res['ltp']
+
+            let overAllTrend = getOverallTrend(trendingStocks[rowId])
+            trendingStocks[rowId]['OVERALL_TREND'] = overAllTrend
+
+
             updateTrendingTable(rowId)
             count++;
             if (count == 3) {
@@ -833,6 +938,376 @@ async function callAnalyseTrend() {
     startOiViewerRefresh()
     jQ("#start-auto-refresh-oi-viewer").removeAttr("disabled")
 
+}
+
+function getOverallTrend(row) {
+
+    let bull = 0;
+    let bear = 0;
+    if (jQ.inArray("ASO", row['TREND']) != -1) {
+        bull++
+    }
+
+    if (jQ.inArray("BSO", row['TREND']) != -1) {
+        bear++
+    }
+
+    let breakout = row['OHL_BREAKOUT']
+
+    let isOneDayAgoValue = breakout.isOneDayAgo.toString().toUpperCase().charAt(0)
+    let isTwoDayAgoValue = breakout.isTwoDayAgo.toString().toUpperCase().charAt(0)
+    let isThreeDayAgoValue = breakout.isThreeDayAgo.toString().toUpperCase().charAt(0)
+    let isFourDayAgoValue = breakout.isFourDayAgo.toString().toUpperCase().charAt(0)
+    let isFiveDayAgoValue = breakout.isFiveDayAgo.toString().toUpperCase().charAt(0)
+    let isSixDayAgoValue = breakout.isSixDayAgo.toString().toUpperCase().charAt(0)
+    let isSevenDayAgoValue = breakout.isSevenDayAgo.toString().toUpperCase().charAt(0)
+    let isDayCloseGreaterDayOpenValue = breakout.isDayCloseGreaterDayOpen.toString().toUpperCase().charAt(0)
+    let isDayCloseGreaterOneDayAgoCloseValue = breakout.isDayCloseGreaterOneDayAgoClose.toString().toUpperCase().charAt(0)
+    let isWeeklyCloseGreaterWeeklyOpenValue = breakout.isWeeklyCloseGreaterWeeklyOpen.toString().toUpperCase().charAt(0)
+    let isMonthlyCloseGreaterMonthlyOpenValue = breakout.isMonthlyCloseGreaterMonthlyOpen.toString().toUpperCase().charAt(0)
+    let oneDayAgoVolumeGreaterValue = breakout.oneDayAgoVolumeGreater.toString().toUpperCase().charAt(0)
+
+    let trueCount = 0;
+    let falseCount = 0;
+    if (isOneDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isTwoDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+
+    if (isThreeDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isFourDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isFiveDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isSixDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isSevenDayAgoValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isDayCloseGreaterDayOpenValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isDayCloseGreaterOneDayAgoCloseValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isWeeklyCloseGreaterWeeklyOpenValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (isMonthlyCloseGreaterMonthlyOpenValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+    if (oneDayAgoVolumeGreaterValue == 'T') {
+        trueCount++
+    } else {
+        falseCount++
+    }
+
+
+
+
+    if (trueCount > falseCount) {
+        bull++;
+    } else {
+        bear++;
+    }
+
+    if (row['PCR']) {
+        let pcr = row['PCR'].split(":");
+        if (parseFloat(pcr[1].trim()) > 1) {
+            bull++;
+        } else {
+            bear++;
+        }
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][0] > row['OHL_BREAKOUT']['OHL_TREND'][1]) {
+        bull++;
+    } else {
+        bear++;
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][2] == "Strong Sell(OH)") {
+        bear++;
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][2] == "Strong Buy(OL)") {
+        bull++;
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][2] == "Strong Sell(Lower High)") {
+        bear++;
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][2] == "Strong Buy(Higher High)") {
+        bull++;
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][2] == "Buy") {
+        bull++;
+    }
+
+    if (row['OHL_BREAKOUT']['OHL_TREND'][2] == "Sell") {
+        bear++;
+    }
+
+
+    try {
+        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+    } catch (err) {
+        console.log("Error while analysing strikes")
+        console.log(err)
+    }
+
+    let html = ''
+    if (bull > bear) {
+        html += '<span class="badge bg-success">Bullish</span>'
+    } else {
+        html += '<span class="badge bg-danger">Bearish</span>'
+    }
+
+    return html
+
+
+}
+
+async function getOHLAndBreakOutTrend(name) {
+
+    let obj = {}
+    currentInfo = generateTrend(name);
+
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-10, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
+    let candles = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("YYYY-MM-DD")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        candles.push(map);
+    });
+
+
+    let size = candles.length;
+
+    let dayHigh = 0
+    let dayLow = 0
+    let dayOpen = parseFloat(currentInfo['price']);
+    let prevDay = [candles[size - 2]];
+    jQ.each(prevDay, function (index, item) {
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+    let currentDay = [candles[size - 1]]
+    jQ.each(currentDay, function (index, item) {
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+    let res = calculateOHLBuySell(dayOpen, dayHigh, dayLow, currentInfo['ltp'], currentInfo['prevPrice']);
+    obj['OHL_TREND'] = res
+
+    let isOpenOfTheMonth = false;
+    let isOpenOfTheWeek = false;
+
+    let openOfTheMonth = {}
+    let closeOfTheMonth = candles[size - 1]
+
+    let openOfTheWeek = {}
+    let closeOfTheWeek = candles[size - 1]
+
+    jQ.each(candles, function (index, item) {
+        let date = moment(item.date).format("YYYY-MM-DD");
+        if (date >= START_MONTH_DAY_DATE && !isOpenOfTheMonth) {
+            openOfTheMonth = item
+            isOpenOfTheMonth = true
+        }
+
+        if (date >= START_WEEK_DAY_DATE && !isOpenOfTheWeek) {
+            openOfTheWeek = item
+            isOpenOfTheWeek = true
+        }
+    });
+
+    let oneDayAgo = candles[size - 2]
+    let twoDayAgo = candles[size - 3]
+    let threeDayAgo = candles[size - 4]
+    let fourDayAgo = candles[size - 5]
+    let fiveDayAgo = candles[size - 6]
+    let sixDayAgo = candles[size - 7]
+    let sevenDayAgo = candles[size - 8]
+    let current = candles[size - 1];
+
+    let oneDayHighLow = oneDayAgo['high'] - oneDayAgo['low'];
+    let twoDayHighLow = twoDayAgo['high'] - twoDayAgo['low'];
+    let threeDayHighLow = threeDayAgo['high'] - threeDayAgo['low'];
+    let fourDayHighLow = fourDayAgo['high'] - fourDayAgo['low'];
+    let fiveDayHighLow = fiveDayAgo['high'] - fiveDayAgo['low'];
+    let sixDayHighLow = sixDayAgo['high'] - sixDayAgo['low'];
+    let sevenDayHighLow = sevenDayAgo['high'] - sevenDayAgo['low'];
+
+    let dayHighLow = current.high - current.low
+
+    let isOneDayAgo = false;
+    let isTwoDayAgo = false
+    let isThreeDayAgo = false
+    let isFourDayAgo = false
+    let isFiveDayAgo = false
+    let isSixDayAgo = false
+    let isSevenDayAgo = false
+    let isDayCloseGreaterDayOpen = false
+    let isDayCloseGreaterOneDayAgoClose = false
+    let isWeeklyCloseGreaterWeeklyOpen = false
+    let isMonthlyCloseGreaterMonthlyOpen = false
+    let oneDayAgoVolumeGreater = false
+
+
+    if (dayHighLow > oneDayHighLow) {
+        isOneDayAgo = true
+    }
+
+    if (dayHighLow > twoDayHighLow) {
+        isTwoDayAgo = true
+    }
+
+    if (dayHighLow > threeDayHighLow) {
+        isThreeDayAgo = true
+    }
+
+    if (dayHighLow > fourDayHighLow) {
+        isFourDayAgo = true
+    }
+
+    if (dayHighLow > fiveDayHighLow) {
+        isFiveDayAgo = true
+    }
+
+    if (dayHighLow > sixDayHighLow) {
+        isSixDayAgo = true
+    }
+
+    if (dayHighLow > sevenDayHighLow) {
+        isSevenDayAgo = true
+    }
+
+    if (current.close > current.open) {
+        isDayCloseGreaterDayOpen = true
+    }
+
+    if (current.close > oneDayAgo.close) {
+        isDayCloseGreaterOneDayAgoClose = true
+    }
+
+    if (closeOfTheWeek.close > openOfTheWeek.open) {
+        isWeeklyCloseGreaterWeeklyOpen = true
+    }
+
+    if (closeOfTheMonth.close > openOfTheMonth.open) {
+        isMonthlyCloseGreaterMonthlyOpen = true
+    }
+
+    if (oneDayAgo.volume > 10000) {
+        oneDayAgoVolumeGreater = true;
+    }
+
+    obj['isOneDayAgo'] = isOneDayAgo;
+    obj['isTwoDayAgo'] = isTwoDayAgo;
+    obj['isThreeDayAgo'] = isThreeDayAgo;
+    obj['isFourDayAgo'] = isFourDayAgo;
+    obj['isFiveDayAgo'] = isFiveDayAgo;
+    obj['isSixDayAgo'] = isSixDayAgo;
+    obj['isSevenDayAgo'] = isSevenDayAgo;
+    obj['isDayCloseGreaterDayOpen'] = isDayCloseGreaterDayOpen;
+    obj['isDayCloseGreaterOneDayAgoClose'] = isDayCloseGreaterOneDayAgoClose;
+    obj['isWeeklyCloseGreaterWeeklyOpen'] = isWeeklyCloseGreaterWeeklyOpen;
+    obj['isMonthlyCloseGreaterMonthlyOpen'] = isMonthlyCloseGreaterMonthlyOpen;
+    obj['oneDayAgoVolumeGreater'] = oneDayAgoVolumeGreater;
+
+    return obj;
 }
 
 async function showTrendingOI(instrument) {
@@ -908,6 +1383,8 @@ async function showTrendingOI(instrument) {
             obj['PE'] = ''
             obj['CE_TOKEN'] = ''
             obj['PE_TOKEN'] = ''
+            obj['CE_OBV'] = ''
+            obj['PE_OBV'] = ''
             strikeData.push(obj)
         }
     }
@@ -923,6 +1400,8 @@ async function showTrendingOI(instrument) {
     obj['PE'] = ''
     obj['CE_TOKEN'] = ''
     obj['PE_TOKEN'] = ''
+    obj['CE_OBV'] = ''
+    obj['PE_OBV'] = ''
     strikeData.push(obj)
 
     for (let i = 1; i <= strikToShow; i++) {
@@ -938,6 +1417,8 @@ async function showTrendingOI(instrument) {
             obj['PE'] = ''
             obj['CE_TOKEN'] = ''
             obj['PE_TOKEN'] = ''
+            obj['CE_OBV'] = ''
+            obj['PE_OBV'] = ''
             strikeData.push(obj)
         }
     }
@@ -976,6 +1457,9 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
 
                 let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
                 let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+
+
+
                 strikeMap[strikeData[i]['STRIKE']] = {}
                 strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
                 strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
@@ -1044,6 +1528,9 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
 
+            obj['CE_OBV'] = calculateOBV(prevDataCE, currDataCE)
+            obj['PE_OBV'] = calculateOBV(prevDataPE, currDataPE)
+
             tableData.push(obj)
         } catch (err) {
             console.log("Error while fetching strike : " + index)
@@ -1061,6 +1548,24 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
     map['pcr'] = pcr
     map['chPcr'] = chPcr
     return map
+}
+
+
+function calculateOBV(prevData, currData) {
+    let OBV = 0;
+    let prevLastCandle = prevData[prevData.length - 1]
+    OBV = prevLastCandle[5]
+    jQ.each(currData, function (index, item) {
+        if (item[4] > prevLastCandle[4]) {
+            OBV = OBV + item[5]
+        }
+
+        if (item[4] < prevLastCandle[4]) {
+            OBV = OBV - item[5]
+        }
+        prevLastCandle = item
+    })
+    return OBV;
 }
 
 function updateTrendingTable(rowId) {

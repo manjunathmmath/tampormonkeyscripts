@@ -375,3 +375,7 @@ span.bullsVersesBears {
 .show-predictor{
   cursor: pointer;
 }
+
+.obv-class{
+  display: none;
+}
