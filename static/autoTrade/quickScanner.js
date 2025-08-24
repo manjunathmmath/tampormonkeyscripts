@@ -23,6 +23,7 @@ async function showQuickScanner() {
     html += '<table  class="" id="quick-scanner-bso-list-table" style="width: 100%;display: none;">'
     html += '<thead>'
     html += '<tr>'
+    html += '<th>DATE</th>'
     html += '<th>INSTRUMENT</th>'
     html += '<th>TREND</th>'
     html += '<th>OHL</th>'
@@ -40,6 +41,7 @@ async function showQuickScanner() {
     html += '<table  class="" id="quick-scanner-aso-list-table" style="width: 100%;display: none;">'
     html += '<thead>'
     html += '<tr>'
+    html += '<th>DATE</th>'
     html += '<th>INSTRUMENT</th>'
     html += '<th>TREND</th>'
     html += '<th>OHL</th>'
@@ -97,37 +99,37 @@ function startQuickTimer(display) {
         var m = d.getMinutes();
         var h = d.getHours();
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
-        if ((s % 5) == 0) {
-            generateQuickStockList();
-        }
         if (!algoRunning) {
-            algoNineFifteenTrade()
+            generateQuickStockList()
         }
-
     }, 1000);
 }
 
-async function algoNineFifteenTrade() {
+
+
+
+async function generateQuickStockList() {
 
     let currentTime = moment().format("HH:mm:ss")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:19:56", 'YYYY-MM-DD HH:mm:ss').format("HH:mm:ss")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 09:19:59", 'YYYY-MM-DD HH:mm:ss').format("HH:mm:ss")
+    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm:ss")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 09:20:05", 'YYYY-MM-DD HH:mm:ss').format("HH:mm:ss")
 
-    console.log("Algo starts executing orders @ " + checkTime + "AM.  current time is :" + currentTime);
-
-    if (!(currentTime >= checkTime)) {
-        console.log("----------------[ALGO CHECKING FOR " + checkTime + " MINUTES TARDE CONDITION]-----------");
-        console.log("current Time :" + currentTime);
-        console.log("------------------------------------------------------------------------------------");
+    let allow9_15 = false;
+    if (currentTime >= checkTime && currentTime <= endTime) {
+        allow9_15 = true;
+    }else{
+        console.log("Algo starts executing orders @ " + checkTime + "AM. And stops @ "+endTime+ "  current time is :" + currentTime);
         return
     }
 
-    if (currentTime >= endTime) {
-        console.log("----------------------------[9:15 Strategy time closed]-----------------------------------------");
-        console.log("current Time :" + currentTime);
+    let currentMinute = moment().format("mm")
+    if ((currentMinute % 5) != 0) {
+        console.log("-----------[ALGO CHECKING FOR 5 MINUTES AND 1 SECONDS INTERVAL CONDITION]-----------");
+        console.log("current Minute :" + currentMinute);
         console.log("------------------------------------------------------------------------------------");
         return
     }
+    await callSleepForAWhile(2000);
 
     algoRunning = true;
 
@@ -135,12 +137,22 @@ async function algoNineFifteenTrade() {
     let instruments = instrumentsWrapper.find(".items .item-wrapper");
     let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
 
-    bsoData = []
-    asoData = []
+    let bsoData = JSON.parse(localStorage.getItem("VALID_BSO"));
 
-    jQ(instruments).each(function (iindex, iitem) {
-        let name = jQ(this).find(".symbol").find(".name").html();
-        let price = jQ(this).find(".price").find(".last-price").html();
+    if (!bsoData) {
+        bsoData = []
+    }
+
+
+    let asoData = JSON.parse(localStorage.getItem("VALID_ASO"));
+
+    if (!asoData) {
+        asoData = []
+    }
+
+    for (let ins = 0; ins < instruments.length; ins++) {
+        let name = jQ(instruments[ins]).find(".symbol").find(".name").html();
+        let price = jQ(instruments[ins]).find(".price").find(".last-price").html();
         if (name == "M&amp;M") {
             name = "M&M"
         }
@@ -150,106 +162,6 @@ async function algoNineFifteenTrade() {
         }
 
         let openDetail = openDetails[name]
-        let strikeData = getStrikeDetails(openDetail, name);
-        let currentPrice = parseFloat(price.trim()).toFixed(2);
-
-        let asoPrice = 0;
-        let bsoPrice = 0;
-        asoPrice = parseFloat(strikeData['ustrikeOne']);
-        bsoPrice = parseFloat(strikeData['bstrikeOne']);
-
-        let trend = "NA"
-        let trends = []
-        if (currentPrice >= parseFloat(asoPrice)) {
-            trend = "ASO"
-            trends.push(trend);
-        }
-
-        if (currentPrice <= parseFloat(bsoPrice)) {
-            trend = "BSO"
-            trends.push(trend);
-        }
-
-        let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed()
-        let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed()
-
-        let obj = {}
-        obj['TRADINGSYMBOL'] = name
-        obj['TREND'] = trends
-        obj['OHL'] = ''
-        obj['LTP'] = currentPrice
-        obj['ASO_MOVED'] = ASO_MOVED
-        obj['BSO_MOVED'] = BSO_MOVED
-        obj['ustrikeOne'] = asoPrice
-        obj['bstrikeOne'] = bsoPrice
-
-        if (jQ.inArray("BSO", trends) != -1) {
-            bsoData.push(obj)
-        }
-
-        if (jQ.inArray("ASO", trends) != -1) {
-            asoData.push(obj)
-        }
-    });
-
-    for (let i = 0; i < asoData.length; i++) {
-        let obj = asoData[i];
-        await triggerOrder(obj, "BUY")
-    }
-
-    for (let i = 0; i < bsoData.length; i++) {
-        let obj = bsoData[i];
-        await triggerOrder(obj, "SELL")
-    }
-    algoRunning = false;
-}
-
-
-async function triggerOrder(obj, transaction_type) {
-    let name = obj.TRADINGSYMBOL;
-    let trigger_price = 0;
-    let price = 0;
-    let currentPrice = parseFloat(obj['LTP']);
-    if (transaction_type == "SELL") {
-        trigger_price = currentPrice
-        price = currentPrice - 0.50
-    } else {
-        trigger_price = currentPrice
-        price = currentPrice + 0.50
-    }
-
-    let quantity = (MARGIN / (parseFloat(currentPrice) / 5)).toFixed(0)
-    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
-    console.log(params)
-    try {
-        let res = await callPlaceOrder(params, true)
-    } catch (err) {
-        console.log("Error while placing order for stock : " + name)
-        console.log(err)
-    }
-}
-
-function generateQuickStockList() {
-    let instrumentsWrapper = jQ(".draggable-wrapper");
-    let instruments = instrumentsWrapper.find(".items .item-wrapper");
-    let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
-
-    bsoData = []
-    asoData = []
-
-    jQ(instruments).each(function (iindex, iitem) {
-        let name = jQ(this).find(".symbol").find(".name").html();
-        let price = jQ(this).find(".price").find(".last-price").html();
-        if (name == "M&amp;M") {
-            name = "M&M"
-        }
-
-        if (name == "M&amp;MFIN") {
-            name = "M&MFIN"
-        }
-
-        let openDetail = openDetails[name]
-
         let strikeData = getStrikeDetails(openDetail, name);
         let currentPrice = parseFloat(price.trim()).toFixed(2);
 
@@ -292,15 +204,45 @@ function generateQuickStockList() {
         obj['BSO_MOVED'] = BSO_MOVED
         obj['ustrikeOne'] = asoPrice
         obj['bstrikeOne'] = bsoPrice
+        obj['DATE'] = moment().format("DD-MM-YYYY HH:mm:ss")
 
         if (jQ.inArray("BSO", trends) != -1) {
-            bsoData.push(obj)
+            let found = false;
+            for (var i = 0; i < bsoData.length; i++) {
+                if (bsoData[i].TRADINGSYMBOL == name) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                bsoData.push(obj);
+                if (allow9_15) {
+                    await triggerOrder(obj, "BUY")
+                }
+
+            }
         }
 
         if (jQ.inArray("ASO", trends) != -1) {
-            asoData.push(obj)
+            let found = false;
+            for (var i = 0; i < asoData.length; i++) {
+                if (asoData[i].TRADINGSYMBOL == name) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                asoData.push(obj);
+                if (allow9_15) {
+                    await triggerOrder(obj, "SELL")
+                }
+            }
         }
-    });
+    }
+
+    localStorage.setItem("VALID_BSO", JSON.stringify(bsoData));
+    localStorage.setItem("VALID_ASO", JSON.stringify(asoData));
+
     if (!quickBsoScannerTable) {
         generateBsoScannerDataTable(bsoData)
     } else {
@@ -317,13 +259,40 @@ function generateQuickStockList() {
         quickAsoScannerTable.columns.adjust().draw();
     }
     jQ("#quick-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+
+    algoRunning = false;
+}
+
+
+async function triggerOrder(obj, transaction_type) {
+    let name = obj.TRADINGSYMBOL;
+    let trigger_price = 0;
+    let price = 0;
+    let currentPrice = parseFloat(obj['LTP']);
+    if (transaction_type == "SELL") {
+        trigger_price = currentPrice
+        price = currentPrice - 0.50
+    } else {
+        trigger_price = currentPrice
+        price = currentPrice + 0.50
+    }
+
+    let quantity = (MARGIN / (parseFloat(currentPrice) / 5)).toFixed(0)
+    let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
+    console.log(params)
+    try {
+        let res = await callPlaceOrder(params, true)
+    } catch (err) {
+        console.log("Error while placing order for stock : " + name)
+        console.log(err)
+    }
 }
 
 function generateBsoScannerDataTable(data) {
     jQ("#quick-scanner-bso-list-table").show()
     quickBsoScannerTable = jQ('#quick-scanner-bso-list-table').DataTable({
         "processing": true,
-        "order": [[3, "asc"]],
+        "order": [[0, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
@@ -342,6 +311,9 @@ function generateBsoScannerDataTable(data) {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
+            {
+                "data": 'DATE',
+            },
             {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
@@ -495,7 +467,7 @@ function generateAsoScannerDataTable(data) {
     jQ("#quick-scanner-aso-list-table").show()
     quickAsoScannerTable = jQ('#quick-scanner-aso-list-table').DataTable({
         "processing": true,
-        "order": [[3, "asc"]],
+        "order": [[0, "desc"]],
         "pageLength": 50,
         "bPaginate": false,
         "data": data,
@@ -514,6 +486,9 @@ function generateAsoScannerDataTable(data) {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
+            {
+                "data": 'DATE',
+            },
             {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {

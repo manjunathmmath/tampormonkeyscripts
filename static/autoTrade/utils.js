@@ -367,6 +367,8 @@ function clearLocalStorage() {
     localStorage.removeItem("VALID_INSTRUMENTS")
     localStorage.removeItem("INSTRUMENT_LTP_PRICE")
     localStorage.removeItem("VALID_BREAKOUT")
+    localStorage.removeItem("VALID_BSO")
+    localStorage.removeItem("VALID_ASO")
     for (let i = 0; i < FO_LIST.length; i++) {
         let name = FO_LIST[i]
         name = name.replaceAll(" ", "-")

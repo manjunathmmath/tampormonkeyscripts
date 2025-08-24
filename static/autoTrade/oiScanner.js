@@ -267,10 +267,10 @@ async function showOIDetails() {
                     PE = selectedStrike[j]
                 }
             }
-            let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, '5minute');
+            let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
             let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
 
-            let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, '5minute');
+            let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
             let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
             strikeMap[strikeData[i]['STRIKE']] = {}
             strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
@@ -301,6 +301,9 @@ async function showOIDetails() {
             let prevDataCE = item['prevDataCE']['data']['candles']
             let prevDataPE = item['prevDataPE']['data']['candles']
 
+            let obj = {}
+
+
             if (currDataCE.length == 0) {
                 currDataCE = prevDataCE
             }
@@ -308,6 +311,11 @@ async function showOIDetails() {
             if (currDataPE.length == 0) {
                 currDataPE = prevDataPE
             }
+
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+
+
 
             let OI_CE = currDataCE[currDataCE.length - 1][6]
             let OI_PE = currDataPE[currDataPE.length - 1][6]
@@ -317,7 +325,7 @@ async function showOIDetails() {
             let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]
             let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
 
-            let obj = {}
+
             obj['OI_CE'] = parseFloat(OI_CE / 100000).toFixed(1)
             obj['CHG_OI_CE'] = parseFloat((OI_CE - PREV_OI_CE) / 100000).toFixed(1)
             obj['STRIKE'] = index
@@ -335,6 +343,8 @@ async function showOIDetails() {
 
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
+
+
 
             tableData.push(obj)
         } catch (err) {
@@ -366,6 +376,28 @@ async function showOIDetails() {
     generateOICharts(tableData)
 
     jQ("#oi-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+}
+
+function calculateOBVFiveMinutesInterval(prevData, currData) {
+    let OBV = 0;
+    let prevLastCandle = prevData[prevData.length - 1]
+    OBV = prevLastCandle[5]
+    let obvList = []
+    jQ.each(currData, function (index, item) {
+        if (item[4] > prevLastCandle[4]) {
+            OBV = OBV + item[5]
+        }
+
+        if (item[4] < prevLastCandle[4]) {
+            OBV = OBV - item[5]
+        }
+        prevLastCandle = item
+        let obj = {};
+        obj['date'] = item[0];
+        obj['obv'] = OBV
+        obvList.push(obj)
+    })
+    return obvList;
 }
 
 let quickOIScannerTable = null
@@ -423,6 +455,7 @@ function generateOITable(data) {
                     html += '</div>'
 
                     html += '<div id="chart-oi-' + data + '">Chart</div>'
+                    html += '<div id="chart-oi-obv-' + data + '">Chart</div>'
 
                     html += '</div>'
                     return html
@@ -515,6 +548,65 @@ function generateOICharts(data) {
                 dataset: [
                     CESeries,
                     PESeries
+                ]
+            }
+        });
+
+
+
+        let ObvCESeries = {}
+        ObvCESeries['seriesname'] = "CE_OBV"
+        ObvCESeries['data'] = []
+
+        let ObvPESeries = {}
+        ObvPESeries['seriesname'] = "PE_OBV"
+        ObvPESeries['data'] = []
+
+        let ObvcategoryList = [];
+        let CE_OBV = item['CE_OBV']
+        jQ.each(CE_OBV, function (Cindex, Citem) {
+            let map = {}
+            map.label = moment(Citem['date']).format("HH:mm:ss");
+            ObvcategoryList.push(map)
+            let val = {}
+            val['color'] = '#37a009 '
+            val['value'] =  Citem['obv']
+            ObvCESeries['data'].push(val)
+        })
+
+       
+
+        let PE_OBV = item['PE_OBV']
+        jQ.each(PE_OBV, function (Pindex, Pitem) {
+            let val = {}
+            val['color'] = '#da3224'
+            val['value'] = Pitem['obv']
+            ObvPESeries['data'].push(val)
+        });
+
+
+        jQ("#chart-oi-obv-" + item.STRIKE).insertFusionCharts({
+            type: "mscolumn2d",
+            width: "100%",
+            dataFormat: "json",
+            dataSource: {
+                chart: {
+                    "thousandSeparatorPosition": "2,3",
+                    "formatNumberScale": "0",
+                    "theme": "fusion",
+                    "adjustDiv": "0",
+                    showvalues: "0",
+                    labeldisplay: "ROTATE",
+                    rotatelabels: "1",
+                    "paletteColors": "  #37a009,#da3224",
+                    "showLabels": 1
+                },
+                "categories": [{
+                    "category": ObvcategoryList
+                }],
+                dataset: [
+                    ObvCESeries,
+                    ObvPESeries
                 ]
             }
         });

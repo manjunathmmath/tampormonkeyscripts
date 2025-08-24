@@ -1552,6 +1552,7 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
 
 
 function calculateOBV(prevData, currData) {
+    console.log(prevData,currData)
     let OBV = 0;
     let prevLastCandle = prevData[prevData.length - 1]
     OBV = prevLastCandle[5]
