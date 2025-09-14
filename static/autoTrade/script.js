@@ -207,25 +207,6 @@ function showAutoTrade() {
 
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-    html += '<h3>TRADE IDEAS/STRATEGIES</h3>'
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-    html += '<p>'
-    html += 'ASO  Trade : Check if ASO breakout and PE OI  > CE OI. Then Go for CE'
-    html += '</p>'
-    html += '<p>'
-    html += 'ASO Reversal Trade : Check if ASO breakout and CE OI  > PE OI. Then Go for PE'
-    html += '</p>'
-    html += '<p>'
-    html += 'BSO Trade : Check if BSO breakout and CE OI  > PE OI. Then go for PE'
-    html += '</p>'
-    html += '<p>'
-    html += 'BSO Reversal Trade : Check if BSO breakout and PE OI  > CE OI. Then go for CE'
-    html += '</p>'
-    html += '<p>'
-    html += 'Above is for AST and BST Trades. Also check for Breakout True and False count. Check aslo the prediction logic'
-    html += '</p>'
-
-
 
 
     let title = ''
@@ -318,6 +299,7 @@ async function loadPreMarketOpenPrice() {
         await callSleepForAWhile(1000);
         await scanPreMarketpPrice();
     }
+    
 }
 
 async function scanPreMarketpPrice() {
@@ -375,6 +357,7 @@ async function updateStrorageLtpPrice(instance) {
     if (instance) {
         instance.attr("disabled", false)
     }
+    jQ(".marketwatch-pagination a.item")[0].click();
 }
 
 async function scanLtpPrice() {
@@ -547,7 +530,7 @@ async function showStockData(quote, name, prevQuote) {
     });
 
 
-    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-10, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-15, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
     let candles = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}

@@ -1,0 +1,2 @@
+Save in storage every 5 minutes the quick BSO and ASO
+Margin logic re-do with total aso and bso stock

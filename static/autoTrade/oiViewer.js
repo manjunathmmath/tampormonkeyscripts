@@ -1142,7 +1142,7 @@ async function getOHLAndBreakOutTrend(name) {
     let obj = {}
     currentInfo = generateTrend(name);
 
-    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-10, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-15, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
     let candles = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}
@@ -1528,8 +1528,13 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
 
+            /*
             obj['CE_OBV'] = calculateOBV(prevDataCE, currDataCE)
             obj['PE_OBV'] = calculateOBV(prevDataPE, currDataPE)
+            */
+
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
 
             tableData.push(obj)
         } catch (err) {
@@ -1552,7 +1557,6 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
 
 
 function calculateOBV(prevData, currData) {
-    console.log(prevData,currData)
     let OBV = 0;
     let prevLastCandle = prevData[prevData.length - 1]
     OBV = prevLastCandle[5]

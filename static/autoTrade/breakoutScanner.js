@@ -86,6 +86,7 @@ function commonBreakOutLogic(auto) {
         obj['STRIKEDATA'] = scriptData[name]['strikeData'];
         obj['CURRENT_PRICE'] = scriptData[name]['ltp'];
         obj['TREND'] = scriptData[name]['trends'];
+
         scripts.push(obj)
     }
 
@@ -114,6 +115,7 @@ function commonBreakOutLogic(auto) {
         obj['VOLUME'] = ''
         obj['OHL_TREND'] = ''
         obj['BREAKOUT'] = ''
+        obj['CLOSE_9_15'] = '';
         let indexType = []
         if (jQ.inArray(scripts[i]['TRADINGSYMBOL'], NIFTY_50_LIST) !== -1) {
             indexType.push("NIFTY")
@@ -219,6 +221,7 @@ async function showBreakOutStocks() {
     html += '<thead>'
     html += '<tr>'
     html += '<th>SYMBOL</th>'
+    html += '<th>9:15 CLOSE</th>'
     html += '<th>CH%</th>'
     html += '<th  title="Price Moved">M</th>'
     html += '<th  title="Trend">T</th>'
@@ -287,6 +290,7 @@ function generateBreakOutStockTable(data) {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         "columns": [
+
             {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
@@ -318,6 +322,22 @@ function generateBreakOutStockTable(data) {
                     html += '</span>'
 
                     return html;
+                }
+            },
+            {
+                "data": "CLOSE_9_15",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data == "ASO") {
+                        html += '<span class="badge bg-success">' + data + '</span>'
+                    }
+
+                    if (data == "BSO") {
+                        html += '<span class="badge bg-danger">' + data + '</span>'
+                    }
+
+                    return html
+
                 }
             },
             {
@@ -689,6 +709,16 @@ function showBreakoutTrendCount() {
     let asoCount = 0;
     let bsoCount = 0;
     let allCount = 0;
+    let asoBreakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_ASO_BREAKOUT_NINE_FIFTEEN"));
+    let bsoBreakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BSO_BREAKOUT_NINE_FIFTEEN"));
+
+    if (!asoBreakOutNineFifteen) {
+        asoBreakOutNineFifteen = []
+    }
+
+    if (!bsoBreakOutNineFifteen) {
+        bsoBreakOutNineFifteen = []
+    }
     jQ.each(allBreakoutStocks, function (index, item) {
         if (jQ.inArray("ASO", item['TREND']) != -1) {
             asoCount++;
@@ -699,29 +729,43 @@ function showBreakoutTrendCount() {
         allCount++;
     });
 
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info" type="button"><span>N50</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info" type="button"><span>BN</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info" type="button"><span>MASTER</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info extra-buttons" type="button"><span>ALL(' + allCount + ')</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger extra-buttons" type="button"><span>BSO (' + bsoCount + ')</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success extra-buttons" type="button"><span>ASO(' + asoCount + ')</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>N50</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BN</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>TRENDING</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>MASTER</span></button>')
 
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter  bg-info" type="button"><span>BREAKOUT</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>VALID</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BREAKOUT</span></button>')
 
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="track" class="dt-button trend-filter  bg-info" type="button"><span>TRACK</span></button>')
-   
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="track" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>TRACK</span></button>')
 
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument" type="button"><span>Analyze</span></button>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
-    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="asobreakout" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>9:15 ASO (' + asoBreakOutNineFifteen.length + ')</span></button>')
+
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bsobreakout" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>9:15 BSO(' + bsoBreakOutNineFifteen.length + ')</span></button>')
+
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" class="dt-button analyse-breakout-instrument extra-buttons" type="button"><span>Analyze</span></button>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend" class="extra-buttons"></span>')
+    jQ("#breakout-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"  class="extra-buttons"></span>')
 
 
 }
 
 jQ(document).on("click", "#breakout-stock-list-table_wrapper .trend-filter", function (e) {
     let name = jQ(this).attr("data-trend");
+    let asoBreakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_ASO_BREAKOUT_NINE_FIFTEEN"));
+    let bsoBreakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BSO_BREAKOUT_NINE_FIFTEEN"));
+
+    if (!asoBreakOutNineFifteen) {
+        asoBreakOutNineFifteen = []
+    }
+
+    if (!bsoBreakOutNineFifteen) {
+        bsoBreakOutNineFifteen = []
+    }
+
     breakOutStocks = []
     let VALID_STOCKS = getAllValidStocks();
     let BREAKOUT_STOCKS = getAllValidBreakOutStocks();
@@ -755,7 +799,7 @@ jQ(document).on("click", "#breakout-stock-list-table_wrapper .trend-filter", fun
             if (jQ.inArray(item['TRADINGSYMBOL'], BREAKOUT_STOCKS) != -1) {
                 breakOutStocks.push(item)
             }
-        }else if (name == "track") {
+        } else if (name == "track") {
             if (jQ.inArray(item['TRADINGSYMBOL'], TRACKING_SCRIPTS) != -1) {
                 breakOutStocks.push(item)
             }
@@ -764,6 +808,14 @@ jQ(document).on("click", "#breakout-stock-list-table_wrapper .trend-filter", fun
                 breakOutStocks.push(item)
             }
             if (jQ.inArray("BSO", item['TREND']) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "asobreakout") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], asoBreakOutNineFifteen) != -1) {
+                breakOutStocks.push(item)
+            }
+        } else if (name == "bsobreakout") {
+            if (jQ.inArray(item['TRADINGSYMBOL'], bsoBreakOutNineFifteen) != -1) {
                 breakOutStocks.push(item)
             }
         } else {
@@ -781,6 +833,20 @@ jQ(document).on("click", ".analyse-breakout-instrument", function (e) {
 
 async function callAnalyseBreakout(auto) {
     let count = 0;
+    let isBreakPresent = true
+    let asoBreakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_ASO_BREAKOUT_NINE_FIFTEEN"));
+    let bsoBreakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BSO_BREAKOUT_NINE_FIFTEEN"));
+
+    if (!asoBreakOutNineFifteen) {
+        asoBreakOutNineFifteen = []
+        isBreakPresent = false
+    }
+
+    if (!bsoBreakOutNineFifteen) {
+        bsoBreakOutNineFifteen = []
+        isBreakPresent = false
+    }
+
     let scriptsCount = breakOutStocks.length
     let scriptData = generateTrends()
     for (let i = 0; i < breakOutStocks.length; i++) {
@@ -959,6 +1025,37 @@ async function callAnalyseBreakout(auto) {
             }
 
 
+
+            if (!isBreakPresent) {
+                let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
+                let firstCandleClose = historical.data.candles[0][4]
+
+                let asoPrice = 0;
+                let bsoPrice = 0;
+                asoPrice = parseFloat(breakOutStocks[rowId]['STRIKEDATA']['ustrikeOne']);
+                bsoPrice = parseFloat(breakOutStocks[rowId]['STRIKEDATA']['bstrikeOne']);
+
+                if (firstCandleClose > asoPrice) {
+                    breakOutStocks[rowId]['CLOSE_9_15'] = 'ASO';
+                    asoBreakOutNineFifteen.push(name)
+                }
+
+                if (firstCandleClose < bsoPrice) {
+                    breakOutStocks[rowId]['CLOSE_9_15'] = 'BSO';
+                    bsoBreakOutNineFifteen.push(name)
+                }
+
+            } else {
+                if (jQ.inArray(name, asoBreakOutNineFifteen) != -1) {
+                    breakOutStocks[rowId]['CLOSE_9_15'] = 'ASO';
+                }
+
+                if (jQ.inArray(name, bsoBreakOutNineFifteen) != -1) {
+                    breakOutStocks[rowId]['CLOSE_9_15'] = 'BSO';
+                }
+            }
+
+
             breakOutStocks[rowId]['isOneDayAgo'] = isOneDayAgo;
             breakOutStocks[rowId]['isTwoDayAgo'] = isTwoDayAgo;
             breakOutStocks[rowId]['isThreeDayAgo'] = isThreeDayAgo;
@@ -981,8 +1078,13 @@ async function callAnalyseBreakout(auto) {
             console.log(err)
         }
     }
+
+    localStorage.setItem("VALID_ASO_BREAKOUT_NINE_FIFTEEN", JSON.stringify(asoBreakOutNineFifteen));
+    localStorage.setItem("VALID_BSO_BREAKOUT_NINE_FIFTEEN", JSON.stringify(bsoBreakOutNineFifteen));
     if (!auto) {
-        showMarketSentiment()
+        showMarketSentiment();
+        jQ(".extra-buttons").remove();
+        showBreakoutTrendCount()
     }
     jQ("#breakout-stock-list-table_wrapper  #processing-trend").html("Done...");
     jQ("#breakout-stock-list-table_wrapper  #last-refresh-trend").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));

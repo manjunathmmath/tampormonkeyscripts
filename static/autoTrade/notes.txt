@@ -1,3 +1,91 @@
 https://www.nseindia.com/products-services/equity-derivatives-individual-securities
 
 https://api.kite.trade/instruments
+
+
+
+Note:
+
+Overall before taking any trade
+1. Check for ASO/BSO breakout
+2. Check for OI
+3. Check for Number of 9.15 ASO/BSO breakout
+5. Check for CE/PE OBV
+6. Check for Components price levles of above conditions (5,4,3,2,1)
+7. If Index's 9.15 candle is above ASO. Probability is Bullish (Note: check for OBV,OI, Number of ASO,BSO 9.15 conditions for confirmation)
+8. If Index's 9.15 candle is below BOS. Probability is Bearish (Note: check for OBV,OI, Number of ASO,BSO 9.15 conditions for confirmation)
+
+
+
+Stocks
+
+Strategy 1 : 9.15 candle ASO/BSO breakout
+	
+	
+	1. 	ASO Trade/CE Buying
+		Note: If 9.15 candle break out/closes above ASO strike, and Nifty trend is Bullish to sideways (Even if trend is bearish look for small profit)
+		Additonal checks: OI check/PCR/7 days Breakout trend
+	
+	2. BSO Trade/PE Buying
+		Note : If 9.15 candle break down/closes below BSO strike, and Nifty trend is Bearish to sideways (Even if trend us bullish look for small profit)
+		Additonal checks: : OI check/PCR/7 days Breakout trend
+	
+	
+	
+Strategy 2 : ASO and BSO breakout
+	
+	1.CE Trade 
+		If any 5 minutes candle closes above ASO strike and any next 5 minutes candle closes above the  prevously broken ASO candle  (Look for small profit and exit)
+	
+	2.PE Trade 
+		If any 5 minutes candle closes below BSO strike and any next 5 minutes candle closes below the  prevously broken BSO candle.
+	
+	
+Strategy 3 : OI and Index Trend based
+		
+		1. CE Trade
+			Current LTP has strong PE OI and Nifty trend is bullish and 7 days Breakout is uptrend (More T then F)
+		
+		2. PE Trade
+			Current LTP has strong CE OI and Nifty trend is bearish and 7 days Breakout is downtrend ( More F then T)
+			
+
+Index
+Strategy 1 : VIX based
+
+	1. VIXU / PE Trades
+		If price is near / above VIXU level
+		
+	2. VIXL / CE Trade
+		If price is near / below VIXL level
+		
+
+Strategy 2 :  OI Based and OI of Weightage components (Reliance/HDFC) and Number os ASO and BSO count 
+
+		1. CE Trade
+			Current LTP has strong PE OI (Support) and Weightage components also have PE OI (Support) 
+			and more number of stock prices trading above ASO then BSO stocks 
+		
+		2. PE Trade
+			Current LTP has strong CE OI (Resistance) and  Weightage components also have CE OI (Resistance)
+			and more number of stock prices trading below BSO then ASO stocks 
+
+
+    html += '<h3>TRADE IDEAS/STRATEGIES</h3>'
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<p>'
+    html += 'ASO  Trade : Check if ASO breakout and PE OI  > CE OI. Then Go for CE'
+    html += '</p>'
+    html += '<p>'
+    html += 'ASO Reversal Trade : Check if ASO breakout and CE OI  > PE OI. Then Go for PE'
+    html += '</p>'
+    html += '<p>'
+    html += 'BSO Trade : Check if BSO breakout and CE OI  > PE OI. Then go for PE'
+    html += '</p>'
+    html += '<p>'
+    html += 'BSO Reversal Trade : Check if BSO breakout and PE OI  > CE OI. Then go for CE'
+    html += '</p>'
+    html += '<p>'
+    html += 'Above is for AST and BST Trades. Also check for Breakout True and False count. Check aslo the prediction logic'
+    html += '</p>'
+			

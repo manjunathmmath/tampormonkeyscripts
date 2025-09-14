@@ -101,6 +101,7 @@ async function showPredictor(name) {
 
     html += '<table  class="table display nowrap"  style="width: 100%;">'
     html += '<thead>'
+    html += '<tr>'
     html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
     html += '<th colspan="3" class="strike-colspan-class atm-col-class">Strike</th>'
@@ -127,12 +128,21 @@ async function showPredictor(name) {
     html += '<th id="STRIKE_UPPER_TWO_CE-prediction" class="number-align">CE</th>'
     html += '<th id="STRIKE_UPPER_TWO-prediction" class="text-align">S</th>'
     html += '<th id="STRIKE_UPPER_TWO_PE-prediction" class="number-align">PE</th> '
+    html += '<tr>'
     html += '</thead>'
     html += '<tbody>'
     html += '</tbody>'
     html += '</table>'
 
+
+
+
     html += '</div>'
+    html += '</div>'
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row" id="oi-obv-charts">'
     html += '</div>'
 
 
@@ -909,7 +919,7 @@ async function callPredictionAnalyseTrend(html) {
 
             let script = generateTrend(name);
 
-            let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-10, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
+            let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(START_MONTH_DAY_DATE).add(-15, 'days').format("YYYY-MM-DD"), CURRENT_DAY, 'day');
             let candles = []
             jQ.each(data.data.candles, function (index, item) {
                 let map = {}
@@ -1083,6 +1093,7 @@ async function callPredictionAnalyseTrend(html) {
 
             if (name != 'GIFT NIFTY') {
                 let oiData = await showTrendingOI(name)
+                generateOIChartsForPrediction(oiData)
                 let strikes = oiData['tableData']
                 stock[rowId]['PCR'] = oiData['pcr'] + ' : ' + oiData['chPcr']
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
@@ -1201,4 +1212,165 @@ async function callPredictionAnalyseTrend(html) {
             console.log(err)
         }
     }
+}
+
+function generateOIChartsForPrediction(oiData) {
+    console.log(oiData['tableData']);
+
+    let html = ''
+    jQ.each(oiData['tableData'], function (index, item) {
+        html += '<div class="col-md-12">'
+
+        html += '<div class="row">'
+        html += '<div class="col-md-12">'
+        html += '<h5 style="text-align:center;">' + item.STRIKE + '</h5>'
+        html += '</div>'
+        html += '</div>'
+
+        html += '<div class="row">'
+        html += '<div class="col-md-6" id="oi-chart-prediction-' + item.STRIKE + '">'
+        html += '</div>'
+        html += '<div class="col-md-6" id="obv-chart-prediction-' + item.STRIKE + '">'
+        html += '</div>'
+        html += '</div>'
+
+        html += '</div>'
+        html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    });
+
+    jQ("#oi-obv-charts").html(html);
+
+
+
+    jQ.each(oiData['tableData'], function (index, item) {
+        let PREV_OI_CE = item.prevDataCE
+        let PREV_OI_PE = item.prevDataPE
+        let preCEOI = PREV_OI_CE[PREV_OI_CE.length - 1]
+        let prePEOI = PREV_OI_PE[PREV_OI_PE.length - 1]
+
+        let OI_CE = item.currDataCE
+        let OI_PE = item.currDataPE
+
+        if (OI_CE.length == 0) {
+            OI_CE = preCEOI
+        }
+
+        if (OI_PE.length == 0) {
+            OI_PE = prePEOI
+        }
+
+
+        let CESeries = {}
+        CESeries['seriesname'] = "CE"
+        CESeries['data'] = []
+
+        let PESeries = {}
+        PESeries['seriesname'] = "PE"
+        PESeries['data'] = []
+
+        let categoryList = [];
+        jQ.each(OI_CE, function (Cindex, Citem) {
+            let map = {}
+            map.label = moment(Citem[0]).format("HH:mm:ss");
+            categoryList.push(map)
+            let val = {}
+            val['color'] = '#da3224'
+            val['value'] = parseFloat((Citem[6] - preCEOI[6]) / 100000).toFixed(1)
+            CESeries['data'].push(val)
+        })
+
+        jQ.each(OI_PE, function (Pindex, Pitem) {
+            let val = {}
+            val['color'] = '#37a009'
+            val['value'] = parseFloat((Pitem[6] - prePEOI[6]) / 100000).toFixed(1)
+            PESeries['data'].push(val)
+        })
+
+        jQ("#oi-chart-prediction-" + item.STRIKE).insertFusionCharts({
+            type: "mscolumn2d",
+            width: "100%",
+            dataFormat: "json",
+            dataSource: {
+                chart: {
+                    "thousandSeparatorPosition": "2,3",
+                    "formatNumberScale": "0",
+                    "theme": "fusion",
+                    "adjustDiv": "0",
+                    showvalues: "0",
+                    labeldisplay: "ROTATE",
+                    rotatelabels: "1",
+                    "paletteColors": " #da3224, #37a009",
+                    "showLabels": 0
+                },
+                "categories": [{
+                    "category": categoryList
+                }],
+                dataset: [
+                    CESeries,
+                    PESeries
+                ]
+            }
+        });
+
+
+
+        let ObvCESeries = {}
+        ObvCESeries['seriesname'] = "CE_OBV"
+        ObvCESeries['data'] = []
+
+        let ObvPESeries = {}
+        ObvPESeries['seriesname'] = "PE_OBV"
+        ObvPESeries['data'] = []
+
+        let ObvcategoryList = [];
+        let CE_OBV = item['CE_OBV']
+        jQ.each(CE_OBV, function (Cindex, Citem) {
+            let map = {}
+            map.label = moment(Citem['date']).format("HH:mm:ss");
+            ObvcategoryList.push(map)
+            let val = {}
+            val['color'] = '#37a009 '
+            val['value'] = Citem['obv']
+            ObvCESeries['data'].push(val)
+        })
+
+
+
+        let PE_OBV = item['PE_OBV']
+        jQ.each(PE_OBV, function (Pindex, Pitem) {
+            let val = {}
+            val['color'] = '#da3224'
+            val['value'] = Pitem['obv']
+            ObvPESeries['data'].push(val)
+        });
+
+
+        jQ("#obv-chart-prediction-" + item.STRIKE).insertFusionCharts({
+            type: "mscolumn2d",
+            width: "100%",
+            dataFormat: "json",
+            dataSource: {
+                chart: {
+                    "thousandSeparatorPosition": "2,3",
+                    "formatNumberScale": "0",
+                    "theme": "fusion",
+                    "adjustDiv": "0",
+                    showvalues: "0",
+                    labeldisplay: "ROTATE",
+                    rotatelabels: "1",
+                    "paletteColors": "  #37a009,#da3224",
+                    "showLabels": 1
+                },
+                "categories": [{
+                    "category": ObvcategoryList
+                }],
+                dataset: [
+                    ObvCESeries,
+                    ObvPESeries
+                ]
+            }
+        });
+    });
+
+
 }

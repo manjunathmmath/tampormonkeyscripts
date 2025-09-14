@@ -60,7 +60,7 @@ function showOrderBook() {
     title += '</div>'
     title += '</div>'
 
-    showPopUpWindow('order-book', html, "Order Book",  950, 550);
+    showPopUpWindow('order-book', html, "Order Book", 950, 550);
     var divId = "popup-custom-style-order-book";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     commonGenerateTable();
@@ -112,7 +112,7 @@ async function commonGenerateTable() {
         let currentInfo = scriptData[item];
 
 
-    
+
 
         obj.SYMBOL = item
         obj.TRANSACTION_TYPE = book.transaction_type
@@ -182,7 +182,7 @@ function generateOrderBook(orderBook) {
         "bDestroy": true,
         "columnDefs": [
             {
-                "targets": [6,7,8,9,10],
+                "targets": [6, 7, 8, 9, 10],
                 "visible": false,
                 "searchable": false
             }
@@ -231,7 +231,9 @@ function generateOrderBook(orderBook) {
                     let html = ''
                     if (ohlTrend) {
                         let trend = ohlTrend[row.SYMBOL]
-                        html += '<span class="badge bg-success">' +  + parseFloat(trend[0]).toFixed(2) + '</span>'
+                        if (trend) {
+                            html += '<span class="badge bg-success">' + + parseFloat(trend[0]).toFixed(2) + '</span>'
+                        }
                     }
                     return html
                 }
@@ -242,7 +244,9 @@ function generateOrderBook(orderBook) {
                     let html = ''
                     if (ohlTrend) {
                         let trend = ohlTrend[row.SYMBOL]
-                        html += '<span class="badge bg-danger">' +  + parseFloat(trend[1]).toFixed(2) + '</span>'
+                        if (trend) {
+                            html += '<span class="badge bg-danger">' + + parseFloat(trend[1]).toFixed(2) + '</span>'
+                        }
                     }
                     return html
                 }

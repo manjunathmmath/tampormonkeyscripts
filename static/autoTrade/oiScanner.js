@@ -40,10 +40,10 @@ async function showOIScanner(name) {
     html += '<thead>'
     html += '<tr>'
     html += '<th>OI</th>'
-    html += '<th>CH.OI</th>'
+    html += '<th>CH.OI CE</th>'
     html += '<th style="text-align:center;">STRIKE</th>'
     html += '<th>CH.OI</th>'
-    html += '<th>OI</th>'
+    html += '<th>OI PE</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'
@@ -453,9 +453,13 @@ function generateOITable(data) {
                     html += row.PE.tradingsymbol
                     html += '</a>'
                     html += '</div>'
-
-                    html += '<div id="chart-oi-' + data + '">Chart</div>'
-                    html += '<div id="chart-oi-obv-' + data + '">Chart</div>'
+                    html += '<div class="row">'
+                    
+                    html += '<div class="col-md-6" id="chart-oi-' + data + '">Chart</div>'
+                    
+                    
+                    html += '<div class="col-md-6" id="chart-oi-obv-' + data + '">Chart</div>'
+                    html += '</div>'
 
                     html += '</div>'
                     return html

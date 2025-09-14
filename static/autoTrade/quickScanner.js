@@ -91,7 +91,6 @@ function startQuickRefresh() {
     startQuickTimer(display);
 };
 
-let algoRunning = false;
 function startQuickTimer(display) {
     quickTimerInstance = setInterval(function () {
         var d = new Date();
@@ -99,39 +98,93 @@ function startQuickTimer(display) {
         var m = d.getMinutes();
         var h = d.getHours();
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
-        if (!algoRunning) {
-            generateQuickStockList()
+        generateQuickStockList(h, m, s)
+        if (h == 9 && m == 20 && s == 0) {
+            /*execute915Alog()*/
         }
     }, 1000);
 }
 
+let totalASOStock = 0;
+let totalBSoStock = 0;
+async function execute915Alog() {
+    let instrumentsWrapper = jQ(".draggable-wrapper");
+    let instruments = instrumentsWrapper.find(".items .item-wrapper");
+    let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
 
+    for (let ins = 0; ins < instruments.length; ins++) {
+        let name = jQ(instruments[ins]).find(".symbol").find(".name").html();
+        let price = jQ(instruments[ins]).find(".price").find(".last-price").html();
+        name = name.trim()
+        if (name == "M&amp;M") {
+            name = "M&M"
+        }
 
+        if (name == "M&amp;MFIN") {
+            name = "M&MFIN"
+        }
 
-async function generateQuickStockList() {
+        let openDetail = openDetails[name]
+        let strikeData = getStrikeDetails(openDetail, name);
+        let currentPrice = parseFloat(price.trim()).toFixed(2);
 
-    let currentTime = moment().format("HH:mm:ss")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:20:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm:ss")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 09:20:05", 'YYYY-MM-DD HH:mm:ss').format("HH:mm:ss")
+        let asoPrice = 0;
+        let bsoPrice = 0;
+        asoPrice = parseFloat(strikeData['ustrikeOne']);
+        bsoPrice = parseFloat(strikeData['bstrikeOne']);
 
-    let allow9_15 = false;
-    if (currentTime >= checkTime && currentTime <= endTime) {
-        allow9_15 = true;
-    }else{
-        console.log("Algo starts executing orders @ " + checkTime + "AM. And stops @ "+endTime+ "  current time is :" + currentTime);
-        return
+        let trend = "NA"
+        let trends = []
+        if (currentPrice >= parseFloat(asoPrice)) {
+            trend = "ASO"
+            trends.push(trend);
+        }
+
+        if (currentPrice <= parseFloat(bsoPrice)) {
+            trend = "BSO"
+            trends.push(trend);
+        }
+
+        if (currentPrice >= parseFloat(strikeData['ustrikeTwo'])) {
+            trend = "AST"
+            trends.push(trend);
+        }
+
+        if (currentPrice <= parseFloat(strikeData['bstrikeTwo'])) {
+            trend = "BST"
+            trends.push(trend);
+        }
+
+        let ASO_MOVED = parseFloat(currentPrice - asoPrice).toFixed()
+        let BSO_MOVED = parseFloat(bsoPrice - currentPrice).toFixed()
+
+        let obj = {}
+        obj['TRADINGSYMBOL'] = name
+        obj['TREND'] = trends
+        obj['OHL'] = ''
+        obj['LTP'] = currentPrice
+        obj['ASO_MOVED'] = ASO_MOVED
+        obj['BSO_MOVED'] = BSO_MOVED
+        obj['ustrikeOne'] = asoPrice
+        obj['bstrikeOne'] = bsoPrice
+        obj['DATE'] = moment().format("DD-MM-YYYY HH:mm:ss")
+
+        try {
+            if (jQ.inArray("BSO", trends) != -1) {
+                await triggerOrder(obj, "SELL")
+            }
+
+            if (jQ.inArray("ASO", trends) != -1) {
+                await triggerOrder(obj, "BUY")
+            }
+        } catch (err) {
+            console.log("Error while placing order for the stock : " + obj['TRADINGSYMBOL'] + ":" + obj['TREND'])
+            console.log(err)
+        }
     }
 
-    let currentMinute = moment().format("mm")
-    if ((currentMinute % 5) != 0) {
-        console.log("-----------[ALGO CHECKING FOR 5 MINUTES AND 1 SECONDS INTERVAL CONDITION]-----------");
-        console.log("current Minute :" + currentMinute);
-        console.log("------------------------------------------------------------------------------------");
-        return
-    }
-    await callSleepForAWhile(2000);
-
-    algoRunning = true;
+}
+async function generateQuickStockList(h, m, s) {
 
     let instrumentsWrapper = jQ(".draggable-wrapper");
     let instruments = instrumentsWrapper.find(".items .item-wrapper");
@@ -150,9 +203,14 @@ async function generateQuickStockList() {
         asoData = []
     }
 
+    let isASODataChanged = false;
+    let isBSODataChanged = false;
+    totalASOStock = 0;
+    totalBSoStock = 0;
     for (let ins = 0; ins < instruments.length; ins++) {
         let name = jQ(instruments[ins]).find(".symbol").find(".name").html();
         let price = jQ(instruments[ins]).find(".price").find(".last-price").html();
+        name = name.trim()
         if (name == "M&amp;M") {
             name = "M&M"
         }
@@ -215,12 +273,10 @@ async function generateQuickStockList() {
                 }
             }
             if (!found) {
+                isBSODataChanged = true
                 bsoData.push(obj);
-                if (allow9_15) {
-                    await triggerOrder(obj, "BUY")
-                }
-
             }
+            totalBSoStock++;
         }
 
         if (jQ.inArray("ASO", trends) != -1) {
@@ -232,38 +288,46 @@ async function generateQuickStockList() {
                 }
             }
             if (!found) {
+                isASODataChanged = true
                 asoData.push(obj);
-                if (allow9_15) {
-                    await triggerOrder(obj, "SELL")
-                }
             }
+            totalASOStock++;
         }
     }
 
-    localStorage.setItem("VALID_BSO", JSON.stringify(bsoData));
-    localStorage.setItem("VALID_ASO", JSON.stringify(asoData));
+    if ((m % 5) == 0 && s == 0) {
+        localStorage.setItem("VALID_BSO", JSON.stringify(bsoData));
+        localStorage.setItem("VALID_ASO", JSON.stringify(asoData));
+    }
 
+    console.log(isASODataChanged,isBSODataChanged)
     if (!quickBsoScannerTable) {
         generateBsoScannerDataTable(bsoData)
     } else {
-        quickBsoScannerTable.clear().draw();
-        quickBsoScannerTable.rows.add(bsoData);
-        quickBsoScannerTable.columns.adjust().draw();
+        if (isBSODataChanged) {
+            quickBsoScannerTable.clear().draw();
+            quickBsoScannerTable.rows.add(bsoData);
+            quickBsoScannerTable.columns.adjust().draw();
+        }
     }
 
     if (!quickAsoScannerTable) {
         generateAsoScannerDataTable(asoData)
     } else {
-        quickAsoScannerTable.clear().draw();
-        quickAsoScannerTable.rows.add(asoData);
-        quickAsoScannerTable.columns.adjust().draw();
+        if (isASODataChanged) {
+            quickAsoScannerTable.clear().draw();
+            quickAsoScannerTable.rows.add(asoData);
+            quickAsoScannerTable.columns.adjust().draw();
+        }
     }
-    jQ("#quick-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
 
-    algoRunning = false;
+    if(isASODataChanged || isBSODataChanged){
+        jQ("#quick-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
+    }
+
 }
 
-
+let TOTAL_MARGIN = 100000
 async function triggerOrder(obj, transaction_type) {
     let name = obj.TRADINGSYMBOL;
     let trigger_price = 0;
@@ -277,7 +341,18 @@ async function triggerOrder(obj, transaction_type) {
         price = currentPrice + 0.50
     }
 
-    let quantity = (MARGIN / (parseFloat(currentPrice) / 5)).toFixed(0)
+    if(totalASOStock == 0){
+        totalASOStock = 1
+    }
+
+    if(totalBSoStock == 0){
+        totalBSoStock = 1;
+    }
+    let MARGIN_PER_STOCK = (TOTAL_MARGIN / (totalASOStock + totalBSoStock))
+    if(MARGIN_PER_STOCK > 30000){
+        MARGIN_PER_STOCK = 20000
+    }
+    let quantity = (MARGIN_PER_STOCK / (parseFloat(currentPrice) / 5)).toFixed(0)
     let params = { "exchange": "NSE", "tradingsymbol": name, "transaction_type": transaction_type, "product": "MIS", "order_type": ORDER_TYPE, "validity": "DAY", "validity_ttl": 1, "variety": "regular", "quantity": parseInt(quantity), "price": price, "trigger_price": trigger_price, "disclosed_quantity": 0, "tags": [] }
     console.log(params)
     try {
@@ -426,9 +501,9 @@ async function analyzeOpenBurst(type) {
     let stocks = [];
 
     if (type == "BSO") {
-        stocks = bsoData
+        stocks = JSON.parse(localStorage.getItem("VALID_BSO"));
     } else {
-        stocks = asoData
+        stocks = JSON.parse(localStorage.getItem("VALID_ASO"));
     }
 
     for (let i = 0; i < stocks.length; i++) {
