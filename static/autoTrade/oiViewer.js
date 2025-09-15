@@ -752,6 +752,7 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .analyse-instrument
     }
     var that = jQ(this);
     that.attr("disabled", true);
+     clearInterval(oiViewerTimerInstance)
     jQ("#trending-stock-list-table_wrapper #processing-trend").html("Processing.... ");
     commonAnalyzeTrend(that)
 
