@@ -69,6 +69,7 @@
 // @require      http://localhost:3000/autoTrade/oiViewer.js
 // @require      http://localhost:3000/autoTrade/predictor.js
 // @require      http://localhost:3000/autoTrade/quickScanner.js
+// @require      http://localhost:3000/autoTrade/showNineFifteenClose.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js
 // ==/UserScript==

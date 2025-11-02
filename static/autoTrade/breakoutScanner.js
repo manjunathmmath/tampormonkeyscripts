@@ -77,6 +77,7 @@ function commonBreakOutLogic(auto) {
     for (let i = 0; i < instru.length; i++) {
         let name = instru[i];
         let obj = {}
+        console.log(name)
         obj['TRADINGSYMBOL'] = name;
         obj['CLOSE'] = scriptData[name]['prevPrice'];
         obj['PRICE'] = scriptData[name]['price'];

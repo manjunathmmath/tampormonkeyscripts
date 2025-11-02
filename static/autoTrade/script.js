@@ -204,9 +204,36 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
+    html += '<div class="col-md-1">'
+    html += '<button id="show-nine-fifteen-close" class="btn btn-secondary btn-sm" type="submit">';
+    html += '9:15 CL'
+    html += '</button>'
+    html += '</div>'
+
 
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+
+    html += '<div class="row">'
+
+    html += '<div class="col-md-2">'
+    html += 'MARGIN : <input type="text" id="avilable-margin" class="form-control form-control-sm calulate-sl" value="50000">'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'QTY: <input type="text" id="quantity" class="form-control form-control-sm calulate-sl">'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'ENTRY: <input type="text" id="entry-price" class="form-control form-control-sm calulate-sl">'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += 'SL: <input type="text" id="sl-price" class="form-control form-control-sm" readonly>'
+    html += '</div>'
+
+    html += '</div>'
+
 
 
     let title = ''
@@ -230,7 +257,7 @@ function showAutoTrade() {
 
 
     title += '</div>'
-    showPopUpWindow('trend-analysis', html, "Auto Trade", 1000, 150);
+    showPopUpWindow('trend-analysis', html, "Auto Trade", 1000, 250);
     var divId = "popup-custom-style-trend-analysis";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     jQ("." + divId).on("close.popupwindow", function () {
@@ -240,6 +267,19 @@ function showAutoTrade() {
         console.log("Closed windows");
     });
 }
+
+jQ(document).on("change", ".calulate-sl", function () {
+    let margin = jQ("#avilable-margin").val();
+    let entryPrice = jQ("#entry-price").val();
+    let quantity = jQ("#quantity").val();
+
+    let slPercentage = (margin * 5) / 100
+    let totalEntryMargin = quantity * entryPrice
+    let totalExitMargin = totalEntryMargin - slPercentage
+    let exitPrice = totalEntryMargin - totalExitMargin
+    let sl = (totalEntryMargin - exitPrice)/quantity
+    jQ("#sl-price").val(parseFloat(sl).toFixed(2))
+});
 
 
 jQ(document).on("click", "#load-price", function (e) {
@@ -299,7 +339,7 @@ async function loadPreMarketOpenPrice() {
         await callSleepForAWhile(1000);
         await scanPreMarketpPrice();
     }
-    
+
 }
 
 async function scanPreMarketpPrice() {
