@@ -6,6 +6,13 @@ let bsoData = []
 let asoData = []
 var quickBsoScannerTable = null;
 var quickAsoScannerTable = null;
+
+var niftyQuickBsoScannerTable = null;
+var niftyQuickAsoScannerTable = null;
+
+var bankQuickBsoScannerTable = null;
+var bankQuickAsoScannerTable = null;
+
 let quickTimerInstance = null;
 async function showQuickScanner() {
     jQ(".marketwatch-pagination a.item")[1].click();
@@ -15,11 +22,104 @@ async function showQuickScanner() {
 
     let html = ''
 
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row">'
 
 
-    html += '<div class="col-md-6">'
+    html += '<div class="col-md-6" >'
+
+    html += '<h6 style="text-align:center">NIFTY BSO</h6>'
+
+    html += '<table  class="" id="nifty-quick-scanner-bso-list-table" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>INSTRUMENT</th>'
+    html += '<th>TREND</th>'
+    html += '<th>OHL</th>'
+    html += '<th>MOVED</th>'
+    html += '<th>ACTION</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-6" >'
+    html += '<h6 style="text-align:center">NIFTY ASO</h6>'
+    html += '<table  class="" id="nifty-quick-scanner-aso-list-table" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>INSTRUMENT</th>'
+    html += '<th>TREND</th>'
+    html += '<th>OHL</th>'
+    html += '<th>MOVED</th>'
+    html += '<th>ACTION</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+
+    html += '</div>'
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<div class="row">'
+
+
+    html += '<div class="col-md-6" >'
+    html += '<h6 style="text-align:center">BANK BSO</h6>'
+    html += '<table  class="" id="bank-quick-scanner-bso-list-table" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>INSTRUMENT</th>'
+    html += '<th>TREND</th>'
+    html += '<th>OHL</th>'
+    html += '<th>MOVED</th>'
+    html += '<th>ACTION</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-6" >'
+    html += '<h6 style="text-align:center">BANK ASO</h6>'
+    html += '<table  class="" id="bank-quick-scanner-aso-list-table" style="width: 100%;display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>INSTRUMENT</th>'
+    html += '<th>TREND</th>'
+    html += '<th>OHL</th>'
+    html += '<th>MOVED</th>'
+    html += '<th>ACTION</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+
+    html += '</div>'
+
+
+
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<div class="row">'
+
+
+    html += '<div class="col-md-6" >'
+    html += '<h6 style="text-align:center">ALL BSO</h6>'
     html += '<table  class="" id="quick-scanner-bso-list-table" style="width: 100%;display: none;">'
     html += '<thead>'
     html += '<tr>'
@@ -37,7 +137,8 @@ async function showQuickScanner() {
     html += '</div>'
 
 
-    html += '<div class="col-md-6">'
+    html += '<div class="col-md-6" >'
+    html += '<h6 style="text-align:center">ALL BSO</h6>'
     html += '<table  class="" id="quick-scanner-aso-list-table" style="width: 100%;display: none;">'
     html += '<thead>'
     html += '<tr>'
@@ -300,7 +401,6 @@ async function generateQuickStockList(h, m, s) {
         localStorage.setItem("VALID_ASO", JSON.stringify(asoData));
     }
 
-    console.log(isASODataChanged,isBSODataChanged)
     if (!quickBsoScannerTable) {
         generateBsoScannerDataTable(bsoData)
     } else {
@@ -321,7 +421,79 @@ async function generateQuickStockList(h, m, s) {
         }
     }
 
-    if(isASODataChanged || isBSODataChanged){
+
+    let newNiftyBsoList = []
+    jQ.each(bsoData, function (index, item) {
+        if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_50_LIST) != -1) {
+            newNiftyBsoList.push(item)
+        }
+    });
+
+    let newNiftyAsoList = []
+    jQ.each(asoData, function (index, item) {
+        if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_50_LIST) != -1) {
+            newNiftyAsoList.push(item)
+        }
+    })
+
+    if (!niftyQuickBsoScannerTable) {
+        generateNiftyBsoScannerDataTable(newNiftyBsoList)
+    } else {
+        if (isBSODataChanged) {
+            niftyQuickBsoScannerTable.clear().draw();
+            niftyQuickBsoScannerTable.rows.add(newNiftyBsoList);
+            niftyQuickBsoScannerTable.columns.adjust().draw();
+        }
+    }
+
+    if (!niftyQuickAsoScannerTable) {
+        generateNiftyAsoScannerDataTable(newNiftyAsoList)
+    } else {
+        if (isASODataChanged) {
+            niftyQuickAsoScannerTable.clear().draw();
+            niftyQuickAsoScannerTable.rows.add(newNiftyAsoList);
+            niftyQuickAsoScannerTable.columns.adjust().draw();
+        }
+    }
+
+
+
+    let newBankBsoList = []
+    jQ.each(bsoData, function (index, item) {
+        if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_BANK_LIST) != -1) {
+            newBankBsoList.push(item)
+        }
+    });
+
+    let newBankAsoList = []
+    jQ.each(asoData, function (index, item) {
+        if (jQ.inArray(item['TRADINGSYMBOL'], NIFTY_BANK_LIST) != -1) {
+            newBankAsoList.push(item)
+        }
+    })
+
+    if (!bankQuickBsoScannerTable) {
+        generateBankBsoScannerDataTable(newBankBsoList)
+    } else {
+        if (isBSODataChanged) {
+            bankQuickBsoScannerTable.clear().draw();
+            bankQuickBsoScannerTable.rows.add(newBankBsoList);
+            bankQuickBsoScannerTable.columns.adjust().draw();
+        }
+    }
+
+    if (!bankQuickAsoScannerTable) {
+        generateBankAsoScannerDataTable(newBankAsoList)
+    } else {
+        if (isASODataChanged) {
+            bankQuickAsoScannerTable.clear().draw();
+            bankQuickAsoScannerTable.rows.add(newBankAsoList);
+            bankQuickAsoScannerTable.columns.adjust().draw();
+        }
+    }
+
+
+    if (isASODataChanged || isBSODataChanged) {
         jQ("#quick-last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     }
 
@@ -341,15 +513,15 @@ async function triggerOrder(obj, transaction_type) {
         price = currentPrice + 0.50
     }
 
-    if(totalASOStock == 0){
+    if (totalASOStock == 0) {
         totalASOStock = 1
     }
 
-    if(totalBSoStock == 0){
+    if (totalBSoStock == 0) {
         totalBSoStock = 1;
     }
     let MARGIN_PER_STOCK = (TOTAL_MARGIN / (totalASOStock + totalBSoStock))
-    if(MARGIN_PER_STOCK > 30000){
+    if (MARGIN_PER_STOCK > 30000) {
         MARGIN_PER_STOCK = 20000
     }
     let quantity = (MARGIN_PER_STOCK / (parseFloat(currentPrice) / 5)).toFixed(0)
@@ -373,7 +545,7 @@ function generateBsoScannerDataTable(data) {
         "data": data,
         "bDestroy": true,
         "scrollX": true,
-        "scrollY": "500px",
+        "scrollY": "200px",
         "columnDefs": [
             {
                 "targets": [2],
@@ -485,59 +657,6 @@ function generateBsoScannerDataTable(data) {
     });
 }
 
-
-jQ(document).on("click", "#analyze-bso-open-burst", function () {
-    analyzeOpenBurst("BSO")
-})
-
-jQ(document).on("click", "#analyze-aso-open-burst", function () {
-    analyzeOpenBurst("ASO")
-})
-
-
-let bsoOpenBurst = {}
-let asoOpenBurst = {}
-async function analyzeOpenBurst(type) {
-    let stocks = [];
-
-    if (type == "BSO") {
-        stocks = JSON.parse(localStorage.getItem("VALID_BSO"));
-    } else {
-        stocks = JSON.parse(localStorage.getItem("VALID_ASO"));
-    }
-
-    for (let i = 0; i < stocks.length; i++) {
-        let data = await getHistoricalDataUsingPromise(instrumentTokens[stocks[i]['TRADINGSYMBOL']], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        let quote = []
-        jQ.each(data.data.candles, function (index, item) {
-            let map = {}
-            map['date'] = moment(item[0]).format("HH:mm:ss")
-            map.open = item[1]
-            map.high = item[2]
-            map.low = item[3]
-            map.close = item[4]
-            map.volume = item[5]
-            map['time'] = moment(item[0]).format("HH:mm")
-            quote.push(map);
-        });
-        if (type == "BSO") {
-            if (quote[0]['close'] < parseFloat(stocks[i]['bstrikeOne'])) {
-                bsoOpenBurst[stocks[i]['TRADINGSYMBOL']] = true
-            } else {
-                bsoOpenBurst[stocks[i]['TRADINGSYMBOL']] = false
-            }
-        }
-
-        if (type == "ASO") {
-            if (quote[0]['close'] > parseFloat(stocks[i]['ustrikeOne'])) {
-                asoOpenBurst[stocks[i]['TRADINGSYMBOL']] = true
-            } else {
-                asoOpenBurst[stocks[i]['TRADINGSYMBOL']] = false
-            }
-        }
-    }
-
-}
 function generateAsoScannerDataTable(data) {
     jQ("#quick-scanner-aso-list-table").show()
     quickAsoScannerTable = jQ('#quick-scanner-aso-list-table').DataTable({
@@ -548,7 +667,7 @@ function generateAsoScannerDataTable(data) {
         "data": data,
         "bDestroy": true,
         "scrollX": true,
-        "scrollY": "500px",
+        "scrollY": "200px",
         "columnDefs": [
             {
                 "targets": [2],
@@ -663,4 +782,558 @@ function generateAsoScannerDataTable(data) {
 
         }
     });
+}
+
+
+function generateNiftyBsoScannerDataTable(data) {
+    jQ("#nifty-quick-scanner-bso-list-table").show()
+    niftyQuickBsoScannerTable = jQ('#nifty-quick-scanner-bso-list-table').DataTable({
+        "processing": true,
+        "order": [[0, "desc"]],
+        "pageLength": 50,
+        "bPaginate": false,
+        "data": data,
+        "bDestroy": true,
+        "scrollX": true,
+        "scrollY": "200px",
+        "columnDefs": [
+            {
+                "targets": [2],
+                "visible": false,
+                "searchable": false
+            }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        "columns": [
+            {
+                "data": 'DATE',
+            },
+            {
+                "data": "TRADINGSYMBOL",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+
+                    let trades = JSON.parse(localStorage.getItem("TRADES"));
+                    if (jQ.inArray(data, trades) !== -1) {
+                        html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
+                    } else {
+                        html += data;
+                    }
+                    html += '</a>'
+                    if (bsoOpenBurst[data]) {
+                        html += '<span class="badge bg-success" title="9.15 candle price is below BSO strike">T</span>'
+                    }
+                    return html;
+                }
+            },
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "ASO") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
+                            }
+
+                            if (item == "AST") {
+                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+                            }
+                        });
+                    }
+                    return html
+                }
+            },
+            {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        if (data[2].includes("Sell")) {
+                            html += '<span class="badge bg-danger">' + data[2] + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + data[2] + '</span>'
+                        }
+                        html += '<span class="badge bg-info">' + ' [B:' + parseFloat(data[0]).toFixed(2) + ' S:' + parseFloat(data[1]).toFixed(2) + ']' + '</span>'
+                    }
+
+                    return html
+                }
+            },
+            {
+                "data": 'BSO_MOVED',
+                render: function (data, type, row, meta) {
+                    return data;
+
+                }
+            },
+            {
+                "data": "ACTIONS",
+                render: function (data, type, row, meta) {
+                    var html = ""
+                    let index = 1;
+                    html += '<div>'
+                    if (!row['TREND']) {
+                        row['TREND'] = []
+                    }
+                    html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
+                    html += 'Chart'
+                    html += '</span>'
+
+                    html += '<span   data-name="' + row['TRADINGSYMBOL'] + '"  class="badge bg-primary  ms-1 show-predictor" style="margin-right:.5rem;">';
+                    html += "Predict"
+                    html += '</span>'
+
+                    html += '</div>'
+                    return html
+                }
+            },
+        ],
+        "fnInitComplete": function (oSettings, json) {
+            jQ("#nifty-quick-scanner-bso-list-table_wrapper .dt-buttons").append('<button id="analyze-bso-open-burst" class="dt-button bg-info" type="button"><span>ANALYZE</span></button>')
+        }
+    });
+}
+
+function generateNiftyAsoScannerDataTable(data) {
+    jQ("#nifty-quick-scanner-aso-list-table").show()
+    niftyQuickAsoScannerTable = jQ('#nifty-quick-scanner-aso-list-table').DataTable({
+        "processing": true,
+        "order": [[0, "desc"]],
+        "pageLength": 50,
+        "bPaginate": false,
+        "data": data,
+        "bDestroy": true,
+        "scrollX": true,
+        "scrollY": "200px",
+        "columnDefs": [
+            {
+                "targets": [2],
+                "visible": false,
+                "searchable": false
+            }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        "columns": [
+            {
+                "data": 'DATE',
+            },
+            {
+                "data": "TRADINGSYMBOL",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+
+                    let trades = JSON.parse(localStorage.getItem("TRADES"));
+                    if (jQ.inArray(data, trades) !== -1) {
+                        html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
+                    } else {
+                        html += data;
+                    }
+                    html += '</a>'
+
+                    if (asoOpenBurst[data]) {
+                        html += '<span class="badge bg-success" title="9.15 candle price is above ASO strike">T</span>'
+                    }
+                    return html;
+                }
+            },
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "ASO") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
+                            }
+
+                            if (item == "AST") {
+                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+                            }
+                        });
+                    }
+                    return html
+                }
+            },
+            {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        if (data[2].includes("Sell")) {
+                            html += '<span class="badge bg-danger">' + data[2] + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + data[2] + '</span>'
+                        }
+                        html += '<span class="badge bg-info">' + ' [B:' + parseFloat(data[0]).toFixed(2) + ' S:' + parseFloat(data[1]).toFixed(2) + ']' + '</span>'
+                    }
+
+                    return html
+                }
+            },
+            {
+                "data": 'ASO_MOVED',
+                render: function (data, type, row, meta) {
+                    return data;
+
+                }
+            },
+            {
+                "data": "ACTIONS",
+                render: function (data, type, row, meta) {
+                    var html = ""
+                    let index = 1;
+                    html += '<div>'
+                    if (!row['TREND']) {
+                        row['TREND'] = []
+                    }
+                    html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
+                    html += 'Chart'
+                    html += '</span>'
+
+
+                    html += '<span   data-name="' + row['TRADINGSYMBOL'] + '"  class="badge bg-primary  ms-1 show-predictor" style="margin-right:.5rem;">';
+                    html += "Predict"
+                    html += '</span>'
+
+                    html += '</div>'
+
+
+                    return html
+                }
+            },
+        ],
+        "fnInitComplete": function (oSettings, json) {
+            jQ("#nifty-quick-scanner-aso-list-table_wrapper .dt-buttons").append('<button id="analyze-aso-open-burst" class="dt-button bg-info" type="button"><span>ANALYZE</span></button>')
+
+        }
+    });
+}
+
+
+function generateBankBsoScannerDataTable(data) {
+    jQ("#bank-quick-scanner-bso-list-table").show()
+    bankQuickBsoScannerTable = jQ('#bank-quick-scanner-bso-list-table').DataTable({
+        "processing": true,
+        "order": [[0, "desc"]],
+        "pageLength": 50,
+        "bPaginate": false,
+        "data": data,
+        "bDestroy": true,
+        "scrollX": true,
+        "scrollY": "200px",
+        "columnDefs": [
+            {
+                "targets": [2],
+                "visible": false,
+                "searchable": false
+            }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        "columns": [
+            {
+                "data": 'DATE',
+            },
+            {
+                "data": "TRADINGSYMBOL",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+
+                    let trades = JSON.parse(localStorage.getItem("TRADES"));
+                    if (jQ.inArray(data, trades) !== -1) {
+                        html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
+                    } else {
+                        html += data;
+                    }
+                    html += '</a>'
+                    if (bsoOpenBurst[data]) {
+                        html += '<span class="badge bg-success" title="9.15 candle price is below BSO strike">T</span>'
+                    }
+                    return html;
+                }
+            },
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "ASO") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
+                            }
+
+                            if (item == "AST") {
+                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+                            }
+                        });
+                    }
+                    return html
+                }
+            },
+            {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        if (data[2].includes("Sell")) {
+                            html += '<span class="badge bg-danger">' + data[2] + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + data[2] + '</span>'
+                        }
+                        html += '<span class="badge bg-info">' + ' [B:' + parseFloat(data[0]).toFixed(2) + ' S:' + parseFloat(data[1]).toFixed(2) + ']' + '</span>'
+                    }
+
+                    return html
+                }
+            },
+            {
+                "data": 'BSO_MOVED',
+                render: function (data, type, row, meta) {
+                    return data;
+
+                }
+            },
+            {
+                "data": "ACTIONS",
+                render: function (data, type, row, meta) {
+                    var html = ""
+                    let index = 1;
+                    html += '<div>'
+                    if (!row['TREND']) {
+                        row['TREND'] = []
+                    }
+                    html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
+                    html += 'Chart'
+                    html += '</span>'
+
+                    html += '<span   data-name="' + row['TRADINGSYMBOL'] + '"  class="badge bg-primary  ms-1 show-predictor" style="margin-right:.5rem;">';
+                    html += "Predict"
+                    html += '</span>'
+
+                    html += '</div>'
+                    return html
+                }
+            },
+        ],
+        "fnInitComplete": function (oSettings, json) {
+            jQ("#bank-quick-scanner-bso-list-table_wrapper .dt-buttons").append('<button id="analyze-bso-open-burst" class="dt-button bg-info" type="button"><span>ANALYZE</span></button>')
+        }
+    });
+}
+
+function generateBankAsoScannerDataTable(data) {
+    jQ("#bank-quick-scanner-aso-list-table").show()
+    bankQuickAsoScannerTable = jQ('#bank-quick-scanner-aso-list-table').DataTable({
+        "processing": true,
+        "order": [[0, "desc"]],
+        "pageLength": 50,
+        "bPaginate": false,
+        "data": data,
+        "bDestroy": true,
+        "scrollX": true,
+        "scrollY": "200px",
+        "columnDefs": [
+            {
+                "targets": [2],
+                "visible": false,
+                "searchable": false
+            }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        "columns": [
+            {
+                "data": 'DATE',
+            },
+            {
+                "data": "TRADINGSYMBOL",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+
+                    let trades = JSON.parse(localStorage.getItem("TRADES"));
+                    if (jQ.inArray(data, trades) !== -1) {
+                        html += '<span class="badge bg-warning" title="Already traded">' + data + '</span>'
+                    } else {
+                        html += data;
+                    }
+                    html += '</a>'
+
+                    if (asoOpenBurst[data]) {
+                        html += '<span class="badge bg-success" title="9.15 candle price is above ASO strike">T</span>'
+                    }
+                    return html;
+                }
+            },
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data.length > 0) {
+                        jQ.each(data, function (index, item) {
+                            if (item == "ASO") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">ASO</span>'
+                            }
+
+                            if (item == "BSO") {
+                                html += '<span class="badge bg-info below-strike-one strike-info">BSO</span>'
+                            }
+
+                            if (item == "AST") {
+                                html += '<span class="badge bg-info above-strike-two strike-info">AST</span>'
+                            }
+
+                            if (item == "BST") {
+                                html += '<span class="badge bg-info above-strike-one strike-info">BST</span>'
+                            }
+                        });
+                    }
+                    return html
+                }
+            },
+            {
+                "data": "OHL_TREND",
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (data) {
+                        if (data[2].includes("Sell")) {
+                            html += '<span class="badge bg-danger">' + data[2] + '</span>'
+                        } else {
+                            html += '<span class="badge bg-success">' + data[2] + '</span>'
+                        }
+                        html += '<span class="badge bg-info">' + ' [B:' + parseFloat(data[0]).toFixed(2) + ' S:' + parseFloat(data[1]).toFixed(2) + ']' + '</span>'
+                    }
+
+                    return html
+                }
+            },
+            {
+                "data": 'ASO_MOVED',
+                render: function (data, type, row, meta) {
+                    return data;
+
+                }
+            },
+            {
+                "data": "ACTIONS",
+                render: function (data, type, row, meta) {
+                    var html = ""
+                    let index = 1;
+                    html += '<div>'
+                    if (!row['TREND']) {
+                        row['TREND'] = []
+                    }
+                    html += '<span data-price="' + row['LTP'] + '" data-index="' + index + '" data-trend="' + row['TREND'].join(",") + '" data-name="' + row['TRADINGSYMBOL'] + '" class="badge bg-info show-chart">'
+                    html += 'Chart'
+                    html += '</span>'
+
+
+                    html += '<span   data-name="' + row['TRADINGSYMBOL'] + '"  class="badge bg-primary  ms-1 show-predictor" style="margin-right:.5rem;">';
+                    html += "Predict"
+                    html += '</span>'
+
+                    html += '</div>'
+
+
+                    return html
+                }
+            },
+        ],
+        "fnInitComplete": function (oSettings, json) {
+            jQ("#bank-quick-scanner-aso-list-table_wrapper .dt-buttons").append('<button id="analyze-aso-open-burst" class="dt-button bg-info" type="button"><span>ANALYZE</span></button>')
+
+        }
+    });
+}
+
+
+jQ(document).on("click", "#analyze-bso-open-burst", function () {
+    analyzeOpenBurst("BSO")
+})
+
+jQ(document).on("click", "#analyze-aso-open-burst", function () {
+    analyzeOpenBurst("ASO")
+})
+
+
+let bsoOpenBurst = {}
+let asoOpenBurst = {}
+async function analyzeOpenBurst(type) {
+    let stocks = [];
+
+    if (type == "BSO") {
+        stocks = JSON.parse(localStorage.getItem("VALID_BSO"));
+    } else {
+        stocks = JSON.parse(localStorage.getItem("VALID_ASO"));
+    }
+
+    for (let i = 0; i < stocks.length; i++) {
+        let data = await getHistoricalDataUsingPromise(instrumentTokens[stocks[i]['TRADINGSYMBOL']], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let quote = []
+        jQ.each(data.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("HH:mm:ss")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            map['time'] = moment(item[0]).format("HH:mm")
+            quote.push(map);
+        });
+        if (type == "BSO") {
+            if (quote[0]['close'] < parseFloat(stocks[i]['bstrikeOne'])) {
+                bsoOpenBurst[stocks[i]['TRADINGSYMBOL']] = true
+            } else {
+                bsoOpenBurst[stocks[i]['TRADINGSYMBOL']] = false
+            }
+        }
+
+        if (type == "ASO") {
+            if (quote[0]['close'] > parseFloat(stocks[i]['ustrikeOne'])) {
+                asoOpenBurst[stocks[i]['TRADINGSYMBOL']] = true
+            } else {
+                asoOpenBurst[stocks[i]['TRADINGSYMBOL']] = false
+            }
+        }
+    }
+
 }
