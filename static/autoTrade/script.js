@@ -210,6 +210,12 @@ function showAutoTrade() {
     html += '</button>'
     html += '</div>'
 
+    html += '<div class="col-md-1">'
+    html += '<button id="show-advance-decline-scanner" class="btn btn-secondary btn-sm" type="submit">';
+    html += 'A/D'
+    html += '</button>'
+    html += '</div>'
+
 
     html += '</div>'
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
@@ -328,6 +334,7 @@ async function loadOpenPrice() {
         }
         localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
     }
+    alert("Price loaded successfully.")
 
 }
 

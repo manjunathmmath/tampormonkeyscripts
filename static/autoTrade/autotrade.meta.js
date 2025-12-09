@@ -62,6 +62,7 @@
 // @require      http://localhost:3000/autoTrade/algoStockTrades.js
 // @require      http://localhost:3000/autoTrade/showOrderBook.js
 // @require      http://localhost:3000/autoTrade/breakoutScanner.js
+// @require      http://localhost:3000/autoTrade/advanceDeclineScanner.js
 // @require      http://localhost:3000/autoTrade/oiViewer.js
 // @require      http://localhost:3000/autoTrade/predictor.js
 // @require      http://localhost:3000/autoTrade/quickScanner.js
