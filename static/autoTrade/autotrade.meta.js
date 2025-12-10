@@ -58,15 +58,9 @@
 // @require      http://localhost:3000/autoTrade/monkeyStyle.js
 // @require      http://localhost:3000/autoTrade/utils.js
 // @require      http://localhost:3000/autoTrade/script.js
-// @require      http://localhost:3000/autoTrade/oiScanner.js
-// @require      http://localhost:3000/autoTrade/algoStockTrades.js
-// @require      http://localhost:3000/autoTrade/showOrderBook.js
-// @require      http://localhost:3000/autoTrade/breakoutScanner.js
-// @require      http://localhost:3000/autoTrade/advanceDeclineScanner.js
-// @require      http://localhost:3000/autoTrade/oiViewer.js
+// @require      http://localhost:3000/autoTrade/grootTradeBot.js
+// @require      http://localhost:3000/autoTrade/oiAnalyzer.js
 // @require      http://localhost:3000/autoTrade/predictor.js
-// @require      http://localhost:3000/autoTrade/quickScanner.js
-// @require      http://localhost:3000/autoTrade/showNineFifteenClose.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js
 // ==/UserScript==

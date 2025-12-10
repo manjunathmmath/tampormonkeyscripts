@@ -38,25 +38,12 @@ function makeUIChanges() {
     jQ('body').first().find(".app-nav").append(html);
 
     html = '';
+    html += '<a href="#" id="show-groot-trade-bot" style="padding:10px;">'
+    html += 'Groot'
+    html += '</a>'
+
     html += '<a href="#" id="start-algo-trade" style="padding:10px;">'
     html += 'Bot'
-    html += '</a>'
-    html += '<a href="#" id="show-oi-scanner" style="padding:10px;">'
-    html += 'OI'
-    html += '</a>'
-    html += '<a href="#" id="show-oi-viewer" style="padding:10px;">'
-    html += 'Analyzer'
-    html += '</a>'
-    html += '<a href="#" id="show-breakout-intruments" style="padding:10px;">'
-    html += 'Breakout'
-    html += '</a>'
-
-    html += '<a href="#" id="show-quick-scanner" style="padding:10px;">'
-    html += 'Quick'
-    html += '</a>'
-
-    html += '<a href="#" id="show-predictor" style="padding:10px;">'
-    html += 'Prediction'
     html += '</a>'
 
     jQ('body').first().find(".app-nav").append(html);
