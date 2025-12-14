@@ -42,10 +42,6 @@ function makeUIChanges() {
     html += 'Groot'
     html += '</a>'
 
-    html += '<a href="#" id="start-algo-trade" style="padding:10px;">'
-    html += 'Bot'
-    html += '</a>'
-
     jQ('body').first().find(".app-nav").append(html);
 }
 
@@ -53,13 +49,6 @@ jQ(document).on("click", "#add-to-watch-list", function (e) {
     e.preventDefault();
     callAddToWatchList();
 });
-
-jQ(document).on("click", "#start-algo-trade", function (e) {
-    e.preventDefault();
-    showAutoTrade();
-});
-
-
 
 
 jQ(document).on("click", "#clean-storage", function (e) {
@@ -81,88 +70,93 @@ function callSleepForAWhile(times) {
 /*Read Ltp and generate Trends and Vix Levels*/
 
 function generateTrends() {
-    let ltpPrices = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
-    let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
-    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
-    let instru = []
-    let data = {}
-    jQ.each(instrumentTokens, function (index, item) {
-        let obj = {}
-        obj['TRADINGSYMBOL'] = index
-        obj['TOKEN'] = item
-        instru.push(obj)
-    });
-
-    for (let i = 0; i < instru.length; i++) {
-        try {
-            let name = instru[i]['TRADINGSYMBOL']
-            let ltp = ltpPrices[name]['ltp']
-            let openDetail = openDetails[name]
+    if (localStorage.getItem("VIX_QUOTE")
+        && localStorage.getItem("INSTRUMENT_LTP_PRICE")
+        && localStorage.getItem("INSTRUMENT_LIST_GLOBAL")) {
+        let ltpPrices = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
+        let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
+        let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+        let instru = []
+        let data = {}
+        jQ.each(instrumentTokens, function (index, item) {
             let obj = {}
-            obj['price'] = openDetail['price']
-            let strikeData = getStrikeDetails(obj, name);
-            let res = {}
-            res['open'] = openDetail['price']
-            res['price'] = openDetail['price']
-            res['strikeData'] = strikeData
-            res['ltp'] = ltp
-            res['prevPrice'] = openDetail['prevPrice']
-            res['perc'] = openDetail['perc']
+            obj['TRADINGSYMBOL'] = index
+            obj['TOKEN'] = item
+            instru.push(obj)
+        });
 
-            let trend = "NA"
-            let trends = []
+        for (let i = 0; i < instru.length; i++) {
+            try {
+                let name = instru[i]['TRADINGSYMBOL']
+                let ltp = ltpPrices[name]['ltp']
+                let openDetail = openDetails[name]
+                let obj = {}
+                obj['price'] = openDetail['price']
+                let strikeData = getStrikeDetails(obj, name);
+                let res = {}
+                res['open'] = openDetail['price']
+                res['price'] = openDetail['price']
+                res['strikeData'] = strikeData
+                res['ltp'] = ltp
+                res['prevPrice'] = openDetail['prevPrice']
+                res['perc'] = openDetail['perc']
+                res['change'] = parseFloat(((ltp - openDetail['prevPrice']) / openDetail['prevPrice']) * 100).toFixed(2)
+
+                let trend = "NA"
+                let trends = []
 
 
-            var vix = getVixRange(parseFloat(openDetail['prevPrice']), parseFloat(vixQuote[4]))
+                var vix = getVixRange(parseFloat(openDetail['prevPrice']), parseFloat(vixQuote[4]))
 
-            res['vix'] = vix
+                res['vix'] = vix
 
-            var vixLowerRange = 0;
-            var vixUpperRange = 0;
-            var vixDDRange = 0;
+                var vixLowerRange = 0;
+                var vixUpperRange = 0;
+                var vixDDRange = 0;
 
-            vixLowerRange = parseFloat(vix.vixDDLower)
-            vixUpperRange = parseFloat(vix.vixDDUpper)
-            vixDDRange = parseFloat(vix.vixDDRange)
+                vixLowerRange = parseFloat(vix.vixDDLower)
+                vixUpperRange = parseFloat(vix.vixDDUpper)
+                vixDDRange = parseFloat(vix.vixDDRange)
 
-            if (ltp >= parseFloat(strikeData['ustrikeTwo'])) {
-                trend = "AST"
-                trends.push(trend);
+                if (ltp >= parseFloat(strikeData['ustrikeTwo'])) {
+                    trend = "AST"
+                    trends.push(trend);
+                }
+
+                if (ltp >= parseFloat(strikeData['ustrikeOne'])) {
+                    trend = "ASO"
+                    trends.push(trend);
+                }
+                if (ltp <= parseFloat(strikeData['bstrikeTwo'])) {
+                    trend = "BST"
+                    trends.push(trend);
+                }
+
+                if (ltp <= parseFloat(strikeData['bstrikeOne'])) {
+                    trend = "BSO"
+                    trends.push(trend);
+                }
+
+                if (ltp <= parseFloat(vixLowerRange)) {
+                    trend = "VIXL"
+                    trends.push(trend);
+                }
+
+                if (ltp >= parseFloat(vixUpperRange)) {
+                    trend = "VIXU"
+                    trends.push(trend);
+                }
+
+                res['trends'] = trends
+
+                data[name] = res
+            } catch (err) {
+                console.log("Error while generating trend for stock : " + instru[i]['TRADINGSYMBOL'])
+                console.log(err)
             }
-
-            if (ltp >= parseFloat(strikeData['ustrikeOne'])) {
-                trend = "ASO"
-                trends.push(trend);
-            }
-            if (ltp <= parseFloat(strikeData['bstrikeTwo'])) {
-                trend = "BST"
-                trends.push(trend);
-            }
-
-            if (ltp <= parseFloat(strikeData['bstrikeOne'])) {
-                trend = "BSO"
-                trends.push(trend);
-            }
-
-            if (ltp <= parseFloat(vixLowerRange)) {
-                trend = "VIXL"
-                trends.push(trend);
-            }
-
-            if (ltp >= parseFloat(vixUpperRange)) {
-                trend = "VIXU"
-                trends.push(trend);
-            }
-
-            res['trends'] = trends
-
-            data[name] = res
-        } catch (err) {
-            console.log("Error while generating trend for stock : " + instru[i]['TRADINGSYMBOL'])
-            console.log(err)
         }
+        return data;
     }
-    return data;
 }
 
 function generateTrend(name) {
@@ -470,7 +464,13 @@ function showPopUpWindow(index, html, title, width, height) {
 
     jQ("#" + divId).on("unminimize.popupwindow", function () {
         jQ("." + popupCustomClass + " .pop-title-extra").show();
-    })
+    });
+
+    jQ("#" + divId).on("maximize.popupwindow", function () {
+        if (stockTable) {
+            jQ('#stock-list-table').DataTable().columns.adjust().draw()
+        }
+    });
 };
 
 
@@ -624,7 +624,7 @@ function getAllValidStocks() {
             scripts.push(index)
         }
     });
-    
+
     return scripts;
 }
 
@@ -636,7 +636,7 @@ function getAllValidBreakOutStocks() {
             scripts.push(item)
         }
     });
-    
+
     return scripts;
 }
 
@@ -648,7 +648,7 @@ function getAllTrackingStocks() {
             scripts.push(item)
         }
     });
-    
+
     return scripts;
 }
 

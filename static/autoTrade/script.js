@@ -56,6 +56,11 @@ function startTimer(duration, display) {
         if (s == 59) {
             autoRefreshEachTabs();
         }
+
+        if (m % 5 == 0 && s == 1) {
+            updateTableLtpPrice();
+            jQ("#start-advance-decline-refresh").trigger("click");
+        }
     }, 1000);
 }
 

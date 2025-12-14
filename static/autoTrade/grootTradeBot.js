@@ -48,23 +48,56 @@ async function showGrootTradeBot() {
     html += '</h6>'
     html += '</div>'
 
-    html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-4 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">All</h6>'
     html += '<div id="advance-decline-chart">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-4 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Nifty</h6>'
     html += '<div id="advance-decline-nifty-chart">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-4 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Bank</h6>'
     html += '<div id="advance-decline-bank-chart">'
     html += '</div>'
     html += '</div>'
+
+    html += '</div>'
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<div class="row">'
+
+    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Gift Nifty</h6>'
+    html += '<div id="gift-nifty-top-chart">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Nifty 50</h6>'
+    html += '<div id="nifty-to-chart">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Bank Nifty</h6>'
+    html += '<div id="bank-nifty-top-chart">'
+    html += '</div>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Sensex</h6>'
+    html += '<div id="sensex-top-chart">'
+    html += '</div>'
+    html += '</div>'
+
+
 
     html += '</div>'
 
@@ -114,6 +147,10 @@ jQ(document).on("click", "#start-advance-decline-refresh", function (e) {
 async function commonRefreshAdvanceDecline(that) {
     clearInterval(advanceDeclineTimerInstance)
     await showAdvacenDeclineScanner(that);
+    await showTopChart("GIFT NIFTY","gift-nifty-top-chart");
+    await showTopChart("NIFTY 50","nifty-to-chart")
+    await showTopChart("NIFTY BANK","bank-nifty-top-chart");
+    await showTopChart("SENSEX","sensex-top-chart");
     that.removeAttr("disabled");
 }
 
@@ -399,6 +436,9 @@ function showStockList() {
     let scripts = []
     let checkInstr = []
     let scriptData = generateTrends()
+    if(!scriptData){
+        return false;
+    }
     jQ.each(instrumentTokens, function (index, item) {
         if (jQ.inArray(index, checkInstr) === -1) {
             instru.push(index)
@@ -409,11 +449,10 @@ function showStockList() {
     for (let i = 0; i < instru.length; i++) {
         let name = instru[i];
         let obj = {}
-        console.log(name)
         obj['TRADINGSYMBOL'] = name;
         obj['CLOSE'] = scriptData[name]['prevPrice'];
         obj['PRICE'] = scriptData[name]['price'];
-        obj['PERC'] = scriptData[name]['perc'];
+        obj['PERC'] = scriptData[name]['change'];
         obj['TREND'] = scriptData[name]['trends'];
         obj['LTP'] = scriptData[name]['ltp'];
         obj['STRIKEDATA'] = scriptData[name]['strikeData'];
@@ -568,7 +607,7 @@ async function showInfo(rowData, id) {
     let quote = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -582,7 +621,7 @@ async function showInfo(rowData, id) {
     let prevQuote = []
     jQ.each(previousQuote.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -593,6 +632,307 @@ async function showInfo(rowData, id) {
     showScriptChart(quote, name, id, prevQuote);
     showScriptData(quote, name, prevQuote)
     showPrictionProbabilty(name)
+    await show15MinutesChart(name)
+    await showHourChart(name)
+}
+
+
+async function show15MinutesChart(name, rowId) {
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(CURRENT_DAY).add(-14, 'days').format("YYYY-MM-DD"), CURRENT_DAY, '15minute');
+    let quote = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map['time'] = moment(item[0]).format("HH:mm")
+        quote.push(map);
+    });
+    let scriptData = generateTrend(name)
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-") + '-fifteen';
+
+    let dayHigh = 0
+    let dayLow = 0
+
+    let categoryList = []
+    let dateIndex = 0
+
+    jQ.each(quote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+
+    });
+
+    let dataList = []
+    let min = 0
+    let max = 0
+    dateIndex = 0
+    let isVolumePresent = false;
+
+    jQ.each(quote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        if (item.volume) {
+            map.volume = item.volume;
+            isVolumePresent = true;
+        }
+        map.x = dateIndex
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+    isVolumePresent = SHOW_VOLUME_ON_CHART
+
+    let lines = [];
+    let line = {};
+
+
+    line.color = "#8be73a";
+    line.startvalue = scriptData['vix'].vixDDLower;
+    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = scriptData['vix'].vixDDUpper;
+    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
+    lines.push(line);
+
+
+
+
+    line = {};
+    line.color = "#872b19ff";
+    line.startvalue = scriptData['strikeData'].ustrikeTwo;
+    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#d65db1";
+    line.startvalue = scriptData['strikeData'].ustrikeOne;
+    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#ff6f91";
+    line.startvalue = scriptData['strikeData'].bstrikeOne;
+    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#35dc35ff";
+    line.startvalue = scriptData['strikeData'].bstrikeTwo;
+    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
+    lines.push(line);
+
+    jQ("#" + chartId).html('')
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "100%",
+        height: 400,
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                showVolumeChart: isVolumePresent,
+                "showLabels": 1
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
+}
+
+async function showHourChart(name, rowId) {
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(CURRENT_DAY).add(-14, 'days').format("YYYY-MM-DD"), CURRENT_DAY, '60minute');
+    let quote = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map['time'] = moment(item[0]).format("HH:mm")
+        quote.push(map);
+    });
+    let scriptData = generateTrend(name)
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-") + '-hour';
+
+    let dayHigh = 0
+    let dayLow = 0
+
+    let categoryList = []
+    let dateIndex = 0
+
+    jQ.each(quote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+
+    });
+
+    let dataList = []
+    let min = 0
+    let max = 0
+    dateIndex = 0
+    let isVolumePresent = false;
+
+    jQ.each(quote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        if (item.volume) {
+            map.volume = item.volume;
+            isVolumePresent = true;
+        }
+        map.x = dateIndex
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+    isVolumePresent = SHOW_VOLUME_ON_CHART
+
+    let lines = [];
+    let line = {};
+
+
+    line.color = "#8be73a";
+    line.startvalue = scriptData['vix'].vixDDLower;
+    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = scriptData['vix'].vixDDUpper;
+    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
+    lines.push(line);
+
+
+
+
+    line = {};
+    line.color = "#872b19ff";
+    line.startvalue = scriptData['strikeData'].ustrikeTwo;
+    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#d65db1";
+    line.startvalue = scriptData['strikeData'].ustrikeOne;
+    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#ff6f91";
+    line.startvalue = scriptData['strikeData'].bstrikeOne;
+    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#35dc35ff";
+    line.startvalue = scriptData['strikeData'].bstrikeTwo;
+    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
+    lines.push(line);
+
+    jQ("#" + chartId).html('')
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "100%",
+        height: 400,
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                showVolumeChart: isVolumePresent,
+                "showLabels": 1
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
 }
 
 async function showScriptData(quote, name, prevQuote) {
@@ -637,48 +977,41 @@ function addAdditonalDetails(rowData, id) {
 
     let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-");
 
-
     html += '<div class="row">'
-    html += '<div class="col-md-6">'
-    html += '<div id="' + chartId + '"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
-    html += '<div class="col-md-6" style="max-height:400px;height:400px;overflow:auto">'
-    html += '<table  id="script-data-' + tempName + '" class="table table-hover" style="display: none;">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th>DATE</th>'
-    html += '<th>OPEN</th>'
-    html += '<th>HIGH</th>'
-    html += '<th>LOW</th>'
-    html += '<th>CLOSE</th>'
-    html += '<th>VOLUME</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
 
-    html += '</tbody>'
-    html += '</table>'
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-hour"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '</div>'
     html += '</div>'
 
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-fifteen"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-five"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '</div>'
 
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row" >'
     html += '<div class="col-md-12">'
-    html += '<table  class="table display nowrap" id="predictor-stock-list-table" style="width: 100%;">'
+    html += '<table  class="table display nowrap" id="predictor-stock-list-table' + tempName + '" style="width: 100%;">'
 
     html += '<thead>'
 
     html += '<tr>'
     html += '<th>PCR</th>'
-    html += '<th id="pcr-prediction">PCR</th>'
+    html += '<th id="pcr-prediction' + tempName + '">PCR</th>'
     html += '</tr>'
 
     html += '<tr>'
     html += '<th>PREDICTION</th>'
-    html += '<th id="prediction-prediction">PREDICTION</th>'
+    html += '<th id="prediction-prediction' + tempName + '">PREDICTION</th>'
     html += '</tr>'
 
     html += '</thead>'
@@ -697,25 +1030,25 @@ function addAdditonalDetails(rowData, id) {
     html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
     html += '</tr>'
     html += '<tr>'
-    html += '<th id="STRIKE_LOWER_ONE_CE-prediction" class="number-align" >CE</th>'
-    html += '<th id="STRIKE_LOWER_ONE-prediction" class="text-align">S</th>'
-    html += '<th id="STRIKE_LOWER_ONE_PE-prediction" class="number-align">PE</th> '
+    html += '<th id="STRIKE_LOWER_ONE_CE-prediction' + tempName + '" class="number-align" >CE</th>'
+    html += '<th id="STRIKE_LOWER_ONE-prediction' + tempName + '" class="text-align">S</th>'
+    html += '<th id="STRIKE_LOWER_ONE_PE-prediction' + tempName + '" class="number-align">PE</th> '
 
-    html += '<th id="STRIKE_LOWER_TWO_CE-prediction" class="number-align">CE</th>'
-    html += '<th id="STRIKE_LOWER_TWO-prediction" class="text-align">S</th>'
-    html += '<th id="STRIKE_LOWER_TWO_PE-prediction" class="number-align">PE</th> '
+    html += '<th id="STRIKE_LOWER_TWO_CE-prediction' + tempName + '" class="number-align">CE</th>'
+    html += '<th id="STRIKE_LOWER_TWO-prediction' + tempName + '" class="text-align">S</th>'
+    html += '<th id="STRIKE_LOWER_TWO_PE-prediction' + tempName + '" class="number-align">PE</th> '
 
-    html += '<th id="STRIKE_ATM_CE-prediction" class="number-align">CE</th>'
-    html += '<th id="STRIKE_ATM-prediction" class="text-align">S</th>'
-    html += '<th id="STRIKE_ATM_PE-prediction" class="number-align">PE</th> '
+    html += '<th id="STRIKE_ATM_CE-prediction' + tempName + '" class="number-align">CE</th>'
+    html += '<th id="STRIKE_ATM-prediction' + tempName + '" class="text-align">S</th>'
+    html += '<th id="STRIKE_ATM_PE-prediction' + tempName + '" class="number-align">PE</th> '
 
-    html += '<th id="STRIKE_UPPER_ONE_CE-prediction" class="number-align">CE</th>'
-    html += '<th id="STRIKE_UPPER_ONE-prediction" class="text-align">S</th>'
-    html += '<th id="STRIKE_UPPER_ONE_PE-prediction" class="number-align">PE</th> '
+    html += '<th id="STRIKE_UPPER_ONE_CE-prediction' + tempName + '" class="number-align">CE</th>'
+    html += '<th id="STRIKE_UPPER_ONE-prediction' + tempName + '" class="text-align">S</th>'
+    html += '<th id="STRIKE_UPPER_ONE_PE-prediction' + tempName + '" class="number-align">PE</th> '
 
-    html += '<th id="STRIKE_UPPER_TWO_CE-prediction" class="number-align">CE</th>'
-    html += '<th id="STRIKE_UPPER_TWO-prediction" class="text-align">S</th>'
-    html += '<th id="STRIKE_UPPER_TWO_PE-prediction" class="number-align">PE</th> '
+    html += '<th id="STRIKE_UPPER_TWO_CE-prediction' + tempName + '" class="number-align">CE</th>'
+    html += '<th id="STRIKE_UPPER_TWO-prediction' + tempName + '" class="text-align">S</th>'
+    html += '<th id="STRIKE_UPPER_TWO_PE-prediction' + tempName + '" class="number-align">PE</th> '
     html += '<tr>'
     html += '</thead>'
     html += '<tbody>'
@@ -728,7 +1061,26 @@ function addAdditonalDetails(rowData, id) {
 
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row" id="oi-obv-charts">'
+    html += '<div class="row" id="oi-obv-charts' + tempName + '">'
+    html += '</div>'
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12" style="max-height:400px;height:400px;overflow:auto">'
+    html += '<table  id="script-data-' + tempName + '" class="table table-hover" style="display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>OPEN</th>'
+    html += '<th>HIGH</th>'
+    html += '<th>LOW</th>'
+    html += '<th>CLOSE</th>'
+    html += '<th>VOLUME</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
     html += '</div>'
 
 
@@ -740,7 +1092,7 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
     let scriptData = generateTrend(name)
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
-    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-");
+    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-") + '-five';
 
     let dayHigh = 0
     let dayLow = 0
@@ -928,7 +1280,260 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
                 showVolumeChart: isVolumePresent,
-                "showLabels": 0
+                "showLabels": 1
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
+}
+
+function updateTableLtpPrice() {
+    let scriptData = generateTrends()
+    let stockData = stockTable.rows().data().toArray();
+    let newData = []
+    for (let i = 0; i < stockData.length; i++) {
+        let name = stockData[i]['TRADINGSYMBOL']
+        stockData[i]['PERC'] = scriptData[name]['change']
+        stockData[i]['LTP'] = scriptData[name]['ltp']
+        stockData[i]['TREND'] = scriptData[name]['trends']
+        newData.push(stockData[i])
+    }
+    generateStockTable(newData)
+}
+
+
+async function showTopChart(name,id) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+    await savePreviousStockQuote(tempName, instrumentTokens[name])
+    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
+
+    let quote = []
+    jQ.each(data.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map['time'] = moment(item[0]).format("HH:mm")
+        quote.push(map);
+    });
+
+
+    let prevQuote = []
+    jQ.each(previousQuote.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        prevQuote.push(map);
+    });
+
+    let scriptData = generateTrend(name)
+    let chartId = id;
+
+    let dayHigh = 0
+    let dayLow = 0
+
+    let categoryList = []
+    let dateIndex = 0
+
+
+    jQ.each(prevQuote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+        if (index == 0) {
+            dayHigh = item.high
+            dayLow = item.low
+        }
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+    });
+
+
+    jQ.each(quote, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+        if (item.high > dayHigh) {
+            dayHigh = item.high
+        }
+
+        if (item.low < dayLow) {
+            dayLow = item.low
+        }
+
+    });
+
+    let dataList = []
+    let min = 0
+    let max = 0
+    dateIndex = 0
+    let isVolumePresent = false;
+
+    jQ.each(prevQuote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        if (item.volume) {
+            map.volume = item.volume;
+            isVolumePresent = true;
+        }
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+
+    jQ.each(quote, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        if (item.volume) {
+            map.volume = item.volume;
+            isVolumePresent = true;
+        }
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+            map.displayValue = "O"
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+    isVolumePresent = SHOW_VOLUME_ON_CHART
+
+    let lines = [];
+    let line = {};
+
+
+    line.color = "#8be73a";
+    line.startvalue = scriptData['vix'].vixDDLower;
+    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = scriptData['vix'].vixDDUpper;
+    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
+    lines.push(line);
+
+
+
+
+    line = {};
+    line.color = "#872b19ff";
+    line.startvalue = scriptData['strikeData'].ustrikeTwo;
+    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#d65db1";
+    line.startvalue = scriptData['strikeData'].ustrikeOne;
+    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#ff6f91";
+    line.startvalue = scriptData['strikeData'].bstrikeOne;
+    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
+    lines.push(line);
+
+
+    line = {};
+    line.color = "#35dc35ff";
+    line.startvalue = scriptData['strikeData'].bstrikeTwo;
+    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
+    lines.push(line);
+
+
+    line = {};
+    if (parseFloat(scriptData['open']) > parseFloat(scriptData['prevPrice']).toFixed(2)) {
+        line.color = "#5D8736";
+        line.displayvalue = "Open +ve: " + scriptData['open'];
+    } else {
+        line.color = "#A94A4A";
+        line.displayvalue = "Open -ve: " + scriptData['open'];
+    }
+    line.dashed = 1;
+    line.startvalue = scriptData['open'];
+    lines.push(line);
+
+    jQ("#" + chartId).html('')
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "100%",
+        height: 400,
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                showVolumeChart: isVolumePresent,
+                "showLabels": 1
             },
             "categories": [{
                 "category": categoryList
