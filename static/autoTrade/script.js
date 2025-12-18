@@ -57,7 +57,7 @@ function startTimer(duration, display) {
             autoRefreshEachTabs();
         }
 
-        if (m % 5 == 0 && s == 1) {
+        if (m % 5 == 0 && s == 10) {
             updateTableLtpPrice();
             jQ("#start-advance-decline-refresh").trigger("click");
         }

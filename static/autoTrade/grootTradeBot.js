@@ -26,6 +26,12 @@ async function showGrootTradeBot() {
     html += '</div>'
 
     html += '<div class="col-md-1">'
+    html += '<a id="show-futures" class="btn ms-1 badge bg-info" type="submit">';
+    html += 'Futures'
+    html += '</a>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
     html += '<a  id="start-auto-refresh">Refresh</a>'
     html += '</div>'
     html += '<div class="col-md-1 pop-title-extra">'

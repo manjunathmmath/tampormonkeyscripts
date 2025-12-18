@@ -468,7 +468,9 @@ function showPopUpWindow(index, html, title, width, height) {
 
     jQ("#" + divId).on("maximize.popupwindow", function () {
         if (stockTable) {
-            jQ('#stock-list-table').DataTable().columns.adjust().draw()
+            jQ('#stock-list-table').DataTable().columns.adjust().draw();
+            jQ(".historical-future-data-analyzer").DataTable().columns.adjust().draw();
+            jQ('#future-list-table').DataTable().columns.adjust().draw();
         }
     });
 };
