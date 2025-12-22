@@ -925,7 +925,7 @@ let instrumentOrder = {
 }
 
 let nseFutreStrikeDiff = {
-	'NIFTY': '50,50',
+	'NIFTY 50': '50,50',
 	'BANKNIFTY': '100,100',
 	'MIDCPNIFTY': '25,25',
 	'360ONE': '20,40',

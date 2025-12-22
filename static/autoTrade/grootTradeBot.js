@@ -26,12 +26,6 @@ async function showGrootTradeBot() {
     html += '</div>'
 
     html += '<div class="col-md-1">'
-    html += '<a id="show-futures" class="btn ms-1 badge bg-info" type="submit">';
-    html += 'Futures'
-    html += '</a>'
-    html += '</div>'
-
-    html += '<div class="col-md-1">'
     html += '<a  id="start-auto-refresh">Refresh</a>'
     html += '</div>'
     html += '<div class="col-md-1 pop-title-extra">'
@@ -153,10 +147,10 @@ jQ(document).on("click", "#start-advance-decline-refresh", function (e) {
 async function commonRefreshAdvanceDecline(that) {
     clearInterval(advanceDeclineTimerInstance)
     await showAdvacenDeclineScanner(that);
-    await showTopChart("GIFT NIFTY","gift-nifty-top-chart");
-    await showTopChart("NIFTY 50","nifty-to-chart")
-    await showTopChart("NIFTY BANK","bank-nifty-top-chart");
-    await showTopChart("SENSEX","sensex-top-chart");
+    await showTopChart("GIFT NIFTY", "gift-nifty-top-chart");
+    await showTopChart("NIFTY 50", "nifty-to-chart")
+    await showTopChart("NIFTY BANK", "bank-nifty-top-chart");
+    await showTopChart("SENSEX", "sensex-top-chart");
     that.removeAttr("disabled");
 }
 
@@ -342,7 +336,8 @@ async function showAdvacenDeclineScanner() {
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
                 "paletteColors": "  #37a009,#da3224",
-                "showLabels": 1
+                "showLabels": 1,
+                "showValues": "1"
             },
             axis: {
                 y: {
@@ -378,7 +373,8 @@ async function showAdvacenDeclineScanner() {
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
                 "paletteColors": "  #37a009,#da3224",
-                "showLabels": 1
+                "showLabels": 1,
+                "showValues": "1"
             },
             axis: {
                 y: {
@@ -415,7 +411,8 @@ async function showAdvacenDeclineScanner() {
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
                 "paletteColors": "  #37a009,#da3224",
-                "showLabels": 1
+                "showLabels": 1,
+                "showValues": "1"
             },
             axis: {
                 y: {
@@ -442,7 +439,7 @@ function showStockList() {
     let scripts = []
     let checkInstr = []
     let scriptData = generateTrends()
-    if(!scriptData){
+    if (!scriptData) {
         return false;
     }
     jQ.each(instrumentTokens, function (index, item) {
@@ -639,7 +636,199 @@ async function showInfo(rowData, id) {
     showScriptData(quote, name, prevQuote)
     showPrictionProbabilty(name)
     await show15MinutesChart(name)
-    await showHourChart(name)
+    await showHourChart(name);
+    await showFutureDetails(name);
+}
+
+async function showFutureDetails(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let futures;
+    jQ.each(futureInstrumentsList, function (index, item) {
+        let instName = name
+        if (instName == "NIFTY 50") {
+            instName = 'NIFTY'
+        }
+        if (item.name == instName) {
+            futures = item;
+        }
+    })
+    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+
+    let first = cres.data['candles'][0];
+    let prev = pres.data['candles'][0];
+
+    let data = []
+    let prevData = []
+    jQ.each(cres.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map.oi = item[6]
+        data.push(map);
+    });
+
+    jQ.each(pres.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map.oi = item[6]
+        prevData.push(map);
+    });
+
+    let strikeDiff = nseFutreStrikeDiff[name];
+    strikeDiff = strikeDiff.split(",");
+    let strikeOne = parseInt(strikeDiff[0])
+    let strikeTwo = parseInt(strikeDiff[1])
+
+    let ustrikeOne = (parseFloat(first[1]) + strikeOne);
+    let ustrikeTwo = (ustrikeOne + strikeTwo);
+    let bstrikeOne = (parseFloat(first[1]) - strikeOne);
+    let bstrikeTwo = (bstrikeOne - strikeTwo);
+
+    let strikeMap = {}
+    strikeMap['strikeDiff'] = parseFloat(strikeDiff).toFixed(2);
+    strikeMap['bstrikeOne'] = parseFloat(bstrikeOne).toFixed(2);
+    strikeMap['bstrikeTwo'] = parseFloat(bstrikeTwo).toFixed(2);
+    strikeMap['ustrikeOne'] = parseFloat(ustrikeOne).toFixed(2);
+    strikeMap['ustrikeTwo'] = parseFloat(ustrikeTwo).toFixed(2);
+
+    let chartId = 'chart-container-' + tempName + "-futures";
+    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+
+    var vix = getVixRange(parseFloat(prev[4]), parseFloat(vixQuote[4]))
+
+    var vixLowerRange = 0;
+    var vixUpperRange = 0;
+    var vixDDRange = 0;
+
+    vixLowerRange = parseFloat(vix.vixDDLower)
+    vixUpperRange = parseFloat(vix.vixDDUpper)
+    vixDDRange = parseFloat(vix.vixDDRange);
+
+    
+    let categoryList = []
+    let dateIndex = 0
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+    });
+
+    let dataList = []
+    let min = 0
+    let max = 0
+    dateIndex = 0
+
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.open = item.open
+        map.high = item.high
+        map.low = item.low
+        map.close = item.close
+        map.volume = item.volume
+        map.x = dateIndex
+
+        if (index == 0) {
+            min = item.high
+            max = item.high
+        }
+
+        if (item.high < min) {
+            min = item.high
+        }
+
+        if (item.high > max) {
+            max = item.high
+        }
+        dataList.push(map);
+        dateIndex++;
+    });
+
+    let lines = [];
+    let line = {};
+
+    line.color = "#8be73a";
+    line.startvalue = vixLowerRange;
+    line.displayvalue = 'Vix lower range ' + vixLowerRange;
+    lines.push(line);;
+
+    line = {};
+    line.color = "#e7543a";
+    line.startvalue = vixUpperRange;
+    line.displayvalue = 'Vix upper range ' + vixUpperRange;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.bstrikeTwo;
+    line.displayvalue = "BST " + strikeMap.bstrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.ustrikeTwo;
+    line.displayvalue = "AST " + strikeMap.ustrikeTwo;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.bstrikeOne;
+    line.displayvalue = "BSO " + strikeMap.bstrikeOne;
+    lines.push(line);
+
+    line = {};
+    line.color = "#9f3ae7";
+    line.startvalue = strikeMap.ustrikeOne;
+    line.displayvalue = "ASO " + strikeMap.ustrikeOne;
+    lines.push(line);
+    isVolumePresent = SHOW_VOLUME_ON_CHART
+    jQ("#" + chartId).insertFusionCharts({
+        type: 'candlestick',
+        width: "100%",
+        height: 400,
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                "theme": "fusion",
+                "adjustDiv": "0",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                "pYAxisMinValue": min,
+                "pYAxisMaxValue": max,
+                showVolumeChart: isVolumePresent,
+                "showLabels": 1
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            "dataset": [{
+                "data": dataList,
+
+            }],
+            "trendlines": [{
+                "line": lines
+            }]
+        }
+    });
+    
+    prevData = prevData[prevData.length - 1];
+    generateFutresDataTable(data, tempName, prevData, futures['lot_size'])
+
 }
 
 
@@ -1089,6 +1278,48 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>'
     html += '</div>'
 
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row">'
+    html += '<div id="' + chartId + '-futures" class="col-md-12">'
+    html += '</div>';
+    html += '</div>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table class="historical-future-data-analyzer" id="historical-future-data-analyzer-list-table-' + tempName + '" style="width: 100%">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>OPEN</th>'
+    html += '<th>HIGH</th>'
+    html += '<th>LOW</th>'
+    html += '<th>CLOSE</th>'
+    html += '<th>P.OI</th>'
+    html += '<th>OI</th>'
+    html += '<th>OI TREND</th>'
+    html += '<th>VOLUME</th>'
+    html += '<th>VWAP</th>'
+    html += '<th>P.CLOSE</th>'
+    html += '<th>CHANGE</th>'
+    html += '<th>P.CHANGE</th>'
+    html += '<th>CORR. VWAP</th>'
+    html += '<th>VWAP SIGNAL</th>'
+    html += '<th>BUY RESULT</th>'
+    html += '<th>SELL RESULT</th>'
+    html += '<th>FUTURE TREND</th>'
+    html += '<th>AI</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
+
+
+
+
 
     return html;
 }
@@ -1317,7 +1548,7 @@ function updateTableLtpPrice() {
 }
 
 
-async function showTopChart(name,id) {
+async function showTopChart(name, id) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
@@ -1553,4 +1784,717 @@ async function showTopChart(name,id) {
             }]
         }
     });
+}
+
+function generateFutresDataTable(quote, id, prevQuote, lotSize) {
+    lotSize = parseInt(lotSize)
+    jQ('#historical-future-data-analyzer-list-table-' + id).DataTable({
+        "processing": true,
+        "order": [[0, "desc"]],
+        "pageLength": 50,
+        "bPaginate": false,
+        "data": quote,
+        "bDestroy": true,
+        "scrollX": true,
+        "scrollY": "500px",
+        "columnDefs": [
+            {
+                "targets": [1, 2, 3, 4, 13, 14, 15, 16, 17],
+                "visible": false,
+                "searchable": false
+            }
+        ],
+        "columns": [
+            { "data": "date" },
+            { "data": 'open' },
+            { "data": 'high' },
+            { "data": 'low' },
+            { "data": 'close' },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    return (prevQuote.oi / lotSize).toFixed(0)
+                }
+            },
+            {
+                "data": 'oi',
+                render: function (data, type, row, meta) {
+                    let html = ''
+                    if (meta.row != 0) {
+                        let prev = parseInt(quote[(meta.row - 1)]['oi'])
+                        let curr = parseInt(data);
+                        html += ' ' + (data / lotSize).toFixed(0)
+                    } else {
+                        html = ' ' + (data / lotSize).toFixed(0)
+                    }
+                    return html
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+                    var upTriangle = '<i class="bi bi-caret-up"></i>'
+
+                    var openInterest = row.oi / lotSize;
+                    var previousOI = prevQuote.oi / lotSize
+                    var changeinOpenInterest = (openInterest - previousOI)
+                    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+
+                    var oiPrice = ''
+                    var oiPriceChang = ''
+                    var oiPriceChangDirection = ''
+                    var oiPricePer = ''
+                    if (changeinOpenInterest > 0) {
+                        oiPrice += '<span class="badge bg-success">' + openInterest.toFixed(0) + '</span>'
+                        oiPriceChang += '<span class="badge bg-success">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+                        oiPriceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
+
+                    } else {
+                        oiPrice += '<span class="badge bg-danger">' + openInterest.toFixed(0) + '</span>'
+                        oiPriceChang += '<span class="badge bg-danger">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
+                        oiPriceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+                    }
+
+                    if (pchangeinOpenInterest > 0) {
+                        oiPricePer += '<span class="badge bg-success">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+                    } else {
+                        oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
+                    }
+
+                    return oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
+                }
+            },
+            { "data": 'volume' },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
+                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
+                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+                    var totalVolumePrice = cVolumePrice + pVolumePrice
+                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
+                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+                    var vwap = vwapPrice ? vwapPrice : 0;
+                    return vwap
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    return prevQuote.close
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var change = (row.close - prevQuote.close)
+                    return change.toFixed(2)
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var pChange = ((row.close - prevQuote.close) / prevQuote.close) * 100
+                    return pChange.toFixed(2)
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
+                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
+                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+                    var totalVolumePrice = cVolumePrice + pVolumePrice
+                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
+                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+                    var vwap = vwapPrice ? vwapPrice : 0;
+                    var correctedVwap = vwap;
+                    correctedVwap = correctedVwap;
+                    return correctedVwap;
+                }
+            },
+
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
+                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
+                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+                    var totalVolumePrice = cVolumePrice + pVolumePrice
+                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
+                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+                    var vwap = vwapPrice ? vwapPrice : 0;
+                    var correctedVwap = vwap;
+                    correctedVwap = correctedVwap;
+
+                    var vvapTextOne = ''
+                    var vvapTextTwo = ''
+                    var vvapTextThree = ''
+                    var vvapTextFour = ''
+                    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+                    var upTriangle = '<i class="bi bi-caret-up"></i>'
+                    if (correctedVwap <= row.close) {
+                        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+                        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
+                        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
+                        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(row.close) - parseFloat(vwap)).toFixed(2) + '</span>'
+                    } else {
+                        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+                        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
+                        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+                        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(row.close) - parseFloat(vwap)).toFixed(2) + '</span>'
+                    }
+                    return vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var buyResult = Math.abs(row.open - row.low);
+                    return buyResult.toFixed(2);
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var sellResult = Math.abs(row.open - row.high);
+                    return sellResult.toFixed(2);
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
+                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
+                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+                    var totalVolumePrice = cVolumePrice + pVolumePrice
+                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
+                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+                    var vwap = vwapPrice ? vwapPrice : 0;
+                    var correctedVwap = vwap;
+                    if (id == "BANKNIFTY") {
+                        correctedVwap = correctedVwap;
+                    }
+                    var booleanValue = false;
+                    if (correctedVwap <= row.close) {
+                        booleanValue = true;
+                    } else {
+                        booleanValue = false;
+                    }
+                    var buyResult = Math.abs(row.open - row.low);
+                    var sellResult = Math.abs(row.open - row.high);
+                    var openPrice = row.open;
+                    var highPrice = row.high;
+                    var lowPrice = row.low;
+                    var lastPrice = row.close;
+                    var prevClose = prevQuote.close
+
+                    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+                    var upTriangle = '<i class="bi bi-caret-up"></i>'
+                    var futureTrend = ''
+                    var futureDirection = ''
+                    var diffNiftyOpenPrevOpen = Math.abs(openPrice - prevClose);
+                    var diffNiftyOpenPrevOpenResult = false;
+                    if (diffNiftyOpenPrevOpen >= 1 && diffNiftyOpenPrevOpen <= 11) {
+                        diffNiftyOpenPrevOpenResult = true
+                    }
+                    if (id == "BANKNIFTY") {
+                        if (buyResult >= 0 && buyResult <= 30) {
+                            var trend = "Strong BUY";
+                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+                        } else if (sellResult >= 0 && sellResult <= 30) {
+                            var trend = "Strong SELL";
+                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+                        } else if (openPrice > prevClose && lastPrice >= openPrice
+                            && booleanValue == true) {
+                            var trend = "BUY";
+                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+                        } else if (booleanValue == true && lastPrice > openPrice) {
+                            var trend = "BUY On Decline";
+                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+                        } else {
+                            var trend = "SELL";
+                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+                        }
+                    } else {
+                        if (buyResult >= 0 && buyResult <= 11 && booleanValue == true) {
+                            var trend = "Strong BUY";
+                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+                        } else if (sellResult >= 0 && sellResult <= 9 && booleanValue == false) {
+                            var trend = "Strong SELL";
+                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+                        } else if (openPrice > prevClose && lastPrice > openPrice
+                            && booleanValue == true) {
+                            var trend = "BUY";
+                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+                        } else if (diffNiftyOpenPrevOpenResult == true
+                            && booleanValue == true && lastPrice > openPrice) {
+                            var trend = "BUY On Decline";
+                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+                        } else {
+                            var trend = "SELL";
+                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+                        }
+                    }
+                    return futureTrend + " " + futureDirection
+                }
+            },
+            {
+                "data": '',
+                render: function (data, type, row, meta) {
+                    let resp = {};
+                    if (id == "BANKNIFTY") {
+                        resp = showTableAiBankNiftyPrediction(row, prevQuote, lotSize)
+                    } else {
+                        resp = showTableAiNiftyPrediction(row, prevQuote, lotSize)
+                    }
+                    return resp['PLUS'] + '<br/>' + resp['MINUS'];
+                }
+            },
+        ],
+        "fnInitComplete": function (oSettings, json) {
+        }
+    });
+}
+
+function showTableAiNiftyPrediction(quote, prevQuote, lotSize) {
+    let data = {}
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+    var vwap = vwapPrice ? vwapPrice : 0;
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / lotSize;
+    var previousOI = prevQuote['oi'] / lotSize
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+    var dogImgContainer = '<span class="badge bg-light">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="badge bg-light">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="badge bg-light">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="badge bg-light">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="badge bg-light">' + captain + '</span>'
+    var lokiImgContainer = '<span class="badge bg-light">' + loki + '</span>'
+    var ironManImgContainer = '<span class="badge bg-light">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="badge bg-light">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="badge bg-light">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="badge bg-light">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+    var RemarkType = ""
+
+    if (price == "+" && oi == "+") {
+        remark = '<span class="badge bg-success">Long</span>'
+        display = "+";
+        RemarkType = "LONG"
+    } else if (price == "-" && oi == "+") {
+        remark = '<span class="badge bg-danger">Short</span>'
+        display = "-";
+        RemarkType = "SHORT"
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<span class="badge bg-success">Short Covering</span>'
+        display = "+";
+        RemarkType = "SHOT_COVERING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<span class="badge bg-danger">Long Unwinding</span>'
+        display = "-";
+        RemarkType = "LONG_UNWINDING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger">Bears Coming,Sell On Rise</span>'
+        display = "-";
+        RemarkType = "BEARS_COMING_SELL_ON_RISE"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<span class="badge bg-danger">Gambling! Buy,News & Events</span>'
+        display = "+";
+        RemarkType = "GAMBLING_BUY_NEWS_AND_EVENTS"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<span class="badge bg-danger">Caution! Writers Eroding Premium</span>'
+        display = "+";
+        RemarkType = "CAUTION_WRITES_ERODING_PREMIUM"
+    } else {
+        remark = captainImgContainer + '<span class="badge bg-danger">Defence,Buy On Decline</span>'
+        display = "+";
+        RemarkType = "DEFENCE_BUY_ON_DECLINE"
+    }
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    var openInterestMarkupBull = openInterestMarkup
+    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
+    var openInterestChangeMarkupBull = openInterestChangeMarkup
+    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
+    var niftyOILabelPlusBull = "NIFTY-OI"
+    var otherRemarkType = ""
+    var otherTrendRemarks = ""
+    if (display == "+") {
+        marketTrendPlus = '<span class=" badge bg-success">Hulk Arrived (+)</span>'
+        otherTrendRemarks += '<div class="row">'
+        otherTrendRemarks += '<div class="col-md-12">'
+        otherTrendRemarks += "Hulk Arrived (+)"
+        otherTrendRemarks += '</div>'
+        otherTrendRemarks += '</div>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<span class=" badge bg-warning">Doctor Strange Arrived (+)</span>'
+            otherTrendRemarks = ''
+            otherTrendRemarks += '<div class="row">'
+            otherTrendRemarks += '<div class="col-md-12">'
+            otherTrendRemarks += "Doctor Strange Arrived (+))"
+            otherTrendRemarks += '</div>'
+            otherTrendRemarks += '</div>'
+            imageBullPlus = doctorStrangeImgContainer
+            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<span class="  badge bg-danger">Strongly Not Recommended to buy Calls</span>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<span class=" badge bg-danger">Chitauri Army Arrived (-)</span>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<span class="  badge bg-danger">Strongly Not Recommended to Short Calls</span>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+
+    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
+
+    return data;
+}
+
+function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize) {
+
+    let data = {}
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var close = quote.close;
+    var lastPrice = quote.close;
+
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap; // price spike adjustment
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / lotSize;
+    var previousOI = prevQuote['oi'] / lotSize
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+
+    var dogImgContainer = '<span class="badge bg-light">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="badge bg-light">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="badge bg-light">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="badge bg-light">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="badge bg-light">' + captain + '</span>'
+    var lokiImgContainer = '<span class="badge bg-light">' + loki + '</span>'
+    var ironManImgContainer = '<span class="badge bg-light">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="badge bg-light">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="badge bg-light">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="badge bg-light">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+    var aiStatus = ""
+
+    if (price == "+" && oi == "+") {
+        remark = '<span class="badge bg-success">Long</span>'
+        display = "+";
+        aiStatus = "LONG"
+    } else if (price == "-" && oi == "+") {
+        remark = '<span class="badge bg-danger">Short</span>'
+        display = "-";
+        aiStatus = "SHORT"
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<span class="badge bg-success">Short Covering</span>'
+        display = "+";
+        aiStatus = "SHOT_COVERING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<span class="badge bg-danger">Long Unwinding</span>'
+        display = "-";
+        aiStatus = "LONG_UNWINDING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger">Bears Coming,Sell On Rise</span>'
+        display = "-";
+        aiStatus = "BEARS_COMING_SELL_ON_RISE"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<span class="badge bg-danger">Gambling! Buy,News & Events</span>'
+        display = "+";
+        aiStatus = "GAMBLING_BUY_NEWS_AND_EVENTS"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<span class="badge bg-danger">Caution! Writers Eroding Premium</span>'
+        display = "+";
+        aiStatus = "CAUTION_WRITES_ERODING_PREMIUM"
+    } else {
+        remark = captainImgContainer + '<span class="badge bg-danger">Defence,Buy On Decline</span>'
+        display = "+";
+        aiStatus = "DEFENCE_BUY_ON_DECLINE"
+    }
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    var openInterestMarkupBull = openInterestMarkup
+    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
+    var openInterestChangeMarkupBull = openInterestChangeMarkup
+    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
+    var niftyOILabelPlusBull = "NIFTY-OI"
+    var otherRemarkType = ""
+    var otherTrendRemarks = ""
+    if (display == "+") {
+        marketTrendPlus = '<span class=" badge bg-success">Hulk Arrived (+)</span>'
+        otherTrendRemarks += '<div class="row">'
+        otherTrendRemarks += '<div class="col-md-12">'
+        otherTrendRemarks += "Hulk Arrived (+)"
+        otherTrendRemarks += '</div>'
+        otherTrendRemarks += '</div>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<span class=" badge bg-warning">Doctor Strange Arrived (+)</span>'
+            otherTrendRemarks = ''
+            otherTrendRemarks += '<div class="row">'
+            otherTrendRemarks += '<div class="col-md-12">'
+            otherTrendRemarks += "Doctor Strange Arrived (+))"
+            otherTrendRemarks += '</div>'
+            otherTrendRemarks += '</div>'
+            imageBullPlus = doctorStrangeImgContainer
+            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<span class="  badge bg-danger">Strongly Not Recommended to buy Calls</span>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<span class=" badge bg-danger">Chitauri Army Arrived (-)</span>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<span class="  badge bg-danger">Strongly Not Recommended to Short Calls</span>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
+
+    return data;
 }
