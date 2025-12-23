@@ -133,7 +133,7 @@ async function showGrootTradeBot() {
     showPopUpWindow('groot-trade-bot', html, "Groot [Trade Bot]", 950, 550);
     let divId = "popup-custom-style-groot-trade-bot";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
-    showStockList()
+    showStockList([])
 }
 let advanceDeclineTimerInstance = null
 
@@ -434,7 +434,7 @@ async function showAdvacenDeclineScanner() {
     });
 }
 
-function showStockList() {
+function showStockList(list) {
     let instru = [];
     let scripts = []
     let checkInstr = []
@@ -460,7 +460,13 @@ function showStockList() {
         obj['LTP'] = scriptData[name]['ltp'];
         obj['STRIKEDATA'] = scriptData[name]['strikeData'];
         obj['CLOSE_9_15'] = '';
-        scripts.push(obj)
+        if (list.length != 0) {
+            if (jQ.inArray(name, list) != -1) {
+                scripts.push(obj)
+            }
+        } else {
+            scripts.push(obj)
+        }
     }
 
     if (scripts.length > 0) {
@@ -493,7 +499,7 @@ function generateStockTable(data) {
 
         dom: 'Bfrtip',
         buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
+            'excel'
         ],
         "columns": [
             {
@@ -541,8 +547,46 @@ function generateStockTable(data) {
 function showExtraButtons() {
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="nine-fifteen-scan" class="dt-button bg-info" type="button"><span>9.15 SCAN</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
-
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ALL</span></button>')
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ASO</span></button>')
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BSO</span></button>')
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>N50</span></button>')
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BN</span></button>')
 }
+
+jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e) {
+    let type = jQ(this).attr("data-trend");
+    let list = [];
+    let scriptData = generateTrends()
+    jQ.each(instrumentTokens, function (index, item) {
+        let name = index
+        let trends = scriptData[name]['trends']
+        if (type == "aso") {
+            if (jQ.inArray("ASO", trends) != -1) {
+                list.push(name)
+            }
+        }
+
+        if (type == "bso") {
+            if (jQ.inArray("BSO", trends) != -1) {
+                list.push(name)
+            }
+        }
+
+        if (type == "n50") {
+            if (jQ.inArray(name, NIFTY_50_LIST) != -1) {
+                list.push(name)
+            }
+        }
+
+        if (type == "bank") {
+            if (jQ.inArray(name, NIFTY_BANK_LIST) != -1) {
+                list.push(name)
+            }
+        }
+    });
+    showStockList(list)
+});
 
 jQ(document).on('click', '#nine-fifteen-scan', function (e) {
     scanNineFifteenCandle()
@@ -715,7 +759,7 @@ async function showFutureDetails(name) {
     vixUpperRange = parseFloat(vix.vixDDUpper)
     vixDDRange = parseFloat(vix.vixDDRange);
 
-    
+
     let categoryList = []
     let dateIndex = 0
     jQ.each(data, function (index, item) {
@@ -825,7 +869,7 @@ async function showFutureDetails(name) {
             }]
         }
     });
-    
+
     prevData = prevData[prevData.length - 1];
     generateFutresDataTable(data, tempName, prevData, futures['lot_size'])
 
@@ -1316,6 +1360,44 @@ function addAdditonalDetails(rowData, id) {
     html += '</table>'
     html += '</div>'
     html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row">'
+
+    html += '<div class="col-md-6">'
+    html += '<h6>Bullish Probability</h6>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Advances > Declines supporting the bullish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Price is below ASO/AST/VIXU ?'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bullish trend ?'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bullish trend ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> CE OBV  > PE OBV ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bullish trend [Buy,Buy on decline,Short convering] ? '
+
+    html += '</div>';
+
+    html += '<div class="col-md-6">'
+    html += '<h6>Bearish Probability</h6>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Declines > Advances supporting the bullish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Price is above BSO/BST/VIXL'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bearish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bearish trend ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> PE OBV  > CE OBV ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bearish trend [Short,Sell on rise,Long unwanding] ? '
+    html += '</div>';
+
+    html += '</div>';
 
 
 

@@ -80,27 +80,36 @@ function generatePredictionUI(stock) {
 
     let row = stock[0]
 
-     let tempName = row['TRADINGSYMBOL'].replaceAll(" ", "-")
+    let tempName = row['TRADINGSYMBOL'].replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
-
+    console.log(row['PCR'])
     let pcr = row['PCR'].split(":");
     let pcrHtml = ''
     let chPcrHtml = ''
 
 
-    if (parseFloat(pcr[0].trim()) < 1 && parseFloat(pcr[0].trim()) > 0) {
-        pcrHtml += '<span class="badge bg-danger">' + pcr[0] + '</span>'
+    if (parseFloat(pcr[0].trim()) > 0) {
+        if (parseFloat(pcr[0].trim()) < 1) {
+            pcrHtml += '<span class="badge bg-danger">' + pcr[0] + '</span>'
+        } else {
+            pcrHtml += '<span class="badge bg-success">' + pcr[0] + '</span>'
+        }
     } else {
-        pcrHtml += '<span class="badge bg-success">' + pcr[0] + '</span>'
+        pcrHtml += '<span class="badge bg-warning">' + pcr[0] + '</span>'
     }
 
-    if (parseFloat(pcr[1].trim()) < 1 && parseFloat(pcr[1].trim()) > 0) {
-        chPcrHtml += '<span class="badge bg-danger">' + pcr[1] + '</span>'
+    if (parseFloat(pcr[1].trim()) > 0) {
+        if (parseFloat(pcr[1].trim()) < 1) {
+            chPcrHtml += '<span class="badge bg-danger">' + pcr[1] + '</span>'
+        } else {
+            chPcrHtml += '<span class="badge bg-success">' + pcr[1] + '</span>'
+        }
     } else {
-        chPcrHtml += '<span class="badge bg-success">' + pcr[1] + '</span>'
+        chPcrHtml += '<span class="badge bg-warning">' + pcr[1] + '</span>'
     }
 
-    jQ("#pcr-prediction"+tempName).html(pcrHtml + " : " + chPcrHtml);
+
+    jQ("#pcr-prediction" + tempName).html(pcrHtml + " : " + chPcrHtml);
 
 
     html = ''
@@ -166,7 +175,7 @@ function generatePredictionUI(stock) {
         html += '<span class="badge bg-danger">Bearish</span>'
     }
 
-    jQ("#prediction-prediction"+tempName).html(html);
+    jQ("#prediction-prediction" + tempName).html(html);
 
 
     html = ''
@@ -179,7 +188,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_CE'] + '</span>'
     }
-    jQ("#STRIKE_LOWER_ONE_CE-prediction"+tempName).html(html);
+    jQ("#STRIKE_LOWER_ONE_CE-prediction" + tempName).html(html);
 
     html = ''
     className = ""
@@ -190,7 +199,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="text-align ' + className + '">' + row['STRIKE_LOWER_ONE'] + '</span>'
     }
-    jQ("#STRIKE_LOWER_ONE-prediction"+tempName).html(html);
+    jQ("#STRIKE_LOWER_ONE-prediction" + tempName).html(html);
 
 
     html = ''
@@ -201,7 +210,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_PE'] + '</span>'
     }
-    jQ("#STRIKE_LOWER_ONE_PE-prediction"+tempName).html(html);
+    jQ("#STRIKE_LOWER_ONE_PE-prediction" + tempName).html(html);
 
 
 
@@ -213,7 +222,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_CE'] + '</span>'
     }
-    jQ("#STRIKE_LOWER_TWO_CE-prediction"+tempName).html(html);
+    jQ("#STRIKE_LOWER_TWO_CE-prediction" + tempName).html(html);
 
 
 
@@ -226,7 +235,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="text-align ' + className + '">' + row['STRIKE_LOWER_TWO'] + '</span>'
     }
-    jQ("#STRIKE_LOWER_TWO-prediction"+tempName).html(html);
+    jQ("#STRIKE_LOWER_TWO-prediction" + tempName).html(html);
 
 
     html = ''
@@ -237,7 +246,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_PE'] + '</span>'
     }
-    jQ("#STRIKE_LOWER_TWO_PE-prediction"+tempName).html(html);
+    jQ("#STRIKE_LOWER_TWO_PE-prediction" + tempName).html(html);
 
 
 
@@ -249,7 +258,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_CE'] + '</span>'
     }
-    jQ("#STRIKE_ATM_CE-prediction"+tempName).html(html);
+    jQ("#STRIKE_ATM_CE-prediction" + tempName).html(html);
 
 
     html = ''
@@ -261,7 +270,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="text-align ' + className + '">' + row['STRIKE_ATM'] + '</span>'
     }
-    jQ("#STRIKE_ATM-prediction"+tempName).html(html);
+    jQ("#STRIKE_ATM-prediction" + tempName).html(html);
 
 
     html = ''
@@ -272,7 +281,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_PE'] + '</span>'
     }
-    jQ("#STRIKE_ATM_PE-prediction"+tempName).html(html);
+    jQ("#STRIKE_ATM_PE-prediction" + tempName).html(html);
 
 
 
@@ -284,7 +293,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_CE'] + '</span>'
     }
-    jQ("#STRIKE_UPPER_ONE_CE-prediction"+tempName).html(html);
+    jQ("#STRIKE_UPPER_ONE_CE-prediction" + tempName).html(html);
 
 
 
@@ -297,7 +306,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="text-align ' + className + '">' + row['STRIKE_UPPER_ONE'] + '</span>'
     }
-    jQ("#STRIKE_UPPER_ONE-prediction"+tempName).html(html);
+    jQ("#STRIKE_UPPER_ONE-prediction" + tempName).html(html);
 
 
 
@@ -309,7 +318,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_PE'] + '</span>'
     }
-    jQ("#STRIKE_UPPER_ONE_PE-prediction"+tempName).html(html);
+    jQ("#STRIKE_UPPER_ONE_PE-prediction" + tempName).html(html);
 
 
     html = ''
@@ -320,7 +329,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_CE'] + '</span>'
     }
-    jQ("#STRIKE_UPPER_TWO_CE-prediction"+tempName).html(html);
+    jQ("#STRIKE_UPPER_TWO_CE-prediction" + tempName).html(html);
 
 
     html = ''
@@ -332,7 +341,7 @@ function generatePredictionUI(stock) {
         html += '<span class="text-align ' + className + '">' + row['STRIKE_UPPER_TWO'] + '</span>'
     }
 
-    jQ("#STRIKE_UPPER_TWO-prediction"+tempName).html(html);
+    jQ("#STRIKE_UPPER_TWO-prediction" + tempName).html(html);
 
 
     html = ''
@@ -343,7 +352,7 @@ function generatePredictionUI(stock) {
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE'] + '</span>'
     }
-    jQ("#STRIKE_UPPER_TWO_PE-prediction"+tempName).html(html);
+    jQ("#STRIKE_UPPER_TWO_PE-prediction" + tempName).html(html);
 
 
 }
@@ -358,7 +367,7 @@ async function callPredictionAnalyseTrend() {
             let rowId = i
             if (name != 'GIFT NIFTY') {
                 let oiData = await showTrendingOI(name)
-                generateOIChartsForPrediction(oiData,name)
+                generateOIChartsForPrediction(oiData, name)
                 let strikes = oiData['tableData']
                 stock[rowId]['PCR'] = oiData['pcr'] + ' : ' + oiData['chPcr']
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
@@ -479,8 +488,8 @@ async function callPredictionAnalyseTrend() {
     }
 }
 
-function generateOIChartsForPrediction(oiData,name) {
-     let tempName = name.replaceAll(" ", "-")
+function generateOIChartsForPrediction(oiData, name) {
+    let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
     let html = ''
@@ -504,7 +513,7 @@ function generateOIChartsForPrediction(oiData,name) {
         html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     });
 
-    jQ("#oi-obv-charts"+tempName).html(html);
+    jQ("#oi-obv-charts" + tempName).html(html);
 
 
 
