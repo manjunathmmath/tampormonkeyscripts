@@ -115,6 +115,7 @@ async function showGrootTradeBot() {
     html += '<th>CLOSE 9:15</th>'
     html += '<th>TREND</th>'
     html += '<th>LTP</th>'
+    html += '<th>FUTURE TREND</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'
@@ -122,6 +123,82 @@ async function showGrootTradeBot() {
     html += '</table>'
     html += '</div>'
     html += '</div>'
+
+
+
+
+
+    html += '<table class="table table-striped">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th scope="col">Price</th>'
+    html += '<th scope="col">OI</th>'
+    html += '<th scope="col">ChangeinOpenInterest</th>'
+    html += '<th>PchangeinOpenInterest</th>'
+    html += '<th>(Vwap -5) <= lastPrice</th>'
+    html += '<th scope="col">Result</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '<tr>'
+    html += '<td>+</td>'
+    html += '<td>+</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>LONG</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>-</td>'
+    html += '<td>+</td>'
+    html += '<td>N/A</td>'
+    html += ' <td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>SHORT</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>+</td>'
+    html += '<td>-</td>'
+    html += '<td><0</td>'
+    html += '<td><-2</td>'
+    html += '<td>N/A</td>'
+    html += '<td>SHORT COVERING</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>-</td>'
+    html += '<td>-</td>'
+    html += '<td><0</td>'
+    html += '<td><-2</td>'
+    html += '<td>N/A</td>'
+    html += '<td>LONG UNWINDING</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += ' <td>-</td>'
+    html += '<td>-</td>'
+    html += '<td>N/A</td>'
+    html += '<td>>= 10</td>'
+    html += '<td>true</td>'
+    html += '<td>Bears Coming,Sell On Rise</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += ' <td>+-</td>'
+    html += '<td>+</td>'
+    html += '<td>>0</td>'
+    html += '<td><10</td>'
+    html += '<td>true</td>'
+    html += '<td>Caution! Writers Eroding Premium</td>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>N/A</td>'
+    html += '<td>Defence,Buy On Decline</td>'
+    html += '</tr>'
+
+    html += '</tbody>'
+    html += '</table>'
 
     let title = ''
     title += '<div class="row">'
@@ -199,7 +276,6 @@ async function showAdvacenDeclineScanner() {
 
         let asoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['ustrikeOne']);
         let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
-        console.log(asoPrice, bsoPrice)
 
         let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
         jQ.each(data.data.candles, function (index, item) {
@@ -460,6 +536,7 @@ function showStockList(list) {
         obj['LTP'] = scriptData[name]['ltp'];
         obj['STRIKEDATA'] = scriptData[name]['strikeData'];
         obj['CLOSE_9_15'] = '';
+        obj['FUTURE_TREND'] = '';
         if (list.length != 0) {
             if (jQ.inArray(name, list) != -1) {
                 scripts.push(obj)
@@ -535,6 +612,7 @@ function generateStockTable(data) {
                     return html
                 }
             },
+            { "data": "FUTURE_TREND" },
         ],
         "fnInitComplete": function (oSettings, json) {
             showExtraButtons()
@@ -545,13 +623,21 @@ function generateStockTable(data) {
 }
 
 function showExtraButtons() {
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="nine-fifteen-scan" class="dt-button bg-info" type="button"><span>9.15 SCAN</span></button>')
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="nine-fifteen-scan" class="dt-button bg-info" type="button"><span>9.15 SCAN</span></button>');
     jQ("#stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ALL</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ASO</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BSO</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>N50</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BN</span></button>')
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="future-trend-scan" class="dt-button bg-info" type="button"><span>TREND SCAN</span></button>');
+
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-success sentiment-count" style="margin-left: .2rem;" id="aso-count">ASO</span>');
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-danger sentiment-count" style="margin-left: .2rem;" id="bso-count">BSO</span>');
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-warning sentiment-count" style="margin-left: .2rem;" id="neutral-count">NEUTRAL</span>');
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-success sentiment-count" style="margin-left: .2rem;" id="future-positve-count">+ F.TREND</span>');
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-danger sentiment-count" style="margin-left: .2rem;" id="future-negative-count">- F.TREND</span>');
+    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-warning sentiment-count" style="margin-left: .2rem;" id="future-neutral-count">+/- F.TREND</span>');
 }
 
 jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e) {
@@ -598,9 +684,8 @@ async function scanNineFifteenCandle() {
     let stockData = stockTable.rows().data().toArray();
     for (let i = 0; i < stockData.length; i++) {
         let row = stockData[i];
-        console.log(row)
         let name = row['TRADINGSYMBOL'];
-        jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + i + "/" + stockData.length);
+        jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + (i + 1) + "/" + stockData.length);
         try {
             let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
             let firstCandleClose = historical.data.candles[0][4]
@@ -622,6 +707,132 @@ async function scanNineFifteenCandle() {
         }
     }
 }
+
+jQ(document).on('click', '#future-trend-scan', function (e) {
+    scanFutureTrend()
+
+});
+
+async function scanFutureTrend() {
+    let scriptData = generateTrends()
+    let stockData = stockTable.rows().data().toArray();
+    let asoCount = 0;
+    let bsoCount = 0;
+    let futurePositiveCount = 0;
+    let futureNegativeCount = 0;
+    let futureNeutralCount = 0;
+    let neutralCount = 0;
+    for (let i = 0; i < stockData.length; i++) {
+        let row = stockData[i];
+        let name = row['TRADINGSYMBOL'];
+        jQ.each(futureInstrumentsList, function (index, item) {
+            let instName = name
+            if (instName == "NIFTY 50") {
+                instName = 'NIFTY'
+            }
+            if (item.name == instName) {
+                futures = item;
+            }
+        })
+        jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + (i + 1) + "/" + stockData.length);
+        try {
+
+            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+            let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+
+            let data = []
+            let prevData = []
+            jQ.each(cres.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                map.oi = item[6]
+                data.push(map);
+            });
+
+            jQ.each(pres.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm:ss")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                map.oi = item[6]
+                prevData.push(map);
+            });
+            prevData = prevData[prevData.length - 1];
+            data = data[data.length - 1];
+            let resp = {};
+            if (name == "BANKNIFTY") {
+                resp = showTableAiBankNiftyPrediction(data, prevData, futures['lot_size'])
+            } else {
+                resp = showTableAiNiftyPrediction(data, prevData, futures['lot_size'])
+            }
+            row['FUTURE_TREND'] = resp['PLUS'] + '<br/>' + resp['MINUS']
+            row['LTP'] = scriptData[name]['ltp'];
+
+            let trends = scriptData[name]['trends']
+            if (jQ.inArray("ASO", trends) != -1) {
+                asoCount++
+            } else if (jQ.inArray("BSO", trends) != -1) {
+                bsoCount++
+            } else {
+                neutralCount++;
+            }
+
+
+            if (resp['REMARK'] == "LONG") {
+                futurePositiveCount++;
+            }
+
+            if (resp['REMARK'] == "SHOT_COVERING") {
+                futurePositiveCount++;
+            }
+
+            if (resp['REMARK'] == "GAMBLING_BUY_NEWS_AND_EVENTS") {
+                futurePositiveCount++;
+            }
+
+            if (resp['REMARK'] == "SHORT") {
+                futureNegativeCount++;
+            }
+
+            if (resp['REMARK'] == "LONG_UNWINDING") {
+                futureNegativeCount++;
+            }
+
+            if (resp['REMARK'] == "BEARS_COMING_SELL_ON_RISE") {
+                futureNegativeCount++;
+            }
+
+            if (resp['REMARK'] == "CAUTION_WRITES_ERODING_PREMIUM") {
+                futureNeutralCount++;
+            }
+
+            if (resp['REMARK'] == "DEFENCE_BUY_ON_DECLINE") {
+                futureNeutralCount++;
+            }
+
+            updateStockTable(i, row)
+        } catch (e) {
+            console.log(e)
+        }
+    }
+
+
+    jQ("#aso-count").html("ASO:" + asoCount);
+    jQ("#bso-count").html("BSO:" + bsoCount);
+    jQ("#neutral-count").html("NEUTRAL:" + neutralCount);
+    jQ("#future-positve-count").html("+ F.TREND:" + futurePositiveCount);
+    jQ("#future-negative-count").html("- F.TREND:" + futureNegativeCount);
+    jQ("#future-neutral-count").html("+/- F.TREND:" + futureNeutralCount);
+}
+
 
 function updateStockTable(id, row) {
     jQ('#stock-list-table').DataTable().row(id).data(row).draw(false);
@@ -698,7 +909,7 @@ async function showFutureDetails(name) {
         }
     })
     let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
 
     let first = cres.data['candles'][0];
     let prev = pres.data['candles'][0];
@@ -1622,8 +1833,35 @@ function updateTableLtpPrice() {
     for (let i = 0; i < stockData.length; i++) {
         let name = stockData[i]['TRADINGSYMBOL']
         stockData[i]['PERC'] = scriptData[name]['change']
-        stockData[i]['LTP'] = scriptData[name]['ltp']
+        
         stockData[i]['TREND'] = scriptData[name]['trends']
+        let ltp = scriptData[name]['ltp'];
+
+        let asoPrice = 0;
+        let bsoPrice = 0;
+        let astPrice = 0;
+        let bstPrice = 0;
+        asoPrice = parseFloat(stockData[i]['STRIKEDATA']['ustrikeOne']);
+        bsoPrice = parseFloat(stockData[i]['STRIKEDATA']['bstrikeOne']);
+
+        astPrice = parseFloat(stockData[i]['STRIKEDATA']['ustrikeTwo']);
+        bstPrice = parseFloat(stockData[i]['STRIKEDATA']['bstrikeTwo']);
+
+        if (ltp >= astPrice) {
+            stockData[i]['LTP'] = '<span title="AST PRICE" class="badge bg-danger">' + scriptData[name]['ltp'] + '</span>'
+        }
+
+         if (ltp >= asoPrice) {
+            stockData[i]['LTP'] = '<span title="ASO PRICE" class="badge bg-warning">' + scriptData[name]['ltp'] + '</span>'
+        }
+
+         if (ltp <= bstPrice) {
+            stockData[i]['LTP'] = '<span title="BST PRICE" class="badge bg-success">' + scriptData[name]['ltp'] + '</span>'
+        }
+
+        if (ltp <= bsoPrice) {
+            stockData[i]['LTP'] = '<span title="BSO PRICE" class="badge bg-warning">' + scriptData[name]['ltp'] + '</span>'
+        }
         newData.push(stockData[i])
     }
     generateStockTable(newData)
@@ -1881,7 +2119,7 @@ function generateFutresDataTable(quote, id, prevQuote, lotSize) {
         "scrollY": "500px",
         "columnDefs": [
             {
-                "targets": [1, 2, 3, 4, 13, 14, 15, 16, 17],
+                "targets": [1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 13, 15, 16],
                 "visible": false,
                 "searchable": false
             }
@@ -2289,6 +2527,8 @@ function showTableAiNiftyPrediction(quote, prevQuote, lotSize) {
         RemarkType = "DEFENCE_BUY_ON_DECLINE"
     }
 
+    data.REMARK = RemarkType
+
     var bullRemark = remark;
     var bearRemark = remark;
     var marketTrendPlus = ""
@@ -2507,6 +2747,8 @@ function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize) {
         display = "+";
         aiStatus = "DEFENCE_BUY_ON_DECLINE"
     }
+
+    data.REMARK = aiStatus
 
     var bullRemark = remark;
     var bearRemark = remark;

@@ -175,7 +175,7 @@ span.bullsVersesBears {
   max-height: 25px !important;
 }
 
-.historical-future-data-analyzer img {
+.historical-future-data-analyzer img,#stock-list-table img {
   max-width: 15px !important;
   max-height: 15px !important;
 }
@@ -198,6 +198,10 @@ span.bullsVersesBears {
 
 #pop-up-window-trend-analysis ul li {
   margin-bottom: unset !important;
+}
+
+.sentiment-count{
+  padding: .4rem;
 }
 
 .chart-max-wh {
