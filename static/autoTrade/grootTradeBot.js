@@ -72,26 +72,40 @@ async function showGrootTradeBot() {
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
     html += '<div class="row">'
 
-    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">'
+    html += 'Futures Trend'
+    html += '</h6>'
+    html += '<div id="futures-trend-chart">'
+    html += '</div>'
+    html += '</div>'
+
+
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<div class="row">'
+
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Gift Nifty</h6>'
     html += '<div id="gift-nifty-top-chart">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Nifty 50</h6>'
     html += '<div id="nifty-to-chart">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Bank Nifty</h6>'
     html += '<div id="bank-nifty-top-chart">'
     html += '</div>'
     html += '</div>'
 
 
-    html += '<div class="col-md-3 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Sensex</h6>'
     html += '<div id="sensex-top-chart">'
     html += '</div>'
@@ -115,7 +129,6 @@ async function showGrootTradeBot() {
     html += '<th>CLOSE 9:15</th>'
     html += '<th>TREND</th>'
     html += '<th>LTP</th>'
-    html += '<th>FUTURE TREND</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'
@@ -123,9 +136,6 @@ async function showGrootTradeBot() {
     html += '</table>'
     html += '</div>'
     html += '</div>'
-
-
-
 
 
     html += '<table class="table table-striped">'
@@ -224,6 +234,7 @@ jQ(document).on("click", "#start-advance-decline-refresh", function (e) {
 async function commonRefreshAdvanceDecline(that) {
     clearInterval(advanceDeclineTimerInstance)
     await showAdvacenDeclineScanner(that);
+    await showFuturesTrend();
     await showTopChart("GIFT NIFTY", "gift-nifty-top-chart");
     await showTopChart("NIFTY 50", "nifty-to-chart")
     await showTopChart("NIFTY BANK", "bank-nifty-top-chart");
@@ -399,14 +410,14 @@ async function showAdvacenDeclineScanner() {
     });
 
     jQ("#advance-decline-chart").insertFusionCharts({
-        type: "mscolumn2d",
+        type: "scrollstackedcolumn2d",
         width: "100%",
         dataFormat: "json",
         dataSource: {
             chart: {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
+                "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
@@ -431,19 +442,31 @@ async function showAdvacenDeclineScanner() {
                 advanceSeries,
                 declineSeries
             ]
+        },
+        "events": {
+            dataPlotClick: function (ev, props) {
+                let symbols = []
+                let time = props['categoryLabel']
+                if (props.datasetName == "Advance") {
+                    symbols = advanceMap[time]['SYMBOL'];
+                } else {
+                    symbols = declineMap[time]['SYMBOL'];
+                }
+                showStockList(symbols)
+            }
         }
     });
 
 
     jQ("#advance-decline-nifty-chart").insertFusionCharts({
-        type: "mscolumn2d",
+        type: "scrollstackedcolumn2d",
         width: "100%",
         dataFormat: "json",
         dataSource: {
             chart: {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
+                "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
@@ -469,19 +492,31 @@ async function showAdvacenDeclineScanner() {
                 declineSeriesNifty
             ]
         }
+        ,
+        "events": {
+            dataPlotClick: function (ev, props) {
+                let symbols = []
+                let time = props['categoryLabel']
+                if (props.datasetName == "Advance") {
+                    symbols = advanceMapNifty[time]['SYMBOL'];
+                } else {
+                    symbols = declineMapNifty[time]['SYMBOL'];
+                }
+                showStockList(symbols)
+            }
+        }
     });
 
 
-
     jQ("#advance-decline-bank-chart").insertFusionCharts({
-        type: "mscolumn2d",
+        type: "scrollstackedcolumn2d",
         width: "100%",
         dataFormat: "json",
         dataSource: {
             chart: {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
+                "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
@@ -507,10 +542,411 @@ async function showAdvacenDeclineScanner() {
                 declineSeriesBank
             ]
         }
+        ,
+        "events": {
+            dataPlotClick: function (ev, props) {
+                let symbols = []
+                let time = props['categoryLabel']
+                if (props.datasetName == "Advance") {
+                    symbols = advanceMapBank[time]['SYMBOL'];
+                } else {
+                    symbols = declineMapBank[time]['SYMBOL'];
+                }
+                showStockList(symbols)
+            }
+        }
     });
 }
 
+
+async function showFuturesTrend() {
+
+    let LONGSeries = {}
+    LONGSeries['seriesname'] = "LONG"
+    LONGSeries['data'] = []
+
+    let SHOT_COVERINGSeries = {}
+    SHOT_COVERINGSeries['seriesname'] = "SHORT COVERING"
+    SHOT_COVERINGSeries['data'] = []
+
+    let GAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
+    GAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "GAMBLING_BUY_NEWS_AND_EVENTS"
+    GAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
+
+
+    let SHORTSSeries = {}
+    SHORTSSeries['seriesname'] = "SHORT"
+    SHORTSSeries['data'] = []
+
+
+    let LONG_UNWINDINGSeries = {}
+    LONG_UNWINDINGSeries['seriesname'] = "LONG_UNWINDING"
+    LONG_UNWINDINGSeries['data'] = []
+
+
+    let BEARS_COMING_SELL_ON_RISESeries = {}
+    BEARS_COMING_SELL_ON_RISESeries['seriesname'] = "BEARS_COMING_SELL_ON_RISE"
+    BEARS_COMING_SELL_ON_RISESeries['data'] = []
+
+
+    let CAUTION_WRITES_ERODING_PREMIUMSeries = {}
+    CAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "CAUTION_WRITES_ERODING_PREMIUM"
+    CAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
+
+
+    let DEFENCE_BUY_ON_DECLINESeries = {}
+    DEFENCE_BUY_ON_DECLINESeries['seriesname'] = "DEFENCE_BUY_ON_DECLINE"
+    DEFENCE_BUY_ON_DECLINESeries['data'] = []
+
+
+    let BULLSSeries = {}
+    BULLSSeries['seriesname'] = "BULLS"
+    BULLSSeries['data'] = []
+
+    let BEARSSeries = {}
+    BEARSSeries['seriesname'] = "BEARS"
+    BEARSSeries['data'] = []
+
+
+    let LONGMap = {}
+    let SHOT_COVERINGMap = {}
+    let GAMBLING_BUY_NEWS_AND_EVENTSMap = {}
+    let SHORTSMap = {}
+    let LONG_UNWINDINGMap = {}
+    let BEARS_COMING_SELL_ON_RISEMap = {}
+    let CAUTION_WRITES_ERODING_PREMIUMMap = {}
+    let DEFENCE_BUY_ON_DECLINEMap = {}
+
+    let BULLSMap = {}
+    let BEARSMap = {}
+
+    let categoryList = [];
+    let stockData = stockTable.rows().data().toArray();
+    for (let i = 0; i < stockData.length; i++) {
+        let row = stockData[i];
+        let name = row['TRADINGSYMBOL'];
+        jQ.each(futureInstrumentsList, function (index, item) {
+            let instName = name
+            if (instName == "NIFTY 50") {
+                instName = 'NIFTY'
+            }
+            if (item.name == instName) {
+                futures = item;
+            }
+        })
+        try {
+
+            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+            let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+            let prevData = []
+            jQ.each(pres.data.candles, function (index, item) {
+                let map = {}
+                map['date'] = moment(item[0]).format("HH:mm")
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                map.oi = item[6]
+                prevData.push(map);
+            });
+            prevData = prevData[prevData.length - 1];
+            let data = []
+            jQ.each(cres.data.candles, function (index, item) {
+                let time = moment(item[0]).format("HH:mm");
+                if (i == 0) {
+                    let map = {}
+                    map.label = time;
+                    categoryList.push(map)
+
+                    LONGMap[time] = {}
+                    LONGMap[time]['SYMBOL'] = []
+                    LONGMap[time]['COUNT'] = 0
+
+                    SHOT_COVERINGMap[time] = {}
+                    SHOT_COVERINGMap[time]['SYMBOL'] = []
+                    SHOT_COVERINGMap[time]['COUNT'] = 0
+
+                    GAMBLING_BUY_NEWS_AND_EVENTSMap[time] = {}
+                    GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'] = []
+                    GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = 0
+
+                    SHORTSMap[time] = {}
+                    SHORTSMap[time]['SYMBOL'] = []
+                    SHORTSMap[time]['COUNT'] = 0
+
+                    LONG_UNWINDINGMap[time] = {}
+                    LONG_UNWINDINGMap[time]['SYMBOL'] = []
+                    LONG_UNWINDINGMap[time]['COUNT'] = 0
+
+                    BEARS_COMING_SELL_ON_RISEMap[time] = {}
+                    BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'] = []
+                    BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = 0
+
+                    CAUTION_WRITES_ERODING_PREMIUMMap[time] = {}
+                    CAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'] = []
+                    CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = 0
+
+                    DEFENCE_BUY_ON_DECLINEMap[time] = {}
+                    DEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'] = []
+                    DEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = 0
+
+                    BULLSMap[time] = {}
+                    BULLSMap[time]['SYMBOL'] = []
+                    BULLSMap[time]['COUNT'] = 0
+
+                    BEARSMap[time] = {}
+                    BEARSMap[time]['SYMBOL'] = []
+                    BEARSMap[time]['COUNT'] = 0
+                }
+
+                let map = {}
+                map['date'] = time
+                map.open = item[1]
+                map.high = item[2]
+                map.low = item[3]
+                map.close = item[4]
+                map.volume = item[5]
+                map.oi = item[6]
+                data.push(map);
+
+            });
+
+            jQ.each(data, function (index, item) {
+                let time = item.date
+                let resp = {};
+                if (name == "BANKNIFTY") {
+                    resp = showTableAiBankNiftyPrediction(item, prevData, futures['lot_size'])
+                } else {
+                    resp = showTableAiNiftyPrediction(item, prevData, futures['lot_size'])
+                }
+                if (LONGMap[time]) {
+                    if (resp['REMARK'] == "LONG") {
+                        LONGMap[time]['SYMBOL'].push(name)
+                        LONGMap[time]['COUNT'] = LONGMap[time]['COUNT'] + 1
+                    }
+                }
+                if (SHORTSMap[time]) {
+                    if (resp['REMARK'] == "SHORT") {
+                        SHORTSMap[time]['SYMBOL'].push(name)
+                        SHORTSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + 1
+                    }
+                }
+
+                if (SHOT_COVERINGMap[time]) {
+                    if (resp['REMARK'] == "SHOT_COVERING") {
+                        SHOT_COVERINGMap[time]['SYMBOL'].push(name)
+                        SHOT_COVERINGMap[time]['COUNT'] = SHOT_COVERINGMap[time]['COUNT'] + 1
+                    }
+                }
+
+                if (GAMBLING_BUY_NEWS_AND_EVENTSMap[time]) {
+                    if (resp['REMARK'] == "GAMBLING_BUY_NEWS_AND_EVENTS") {
+                        GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'].push(name)
+                        GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + 1
+                    }
+                }
+                if (LONG_UNWINDINGMap[time]) {
+                    if (resp['REMARK'] == "LONG_UNWINDING") {
+                        LONG_UNWINDINGMap[time]['SYMBOL'].push(name)
+                        LONG_UNWINDINGMap[time]['COUNT'] = LONG_UNWINDINGMap[time]['COUNT'] + 1
+                    }
+                }
+
+                if (BEARS_COMING_SELL_ON_RISEMap[time]) {
+                    if (resp['REMARK'] == "BEARS_COMING_SELL_ON_RISE") {
+                        BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'].push(name)
+                        BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + 1
+                    }
+                }
+
+                if (CAUTION_WRITES_ERODING_PREMIUMMap[time]) {
+                    if (resp['REMARK'] == "CAUTION_WRITES_ERODING_PREMIUM") {
+                        CAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'].push(name)
+                        CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] + 1
+                    }
+                }
+                if (DEFENCE_BUY_ON_DECLINEMap[time]) {
+                    if (resp['REMARK'] == "DEFENCE_BUY_ON_DECLINE") {
+                        DEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'].push(name)
+                        DEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = DEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] + 1
+                    }
+                }
+
+
+                if (BULLSMap[time]) {
+                    BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
+                }
+
+                if (BEARSMap[time]) {
+                    BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
+                }
+            });
+        } catch (e) {
+            console.log(e)
+        }
+    }
+
+    jQ.each(LONGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#3A6F43'
+        val['value'] = aitem['COUNT']
+        LONGSeries['data'].push(val)
+    });
+
+    jQ.each(SHORTSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#D73535'
+        val['value'] = aitem['COUNT']
+        SHORTSSeries['data'].push(val)
+    });
+
+    jQ.each(SHOT_COVERINGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#59AC77'
+        val['value'] = aitem['COUNT']
+        SHOT_COVERINGSeries['data'].push(val)
+    });
+
+
+    jQ.each(GAMBLING_BUY_NEWS_AND_EVENTSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#628141'
+        val['value'] = aitem['COUNT']
+        GAMBLING_BUY_NEWS_AND_EVENTSSeries['data'].push(val)
+    });
+
+
+    jQ.each(LONG_UNWINDINGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#FF4646'
+        val['value'] = aitem['COUNT']
+        LONG_UNWINDINGSeries['data'].push(val)
+    });
+
+
+    jQ.each(BEARS_COMING_SELL_ON_RISEMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#F90716'
+        val['value'] = aitem['COUNT']
+        BEARS_COMING_SELL_ON_RISESeries['data'].push(val)
+    });
+
+    jQ.each(CAUTION_WRITES_ERODING_PREMIUMMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#F39EB6'
+        val['value'] = aitem['COUNT']
+        CAUTION_WRITES_ERODING_PREMIUMSeries['data'].push(val)
+    });
+
+    jQ.each(DEFENCE_BUY_ON_DECLINEMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#E4F1AC'
+        val['value'] = aitem['COUNT']
+        DEFENCE_BUY_ON_DECLINESeries['data'].push(val)
+    });
+
+
+    jQ.each(BULLSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#3A6F43'
+        val['value'] = aitem['COUNT']
+        BULLSSeries['data'].push(val)
+    });
+
+    jQ.each(BEARSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#D73535'
+        val['value'] = aitem['COUNT']
+        BEARSSeries['data'].push(val)
+    });
+
+    jQ("#futures-trend-chart").insertFusionCharts({
+        type: "scrollstackedcolumn2d",
+        width: '100%',
+        dataFormat: "json",
+        dataSource: {
+            chart: {
+
+                "paletteColors": "#3A6F43,#D73535,#59AC77,#628141,#FF4646,#F90716,#F39EB6,#E4F1AC",
+                "formatNumberScale": "0",
+                "adjustDiv": "1", "theme": "candy",
+                showvalues: "0",
+                rotatelabels: "0",
+                "showLabels": 1,
+                "showValues": "1"
+            },
+            axis: {
+                y: {
+                    tick: {
+                        format: function (d) {
+                            return (parseInt(d) == d) ? d : null;
+                        }
+                    }
+                }
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            dataset: [
+                LONGSeries,
+                SHORTSSeries,
+                SHOT_COVERINGSeries,
+                GAMBLING_BUY_NEWS_AND_EVENTSSeries,
+                LONG_UNWINDINGSeries,
+                BEARS_COMING_SELL_ON_RISESeries,
+                CAUTION_WRITES_ERODING_PREMIUMSeries,
+                DEFENCE_BUY_ON_DECLINESeries,
+                BULLSSeries,
+                BEARSSeries
+            ]
+        },
+        "events": {
+            dataPlotClick: function (ev, props) {
+                let symbols = []
+                let time = props['categoryLabel']
+                if (props.datasetName == "LONG") {
+                    symbols = LONGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "SHORT") {
+                    symbols = SHORTSMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "SHOT_COVERING") {
+                    symbols = SHOT_COVERINGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "GAMBLING_BUY_NEWS_AND_EVENTS") {
+                    symbols = GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "LONG_UNWINDING") {
+                    symbols = LONG_UNWINDINGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "BEARS_COMING_SELL_ON_RISE") {
+                    symbols = BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "CAUTION_WRITES_ERODING_PREMIUM") {
+                    symbols = CAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "DEFENCE_BUY_ON_DECLINE") {
+                    symbols = DEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
+                }
+
+                showStockList(symbols)
+            }
+        }
+    });
+
+
+}
+
 function showStockList(list) {
+    console.log(list)
     let instru = [];
     let scripts = []
     let checkInstr = []
@@ -536,7 +972,6 @@ function showStockList(list) {
         obj['LTP'] = scriptData[name]['ltp'];
         obj['STRIKEDATA'] = scriptData[name]['strikeData'];
         obj['CLOSE_9_15'] = '';
-        obj['FUTURE_TREND'] = '';
         if (list.length != 0) {
             if (jQ.inArray(name, list) != -1) {
                 scripts.push(obj)
@@ -612,7 +1047,6 @@ function generateStockTable(data) {
                     return html
                 }
             },
-            { "data": "FUTURE_TREND" },
         ],
         "fnInitComplete": function (oSettings, json) {
             showExtraButtons()
@@ -630,14 +1064,6 @@ function showExtraButtons() {
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BSO</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>N50</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BN</span></button>')
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="future-trend-scan" class="dt-button bg-info" type="button"><span>TREND SCAN</span></button>');
-
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-success sentiment-count" style="margin-left: .2rem;" id="aso-count">ASO</span>');
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-danger sentiment-count" style="margin-left: .2rem;" id="bso-count">BSO</span>');
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-warning sentiment-count" style="margin-left: .2rem;" id="neutral-count">NEUTRAL</span>');
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-success sentiment-count" style="margin-left: .2rem;" id="future-positve-count">+ F.TREND</span>');
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-danger sentiment-count" style="margin-left: .2rem;" id="future-negative-count">- F.TREND</span>');
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span class="bg-warning sentiment-count" style="margin-left: .2rem;" id="future-neutral-count">+/- F.TREND</span>');
 }
 
 jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e) {
@@ -708,131 +1134,6 @@ async function scanNineFifteenCandle() {
     }
 }
 
-jQ(document).on('click', '#future-trend-scan', function (e) {
-    scanFutureTrend()
-
-});
-
-async function scanFutureTrend() {
-    let scriptData = generateTrends()
-    let stockData = stockTable.rows().data().toArray();
-    let asoCount = 0;
-    let bsoCount = 0;
-    let futurePositiveCount = 0;
-    let futureNegativeCount = 0;
-    let futureNeutralCount = 0;
-    let neutralCount = 0;
-    for (let i = 0; i < stockData.length; i++) {
-        let row = stockData[i];
-        let name = row['TRADINGSYMBOL'];
-        jQ.each(futureInstrumentsList, function (index, item) {
-            let instName = name
-            if (instName == "NIFTY 50") {
-                instName = 'NIFTY'
-            }
-            if (item.name == instName) {
-                futures = item;
-            }
-        })
-        jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + (i + 1) + "/" + stockData.length);
-        try {
-
-            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-            let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
-
-            let data = []
-            let prevData = []
-            jQ.each(cres.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                map.oi = item[6]
-                data.push(map);
-            });
-
-            jQ.each(pres.data.candles, function (index, item) {
-                let map = {}
-                map['date'] = moment(item[0]).format("HH:mm:ss")
-                map.open = item[1]
-                map.high = item[2]
-                map.low = item[3]
-                map.close = item[4]
-                map.volume = item[5]
-                map.oi = item[6]
-                prevData.push(map);
-            });
-            prevData = prevData[prevData.length - 1];
-            data = data[data.length - 1];
-            let resp = {};
-            if (name == "BANKNIFTY") {
-                resp = showTableAiBankNiftyPrediction(data, prevData, futures['lot_size'])
-            } else {
-                resp = showTableAiNiftyPrediction(data, prevData, futures['lot_size'])
-            }
-            row['FUTURE_TREND'] = resp['PLUS'] + '<br/>' + resp['MINUS']
-            row['LTP'] = scriptData[name]['ltp'];
-
-            let trends = scriptData[name]['trends']
-            if (jQ.inArray("ASO", trends) != -1) {
-                asoCount++
-            } else if (jQ.inArray("BSO", trends) != -1) {
-                bsoCount++
-            } else {
-                neutralCount++;
-            }
-
-
-            if (resp['REMARK'] == "LONG") {
-                futurePositiveCount++;
-            }
-
-            if (resp['REMARK'] == "SHOT_COVERING") {
-                futurePositiveCount++;
-            }
-
-            if (resp['REMARK'] == "GAMBLING_BUY_NEWS_AND_EVENTS") {
-                futurePositiveCount++;
-            }
-
-            if (resp['REMARK'] == "SHORT") {
-                futureNegativeCount++;
-            }
-
-            if (resp['REMARK'] == "LONG_UNWINDING") {
-                futureNegativeCount++;
-            }
-
-            if (resp['REMARK'] == "BEARS_COMING_SELL_ON_RISE") {
-                futureNegativeCount++;
-            }
-
-            if (resp['REMARK'] == "CAUTION_WRITES_ERODING_PREMIUM") {
-                futureNeutralCount++;
-            }
-
-            if (resp['REMARK'] == "DEFENCE_BUY_ON_DECLINE") {
-                futureNeutralCount++;
-            }
-
-            updateStockTable(i, row)
-        } catch (e) {
-            console.log(e)
-        }
-    }
-
-
-    jQ("#aso-count").html("ASO:" + asoCount);
-    jQ("#bso-count").html("BSO:" + bsoCount);
-    jQ("#neutral-count").html("NEUTRAL:" + neutralCount);
-    jQ("#future-positve-count").html("+ F.TREND:" + futurePositiveCount);
-    jQ("#future-negative-count").html("- F.TREND:" + futureNegativeCount);
-    jQ("#future-neutral-count").html("+/- F.TREND:" + futureNeutralCount);
-}
-
 
 function updateStockTable(id, row) {
     jQ('#stock-list-table').DataTable().row(id).data(row).draw(false);
@@ -865,7 +1166,7 @@ async function showInfo(rowData, id) {
     let quote = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -879,7 +1180,7 @@ async function showInfo(rowData, id) {
     let prevQuote = []
     jQ.each(previousQuote.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -1058,14 +1359,12 @@ async function showFutureDetails(name) {
             "chart": {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
-                "adjustDiv": "0",
+                "adjustDiv": "0", "theme": "candy",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
                 "pYAxisMinValue": min,
                 "pYAxisMaxValue": max,
-                showVolumeChart: isVolumePresent,
                 "showLabels": 1
             },
             "categories": [{
@@ -1092,7 +1391,7 @@ async function show15MinutesChart(name, rowId) {
     let quote = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -1214,12 +1513,12 @@ async function show15MinutesChart(name, rowId) {
             "chart": {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
+                "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                showVolumeChart: isVolumePresent,
+
                 "showLabels": 1
             },
             "categories": [{
@@ -1241,7 +1540,7 @@ async function showHourChart(name, rowId) {
     let quote = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -1363,12 +1662,12 @@ async function showHourChart(name, rowId) {
             "chart": {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
+                "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                showVolumeChart: isVolumePresent,
+
                 "showLabels": 1
             },
             "categories": [{
@@ -1561,7 +1860,6 @@ function addAdditonalDetails(rowData, id) {
     html += '<th>VWAP SIGNAL</th>'
     html += '<th>BUY RESULT</th>'
     html += '<th>SELL RESULT</th>'
-    html += '<th>FUTURE TREND</th>'
     html += '<th>AI</th>'
     html += '</tr>'
     html += '</thead>'
@@ -1609,10 +1907,6 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>';
 
     html += '</div>';
-
-
-
-
 
     return html;
 }
@@ -1804,12 +2098,12 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
             "chart": {
                 "thousandSeparatorPosition": "2,3",
                 "formatNumberScale": "0",
-                "theme": "fusion",
+                "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                showVolumeChart: isVolumePresent,
+
                 "showLabels": 1
             },
             "categories": [{
@@ -1833,7 +2127,7 @@ function updateTableLtpPrice() {
     for (let i = 0; i < stockData.length; i++) {
         let name = stockData[i]['TRADINGSYMBOL']
         stockData[i]['PERC'] = scriptData[name]['change']
-        
+
         stockData[i]['TREND'] = scriptData[name]['trends']
         let ltp = scriptData[name]['ltp'];
 
@@ -1851,11 +2145,11 @@ function updateTableLtpPrice() {
             stockData[i]['LTP'] = '<span title="AST PRICE" class="badge bg-danger">' + scriptData[name]['ltp'] + '</span>'
         }
 
-         if (ltp >= asoPrice) {
+        if (ltp >= asoPrice) {
             stockData[i]['LTP'] = '<span title="ASO PRICE" class="badge bg-warning">' + scriptData[name]['ltp'] + '</span>'
         }
 
-         if (ltp <= bstPrice) {
+        if (ltp <= bstPrice) {
             stockData[i]['LTP'] = '<span title="BST PRICE" class="badge bg-success">' + scriptData[name]['ltp'] + '</span>'
         }
 
@@ -1878,7 +2172,7 @@ async function showTopChart(name, id) {
     let quote = []
     jQ.each(data.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -1892,7 +2186,7 @@ async function showTopChart(name, id) {
     let prevQuote = []
     jQ.each(previousQuote.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("DD-MM-YY HH:mm:ss")
+        map['date'] = moment(item[0]).format("DD-MM HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -2083,13 +2377,11 @@ async function showTopChart(name, id) {
         dataSource: {
             "chart": {
                 "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "fusion",
+                "formatNumberScale": "0", "theme": "candy",
                 "adjustDiv": "0",
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                showVolumeChart: isVolumePresent,
                 "showLabels": 1
             },
             "categories": [{

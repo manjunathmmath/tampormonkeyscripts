@@ -546,7 +546,7 @@ function generateOIChartsForPrediction(oiData, name) {
         let categoryList = [];
         jQ.each(OI_CE, function (Cindex, Citem) {
             let map = {}
-            map.label = moment(Citem[0]).format("HH:mm:ss");
+            map.label = moment(Citem[0]).format("HH:mm");
             categoryList.push(map)
             let val = {}
             val['color'] = '#da3224'
@@ -562,18 +562,17 @@ function generateOIChartsForPrediction(oiData, name) {
         })
 
         jQ("#oi-chart-prediction-" + item.STRIKE).insertFusionCharts({
-            type: "mscolumn2d",
+            type: "scrollstackedcolumn2d",
             width: "100%",
             dataFormat: "json",
             dataSource: {
                 chart: {
                     "thousandSeparatorPosition": "2,3",
                     "formatNumberScale": "0",
-                    "theme": "fusion",
                     "adjustDiv": "0",
                     showvalues: "0",
                     labeldisplay: "ROTATE",
-                    rotatelabels: "1",
+                    rotatelabels: "1","theme":"candy",
                     "paletteColors": " #da3224, #37a009",
                     "showLabels": 0
                 },
@@ -601,7 +600,7 @@ function generateOIChartsForPrediction(oiData, name) {
         let CE_OBV = item['CE_OBV']
         jQ.each(CE_OBV, function (Cindex, Citem) {
             let map = {}
-            map.label = moment(Citem['date']).format("HH:mm:ss");
+            map.label = moment(Citem['date']).format("HH:mm");
             ObvcategoryList.push(map)
             let val = {}
             val['color'] = '#37a009 '
@@ -621,14 +620,14 @@ function generateOIChartsForPrediction(oiData, name) {
 
 
         jQ("#obv-chart-prediction-" + item.STRIKE).insertFusionCharts({
-            type: "mscolumn2d",
+            type: "scrollstackedcolumn2d",
             width: "100%",
             dataFormat: "json",
             dataSource: {
                 chart: {
                     "thousandSeparatorPosition": "2,3",
                     "formatNumberScale": "0",
-                    "theme": "fusion",
+                    "theme":"candy",
                     "adjustDiv": "0",
                     showvalues: "0",
                     labeldisplay: "ROTATE",

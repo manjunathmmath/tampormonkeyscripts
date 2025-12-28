@@ -35,6 +35,7 @@
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/fusioncharts.charts.js
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/fusioncharts.powercharts.js
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.fusion.js
+// @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.candy.js
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/fusioncharts.jqueryplugin.min.js
 
 
