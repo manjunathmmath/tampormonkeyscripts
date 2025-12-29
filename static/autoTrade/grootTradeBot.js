@@ -48,19 +48,19 @@ async function showGrootTradeBot() {
     html += '</h6>'
     html += '</div>'
 
-    html += '<div class="col-md-4 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">All</h6>'
     html += '<div id="advance-decline-chart">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-4 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Nifty</h6>'
     html += '<div id="advance-decline-nifty-chart">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-4 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">Bank</h6>'
     html += '<div id="advance-decline-bank-chart">'
     html += '</div>'
@@ -80,6 +80,23 @@ async function showGrootTradeBot() {
     html += '</div>'
     html += '</div>'
 
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">'
+    html += 'Nifty Futures Trend'
+    html += '</h6>'
+    html += '<div id="futures-trend-chart-nifty">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">'
+    html += 'Bank Futures Trend'
+    html += '</h6>'
+    html += '<div id="futures-trend-chart-nifty-bank">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '</div>'
 
 
 
@@ -410,7 +427,7 @@ async function showAdvacenDeclineScanner() {
     });
 
     jQ("#advance-decline-chart").insertFusionCharts({
-        type: "scrollstackedcolumn2d",
+        type: "stackedcolumn2d",
         width: "100%",
         dataFormat: "json",
         dataSource: {
@@ -459,7 +476,7 @@ async function showAdvacenDeclineScanner() {
 
 
     jQ("#advance-decline-nifty-chart").insertFusionCharts({
-        type: "scrollstackedcolumn2d",
+        type: "stackedcolumn2d",
         width: "100%",
         dataFormat: "json",
         dataSource: {
@@ -509,7 +526,7 @@ async function showAdvacenDeclineScanner() {
 
 
     jQ("#advance-decline-bank-chart").insertFusionCharts({
-        type: "scrollstackedcolumn2d",
+        type: "stackedcolumn2d",
         width: "100%",
         dataFormat: "json",
         dataSource: {
@@ -562,50 +579,127 @@ async function showAdvacenDeclineScanner() {
 async function showFuturesTrend() {
 
     let LONGSeries = {}
-    LONGSeries['seriesname'] = "LONG"
+    LONGSeries['seriesname'] = "Long"
     LONGSeries['data'] = []
 
     let SHOT_COVERINGSeries = {}
-    SHOT_COVERINGSeries['seriesname'] = "SHORT COVERING"
+    SHOT_COVERINGSeries['seriesname'] = "Short Covering"
     SHOT_COVERINGSeries['data'] = []
 
     let GAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
-    GAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "GAMBLING_BUY_NEWS_AND_EVENTS"
+    GAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "Gambling! Buy News And Events"
     GAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
 
-
     let SHORTSSeries = {}
-    SHORTSSeries['seriesname'] = "SHORT"
+    SHORTSSeries['seriesname'] = "Short"
     SHORTSSeries['data'] = []
 
-
     let LONG_UNWINDINGSeries = {}
-    LONG_UNWINDINGSeries['seriesname'] = "LONG_UNWINDING"
+    LONG_UNWINDINGSeries['seriesname'] = "Long Unwinding"
     LONG_UNWINDINGSeries['data'] = []
 
-
     let BEARS_COMING_SELL_ON_RISESeries = {}
-    BEARS_COMING_SELL_ON_RISESeries['seriesname'] = "BEARS_COMING_SELL_ON_RISE"
+    BEARS_COMING_SELL_ON_RISESeries['seriesname'] = "Bears Coming,Sell On Rise"
     BEARS_COMING_SELL_ON_RISESeries['data'] = []
 
-
     let CAUTION_WRITES_ERODING_PREMIUMSeries = {}
-    CAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "CAUTION_WRITES_ERODING_PREMIUM"
+    CAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "Caution! Writers Eroding Premium"
     CAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
 
-
     let DEFENCE_BUY_ON_DECLINESeries = {}
-    DEFENCE_BUY_ON_DECLINESeries['seriesname'] = "DEFENCE_BUY_ON_DECLINE"
+    DEFENCE_BUY_ON_DECLINESeries['seriesname'] = "Defence,Buy On Decline"
     DEFENCE_BUY_ON_DECLINESeries['data'] = []
 
-
     let BULLSSeries = {}
-    BULLSSeries['seriesname'] = "BULLS"
+    BULLSSeries['seriesname'] = "Bulls"
     BULLSSeries['data'] = []
 
     let BEARSSeries = {}
-    BEARSSeries['seriesname'] = "BEARS"
+    BEARSSeries['seriesname'] = "Bears"
     BEARSSeries['data'] = []
+
+
+
+    let NiftyLONGSeries = {}
+    NiftyLONGSeries['seriesname'] = "Long"
+    NiftyLONGSeries['data'] = []
+
+    let NiftySHOT_COVERINGSeries = {}
+    NiftySHOT_COVERINGSeries['seriesname'] = "Short Covering"
+    NiftySHOT_COVERINGSeries['data'] = []
+
+    let NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
+    NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "Gambling! Buy News And Events"
+    NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
+
+    let NiftySHORTSSeries = {}
+    NiftySHORTSSeries['seriesname'] = "Short"
+    NiftySHORTSSeries['data'] = []
+
+    let NiftyLONG_UNWINDINGSeries = {}
+    NiftyLONG_UNWINDINGSeries['seriesname'] = "Long Unwinding"
+    NiftyLONG_UNWINDINGSeries['data'] = []
+
+    let NiftyBEARS_COMING_SELL_ON_RISESeries = {}
+    NiftyBEARS_COMING_SELL_ON_RISESeries['seriesname'] = "Bears Coming,Sell On Rise"
+    NiftyBEARS_COMING_SELL_ON_RISESeries['data'] = []
+
+    let NiftyCAUTION_WRITES_ERODING_PREMIUMSeries = {}
+    NiftyCAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "Caution! Writers Eroding Premium"
+    NiftyCAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
+
+    let NiftyDEFENCE_BUY_ON_DECLINESeries = {}
+    NiftyDEFENCE_BUY_ON_DECLINESeries['seriesname'] = "Defence,Buy On Decline"
+    NiftyDEFENCE_BUY_ON_DECLINESeries['data'] = []
+
+    let NiftyBULLSSeries = {}
+    NiftyBULLSSeries['seriesname'] = "Bulls"
+    NiftyBULLSSeries['data'] = []
+
+    let NiftyBEARSSeries = {}
+    NiftyBEARSSeries['seriesname'] = "Bears"
+    NiftyBEARSSeries['data'] = []
+
+
+    let NiftyBankLONGSeries = {}
+    NiftyBankLONGSeries['seriesname'] = "Long"
+    NiftyBankLONGSeries['data'] = []
+
+    let NiftyBankSHOT_COVERINGSeries = {}
+    NiftyBankSHOT_COVERINGSeries['seriesname'] = "Short Covering"
+    NiftyBankSHOT_COVERINGSeries['data'] = []
+
+    let NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
+    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "Gambling! Buy News And Events"
+    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
+
+    let NiftyBankSHORTSSeries = {}
+    NiftyBankSHORTSSeries['seriesname'] = "Short"
+    NiftyBankSHORTSSeries['data'] = []
+
+    let NiftyBankLONG_UNWINDINGSeries = {}
+    NiftyBankLONG_UNWINDINGSeries['seriesname'] = "Long Unwinding"
+    NiftyBankLONG_UNWINDINGSeries['data'] = []
+
+    let NiftyBankBEARS_COMING_SELL_ON_RISESeries = {}
+    NiftyBankBEARS_COMING_SELL_ON_RISESeries['seriesname'] = "Bears Coming,Sell On Rise"
+    NiftyBankBEARS_COMING_SELL_ON_RISESeries['data'] = []
+
+    let NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries = {}
+    NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "Caution! Writers Eroding Premium"
+    NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
+
+    let NiftyBankDEFENCE_BUY_ON_DECLINESeries = {}
+    NiftyBankDEFENCE_BUY_ON_DECLINESeries['seriesname'] = "Defence,Buy On Decline"
+    NiftyBankDEFENCE_BUY_ON_DECLINESeries['data'] = []
+
+    let NiftyBankBULLSSeries = {}
+    NiftyBankBULLSSeries['seriesname'] = "Bulls"
+    NiftyBankBULLSSeries['data'] = []
+
+    let NiftyBankBEARSSeries = {}
+    NiftyBankBEARSSeries['seriesname'] = "Bears"
+    NiftyBankBEARSSeries['data'] = []
 
 
     let LONGMap = {}
@@ -616,15 +710,36 @@ async function showFuturesTrend() {
     let BEARS_COMING_SELL_ON_RISEMap = {}
     let CAUTION_WRITES_ERODING_PREMIUMMap = {}
     let DEFENCE_BUY_ON_DECLINEMap = {}
-
     let BULLSMap = {}
     let BEARSMap = {}
 
+
+    let NiftyLONGMap = {}
+    let NiftySHOT_COVERINGMap = {}
+    let NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap = {}
+    let NiftySHORTSMap = {}
+    let NiftyLONG_UNWINDINGMap = {}
+    let NiftyBEARS_COMING_SELL_ON_RISEMap = {}
+    let NiftyCAUTION_WRITES_ERODING_PREMIUMMap = {}
+    let NiftyDEFENCE_BUY_ON_DECLINEMap = {}
+    let NiftyBULLSMap = {}
+    let NiftyBEARSMap = {}
+
+
+    let NiftyBankLONGMap = {}
+    let NiftyBankSHOT_COVERINGMap = {}
+    let NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap = {}
+    let NiftyBankSHORTSMap = {}
+    let NiftyBankLONG_UNWINDINGMap = {}
+    let NiftyBankBEARS_COMING_SELL_ON_RISEMap = {}
+    let NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap = {}
+    let NiftyBankDEFENCE_BUY_ON_DECLINEMap = {}
+    let NiftyBankBULLSMap = {}
+    let NiftyBankBEARSMap = {}
+
     let categoryList = [];
-    let stockData = stockTable.rows().data().toArray();
-    for (let i = 0; i < stockData.length; i++) {
-        let row = stockData[i];
-        let name = row['TRADINGSYMBOL'];
+    for (let i = 0; i < FO_LIST.length; i++) {
+        let name = FO_LIST[i];
         jQ.each(futureInstrumentsList, function (index, item) {
             let instName = name
             if (instName == "NIFTY 50") {
@@ -698,6 +813,90 @@ async function showFuturesTrend() {
                     BEARSMap[time] = {}
                     BEARSMap[time]['SYMBOL'] = []
                     BEARSMap[time]['COUNT'] = 0
+
+
+
+                    NiftyLONGMap[time] = {}
+                    NiftyLONGMap[time]['SYMBOL'] = []
+                    NiftyLONGMap[time]['COUNT'] = 0
+
+                    NiftySHOT_COVERINGMap[time] = {}
+                    NiftySHOT_COVERINGMap[time]['SYMBOL'] = []
+                    NiftySHOT_COVERINGMap[time]['COUNT'] = 0
+
+                    NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time] = {}
+                    NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'] = []
+                    NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = 0
+
+                    NiftySHORTSMap[time] = {}
+                    NiftySHORTSMap[time]['SYMBOL'] = []
+                    NiftySHORTSMap[time]['COUNT'] = 0
+
+                    NiftyLONG_UNWINDINGMap[time] = {}
+                    NiftyLONG_UNWINDINGMap[time]['SYMBOL'] = []
+                    NiftyLONG_UNWINDINGMap[time]['COUNT'] = 0
+
+                    NiftyBEARS_COMING_SELL_ON_RISEMap[time] = {}
+                    NiftyBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'] = []
+                    NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = 0
+
+                    NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time] = {}
+                    NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'] = []
+                    NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = 0
+
+                    NiftyDEFENCE_BUY_ON_DECLINEMap[time] = {}
+                    NiftyDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'] = []
+                    NiftyDEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = 0
+
+                    NiftyBULLSMap[time] = {}
+                    NiftyBULLSMap[time]['SYMBOL'] = []
+                    NiftyBULLSMap[time]['COUNT'] = 0
+
+                    NiftyBEARSMap[time] = {}
+                    NiftyBEARSMap[time]['SYMBOL'] = []
+                    NiftyBEARSMap[time]['COUNT'] = 0
+
+
+
+                    NiftyBankLONGMap[time] = {}
+                    NiftyBankLONGMap[time]['SYMBOL'] = []
+                    NiftyBankLONGMap[time]['COUNT'] = 0
+
+                    NiftyBankSHOT_COVERINGMap[time] = {}
+                    NiftyBankSHOT_COVERINGMap[time]['SYMBOL'] = []
+                    NiftyBankSHOT_COVERINGMap[time]['COUNT'] = 0
+
+                    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time] = {}
+                    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'] = []
+                    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = 0
+
+                    NiftyBankSHORTSMap[time] = {}
+                    NiftyBankSHORTSMap[time]['SYMBOL'] = []
+                    NiftyBankSHORTSMap[time]['COUNT'] = 0
+
+                    NiftyBankLONG_UNWINDINGMap[time] = {}
+                    NiftyBankLONG_UNWINDINGMap[time]['SYMBOL'] = []
+                    NiftyBankLONG_UNWINDINGMap[time]['COUNT'] = 0
+
+                    NiftyBankBEARS_COMING_SELL_ON_RISEMap[time] = {}
+                    NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'] = []
+                    NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = 0
+
+                    NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time] = {}
+                    NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'] = []
+                    NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = 0
+
+                    NiftyBankDEFENCE_BUY_ON_DECLINEMap[time] = {}
+                    NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'] = []
+                    NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = 0
+
+                    NiftyBankBULLSMap[time] = {}
+                    NiftyBankBULLSMap[time]['SYMBOL'] = []
+                    NiftyBankBULLSMap[time]['COUNT'] = 0
+
+                    NiftyBankBEARSMap[time] = {}
+                    NiftyBankBEARSMap[time]['SYMBOL'] = []
+                    NiftyBankBEARSMap[time]['COUNT'] = 0
                 }
 
                 let map = {}
@@ -724,12 +923,34 @@ async function showFuturesTrend() {
                     if (resp['REMARK'] == "LONG") {
                         LONGMap[time]['SYMBOL'].push(name)
                         LONGMap[time]['COUNT'] = LONGMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftyLONGMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyLONGMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankLONGMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankLONGMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + 1
+                        }
                     }
+
+
                 }
                 if (SHORTSMap[time]) {
                     if (resp['REMARK'] == "SHORT") {
                         SHORTSMap[time]['SYMBOL'].push(name)
                         SHORTSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftySHORTSMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftySHORTSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankSHORTSMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankSHORTSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + 1
+                        }
                     }
                 }
 
@@ -737,6 +958,16 @@ async function showFuturesTrend() {
                     if (resp['REMARK'] == "SHOT_COVERING") {
                         SHOT_COVERINGMap[time]['SYMBOL'].push(name)
                         SHOT_COVERINGMap[time]['COUNT'] = SHOT_COVERINGMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftySHOT_COVERINGMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftySHOT_COVERINGMap[time]['COUNT'] = NiftySHOT_COVERINGMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankSHOT_COVERINGMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankSHOT_COVERINGMap[time]['COUNT'] = NiftyBankSHOT_COVERINGMap[time]['COUNT'] + 1
+                        }
                     }
                 }
 
@@ -744,12 +975,32 @@ async function showFuturesTrend() {
                     if (resp['REMARK'] == "GAMBLING_BUY_NEWS_AND_EVENTS") {
                         GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'].push(name)
                         GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] = NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + 1
+                        }
                     }
                 }
                 if (LONG_UNWINDINGMap[time]) {
                     if (resp['REMARK'] == "LONG_UNWINDING") {
                         LONG_UNWINDINGMap[time]['SYMBOL'].push(name)
                         LONG_UNWINDINGMap[time]['COUNT'] = LONG_UNWINDINGMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftyLONG_UNWINDINGMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyLONG_UNWINDINGMap[time]['COUNT'] = NiftyLONG_UNWINDINGMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankLONG_UNWINDINGMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankLONG_UNWINDINGMap[time]['COUNT'] = NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + 1
+                        }
                     }
                 }
 
@@ -757,6 +1008,16 @@ async function showFuturesTrend() {
                     if (resp['REMARK'] == "BEARS_COMING_SELL_ON_RISE") {
                         BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'].push(name)
                         BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftyBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] = NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + 1
+                        }
                     }
                 }
 
@@ -764,22 +1025,47 @@ async function showFuturesTrend() {
                     if (resp['REMARK'] == "CAUTION_WRITES_ERODING_PREMIUM") {
                         CAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'].push(name)
                         CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] = NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT'] + 1
+                        }
                     }
                 }
                 if (DEFENCE_BUY_ON_DECLINEMap[time]) {
                     if (resp['REMARK'] == "DEFENCE_BUY_ON_DECLINE") {
                         DEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'].push(name)
                         DEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = DEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] + 1
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            NiftyDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyDEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = NiftyDEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] + 1
+                        }
+
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'].push(FO_LIST[i])
+                            NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] = NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['COUNT'] + 1
+                        }
                     }
                 }
 
 
                 if (BULLSMap[time]) {
                     BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
+                    NiftyBULLSMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + NiftySHOT_COVERINGMap[time]['COUNT'] + NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
+                    NiftyBankBULLSMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + NiftyBankSHOT_COVERINGMap[time]['COUNT'] + NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
                 }
 
                 if (BEARSMap[time]) {
                     BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
+                    NiftyBEARSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + NiftyLONG_UNWINDINGMap[time]['COUNT'] + NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
+                    NiftyBankBEARSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
+
                 }
             });
         } catch (e) {
@@ -861,8 +1147,162 @@ async function showFuturesTrend() {
         BEARSSeries['data'].push(val)
     });
 
+
+
+
+    jQ.each(NiftyLONGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#3A6F43'
+        val['value'] = aitem['COUNT']
+        NiftyLONGSeries['data'].push(val)
+    });
+
+    jQ.each(NiftySHORTSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#D73535'
+        val['value'] = aitem['COUNT']
+        NiftySHORTSSeries['data'].push(val)
+    });
+
+    jQ.each(NiftySHOT_COVERINGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#59AC77'
+        val['value'] = aitem['COUNT']
+        NiftySHOT_COVERINGSeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#628141'
+        val['value'] = aitem['COUNT']
+        NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyLONG_UNWINDINGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#FF4646'
+        val['value'] = aitem['COUNT']
+        NiftyLONG_UNWINDINGSeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyBEARS_COMING_SELL_ON_RISEMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#F90716'
+        val['value'] = aitem['COUNT']
+        NiftyBEARS_COMING_SELL_ON_RISESeries['data'].push(val)
+    });
+
+    jQ.each(NiftyCAUTION_WRITES_ERODING_PREMIUMMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#F39EB6'
+        val['value'] = aitem['COUNT']
+        NiftyCAUTION_WRITES_ERODING_PREMIUMSeries['data'].push(val)
+    });
+
+    jQ.each(NiftyDEFENCE_BUY_ON_DECLINEMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#E4F1AC'
+        val['value'] = aitem['COUNT']
+        NiftyDEFENCE_BUY_ON_DECLINESeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyBULLSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#3A6F43'
+        val['value'] = aitem['COUNT']
+        NiftyBULLSSeries['data'].push(val)
+    });
+
+    jQ.each(NiftyBEARSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#D73535'
+        val['value'] = aitem['COUNT']
+        NiftyBEARSSeries['data'].push(val)
+    });
+
+
+
+
+    jQ.each(NiftyBankLONGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#3A6F43'
+        val['value'] = aitem['COUNT']
+        NiftyBankLONGSeries['data'].push(val)
+    });
+
+    jQ.each(NiftyBankSHORTSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#D73535'
+        val['value'] = aitem['COUNT']
+        NiftyBankSHORTSSeries['data'].push(val)
+    });
+
+    jQ.each(NiftyBankSHOT_COVERINGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#59AC77'
+        val['value'] = aitem['COUNT']
+        NiftyBankSHOT_COVERINGSeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#628141'
+        val['value'] = aitem['COUNT']
+        NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyBankLONG_UNWINDINGMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#FF4646'
+        val['value'] = aitem['COUNT']
+        NiftyBankLONG_UNWINDINGSeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyBankBEARS_COMING_SELL_ON_RISEMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#F90716'
+        val['value'] = aitem['COUNT']
+        NiftyBankBEARS_COMING_SELL_ON_RISESeries['data'].push(val)
+    });
+
+    jQ.each(NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#F39EB6'
+        val['value'] = aitem['COUNT']
+        NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries['data'].push(val)
+    });
+
+    jQ.each(NiftyBankDEFENCE_BUY_ON_DECLINEMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#E4F1AC'
+        val['value'] = aitem['COUNT']
+        NiftyBankDEFENCE_BUY_ON_DECLINESeries['data'].push(val)
+    });
+
+
+    jQ.each(NiftyBankBULLSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#3A6F43'
+        val['value'] = aitem['COUNT']
+        NiftyBankBULLSSeries['data'].push(val)
+    });
+
+    jQ.each(NiftyBankBEARSMap, function (aindex, aitem) {
+        let val = {}
+        val['color'] = '#D73535'
+        val['value'] = aitem['COUNT']
+        NiftyBankBEARSSeries['data'].push(val)
+    });
+
     jQ("#futures-trend-chart").insertFusionCharts({
-        type: "scrollstackedcolumn2d",
+        type: "stackedcolumn2d",
         width: '100%',
         dataFormat: "json",
         dataSource: {
@@ -874,7 +1314,8 @@ async function showFuturesTrend() {
                 showvalues: "0",
                 rotatelabels: "0",
                 "showLabels": 1,
-                "showValues": "1"
+                "showValues": "1",
+                "legendItemFontSize": "10",
             },
             axis: {
                 y: {
@@ -903,38 +1344,181 @@ async function showFuturesTrend() {
         },
         "events": {
             dataPlotClick: function (ev, props) {
+                console.log(props)
                 let symbols = []
                 let time = props['categoryLabel']
-                if (props.datasetName == "LONG") {
+                if (props.datasetName == "Long") {
                     symbols = LONGMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "SHORT") {
+                if (props.datasetName == "Short") {
                     symbols = SHORTSMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "SHOT_COVERING") {
+                if (props.datasetName == "Short Covering") {
                     symbols = SHOT_COVERINGMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "GAMBLING_BUY_NEWS_AND_EVENTS") {
+                if (props.datasetName == "Gambling! Buy News And Events") {
                     symbols = GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "LONG_UNWINDING") {
+                if (props.datasetName == "Long Unwinding") {
                     symbols = LONG_UNWINDINGMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "BEARS_COMING_SELL_ON_RISE") {
+                if (props.datasetName == "Bears Coming,Sell On Rise") {
                     symbols = BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "CAUTION_WRITES_ERODING_PREMIUM") {
+                if (props.datasetName == "Caution! Writers Eroding Premium") {
                     symbols = CAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
                 }
 
-                if (props.datasetName == "DEFENCE_BUY_ON_DECLINE") {
+                if (props.datasetName == "Defence,Buy On Decline") {
                     symbols = DEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
+                }
+
+
+                if (props.datasetName == "Bulls") {
+                    jQ.each(LONGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(SHOT_COVERINGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+                }
+
+
+                if (props.datasetName == "Bears") {
+                    jQ.each(SHORTSMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(LONG_UNWINDINGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+                }
+                showStockList(symbols)
+            }
+        }
+    });
+
+
+    jQ("#futures-trend-chart-nifty").insertFusionCharts({
+        type: "stackedcolumn2d",
+        width: '100%',
+        dataFormat: "json",
+        dataSource: {
+            chart: {
+
+                "paletteColors": "#3A6F43,#D73535,#59AC77,#628141,#FF4646,#F90716,#F39EB6,#E4F1AC",
+                "formatNumberScale": "0",
+                "adjustDiv": "1", "theme": "candy",
+                showvalues: "0",
+                rotatelabels: "0",
+                "showLabels": 1,
+                "showValues": "1",
+                "legendItemFontSize": "10",
+            },
+            axis: {
+                y: {
+                    tick: {
+                        format: function (d) {
+                            return (parseInt(d) == d) ? d : null;
+                        }
+                    }
+                }
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            dataset: [
+                NiftyLONGSeries,
+                NiftySHORTSSeries,
+                NiftySHOT_COVERINGSeries,
+                NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries,
+                NiftyLONG_UNWINDINGSeries,
+                NiftyBEARS_COMING_SELL_ON_RISESeries,
+                NiftyCAUTION_WRITES_ERODING_PREMIUMSeries,
+                NiftyDEFENCE_BUY_ON_DECLINESeries,
+                NiftyBULLSSeries,
+                NiftyBEARSSeries
+            ]
+        },
+        "events": {
+            dataPlotClick: function (ev, props) {
+                console.log(props)
+                let symbols = []
+                let time = props['categoryLabel']
+                if (props.datasetName == "Long") {
+                    symbols = NiftyLONGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Short") {
+                    symbols = NiftySHORTSMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Short Covering") {
+                    symbols = NiftySHOT_COVERINGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Gambling! Buy News And Events") {
+                    symbols = NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Long Unwinding") {
+                    symbols = NiftyLONG_UNWINDINGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Bears Coming,Sell On Rise") {
+                    symbols = NiftyBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Caution! Writers Eroding Premium") {
+                    symbols = NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Defence,Buy On Decline") {
+                    symbols = NiftyDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Bulls") {
+                    jQ.each(NiftyLONGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftySHOT_COVERINGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+                }
+
+
+                if (props.datasetName == "Bears") {
+                    jQ.each(NiftySHORTSMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftyLONG_UNWINDINGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftyBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
                 }
 
                 showStockList(symbols)
@@ -943,10 +1527,119 @@ async function showFuturesTrend() {
     });
 
 
+    jQ("#futures-trend-chart-nifty-bank").insertFusionCharts({
+        type: "stackedcolumn2d",
+        width: '100%',
+        dataFormat: "json",
+        dataSource: {
+            chart: {
+
+                "paletteColors": "#3A6F43,#D73535,#59AC77,#628141,#FF4646,#F90716,#F39EB6,#E4F1AC",
+                "formatNumberScale": "0",
+                "adjustDiv": "1", "theme": "candy",
+                showvalues: "0",
+                rotatelabels: "0",
+                "showLabels": 1,
+                "showValues": "1",
+                "legendItemFontSize": "10",
+            },
+            axis: {
+                y: {
+                    tick: {
+                        format: function (d) {
+                            return (parseInt(d) == d) ? d : null;
+                        }
+                    }
+                }
+            },
+            "categories": [{
+                "category": categoryList
+            }],
+            dataset: [
+                NiftyBankLONGSeries,
+                NiftyBankSHORTSSeries,
+                NiftyBankSHOT_COVERINGSeries,
+                NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries,
+                NiftyBankLONG_UNWINDINGSeries,
+                NiftyBankBEARS_COMING_SELL_ON_RISESeries,
+                NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries,
+                NiftyBankDEFENCE_BUY_ON_DECLINESeries,
+                NiftyBankBULLSSeries,
+                NiftyBankBEARSSeries
+            ]
+        },
+        "events": {
+            dataPlotClick: function (ev, props) {
+                console.log(props)
+                let symbols = []
+                let time = props['categoryLabel']
+                if (props.datasetName == "Long") {
+                    symbols = NiftyBankLONGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Short") {
+                    symbols = NiftyBankSHORTSMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Short Covering") {
+                    symbols = NiftyBankSHOT_COVERINGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Gambling! Buy News And Events") {
+                    symbols = NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Long Unwinding") {
+                    symbols = NiftyBankLONG_UNWINDINGMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Bears Coming,Sell On Rise") {
+                    symbols = NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Caution! Writers Eroding Premium") {
+                    symbols = NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Defence,Buy On Decline") {
+                    symbols = NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
+                }
+
+                if (props.datasetName == "Bulls") {
+                    jQ.each(NiftyBankLONGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ(NiftyBankSHOT_COVERINGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+                }
+
+                if (props.datasetName == "Bears") {
+                    jQ.each(NiftyBankSHORTSMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftyBankLONG_UNWINDINGMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+
+                    jQ.each(NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'], function (index, item) {
+                        symbols.push(item)
+                    });
+                }
+                showStockList(symbols)
+            }
+        }
+    });
 }
 
 function showStockList(list) {
-    console.log(list)
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
     let instru = [];
     let scripts = []
     let checkInstr = []
@@ -971,7 +1664,11 @@ function showStockList(list) {
         obj['TREND'] = scriptData[name]['trends'];
         obj['LTP'] = scriptData[name]['ltp'];
         obj['STRIKEDATA'] = scriptData[name]['strikeData'];
-        obj['CLOSE_9_15'] = '';
+        if (breakOutNineFifteen && breakOutNineFifteen[name]) {
+            obj['CLOSE_9_15'] = breakOutNineFifteen[name]['CLOSE_9_15'];
+        } else {
+            obj['CLOSE_9_15'] = '';
+        }
         if (list.length != 0) {
             if (jQ.inArray(name, list) != -1) {
                 scripts.push(obj)
@@ -1107,30 +1804,39 @@ jQ(document).on('click', '#nine-fifteen-scan', function (e) {
 
 async function scanNineFifteenCandle() {
     let scriptData = generateTrends()
-    let stockData = stockTable.rows().data().toArray();
-    for (let i = 0; i < stockData.length; i++) {
-        let row = stockData[i];
-        let name = row['TRADINGSYMBOL'];
-        jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + (i + 1) + "/" + stockData.length);
-        try {
-            let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
-            let firstCandleClose = historical.data.candles[0][4]
-            let asoPrice = 0;
-            let bsoPrice = 0;
-            asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']);
-            bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne']);
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+    if (!breakOutNineFifteen) {
+        breakOutNineFifteen = {}
+        let stockData = stockTable.rows().data().toArray();
+        for (let i = 0; i < stockData.length; i++) {
+            let row = stockData[i];
+            let name = row['TRADINGSYMBOL'];
+            jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + (i + 1) + "/" + stockData.length);
+            try {
+                let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
+                let firstCandleClose = historical.data.candles[0][4]
+                let asoPrice = 0;
+                let bsoPrice = 0;
+                asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']);
+                bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne']);
 
-            if (firstCandleClose > asoPrice) {
-                row['CLOSE_9_15'] = 'ASO';
-            }
+                if (firstCandleClose > asoPrice) {
+                    row['CLOSE_9_15'] = 'ASO';
+                    breakOutNineFifteen[name] = {};
+                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'ASO';
+                }
 
-            if (firstCandleClose < bsoPrice) {
-                row['CLOSE_9_15'] = 'BSO';
+                if (firstCandleClose < bsoPrice) {
+                    row['CLOSE_9_15'] = 'BSO';
+                    breakOutNineFifteen[name] = {};
+                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'BSO';
+                }
+                updateStockTable(i, row)
+            } catch (e) {
+                console.log(e)
             }
-            updateStockTable(i, row)
-        } catch (e) {
-            console.log(e)
         }
+        localStorage.setItem("VALID_BREAKOUT_NINE_FIFTEEN", JSON.stringify(breakOutNineFifteen));
     }
 }
 
@@ -1205,6 +1911,11 @@ async function showFutureDetails(name) {
         if (instName == "NIFTY 50") {
             instName = 'NIFTY'
         }
+
+        if (instName == "NIFTY BANK") {
+            instName = 'BANKNIFTY'
+        }
+
         if (item.name == instName) {
             futures = item;
         }
@@ -1844,22 +2555,9 @@ function addAdditonalDetails(rowData, id) {
     html += '<thead>'
     html += '<tr>'
     html += '<th>DATE</th>'
-    html += '<th>OPEN</th>'
-    html += '<th>HIGH</th>'
-    html += '<th>LOW</th>'
-    html += '<th>CLOSE</th>'
-    html += '<th>P.OI</th>'
-    html += '<th>OI</th>'
     html += '<th>OI TREND</th>'
-    html += '<th>VOLUME</th>'
-    html += '<th>VWAP</th>'
-    html += '<th>P.CLOSE</th>'
     html += '<th>CHANGE</th>'
-    html += '<th>P.CHANGE</th>'
-    html += '<th>CORR. VWAP</th>'
     html += '<th>VWAP SIGNAL</th>'
-    html += '<th>BUY RESULT</th>'
-    html += '<th>SELL RESULT</th>'
     html += '<th>AI</th>'
     html += '</tr>'
     html += '</thead>'
@@ -2399,6 +3097,7 @@ async function showTopChart(name, id) {
 }
 
 function generateFutresDataTable(quote, id, prevQuote, lotSize) {
+    console.log(quote, id, prevQuote, lotSize)
     lotSize = parseInt(lotSize)
     jQ('#historical-future-data-analyzer-list-table-' + id).DataTable({
         "processing": true,
@@ -2411,37 +3110,13 @@ function generateFutresDataTable(quote, id, prevQuote, lotSize) {
         "scrollY": "500px",
         "columnDefs": [
             {
-                "targets": [1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 13, 15, 16],
+                "targets": [],
                 "visible": false,
                 "searchable": false
             }
         ],
         "columns": [
             { "data": "date" },
-            { "data": 'open' },
-            { "data": 'high' },
-            { "data": 'low' },
-            { "data": 'close' },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    return (prevQuote.oi / lotSize).toFixed(0)
-                }
-            },
-            {
-                "data": 'oi',
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    if (meta.row != 0) {
-                        let prev = parseInt(quote[(meta.row - 1)]['oi'])
-                        let curr = parseInt(data);
-                        html += ' ' + (data / lotSize).toFixed(0)
-                    } else {
-                        html = ' ' + (data / lotSize).toFixed(0)
-                    }
-                    return html
-                }
-            },
             {
                 "data": '',
                 render: function (data, type, row, meta) {
@@ -2477,104 +3152,11 @@ function generateFutresDataTable(quote, id, prevQuote, lotSize) {
                     return oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
                 }
             },
-            { "data": 'volume' },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
-                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
-                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-                    var totalVolumePrice = cVolumePrice + pVolumePrice
-                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
-                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
-                    var vwap = vwapPrice ? vwapPrice : 0;
-                    return vwap
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    return prevQuote.close
-                }
-            },
             {
                 "data": '',
                 render: function (data, type, row, meta) {
                     var change = (row.close - prevQuote.close)
                     return change.toFixed(2)
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var pChange = ((row.close - prevQuote.close) / prevQuote.close) * 100
-                    return pChange.toFixed(2)
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
-                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
-                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-                    var totalVolumePrice = cVolumePrice + pVolumePrice
-                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
-                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
-                    var vwap = vwapPrice ? vwapPrice : 0;
-                    var correctedVwap = vwap;
-                    correctedVwap = correctedVwap;
-                    return correctedVwap;
-                }
-            },
-
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
-                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
-                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-                    var totalVolumePrice = cVolumePrice + pVolumePrice
-                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
-                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
-                    var vwap = vwapPrice ? vwapPrice : 0;
-                    var correctedVwap = vwap;
-                    correctedVwap = correctedVwap;
-
-                    var vvapTextOne = ''
-                    var vvapTextTwo = ''
-                    var vvapTextThree = ''
-                    var vvapTextFour = ''
-                    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
-                    var upTriangle = '<i class="bi bi-caret-up"></i>'
-                    if (correctedVwap <= row.close) {
-                        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
-                        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
-                        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
-                        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(row.close) - parseFloat(vwap)).toFixed(2) + '</span>'
-                    } else {
-                        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
-                        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
-                        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
-                        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(row.close) - parseFloat(vwap)).toFixed(2) + '</span>'
-                    }
-                    return vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var buyResult = Math.abs(row.open - row.low);
-                    return buyResult.toFixed(2);
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var sellResult = Math.abs(row.open - row.high);
-                    return sellResult.toFixed(2);
                 }
             },
             {

@@ -562,7 +562,7 @@ function generateOIChartsForPrediction(oiData, name) {
         })
 
         jQ("#oi-chart-prediction-" + item.STRIKE).insertFusionCharts({
-            type: "scrollstackedcolumn2d",
+            type: "stackedcolumn2d",
             width: "100%",
             dataFormat: "json",
             dataSource: {
@@ -620,7 +620,7 @@ function generateOIChartsForPrediction(oiData, name) {
 
 
         jQ("#obv-chart-prediction-" + item.STRIKE).insertFusionCharts({
-            type: "scrollstackedcolumn2d",
+            type: "stackedcolumn2d",
             width: "100%",
             dataFormat: "json",
             dataSource: {
