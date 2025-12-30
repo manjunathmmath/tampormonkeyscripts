@@ -58,7 +58,6 @@ function startTimer(duration, display) {
         }
 
         if (m % 5 == 0 && s == 10) {
-            updateTableLtpPrice();
             jQ("#start-advance-decline-refresh").trigger("click");
         }
     }, 1000);
