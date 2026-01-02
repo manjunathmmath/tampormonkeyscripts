@@ -1,8 +1,11 @@
+let advanceDeclineTimerInstance = null
+let globalFuturesTrend = {}
+let stockTable = null
+
 jQ(document).on("click", "#show-groot-trade-bot", function (e) {
     e.preventDefault();
     showGrootTradeBot();
 });
-
 
 async function showGrootTradeBot() {
 
@@ -83,6 +86,8 @@ async function showGrootTradeBot() {
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">'
     html += 'Nifty Futures Trend'
+    html += '<div id="futures-trend-nifty">'
+    html += '</div>'
     html += '</h6>'
     html += '<div id="futures-trend-chart-nifty">'
     html += '</div>'
@@ -91,6 +96,8 @@ async function showGrootTradeBot() {
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">'
     html += 'Bank Futures Trend'
+    html += '<div id="futures-trend-nifty-bank">'
+    html += '</div>'
     html += '</h6>'
     html += '<div id="futures-trend-chart-nifty-bank">'
     html += '</div>'
@@ -142,6 +149,7 @@ async function showGrootTradeBot() {
     html += '<tr>'
     html += '<th></th>'
     html += '<th>SYMBOL</th>'
+    html += '<th>OPEN %</th>'
     html += '<th>CH %</th>'
     html += '<th>LTP</th>'
     html += '<th>CLOSE 9:15</th>'
@@ -240,7 +248,6 @@ async function showGrootTradeBot() {
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     showStockList([])
 }
-let advanceDeclineTimerInstance = null
 
 jQ(document).on("click", "#start-advance-decline-refresh", function (e) {
     e.preventDefault();
@@ -577,8 +584,6 @@ async function showAdvacenDeclineScanner() {
     });
 }
 
-
-let globalFuturesTrend = {}
 async function showFuturesTrend() {
 
     let LONGSeries = {}
@@ -743,7 +748,7 @@ async function showFuturesTrend() {
     let categoryList = [];
     let allList = FO_LIST;
     allList.push("NIFTY 50");
-    allList.push("NIFTY BANK"); 
+    allList.push("NIFTY BANK");
     for (let i = 0; i < allList.length; i++) {
         let name = allList[i];
         jQ.each(futureInstrumentsList, function (index, item) {
@@ -1677,6 +1682,13 @@ function showStockList(list) {
         obj['PERC'] = scriptData[name]['change'];
         obj['TREND'] = scriptData[name]['trends'];
 
+        if (scriptData[name]['open_perc'] > 0) {
+            obj['OPEN_PERC'] = '<span class="badge bg-success">' + scriptData[name]['open_perc'] + '</span>'
+        } else if (scriptData[name]['open_perc'] < 0) {
+            obj['OPEN_PERC'] = '<span class="badge bg-danger">' + scriptData[name]['open_perc'] + '</span>'
+        }else{
+            obj['OPEN_PERC'] = scriptData[name]['open_perc'];
+        }
 
         let asoPrice = 0;
         let bsoPrice = 0;
@@ -1691,13 +1703,13 @@ function showStockList(list) {
         let ltp = parseFloat(scriptData[name]['ltp']);
         if (ltp >= astPrice) {
             obj['LTP'] = '<span title="AST PRICE" class="badge bg-danger">' + ltp + '</span>'
-        }else if (ltp >= asoPrice) {
+        } else if (ltp >= asoPrice) {
             obj['LTP'] = '<span title="ASO PRICE" class="badge bg-warning">' + ltp + '</span>'
-        }else if (ltp <= bstPrice) {
+        } else if (ltp <= bstPrice) {
             obj['LTP'] = '<span title="BST PRICE" class="badge bg-success">' + ltp + '</span>'
-        }else  if (ltp <= bsoPrice) {
+        } else if (ltp <= bsoPrice) {
             obj['LTP'] = '<span title="BSO PRICE" class="badge bg-warning">' + ltp + '</span>'
-        }else{
+        } else {
             obj['LTP'] = ltp
         }
 
@@ -1710,6 +1722,13 @@ function showStockList(list) {
         obj['FUTURE_TREND'] = '';
         if (globalFuturesTrend && globalFuturesTrend[name]) {
             obj['FUTURE_TREND'] = globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS'];
+
+            if(name=="NIFTY 50"){
+                jQ("#futures-trend-nifty").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
+            }
+            if(name=="NIFTY BANK"){
+                jQ("#futures-trend-nifty-bank").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
+            }
         }
         if (list.length != 0) {
             if (jQ.inArray(name, list) != -1) {
@@ -1725,7 +1744,6 @@ function showStockList(list) {
     }
 }
 
-let stockTable = null
 function generateStockTable(data) {
     stockTable = jQ('#stock-list-table').DataTable({
         fixedColumns: {
@@ -1770,6 +1788,7 @@ function generateStockTable(data) {
                     return html;
                 }
             },
+            { "data": "OPEN_PERC" },
             { "data": "PERC" },
             {
                 "data": "LTP",
@@ -1844,7 +1863,6 @@ jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e)
 
 jQ(document).on('click', '#nine-fifteen-scan', function (e) {
     scanNineFifteenCandle()
-
 });
 
 async function scanNineFifteenCandle() {
@@ -1885,11 +1903,9 @@ async function scanNineFifteenCandle() {
     }
 }
 
-
 function updateStockTable(id, row) {
     jQ('#stock-list-table').DataTable().row(id).data(row).draw(false);
 }
-
 
 jQ(document).on('click', '#stock-list-table tbody td.details-control', function (e) {
     e.preventDefault()
@@ -1975,7 +1991,7 @@ async function showFutureDetails(name) {
     let prevData = []
     jQ.each(cres.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map['date'] = moment(item[0]).format("HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -1987,7 +2003,7 @@ async function showFutureDetails(name) {
 
     jQ.each(pres.data.candles, function (index, item) {
         let map = {}
-        map['date'] = moment(item[0]).format("HH:mm:ss")
+        map['date'] = moment(item[0]).format("HH:mm")
         map.open = item[1]
         map.high = item[2]
         map.low = item[3]
@@ -2138,6 +2154,110 @@ async function showFutureDetails(name) {
 
     prevData = prevData[prevData.length - 1];
     generateFutresDataTable(data, tempName, prevData, futures['lot_size'])
+    generateFuturesOiPriceAnalysis(data, tempName, prevData, futures['lot_size'])
+
+}
+
+function generateFuturesOiPriceAnalysis(data, tempName, prevData, lotSize) {
+    var previousOI = prevData['oi'] / lotSize
+    let price = []
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.value = item.close;
+        price.push(map)
+    });
+
+    let oiChange = []
+    jQ.each(data, function (index, item) {
+        let map = {}
+        let oi = item.oi / lotSize
+        var changeinOpenInterest = (oi - previousOI).toFixed(2)
+        map.value = changeinOpenInterest;
+        oiChange.push(map)
+    });
+
+    let oi = []
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.value = item.oi / lotSize;
+        oi.push(map)
+    });
+
+    let categoryList = []
+    let dateIndex = 0
+    jQ.each(data, function (index, item) {
+        let map = {}
+        map.label = item.date;
+        map.x = dateIndex;
+        categoryList.push(map)
+        dateIndex++;
+
+    });
+
+    let chartId = 'chart-container-' + tempName + "-oi-price-analysis";
+    jQ("#" + chartId).insertFusionCharts({
+        type: "multiaxisline",
+        width: "100%",
+        dataFormat: "json",
+        dataSource: {
+            chart: {
+                "thousandSeparatorPosition": "2,3",
+                "formatNumberScale": "0",
+                caption: "OI/Price Analysis",
+                showvalues: "0",
+                labeldisplay: "ROTATE",
+                rotatelabels: "1",
+                plothighlighteffect: "fadeout",
+                theme: "fusion",
+            },
+            axis: [
+                {
+                    title: "OI Change",
+                    divlineisdashed: "1",
+                    color: "#be4125ff",
+                    dataset: [
+                        {
+                            seriesname: "OI Change",
+                            linethickness: "2",
+                            data: oiChange
+                        }
+                    ],
+                },
+                {
+                    title: "OI",
+                    divlineisdashed: "1",
+                    color: "#258ebe",
+                    dataset: [
+                        {
+                            seriesname: "OI",
+                            linethickness: "2",
+                            data: oi
+                        }
+                    ],
+                },
+                {
+                    title: "Price",
+                    axisonleft: "0",
+                    divlineisdashed: "1",
+                    color: "#b925be",
+                    dataset: [
+                        {
+                            seriesname: "Price",
+                            dashed: "1",
+                            linethickness: "2",
+                            data: price
+                        }
+                    ]
+                },
+            ],
+            categories: [
+                {
+                    category: categoryList
+                }
+            ],
+
+        }
+    });
 
 }
 
@@ -2482,25 +2602,43 @@ function addAdditonalDetails(rowData, id) {
 
     let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-");
 
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row">'
 
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-hour"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
+    html += '<div class="col-md-6">'
+    html += '<h6>Bullish Probability</h6>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Advances > Declines supporting the bullish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Price is below ASO/AST/VIXU ?'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bullish trend ?'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bullish trend ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> CE OBV  > PE OBV ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bullish trend [Buy,Buy on decline,Short convering] ? '
 
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-fifteen"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
+    html += '</div>';
 
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-five"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
+    html += '<div class="col-md-6">'
+    html += '<h6>Bearish Probability</h6>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Declines > Advances supporting the bullish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Price is above BSO/BST/VIXL'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bearish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bearish trend ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> PE OBV  > CE OBV ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bearish trend [Short,Sell on rise,Long unwanding] ? '
+    html += '</div>';
 
-    html += '</div>'
-
+    html += '</div>';
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row" >'
@@ -2515,8 +2653,8 @@ function addAdditonalDetails(rowData, id) {
     html += '</tr>'
 
     html += '<tr>'
-    html += '<th>PREDICTION</th>'
-    html += '<th id="prediction-prediction' + tempName + '">PREDICTION</th>'
+    html += '<th>OI PROBABILITY</th>'
+    html += '<th  id="prediction-prediction' + tempName + '">PROBABILITY</th>'
     html += '</tr>'
 
     html += '</thead>'
@@ -2565,28 +2703,31 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>'
 
 
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row" id="oi-obv-charts' + tempName + '">'
+    html += '<div class="row">'
+
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-hour"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
     html += '</div>'
 
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-fifteen"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-five"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row">'
-    html += '<div class="col-md-12" style="max-height:400px;height:400px;overflow:auto">'
-    html += '<table  id="script-data-' + tempName + '" class="table table-hover" style="display: none;">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th>DATE</th>'
-    html += '<th>OPEN</th>'
-    html += '<th>HIGH</th>'
-    html += '<th>LOW</th>'
-    html += '<th>CLOSE</th>'
-    html += '<th>VOLUME</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
-    html += '</table>'
+    html += '<div id="' + chartId + '-oi-price-analysis" class="col-md-12">'
+    html += '</div>';
     html += '</div>'
-    html += '</div>'
+
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row">'
@@ -2613,43 +2754,32 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>'
     html += '</div>'
 
+
+    
+
+
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row" id="oi-obv-charts' + tempName + '">'
+    html += '</div>'
+
     html += '<div class="row">'
-
-    html += '<div class="col-md-6">'
-    html += '<h6>Bullish Probability</h6>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Advances > Declines supporting the bullish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Price is below ASO/AST/VIXU ?'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bullish trend ?'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bullish trend ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> CE OBV  > PE OBV ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bullish trend [Buy,Buy on decline,Short convering] ? '
-
-    html += '</div>';
-
-    html += '<div class="col-md-6">'
-    html += '<h6>Bearish Probability</h6>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Declines > Advances supporting the bullish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Price is above BSO/BST/VIXL'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bearish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bearish trend ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> PE OBV  > CE OBV ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bearish trend [Short,Sell on rise,Long unwanding] ? '
-    html += '</div>';
-
-    html += '</div>';
+    html += '<div class="col-md-12" style="max-height:400px;height:400px;overflow:auto">'
+    html += '<table  id="script-data-' + tempName + '" class="table table-hover" style="display: none;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>DATE</th>'
+    html += '<th>OPEN</th>'
+    html += '<th>HIGH</th>'
+    html += '<th>LOW</th>'
+    html += '<th>CLOSE</th>'
+    html += '<th>VOLUME</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
 
     return html;
 }
@@ -2862,9 +2992,6 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
         }
     });
 }
-
-
-
 
 async function showTopChart(name, id) {
     let tempName = name.replaceAll(" ", "-")

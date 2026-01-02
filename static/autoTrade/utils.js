@@ -102,6 +102,8 @@ function generateTrends() {
                 res['perc'] = openDetail['perc']
                 res['change'] = parseFloat(((ltp - openDetail['prevPrice']) / openDetail['prevPrice']) * 100).toFixed(2)
 
+                res['open_perc'] = parseFloat(((openDetail['price'] - openDetail['prevPrice']) / openDetail['prevPrice']) * 100).toFixed(2)
+
                 let trend = "NA"
                 let trends = []
 

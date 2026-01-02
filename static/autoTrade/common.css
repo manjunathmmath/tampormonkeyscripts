@@ -175,7 +175,7 @@ span.bullsVersesBears {
   max-height: 25px !important;
 }
 
-.historical-future-data-analyzer img,#stock-list-table img {
+.historical-future-data-analyzer img,#stock-list-table img,#futures-trend-nifty img,#futures-trend-nifty-bank img {
   max-width: 15px !important;
   max-height: 15px !important;
 }
