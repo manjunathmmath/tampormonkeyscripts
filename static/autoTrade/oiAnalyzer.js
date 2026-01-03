@@ -30,24 +30,34 @@ async function showPrictionProbabilty(name) {
         obj['PREDICTION'] = ''
         obj['VOLUME'] = ''
         obj['STRIKE_LOWER_ONE_CE'] = ''
+        obj['STRIKE_LOWER_ONE_CE_OBV'] = ''
         obj['STRIKE_LOWER_ONE'] = ''
         obj['STRIKE_LOWER_ONE_PE'] = ''
+        obj['STRIKE_LOWER_ONE_PE_OBV'] = ''
 
         obj['STRIKE_LOWER_TWO_CE'] = ''
+        obj['STRIKE_LOWER_TWO_CE_OBV'] = ''
         obj['STRIKE_LOWER_TWO'] = ''
         obj['STRIKE_LOWER_TWO_PE'] = ''
+        obj['STRIKE_LOWER_TWO_PE_OBV'] = ''
 
         obj['STRIKE_ATM_CE'] = ''
+        obj['STRIKE_ATM_CE_OBV'] = ''
         obj['STRIKE_ATM'] = ''
         obj['STRIKE_ATM_PE'] = ''
+        obj['STRIKE_ATM_PE_OBV'] = ''
 
         obj['STRIKE_UPPER_ONE_CE'] = ''
+        obj['STRIKE_UPPER_ONE_CE_OBV'] = ''
         obj['STRIKE_UPPER_ONE'] = ''
         obj['STRIKE_UPPER_ONE_PE'] = ''
+        obj['STRIKE_UPPER_ONE_PE_OBV'] = ''
 
         obj['STRIKE_UPPER_TWO_CE'] = ''
+        obj['STRIKE_UPPER_TWO_CE_OBV'] = ''
         obj['STRIKE_UPPER_TWO'] = ''
         obj['STRIKE_UPPER_TWO_PE'] = ''
+        obj['STRIKE_UPPER_TWO_PE_OBV'] = ''
 
 
         let priceMoved = 0;
@@ -79,6 +89,7 @@ async function showPrictionProbabilty(name) {
 function generatePredictionUI(stock) {
 
     let row = stock[0]
+    console.log(row)
 
     let tempName = row['TRADINGSYMBOL'].replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -136,30 +147,30 @@ function generatePredictionUI(stock) {
 
 
     try {
-        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])) {
+        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE']) && parseFloat(row['STRIKE_ATM_PE_OBV']) > parseFloat(row['STRIKE_ATM_CE_OBV'])) {
             bear++;
         } else {
             bull++;
         }
-        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
-            bear++;
-        } else {
-            bull++;
-        }
-
-        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
+        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE']) && parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_CE_OBV'])) {
             bear++;
         } else {
             bull++;
         }
 
-        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
+        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE']) && parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_CE_OBV'])) {
             bear++;
         } else {
             bull++;
         }
 
-        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
+        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE']) && parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_CE_OBV'])) {
+            bear++;
+        } else {
+            bull++;
+        }
+
+        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE']) && parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
             bear++;
         } else {
             bull++;
@@ -187,6 +198,14 @@ function generatePredictionUI(stock) {
             className = " bg-danger-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_CE'] + '</span>'
+
+        className = ""
+        if (parseFloat(row['STRIKE_LOWER_ONE_CE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_PE_OBV'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_LOWER_ONE_CE_OBV'] + ']</span>'
+
+
     }
     jQ("#STRIKE_LOWER_ONE_CE-prediction" + tempName).html(html);
 
@@ -209,6 +228,13 @@ function generatePredictionUI(stock) {
             className = " bg-success-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_PE'] + '</span>'
+
+        className = ""
+        if (parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_CE_OBV'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_LOWER_ONE_PE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_LOWER_ONE_PE-prediction" + tempName).html(html);
 
@@ -221,6 +247,12 @@ function generatePredictionUI(stock) {
             className = " bg-danger-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_CE'] + '</span>'
+        className = ""
+        if (parseFloat(row['STRIKE_LOWER_TWO_CE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_PE_OBV'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_LOWER_TWO_CE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_LOWER_TWO_CE-prediction" + tempName).html(html);
 
@@ -245,6 +277,12 @@ function generatePredictionUI(stock) {
             className = " bg-success-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_PE'] + '</span>'
+        className = ""
+        if (parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_CE_OBV'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_LOWER_TWO_PE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_LOWER_TWO_PE-prediction" + tempName).html(html);
 
@@ -257,6 +295,12 @@ function generatePredictionUI(stock) {
             className = " bg-danger-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_CE'] + '</span>'
+        className = ""
+        if (parseFloat(row['STRIKE_ATM_CE_OBV']) > parseFloat(row['STRIKE_ATM_PE_OBV'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_ATM_CE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_ATM_CE-prediction" + tempName).html(html);
 
@@ -280,6 +324,12 @@ function generatePredictionUI(stock) {
             className = " bg-success-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_PE'] + '</span>'
+        className = ""
+        if (parseFloat(row['STRIKE_ATM_PE_OBV']) > parseFloat(row['STRIKE_ATM_CE_OBV'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_ATM_PE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_ATM_PE-prediction" + tempName).html(html);
 
@@ -292,6 +342,12 @@ function generatePredictionUI(stock) {
             className = " bg-danger-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_CE'] + '</span>'
+        className = ""
+        if (parseFloat(row['STRIKE_UPPER_ONE_CE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_PE_OBV'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_UPPER_ONE_CE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_UPPER_ONE_CE-prediction" + tempName).html(html);
 
@@ -317,6 +373,12 @@ function generatePredictionUI(stock) {
             className = " bg-success-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_PE'] + '</span>'
+
+        className = ""
+        if (parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_CE_OBV'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_UPPER_ONE_PE_OBV'] + ']</span>'
     }
     jQ("#STRIKE_UPPER_ONE_PE-prediction" + tempName).html(html);
 
@@ -328,6 +390,13 @@ function generatePredictionUI(stock) {
             className = " bg-danger-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_CE'] + '</span>'
+
+        className = ""
+        if (parseFloat(row['STRIKE_UPPER_TWO_CE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_PE_OBV'])) {
+            className = " bg-success-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_UPPER_TWO_CE_OBV'] + ']</span>'
+
     }
     jQ("#STRIKE_UPPER_TWO_CE-prediction" + tempName).html(html);
 
@@ -351,6 +420,12 @@ function generatePredictionUI(stock) {
             className = " bg-success-color"
         }
         html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE'] + '</span>'
+
+        className = ""
+        if (parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
+            className = " bg-danger-color"
+        }
+        html += '<span class="number-align ' + className + '"> [' + row['STRIKE_UPPER_TWO_PE_OBV'] + ']</span>'
     }
     jQ("#STRIKE_UPPER_TWO_PE-prediction" + tempName).html(html);
 
@@ -373,6 +448,7 @@ async function callPredictionAnalyseTrend() {
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
                 if (strikes[0]) {
                     stock[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
+                    stock[rowId]['STRIKE_LOWER_ONE_CE_OBV'] = strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv']
 
                     let oiHtml = ''
                     oiHtml += '<div>'
@@ -390,10 +466,12 @@ async function callPredictionAnalyseTrend() {
                     stock[rowId]['STRIKE_LOWER_ONE'] = strikes[0]['STRIKE'] + oiHtml
 
                     stock[rowId]['STRIKE_LOWER_ONE_PE'] = strikes[0]['CHG_OI_PE']
+                    stock[rowId]['STRIKE_LOWER_ONE_PE_OBV'] = strikes[0]['PE_OBV'][strikes[0]['PE_OBV'].length - 1]['obv']
                 }
 
                 if (strikes[1]) {
                     stock[rowId]['STRIKE_LOWER_TWO_CE'] = strikes[1]['CHG_OI_CE']
+                    stock[rowId]['STRIKE_LOWER_TWO_CE_OBV'] = strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv']
 
                     oiHtml = ''
                     oiHtml += '<div>'
@@ -411,10 +489,12 @@ async function callPredictionAnalyseTrend() {
 
                     stock[rowId]['STRIKE_LOWER_TWO'] = strikes[1]['STRIKE'] + oiHtml
                     stock[rowId]['STRIKE_LOWER_TWO_PE'] = strikes[1]['CHG_OI_PE']
+                    stock[rowId]['STRIKE_LOWER_TWO_PE_OBV'] = strikes[1]['PE_OBV'][strikes[1]['PE_OBV'].length - 1]['obv']
                 }
 
                 if (strikes[2]) {
                     stock[rowId]['STRIKE_ATM_CE'] = strikes[2]['CHG_OI_CE']
+                    stock[rowId]['STRIKE_ATM_CE_OBV'] = strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv']
 
                     oiHtml = ''
                     oiHtml += '<div>'
@@ -432,10 +512,12 @@ async function callPredictionAnalyseTrend() {
 
                     stock[rowId]['STRIKE_ATM'] = strikes[2]['STRIKE'] + oiHtml
                     stock[rowId]['STRIKE_ATM_PE'] = strikes[2]['CHG_OI_PE']
+                    stock[rowId]['STRIKE_ATM_PE_OBV'] = strikes[2]['PE_OBV'][strikes[2]['PE_OBV'].length - 1]['obv']
                 }
 
                 if (strikes[3]) {
                     stock[rowId]['STRIKE_UPPER_ONE_CE'] = strikes[3]['CHG_OI_CE']
+                    stock[rowId]['STRIKE_UPPER_ONE_CE_OBV'] = strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv']
 
                     oiHtml = ''
                     oiHtml += '<div>'
@@ -454,10 +536,12 @@ async function callPredictionAnalyseTrend() {
 
                     stock[rowId]['STRIKE_UPPER_ONE'] = strikes[3]['STRIKE'] + oiHtml
                     stock[rowId]['STRIKE_UPPER_ONE_PE'] = strikes[3]['CHG_OI_PE']
+                    stock[rowId]['STRIKE_UPPER_ONE_PE_OBV'] = strikes[3]['PE_OBV'][strikes[3]['PE_OBV'].length - 1]['obv']
                 }
 
                 if (strikes[4]) {
                     stock[rowId]['STRIKE_UPPER_TWO_CE'] = strikes[4]['CHG_OI_CE']
+                    stock[rowId]['STRIKE_UPPER_TWO_CE_OBV'] = strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv']
 
                     oiHtml = ''
                     oiHtml += '<div>'
@@ -476,6 +560,7 @@ async function callPredictionAnalyseTrend() {
 
                     stock[rowId]['STRIKE_UPPER_TWO'] = strikes[4]['STRIKE'] + oiHtml
                     stock[rowId]['STRIKE_UPPER_TWO_PE'] = strikes[4]['CHG_OI_PE']
+                    stock[rowId]['STRIKE_UPPER_TWO_PE_OBV'] = strikes[4]['PE_OBV'][strikes[4]['PE_OBV'].length - 1]['obv']
                 }
             }
 
@@ -514,8 +599,6 @@ function generateOIChartsForPrediction(oiData, name) {
     });
 
     jQ("#oi-obv-charts" + tempName).html(html);
-
-
 
     jQ.each(oiData['tableData'], function (index, item) {
         let PREV_OI_CE = item.prevDataCE
@@ -559,10 +642,25 @@ function generateOIChartsForPrediction(oiData, name) {
             val['color'] = '#37a009'
             val['value'] = parseFloat((Pitem[6] - prePEOI[6]) / 100000).toFixed(1)
             PESeries['data'].push(val)
-        })
+        });
+
+
+        let ceOiChange = []
+        jQ.each(OI_CE, function (Cindex, Citem) {
+            let map = {}
+            map.value = parseFloat((Citem[6] - preCEOI[6]) / 100000).toFixed(1);
+            ceOiChange.push(map)
+        });
+
+        let peOiChange = []
+        jQ.each(OI_PE, function (Pindex, Pitem) {
+            let map = {}
+            map.value = parseFloat((Pitem[6] - prePEOI[6]) / 100000).toFixed(1);
+            peOiChange.push(map)
+        });
 
         jQ("#oi-chart-prediction-" + item.STRIKE).insertFusionCharts({
-            type: "stackedcolumn2d",
+            type: "msspline",
             width: "100%",
             dataFormat: "json",
             dataSource: {
@@ -572,9 +670,9 @@ function generateOIChartsForPrediction(oiData, name) {
                     "adjustDiv": "0",
                     showvalues: "0",
                     labeldisplay: "ROTATE",
-                    rotatelabels: "1","theme":"candy",
+                    rotatelabels: "1",
+                    "theme": "candy",
                     "paletteColors": " #da3224, #37a009",
-                    "showLabels": 0
                 },
                 "categories": [{
                     "category": categoryList
@@ -585,8 +683,6 @@ function generateOIChartsForPrediction(oiData, name) {
                 ]
             }
         });
-
-
 
         let ObvCESeries = {}
         ObvCESeries['seriesname'] = "CE_OBV"
@@ -620,14 +716,14 @@ function generateOIChartsForPrediction(oiData, name) {
 
 
         jQ("#obv-chart-prediction-" + item.STRIKE).insertFusionCharts({
-            type: "stackedcolumn2d",
+            type: "msspline",
             width: "100%",
             dataFormat: "json",
             dataSource: {
                 chart: {
                     "thousandSeparatorPosition": "2,3",
                     "formatNumberScale": "0",
-                    "theme":"candy",
+                    "theme": "candy",
                     "adjustDiv": "0",
                     showvalues: "0",
                     labeldisplay: "ROTATE",
@@ -678,7 +774,11 @@ async function showTrendingOI(instrument) {
     let strikeData = []
     let selectedStrike = []
     let res = generateTrend(instrument)
-    let currentPrice = res['ltp']
+    let currentPrice = res['open']
+    if (USE_LTP_FOR_STRIKE) {
+        currentPrice = res['ltp']
+    }
+
     if (instrument == "NIFTY 50") {
         instrument = "NIFTY"
         strikToShow = 3
@@ -859,7 +959,7 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             }
 
             if (currDataPE.length == 0) {
-                currDataPE = currDataPE
+                currDataPE = prevDataPE
             }
 
             let OI_CE = currDataCE[currDataCE.length - 1][6]

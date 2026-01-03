@@ -29,6 +29,12 @@ async function showGrootTradeBot() {
     html += '</div>'
 
     html += '<div class="col-md-1">'
+    html += '<button id="show-oi-viewer" class="btn btn-secondary btn-sm" type="submit">';
+    html += 'Analyzer'
+    html += '</button>'
+    html += '</div>'
+
+    html += '<div class="col-md-1">'
     html += '<a  id="start-auto-refresh">Refresh</a>'
     html += '</div>'
     html += '<div class="col-md-1 pop-title-extra">'
@@ -152,6 +158,7 @@ async function showGrootTradeBot() {
     html += '<th>OPEN %</th>'
     html += '<th>CH %</th>'
     html += '<th>LTP</th>'
+    html += '<th>VOLUME</th>'
     html += '<th>CLOSE 9:15</th>'
     html += '<th>TREND</th>'
     html += '<th>FUTURE_TREND</th>'
@@ -268,6 +275,7 @@ async function commonRefreshAdvanceDecline(that) {
     that.removeAttr("disabled");
 }
 
+let scriptsVolumeMap = {}
 async function showAdvacenDeclineScanner() {
     let scriptData = generateTrends()
 
@@ -315,6 +323,7 @@ async function showAdvacenDeclineScanner() {
         let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
 
         let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
+        let volume= 0;
         jQ.each(data.data.candles, function (index, item) {
             let time = moment(item[0]).format("HH:mm");
             if (i == 0) {
@@ -346,8 +355,12 @@ async function showAdvacenDeclineScanner() {
                 declineMapBank[time]['SYMBOL'] = []
                 declineMapBank[time]['COUNT'] = 0
             }
+            
+            volume += item[5];
 
         });
+
+        scriptsVolumeMap[FO_LIST[i]] = volume;
 
 
         jQ.each(data.data.candles, function (index, item) {
@@ -1657,6 +1670,7 @@ async function showFuturesTrend() {
 }
 
 function showStockList(list) {
+    console.log(scriptsVolumeMap)
     console.log(globalFuturesTrend)
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
     let instru = [];
@@ -1681,6 +1695,11 @@ function showStockList(list) {
         obj['PRICE'] = scriptData[name]['price'];
         obj['PERC'] = scriptData[name]['change'];
         obj['TREND'] = scriptData[name]['trends'];
+
+        obj['VOLUME'] = 0
+        if(scriptsVolumeMap[name]){
+            obj['VOLUME'] = scriptsVolumeMap[name];
+        }
 
         if (scriptData[name]['open_perc'] > 0) {
             obj['OPEN_PERC'] = '<span class="badge bg-success">' + scriptData[name]['open_perc'] + '</span>'
@@ -1796,6 +1815,7 @@ function generateStockTable(data) {
                     return data
                 }
             },
+            { "data": "VOLUME" },
             { "data": "CLOSE_9_15" },
             { "data": "TREND" },
             { "data": "FUTURE_TREND" },
@@ -2214,7 +2234,7 @@ function generateFuturesOiPriceAnalysis(data, tempName, prevData, lotSize) {
                 {
                     title: "OI Change",
                     divlineisdashed: "1",
-                    color: "#be4125ff",
+                    color: "#D73535",
                     dataset: [
                         {
                             seriesname: "OI Change",

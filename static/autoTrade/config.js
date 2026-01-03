@@ -40,6 +40,10 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: false
         },
+         use_ltp_for_strike: {
+            type: 'checkbox',
+            default: true
+        },
     }
 });
 
@@ -56,3 +60,4 @@ const REFRESH_TIME = g_config.get('refresh_time');
 const NIFTY_EXPIRY_DATE = g_config.get("nifty_expiry_date")
 const ENABLE_SOUND = g_config.get('enable_sound');
 const SENSEX_EXPIRY_DATE = g_config.get('sensex_expiry_date');
+const USE_LTP_FOR_STRIKE = g_config.get('use_ltp_for_strike');

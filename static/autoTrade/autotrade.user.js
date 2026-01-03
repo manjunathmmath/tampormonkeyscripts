@@ -65,6 +65,7 @@
 // @require      http://localhost:3000/autoTrade/utils.js
 // @require      http://localhost:3000/autoTrade/script.js
 // @require      http://localhost:3000/autoTrade/oiAnalyzer.js
+// @require      http://localhost:3000/autoTrade/oiViewer.js
 // @require      http://localhost:3000/autoTrade/grootTradeBot.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js
