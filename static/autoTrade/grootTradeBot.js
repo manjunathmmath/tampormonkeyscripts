@@ -4,6 +4,10 @@ let stockTable = null
 
 jQ(document).on("click", "#show-groot-trade-bot", function (e) {
     e.preventDefault();
+    if (advanceDeclineTimerInstance) {
+        clearInterval(advanceDeclineTimerInstance);
+        advanceDeclineTimerInstance = null;
+    }
     showGrootTradeBot();
 });
 
@@ -35,6 +39,12 @@ async function showGrootTradeBot() {
     html += '</div>'
 
     html += '<div class="col-md-1">'
+    html += '<a target="_blank" href="https://docs.google.com/spreadsheets/d/1mJyXOLNqSqIuDIiB1ip9-0kpNGU0pl_o/edit?gid=20807039#gid=20807039"  type="button">Past Analysis</a>'
+    html += '</div>'
+
+
+
+    html += '<div class="col-md-1">'
     html += '<a  id="start-auto-refresh">Refresh</a>'
     html += '</div>'
     html += '<div class="col-md-1 pop-title-extra">'
@@ -44,8 +54,43 @@ async function showGrootTradeBot() {
     html += '<span id="last-refresh-time">Last @ 00:00:00</span>'
     html += '</div>'
 
+    html += '<div class="col-md-1">'
+    html += '<a  id="start-advance-decline-refresh" class="btn btn-secondary btn-sm btn-postion"><i class="bi bi-arrow-counterclockwise"></i></a>'
+    html += '</div>'
+
 
     html += '</div>'
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
+    html += '<div class="row">'
+
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Gift Nifty <span id="nine-fifteen-nifty-gift-trend"></span></h6>'
+    html += '<div id="gift-nifty-top-chart">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Nifty 50<span id="nine-fifteen-nifty-trend"></span></h6>'
+    html += '<div id="nifty-to-chart">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Bank Nifty <span id="nine-fifteen-nifty-bank-trend"></span></h6>'
+    html += '<div id="bank-nifty-top-chart">'
+    html += '</div>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '<h6 class="header-class-center">Sensex<span id="nine-fifteen-sensex-trend"></span></h6>'
+    html += '<div id="sensex-top-chart">'
+    html += '</div>'
+    html += '</div>'
+
+
 
     html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
     html += '<div class="row">'
@@ -53,24 +98,23 @@ async function showGrootTradeBot() {
     html += '<div class="col-md-12">'
     html += '<h6 class="header-class-center">'
     html += 'Advance [ASO]/Decline [BSO]'
-    html += '<a  id="start-advance-decline-refresh" class="btn btn-secondary btn-sm btn-postion"><i class="bi bi-arrow-counterclockwise"></i></a>'
     html += '</h6>'
     html += '</div>'
 
     html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">All</h6>'
+    html += '<h6 class="header-class-center">All <span class="badge bg-info" id="all-advance-decline-adr"></span></h6>'
     html += '<div id="advance-decline-chart">'
     html += '</div>'
     html += '</div>'
 
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Nifty</h6>'
+    html += '<h6 class="header-class-center">Nifty<span class="badge bg-info" id="nifty-advance-decline-adr"></span></h6>'
     html += '<div id="advance-decline-nifty-chart">'
     html += '</div>'
     html += '</div>'
 
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Bank</h6>'
+    html += '<h6 class="header-class-center">Bank<span class="badge bg-info" id="bank-advance-decline-adr"></span></h6>'
     html += '<div id="advance-decline-bank-chart">'
     html += '</div>'
     html += '</div>'
@@ -83,7 +127,7 @@ async function showGrootTradeBot() {
 
     html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">'
-    html += 'Futures Trend'
+    html += 'Futures Trend <span class="badge bg-info" id="future-advance-decline-adr"></span>'
     html += '</h6>'
     html += '<div id="futures-trend-chart">'
     html += '</div>'
@@ -91,7 +135,7 @@ async function showGrootTradeBot() {
 
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">'
-    html += 'Nifty Futures Trend'
+    html += 'Nifty Futures Trend <span class="badge bg-info" id="future-nifty-advance-decline-adr"></span>'
     html += '<div id="futures-trend-nifty">'
     html += '</div>'
     html += '</h6>'
@@ -101,7 +145,7 @@ async function showGrootTradeBot() {
 
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
     html += '<h6 class="header-class-center">'
-    html += 'Bank Futures Trend'
+    html += 'Bank Futures Trend <span class="badge bg-info" id="future-bank-advance-decline-adr"></span>'
     html += '<div id="futures-trend-nifty-bank">'
     html += '</div>'
     html += '</h6>'
@@ -113,33 +157,6 @@ async function showGrootTradeBot() {
 
 
 
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-    html += '<div class="row">'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Gift Nifty</h6>'
-    html += '<div id="gift-nifty-top-chart">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Nifty 50</h6>'
-    html += '<div id="nifty-to-chart">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Bank Nifty</h6>'
-    html += '<div id="bank-nifty-top-chart">'
-    html += '</div>'
-    html += '</div>'
-
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Sensex</h6>'
-    html += '<div id="sensex-top-chart">'
-    html += '</div>'
-    html += '</div>'
 
 
 
@@ -155,6 +172,7 @@ async function showGrootTradeBot() {
     html += '<tr>'
     html += '<th></th>'
     html += '<th>SYMBOL</th>'
+    html += '<th>OPEN</th>'
     html += '<th>OPEN %</th>'
     html += '<th>CH %</th>'
     html += '<th>LTP</th>'
@@ -265,12 +283,12 @@ jQ(document).on("click", "#start-advance-decline-refresh", function (e) {
 
 async function commonRefreshAdvanceDecline(that) {
     clearInterval(advanceDeclineTimerInstance)
-    await showAdvacenDeclineScanner(that);
-    await showFuturesTrend();
     await showTopChart("GIFT NIFTY", "gift-nifty-top-chart");
     await showTopChart("NIFTY 50", "nifty-to-chart")
     await showTopChart("NIFTY BANK", "bank-nifty-top-chart");
     await showTopChart("SENSEX", "sensex-top-chart");
+    await showAdvacenDeclineScanner(that);
+    await showFuturesTrend();
     showStockList([]);
     that.removeAttr("disabled");
 }
@@ -316,6 +334,16 @@ async function showAdvacenDeclineScanner() {
     let advanceMapBank = {};
     let declineMapBank = {};
 
+    let allAdvances = 0;
+    let allDeclines = 0;
+    let all = 0;
+    let allNiftyAdvances = 0;
+    let allNiftyDeclines = 0;
+    let allNifty = 0;
+    let allBankAdvances = 0;
+    let allBankDeclines = 0;
+    let allBank = 0;
+
     for (let i = 0; i < FO_LIST.length; i++) {
         let strikes = scriptData[FO_LIST[i]]['strikeData']
 
@@ -323,7 +351,7 @@ async function showAdvacenDeclineScanner() {
         let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
 
         let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
-        let volume= 0;
+        let volume = 0;
         jQ.each(data.data.candles, function (index, item) {
             let time = moment(item[0]).format("HH:mm");
             if (i == 0) {
@@ -349,14 +377,17 @@ async function showAdvacenDeclineScanner() {
 
                 advanceMapBank[time] = {}
                 advanceMapBank[time]['SYMBOL'] = []
-                advanceMapBank[time]['COUNT'] = 0
+                advanceMapBank[time]['COUNT'] =
 
-                declineMapBank[time] = {}
+                    declineMapBank[time] = {}
                 declineMapBank[time]['SYMBOL'] = []
                 declineMapBank[time]['COUNT'] = 0
             }
-            
+
             volume += item[5];
+            all = all + FO_LIST.length;
+            allNifty = allNifty + NIFTY_50_LIST.length;
+            allBank = allBank + NIFTY_BANK_LIST.length;
 
         });
 
@@ -369,38 +400,41 @@ async function showAdvacenDeclineScanner() {
                 if (item[4] > asoPrice) {
                     advanceMap[time]['SYMBOL'].push(FO_LIST[i])
                     advanceMap[time]['COUNT'] = advanceMap[time]['COUNT'] + 1
+                    allAdvances++;
 
                     if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
                         advanceMapNifty[time]['SYMBOL'].push(FO_LIST[i])
                         advanceMapNifty[time]['COUNT'] = advanceMapNifty[time]['COUNT'] + 1
+                        allNiftyAdvances++;
                     }
 
                     if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
                         advanceMapBank[time]['SYMBOL'].push(FO_LIST[i])
                         advanceMapBank[time]['COUNT'] = advanceMapBank[time]['COUNT'] + 1
+                        allBankAdvances++;
                     }
                 }
-
-
             }
 
             if (declineMap[time]) {
                 if (item[4] < bsoPrice) {
                     declineMap[time]['SYMBOL'].push(FO_LIST[i])
                     declineMap[time]['COUNT'] = declineMap[time]['COUNT'] + 1
+                    allDeclines++;
 
                     if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
                         declineMapNifty[time]['SYMBOL'].push(FO_LIST[i])
                         declineMapNifty[time]['COUNT'] = declineMapNifty[time]['COUNT'] + 1
+                        allNiftyDeclines++
                     }
 
                     if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
                         declineMapBank[time]['SYMBOL'].push(FO_LIST[i])
                         declineMapBank[time]['COUNT'] = declineMapBank[time]['COUNT'] + 1
+                        allBankDeclines++
                     }
                 }
             }
-
         });
     };
 
@@ -417,8 +451,6 @@ async function showAdvacenDeclineScanner() {
         val['value'] = ditem['COUNT']
         declineSeries['data'].push(val);
     });
-
-
 
     jQ.each(advanceMapNifty, function (aindex, aitem) {
         let val = {}
@@ -448,6 +480,7 @@ async function showAdvacenDeclineScanner() {
         declineSeriesBank['data'].push(val);
     });
 
+    jQ("#all-advance-decline-adr").html("ADR: " + ((allAdvances / allDeclines).toFixed(2)) + " | A: " + allAdvances + " | D: " + allDeclines);
     jQ("#advance-decline-chart").insertFusionCharts({
         type: "stackedcolumn2d",
         width: "100%",
@@ -497,6 +530,7 @@ async function showAdvacenDeclineScanner() {
     });
 
 
+    jQ("#nifty-advance-decline-adr").html("ADR: " + ((allNiftyAdvances / allNiftyDeclines).toFixed(2)) + " | A: " + allNiftyAdvances + " | D: " + allNiftyDeclines);
     jQ("#advance-decline-nifty-chart").insertFusionCharts({
         type: "stackedcolumn2d",
         width: "100%",
@@ -547,6 +581,7 @@ async function showAdvacenDeclineScanner() {
     });
 
 
+    jQ("#bank-advance-decline-adr").html("ADR: " + ((allBankAdvances / allBankDeclines).toFixed(2)) + " | A: " + allBankAdvances + " | D: " + allBankDeclines);
     jQ("#advance-decline-bank-chart").insertFusionCharts({
         type: "stackedcolumn2d",
         width: "100%",
@@ -762,6 +797,17 @@ async function showFuturesTrend() {
     let allList = FO_LIST;
     allList.push("NIFTY 50");
     allList.push("NIFTY BANK");
+
+    let allFuturesAdvances = {};
+    let allFuturesDeclines = {};
+
+    let allNiftyFuturesAdvances = {};
+    let allNiftyFuturesDeclines = {};
+
+    let allNiftyBankFuturesAdvances = {};
+    let allNiftyBankFuturesDeclines = {};
+
+
     for (let i = 0; i < allList.length; i++) {
         let name = allList[i];
         jQ.each(futureInstrumentsList, function (index, item) {
@@ -1085,18 +1131,22 @@ async function showFuturesTrend() {
                     }
                 }
 
-
                 if (BULLSMap[time]) {
-                    BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
-                    NiftyBULLSMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + NiftySHOT_COVERINGMap[time]['COUNT'] + NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
-                    NiftyBankBULLSMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + NiftyBankSHOT_COVERINGMap[time]['COUNT'] + NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
+                    BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
+                    NiftyBULLSMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + NiftySHOT_COVERINGMap[time]['COUNT'] + NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
+                    NiftyBankBULLSMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + NiftyBankSHOT_COVERINGMap[time]['COUNT'] + NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
+                    allFuturesAdvances[time] = BULLSMap[time]['COUNT']
+                    allNiftyFuturesAdvances[time] = NiftyBULLSMap[time]['COUNT']
+                    allNiftyBankFuturesAdvances[time] = NiftyBankBULLSMap[time]['COUNT']
                 }
 
                 if (BEARSMap[time]) {
-                    BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
-                    NiftyBEARSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + NiftyLONG_UNWINDINGMap[time]['COUNT'] + NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
-                    NiftyBankBEARSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
-
+                    BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + DEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
+                    NiftyBEARSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + NiftyLONG_UNWINDINGMap[time]['COUNT'] + NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + NiftyDEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
+                    NiftyBankBEARSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
+                    allFuturesDeclines[time] = BEARSMap[time]['COUNT']
+                    allNiftyFuturesDeclines[time] = NiftyBEARSMap[time]['COUNT']
+                    allNiftyBankFuturesDeclines[time] = NiftyBankBEARSMap[time]['COUNT'] 
                 }
             });
         } catch (e) {
@@ -1331,6 +1381,12 @@ async function showFuturesTrend() {
         val['value'] = aitem['COUNT']
         NiftyBankBEARSSeries['data'].push(val)
     });
+
+    jQ("#bank-advance-decline-adr").html("ADR: " + ((allBankAdvances / allBankDeclines).toFixed(2)) + " | A: " + allBankAdvances + " | D: " + allBankDeclines);
+
+    jQ("#future-advance-decline-adr").html("ADR: " + ((allFuturesAdvances / allFuturesDeclines).toFixed(2)) + " | A: " + allFuturesAdvances + " | D: " + allFuturesDeclines);
+
+    jQ("#future-nifty-advance-decline-adr").html("ADR: " + ((allNiftyFuturesAdvances / allNiftyFuturesDeclines).toFixed(2)) + " | A: " + allNiftyFuturesAdvances + " | D: " + allNiftyFuturesDeclines);
 
     jQ("#futures-trend-chart").insertFusionCharts({
         type: "stackedcolumn2d",
@@ -1697,7 +1753,7 @@ function showStockList(list) {
         obj['TREND'] = scriptData[name]['trends'];
 
         obj['VOLUME'] = 0
-        if(scriptsVolumeMap[name]){
+        if (scriptsVolumeMap[name]) {
             obj['VOLUME'] = scriptsVolumeMap[name];
         }
 
@@ -1705,7 +1761,7 @@ function showStockList(list) {
             obj['OPEN_PERC'] = '<span class="badge bg-success">' + scriptData[name]['open_perc'] + '</span>'
         } else if (scriptData[name]['open_perc'] < 0) {
             obj['OPEN_PERC'] = '<span class="badge bg-danger">' + scriptData[name]['open_perc'] + '</span>'
-        }else{
+        } else {
             obj['OPEN_PERC'] = scriptData[name]['open_perc'];
         }
 
@@ -1742,10 +1798,10 @@ function showStockList(list) {
         if (globalFuturesTrend && globalFuturesTrend[name]) {
             obj['FUTURE_TREND'] = globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS'];
 
-            if(name=="NIFTY 50"){
+            if (name == "NIFTY 50") {
                 jQ("#futures-trend-nifty").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
             }
-            if(name=="NIFTY BANK"){
+            if (name == "NIFTY BANK") {
                 jQ("#futures-trend-nifty-bank").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
             }
         }
@@ -1804,9 +1860,17 @@ function generateStockTable(data) {
                     html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
                     html += data;
                     html += '</a>'
+
+                    html += '<span class="badge bg-info">'
+                    html += '<a title="Sensibull Strategy Builder" target="_blank" href="https://web.sensibull.com/option-strategy-builder?instrument_symbol=' + data + '"> '
+                    html += 'SB';
+                    html += '</a>'
+                    html += '</span> '
+
                     return html;
                 }
             },
+            { "data": "PRICE" },
             { "data": "OPEN_PERC" },
             { "data": "PERC" },
             {
@@ -2157,7 +2221,8 @@ async function showFutureDetails(name) {
                 rotatelabels: "1",
                 "pYAxisMinValue": min,
                 "pYAxisMaxValue": max,
-                "showLabels": 1
+                "showLabels": 1,
+                showVolumeChart: true,
             },
             "categories": [{
                 "category": categoryList
@@ -2176,6 +2241,13 @@ async function showFutureDetails(name) {
     generateFutresDataTable(data, tempName, prevData, futures['lot_size'])
     generateFuturesOiPriceAnalysis(data, tempName, prevData, futures['lot_size'])
 
+    let resp = {}
+    if (tempName == "BANKNIFTY") {
+        resp = showTableAiBankNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
+    } else {
+        resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
+    }
+    jQ("#future-trend-probability" + tempName).html(resp['PLUS'] + ' ' + resp['MINUS']);
 }
 
 function generateFuturesOiPriceAnalysis(data, tempName, prevData, lotSize) {
@@ -2229,6 +2301,7 @@ function generateFuturesOiPriceAnalysis(data, tempName, prevData, lotSize) {
                 rotatelabels: "1",
                 plothighlighteffect: "fadeout",
                 theme: "fusion",
+                showVolumeChart: true,
             },
             axis: [
                 {
@@ -2414,6 +2487,7 @@ async function show15MinutesChart(name, rowId) {
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
+                showVolumeChart: true,
 
                 "showLabels": 1
             },
@@ -2563,6 +2637,7 @@ async function showHourChart(name, rowId) {
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
+                showVolumeChart: true,
 
                 "showLabels": 1
             },
@@ -2622,43 +2697,7 @@ function addAdditonalDetails(rowData, id) {
 
     let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-");
 
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
 
-    html += '<div class="col-md-6">'
-    html += '<h6>Bullish Probability</h6>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Advances > Declines supporting the bullish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Price is below ASO/AST/VIXU ?'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bullish trend ?'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bullish trend ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> CE OBV  > PE OBV ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bullish trend [Buy,Buy on decline,Short convering] ? '
-
-    html += '</div>';
-
-    html += '<div class="col-md-6">'
-    html += '<h6>Bearish Probability</h6>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Declines > Advances supporting the bullish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Price is above BSO/BST/VIXL'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bearish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bearish trend ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> PE OBV  > CE OBV ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bearish trend [Short,Sell on rise,Long unwanding] ? '
-    html += '</div>';
-
-    html += '</div>';
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row" >'
@@ -2677,12 +2716,38 @@ function addAdditonalDetails(rowData, id) {
     html += '<th  id="prediction-prediction' + tempName + '">PROBABILITY</th>'
     html += '</tr>'
 
+    html += '<tr>'
+    html += '<th>FUTURE PROBABILITY</th>'
+    html += '<th  id="future-trend-probability' + tempName + '">FUTURE TREND</th>'
+    html += '</tr>'
+
     html += '</thead>'
     html += '<tbody>'
     html += '</tbody>'
     html += '</table>'
 
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row">'
 
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-hour"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-fifteen"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-4">'
+    html += '<div id="' + chartId + '-five"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
+    html += '</div>'
+    html += '</div>'
+
+    html += '</div>'
+
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<table  class="table display nowrap"  style="width: 100%;">'
     html += '<thead>'
     html += '<tr>'
@@ -2722,25 +2787,10 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>'
     html += '</div>'
 
-
-    html += '<div class="row">'
-
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-hour"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row" id="oi-obv-charts' + tempName + '">'
     html += '</div>'
 
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-fifteen"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-five"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '</div>'
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row">'
@@ -2774,13 +2824,7 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>'
     html += '</div>'
 
-
-    
-
-
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row" id="oi-obv-charts' + tempName + '">'
-    html += '</div>'
 
     html += '<div class="row">'
     html += '<div class="col-md-12" style="max-height:400px;height:400px;overflow:auto">'
@@ -2800,6 +2844,44 @@ function addAdditonalDetails(rowData, id) {
     html += '</table>'
     html += '</div>'
     html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div class="row">'
+
+    html += '<div class="col-md-6">'
+    html += '<h6>Bullish Probability</h6>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Advances > Declines supporting the bullish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Price is below ASO/AST/VIXU ?'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bullish trend ?'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bullish trend ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> CE OBV  > PE OBV ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bullish trend [Buy,Buy on decline,Short convering] ? '
+
+    html += '</div>';
+
+    html += '<div class="col-md-6">'
+    html += '<h6>Bearish Probability</h6>'
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> Declines > Advances supporting the bullish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Price is above BSO/BST/VIXL'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bearish trend'
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bearish trend ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> PE OBV  > CE OBV ? '
+    html += '<br/>'
+    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bearish trend [Short,Sell on rise,Long unwanding] ? '
+    html += '</div>';
+
+    html += '</div>';
 
     return html;
 }
@@ -2996,6 +3078,7 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
+                showVolumeChart: true,
 
                 "showLabels": 1
             },
@@ -3016,6 +3099,41 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
 async function showTopChart(name, id) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+
+
+    if (name == "GIFT NIFTY") {
+        if (breakOutNineFifteen['GIFT NIFTY'] == undefined) {
+            breakOutNineFifteen['GIFT NIFTY'] = {};
+            breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] = "B/W"
+        }
+        jQ("#nine-fifteen-nifty-gift-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] + '</span>');
+    }
+
+    if (name == "NIFTY 50") {
+        if (breakOutNineFifteen['NIFTY 50'] == undefined) {
+            breakOutNineFifteen['NIFTY 50'] = {};
+            breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] = "B/W"
+        }
+        jQ("#nine-fifteen-nifty-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] + '</span>');
+    }
+
+    if (name == "NIFTY BANK") {
+        if (breakOutNineFifteen['NIFTY BANK'] == undefined) {
+            breakOutNineFifteen['NIFTY BANK'] = {};
+            breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] = "B/W"
+        }
+        jQ("#nine-fifteen-nifty-bank-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] + '</span>');
+    }
+
+    if (name == "SENSEX") {
+        if (breakOutNineFifteen['SENSEX'] == undefined) {
+            breakOutNineFifteen['SENSEX'] = {};
+            breakOutNineFifteen['SENSEX']['CLOSE_9_15'] = "B/W"
+        }
+        jQ("#nine-fifteen-sensex-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['SENSEX']['CLOSE_9_15'] + '</span>');
+    }
+
     let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
     await savePreviousStockQuote(tempName, instrumentTokens[name])
     let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
@@ -3233,7 +3351,8 @@ async function showTopChart(name, id) {
                 showvalues: "0",
                 labeldisplay: "ROTATE",
                 rotatelabels: "1",
-                "showLabels": 1
+                "showLabels": 1,
+                showVolumeChart: true,
             },
             "categories": [{
                 "category": categoryList

@@ -473,6 +473,11 @@ function showPopUpWindow(index, html, title, width, height) {
             jQ('#future-list-table').DataTable().columns.adjust().draw();
         }
     });
+
+    if(advanceDeclineTimerInstance){
+        clearInterval(advanceDeclineTimerInstance);
+        advanceDeclineTimerInstance = null;
+    }
 };
 
 

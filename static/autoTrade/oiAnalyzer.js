@@ -147,33 +147,49 @@ function generatePredictionUI(stock) {
 
 
     try {
-        if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE']) && parseFloat(row['STRIKE_ATM_PE_OBV']) > parseFloat(row['STRIKE_ATM_CE_OBV'])) {
-            bear++;
-        } else {
-            bull++;
-        }
-        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE']) && parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_CE_OBV'])) {
-            bear++;
-        } else {
-            bull++;
+        if (parseFloat(row['STRIKE_ATM_CE']) > 0 && parseFloat(row['STRIKE_ATM_PE']) > 0) {
+            if (parseFloat(row['STRIKE_ATM_CE']) > parseFloat(row['STRIKE_ATM_PE'])
+                && parseFloat(row['STRIKE_ATM_PE_OBV']) > parseFloat(row['STRIKE_ATM_CE_OBV'])) {
+                bear++;
+            } else {
+                bull++;
+            }
         }
 
-        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE']) && parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_CE_OBV'])) {
-            bear++;
-        } else {
-            bull++;
+        if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > 0 && parseFloat(row['STRIKE_LOWER_ONE_PE']) > 0) {
+            if (parseFloat(row['STRIKE_LOWER_ONE_CE']) > parseFloat(row['STRIKE_LOWER_ONE_PE'])
+                && parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_CE_OBV'])) {
+                bear++;
+            } else {
+                bull++;
+            }
         }
 
-        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE']) && parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_CE_OBV'])) {
-            bear++;
-        } else {
-            bull++;
+        if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > 0 && parseFloat(row['STRIKE_LOWER_TWO_PE']) > 0) {
+            if (parseFloat(row['STRIKE_LOWER_TWO_CE']) > parseFloat(row['STRIKE_LOWER_TWO_PE'])
+                && parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_CE_OBV'])) {
+                bear++;
+            } else {
+                bull++;
+            }
         }
 
-        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE']) && parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
-            bear++;
-        } else {
-            bull++;
+        if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > 0 && parseFloat(row['STRIKE_UPPER_ONE_PE']) > 0) {
+            if (parseFloat(row['STRIKE_UPPER_ONE_CE']) > parseFloat(row['STRIKE_UPPER_ONE_PE'])
+                && parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_CE_OBV'])) {
+                bear++;
+            } else {
+                bull++;
+            }
+        }
+
+        if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > 0 && parseFloat(row['STRIKE_UPPER_TWO_PE']) > 0) {
+            if (parseFloat(row['STRIKE_UPPER_TWO_CE']) > parseFloat(row['STRIKE_UPPER_TWO_PE'])
+                && parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
+                bear++;
+            } else {
+                bull++;
+            }
         }
     } catch (err) {
         console.log("Error while analysing strikes")
@@ -182,9 +198,13 @@ function generatePredictionUI(stock) {
 
     if (bull > bear) {
         html += '<span class="badge bg-success">Bullish</span>'
+    } else if (bull == bear) {
+        html += '<span class="badge bg-warning">Neutral</span>'
     } else {
         html += '<span class="badge bg-danger">Bearish</span>'
     }
+
+    html += ' <span class="badge bg-info">(BULL[' + bull + '] : BEAR[' + bear + '])</span>'
 
     jQ("#prediction-prediction" + tempName).html(html);
 
@@ -574,6 +594,7 @@ async function callPredictionAnalyseTrend() {
 }
 
 function generateOIChartsForPrediction(oiData, name) {
+    let scriptData = generateTrend(name)
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
@@ -584,6 +605,7 @@ function generateOIChartsForPrediction(oiData, name) {
         html += '<div class="row">'
         html += '<div class="col-md-12">'
         html += '<h5 style="text-align:center;">' + item.STRIKE + '</h5>'
+        html += '<span style="font-size:small;width:100%;text-align:center;display:block;">['+name+' - Open: ' + scriptData['open'] + ' : Ltp:'+scriptData['ltp']+']</span>'
         html += '</div>'
         html += '</div>'
 
@@ -629,7 +651,7 @@ function generateOIChartsForPrediction(oiData, name) {
         let categoryList = [];
         jQ.each(OI_CE, function (Cindex, Citem) {
             let map = {}
-            map.label = moment(Citem[0]).format("HH:mm");
+            map.label = moment(Citem[0]).format("DD HH:mm");
             categoryList.push(map)
             let val = {}
             val['color'] = '#da3224'
@@ -696,7 +718,7 @@ function generateOIChartsForPrediction(oiData, name) {
         let CE_OBV = item['CE_OBV']
         jQ.each(CE_OBV, function (Cindex, Citem) {
             let map = {}
-            map.label = moment(Citem['date']).format("HH:mm");
+            map.label = moment(Citem['date']).format("DD HH:mm");
             ObvcategoryList.push(map)
             let val = {}
             val['color'] = '#37a009 '
@@ -748,7 +770,7 @@ function generateOIChartsForPrediction(oiData, name) {
 function calculateOBVFiveMinutesInterval(prevData, currData) {
     let OBV = 0;
     let prevLastCandle = prevData[prevData.length - 1]
-    OBV = prevLastCandle[5]
+    OBV = 0
     let obvList = []
     jQ.each(currData, function (index, item) {
         if (item[4] > prevLastCandle[4]) {
@@ -761,7 +783,7 @@ function calculateOBVFiveMinutesInterval(prevData, currData) {
         prevLastCandle = item
         let obj = {};
         obj['date'] = item[0];
-        obj['obv'] = OBV
+        obj['obv'] = parseFloat(OBV / 100000).toFixed(1);
         obvList.push(obj)
     })
     return obvList;
@@ -915,10 +937,10 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
                 }
 
                 let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
                 let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
 
 

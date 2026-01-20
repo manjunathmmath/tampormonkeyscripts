@@ -1139,10 +1139,10 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
                 }
 
                 let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
                 let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
 
 
@@ -1240,7 +1240,7 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
 function calculateOBVFiveMinutesIntervalOiViewer(prevData, currData) {
     let OBV = 0;
     let prevLastCandle = prevData[prevData.length - 1]
-    OBV = prevLastCandle[5]
+    OBV = 0
     let obvList = []
     jQ.each(currData, function (index, item) {
         if (item[4] > prevLastCandle[4]) {
@@ -1253,7 +1253,7 @@ function calculateOBVFiveMinutesIntervalOiViewer(prevData, currData) {
         prevLastCandle = item
         let obj = {};
         obj['date'] = item[0];
-        obj['obv'] = OBV
+        obj['obv'] = parseFloat(OBV/100000).toFixed(1);
         obvList.push(obj)
     })
     return obvList;
