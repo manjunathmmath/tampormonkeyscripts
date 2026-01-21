@@ -798,14 +798,13 @@ async function showFuturesTrend() {
     allList.push("NIFTY 50");
     allList.push("NIFTY BANK");
 
-    let allFuturesAdvances = {};
-    let allFuturesDeclines = {};
+    let allFuturesAdvances = 0;
+    let allFuturesDeclines = 0;
 
-    let allNiftyFuturesAdvances = {};
-    let allNiftyFuturesDeclines = {};
-
-    let allNiftyBankFuturesAdvances = {};
-    let allNiftyBankFuturesDeclines = {};
+    let allNiftyFuturesAdvances = 0;
+    let allNiftyFuturesDeclines = 0;
+    let allNiftyBankFuturesAdvances = 0;
+    let allNiftyBankFuturesDeclines = 0;
 
 
     for (let i = 0; i < allList.length; i++) {
@@ -1135,18 +1134,18 @@ async function showFuturesTrend() {
                     BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
                     NiftyBULLSMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + NiftySHOT_COVERINGMap[time]['COUNT'] + NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
                     NiftyBankBULLSMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + NiftyBankSHOT_COVERINGMap[time]['COUNT'] + NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
-                    allFuturesAdvances[time] = BULLSMap[time]['COUNT']
-                    allNiftyFuturesAdvances[time] = NiftyBULLSMap[time]['COUNT']
-                    allNiftyBankFuturesAdvances[time] = NiftyBankBULLSMap[time]['COUNT']
+                    allFuturesAdvances += BULLSMap[time]['COUNT']
+                    allNiftyFuturesAdvances += NiftyBULLSMap[time]['COUNT']
+                    allNiftyBankFuturesAdvances += NiftyBankBULLSMap[time]['COUNT']
                 }
 
                 if (BEARSMap[time]) {
                     BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + DEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
                     NiftyBEARSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + NiftyLONG_UNWINDINGMap[time]['COUNT'] + NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + NiftyDEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
                     NiftyBankBEARSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
-                    allFuturesDeclines[time] = BEARSMap[time]['COUNT']
-                    allNiftyFuturesDeclines[time] = NiftyBEARSMap[time]['COUNT']
-                    allNiftyBankFuturesDeclines[time] = NiftyBankBEARSMap[time]['COUNT'] 
+                    allFuturesDeclines += BEARSMap[time]['COUNT']
+                    allNiftyFuturesDeclines += NiftyBEARSMap[time]['COUNT']
+                    allNiftyBankFuturesDeclines += NiftyBankBEARSMap[time]['COUNT']
                 }
             });
         } catch (e) {
@@ -1382,11 +1381,13 @@ async function showFuturesTrend() {
         NiftyBankBEARSSeries['data'].push(val)
     });
 
-    jQ("#bank-advance-decline-adr").html("ADR: " + ((allBankAdvances / allBankDeclines).toFixed(2)) + " | A: " + allBankAdvances + " | D: " + allBankDeclines);
 
     jQ("#future-advance-decline-adr").html("ADR: " + ((allFuturesAdvances / allFuturesDeclines).toFixed(2)) + " | A: " + allFuturesAdvances + " | D: " + allFuturesDeclines);
 
     jQ("#future-nifty-advance-decline-adr").html("ADR: " + ((allNiftyFuturesAdvances / allNiftyFuturesDeclines).toFixed(2)) + " | A: " + allNiftyFuturesAdvances + " | D: " + allNiftyFuturesDeclines);
+
+    jQ("#future-bank-advance-decline-adr").html("ADR: " + ((allNiftyBankFuturesAdvances / allNiftyBankFuturesDeclines).toFixed(2)) + " | A: " + allNiftyBankFuturesAdvances + " | D: " + allNiftyBankFuturesDeclines);
+
 
     jQ("#futures-trend-chart").insertFusionCharts({
         type: "stackedcolumn2d",
