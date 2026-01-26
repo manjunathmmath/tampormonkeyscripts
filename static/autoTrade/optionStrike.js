@@ -19093,6 +19093,654 @@ let BSE_LIST = [
 
 
 let NSE_LIST = [
+{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18849026",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10700",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10700CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18849282",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10700",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10700PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18848514",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10600CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18848770",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10600PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18849538",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10800CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18849794",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10800PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18848002",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10500",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10500CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18848258",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10500",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10500PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18850050",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10900",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10900CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18850306",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10900",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10900PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18847490",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10400CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18847746",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10400PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18850562",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11000CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18850818",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11000PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18846978",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10300",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10300CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18847234",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10300",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10300PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18851074",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11100",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11100CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18851330",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11100",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11100PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18844930",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10200CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18846722",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10200PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18853634",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11200CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18854402",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11200PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18844418",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10100",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10100CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18844674",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10100",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10100PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18854658",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11300",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11300CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18854914",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11300",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11300PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18843906",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "10000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10000CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18844162",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "10000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN10000PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18855170",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11400CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18855426",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11400PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18856194",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11500",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11500PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18910210",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "13000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN13000CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18910466",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "13000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN13000PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18907138",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12800CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18907650",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12800PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18901250",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12600CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18906370",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12600PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18886146",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12400CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18894082",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12400PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18883586",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12300",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12300CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18885890",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12300",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12300PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18871554",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12200CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18883330",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12200PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18870530",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12100",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12100CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18871042",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12100",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12100PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18866434",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "12000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12000CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18867970",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "12000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN12000PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18865922",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11900",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11900CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18866178",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11900",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11900PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18859266",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11800CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18859522",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11800PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18856962",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11700",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11700CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18857218",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11700",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11700PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18856450",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11600CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18856706",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "11600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11600PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18855682",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "11500",
+		"tradingsymbol" : "BAJAJHLDNG26JAN11500CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18839042",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9900",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9900CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18843650",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9900",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9900PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18838530",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9800CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18838786",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9800",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9800PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18838018",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9700",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9700CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18838274",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9700",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9700PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18836738",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9600CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18837762",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9600",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9600PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18836226",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9500",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9500CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18836482",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9500",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9500PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18835714",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9400CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18835970",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9400",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9400PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18834690",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9200CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18834946",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9200",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9200PE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18833154",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "CE",
+		"strike" : "9000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9000CE"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "18833410",
+		"expiry" : "27-01-2026",
+		"lot_size" : "50",
+		"instrument_type" : "PE",
+		"strike" : "9000",
+		"tradingsymbol" : "BAJAJHLDNG26JAN9000PE"
+	},
 	{
 		"name" : "360ONE",
 		"instrument_token" : "17516034",

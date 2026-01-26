@@ -102,19 +102,19 @@ async function showGrootTradeBot() {
     html += '</div>'
 
     html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">All <span class="badge bg-info" id="all-advance-decline-adr"></span></h6>'
+    html += '<h6 class="header-class-center">All <span class="badge bg-info" id="all-advance-decline-adr"></span><span class="badge bg-info" id="all-advance-decline-nine-fifteen-close"></span></h6>'
     html += '<div id="advance-decline-chart">'
     html += '</div>'
     html += '</div>'
 
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Nifty<span class="badge bg-info" id="nifty-advance-decline-adr"></span></h6>'
+    html += '<h6 class="header-class-center">Nifty<span class="badge bg-info" id="nifty-advance-decline-adr"></span><span class="badge bg-info" id="nifty-advance-decline-nine-fifteen-close"></span></h6>'
     html += '<div id="advance-decline-nifty-chart">'
     html += '</div>'
     html += '</div>'
 
     html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Bank<span class="badge bg-info" id="bank-advance-decline-adr"></span></h6>'
+    html += '<h6 class="header-class-center">Bank<span class="badge bg-info" id="bank-advance-decline-adr"></span><span class="badge bg-info" id="bank-advance-decline-nine-fifteen-close"></span></h6>'
     html += '<div id="advance-decline-bank-chart">'
     html += '</div>'
     html += '</div>'
@@ -630,6 +630,43 @@ async function showAdvacenDeclineScanner() {
             }
         }
     });
+    let asoCount = 0;
+    let bsoCount = 0;
+    let asoN50Count = 0;
+    let bsoN50Count = 0;
+    let asoBankCount = 0;
+    let bsoBankCount = 0;
+
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+
+    if (breakOutNineFifteen) {
+        jQ.each(breakOutNineFifteen, function (index, item) {
+            if (item['CLOSE_9_15'] == 'ASO') {
+                asoCount++;
+                if (jQ.inArray(index, NIFTY_50_LIST) != -1) {
+                    asoN50Count++;
+                }
+                if (jQ.inArray(index, NIFTY_BANK_LIST) != -1) {
+                    asoBankCount++;
+                }
+            }
+
+            if (item['CLOSE_9_15'] == 'BSO') {
+                bsoCount++;
+                if (jQ.inArray(index, NIFTY_50_LIST) != -1) {
+                    bsoN50Count++;
+                }
+                if (jQ.inArray(index, NIFTY_BANK_LIST) != -1) {
+                    bsoBankCount++;
+                }
+            }
+        });
+        jQ("#all-advance-decline-nine-fifteen-close").html("9:15 CLOSE [ASO: " + asoCount + " | BSO: " + bsoCount + "]");
+        jQ("#nifty-advance-decline-nine-fifteen-close").html("9:15 CLOSE [ASO: " + asoN50Count + " | BSO: " + bsoN50Count + "]");
+        jQ("#bank-advance-decline-nine-fifteen-close").html("9:15 CLOSE [ASO: " + asoBankCount + " | BSO: " + bsoBankCount + "]");
+    }
+
+
 }
 
 async function showFuturesTrend() {
@@ -1894,6 +1931,7 @@ function generateStockTable(data) {
 }
 
 function showExtraButtons() {
+
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="nine-fifteen-scan" class="dt-button bg-info" type="button"><span>9.15 SCAN</span></button>');
     jQ("#stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ALL</span></button>')
