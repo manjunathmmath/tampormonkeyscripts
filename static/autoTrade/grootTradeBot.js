@@ -2,6 +2,7 @@ let advanceDeclineTimerInstance = null
 let globalFuturesTrend = {}
 let stockTable = null
 
+
 jQ(document).on("click", "#show-groot-trade-bot", function (e) {
     e.preventDefault();
     if (advanceDeclineTimerInstance) {

@@ -59,6 +59,7 @@
 // @require      http://localhost:3000/autoTrade/common/common.js
 // @require      http://localhost:3000/autoTrade/common/alertSound.js
 // @require      http://localhost:3000/autoTrade/constants.js
+// @require      http://localhost:3000/autoTrade/bseOptionStrikes.js
 // @require      http://localhost:3000/autoTrade/optionStrike.js
 // @require      http://localhost:3000/autoTrade/config.js
 // @require      http://localhost:3000/autoTrade/monkeyStyle.js
