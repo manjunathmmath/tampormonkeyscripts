@@ -2018,13 +2018,13 @@ async function scanNineFifteenCandle() {
                     breakOutNineFifteen[name] = {};
                     breakOutNineFifteen[name]['CLOSE_9_15'] = 'BSO';
                 }
-                updateStockTable(i, row)
             } catch (e) {
                 console.log(e)
             }
         }
         localStorage.setItem("VALID_BREAKOUT_NINE_FIFTEEN", JSON.stringify(breakOutNineFifteen));
     }
+    showStockList([]);
 }
 
 function updateStockTable(id, row) {
@@ -2740,7 +2740,7 @@ function addAdditonalDetails(rowData, id) {
 
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row" >'
+    html += '<div class="row analyser-container">'
     html += '<div class="col-md-12">'
     html += '<table  class="table display nowrap" id="predictor-stock-list-table' + tempName + '" style="width: 100%;">'
 

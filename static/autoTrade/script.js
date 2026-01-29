@@ -1,4 +1,3 @@
-
 let timerInstance = null
 async function autoRefreshEachTabs(instance, isManual) {
     clearInterval(timerInstance)
@@ -219,3 +218,41 @@ async function scanLtpPrice() {
     localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));
 }
 
+jQ(document).ready(function () {
+    let location = window.location.href;
+    const url = new URL(location);
+    const path = url.pathname;
+    const segments = path.split('/');
+    let exhange = segments[4];
+    let symbol = segments[5];
+    let token = segments[6];
+    if (symbol == "NIFTY%2050") {
+        symbol = "NIFTY 50"
+    }
+
+    if (symbol == "NIFTY%20BANK") {
+        symbol = "NIFTY BANK"
+    }
+
+    if (exhange && symbol && token) {
+        console.log("Exchange : " + exhange);
+        console.log("Symbol : " + symbol);
+        console.log("Token : " + token);
+        showDetailsOnChartPage(exhange, symbol, token);
+    }
+});
+
+function showDetailsOnChartPage(exhange, symbol, token) {
+    let rowData = {}
+    rowData['exchange'] = exhange
+    rowData['TRADINGSYMBOL'] = symbol
+    rowData['token'] = token
+    let html = ''
+    let id = 0;
+    html += addAdditonalDetails(rowData, id)
+    jQ(".chart-wrapper").prepend(html);
+    showInfo(rowData, 0);
+    setTimeout(function () {
+        location.reload();
+    }, 300000);
+} 
