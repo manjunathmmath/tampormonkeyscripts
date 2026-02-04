@@ -267,6 +267,9 @@ async function showGrootTradeBot() {
     title += '<div class="col-md-2">'
     title += 'Groot Trade Bot'
     title += '</div>'
+    title += '<div class="col-md-2">'
+    title += '<span id="refresh-timer-one">00:00</span>'
+    title += '</div>'
     title += '</div>'
 
     showPopUpWindow('groot-trade-bot', html, "Groot [Trade Bot]", 950, 550);
@@ -1783,76 +1786,79 @@ function showStockList(list) {
     });
 
     for (let i = 0; i < instru.length; i++) {
-        let name = instru[i];
-        let obj = {}
-        obj['TRADINGSYMBOL'] = name;
-        obj['CLOSE'] = scriptData[name]['prevPrice'];
-        obj['PRICE'] = scriptData[name]['price'];
-        obj['PERC'] = scriptData[name]['change'];
-        obj['TREND'] = scriptData[name]['trends'];
+        try {
+            let name = instru[i];
+            let obj = {}
+            obj['TRADINGSYMBOL'] = name;
+            obj['CLOSE'] = scriptData[name]['prevPrice'];
+            obj['PRICE'] = scriptData[name]['price'];
+            obj['PERC'] = scriptData[name]['change'];
+            obj['TREND'] = scriptData[name]['trends'];
 
-        obj['VOLUME'] = 0
-        if (scriptsVolumeMap[name]) {
-            obj['VOLUME'] = scriptsVolumeMap[name];
-        }
-
-        if (scriptData[name]['open_perc'] > 0) {
-            obj['OPEN_PERC'] = '<span class="badge bg-success">' + scriptData[name]['open_perc'] + '</span>'
-        } else if (scriptData[name]['open_perc'] < 0) {
-            obj['OPEN_PERC'] = '<span class="badge bg-danger">' + scriptData[name]['open_perc'] + '</span>'
-        } else {
-            obj['OPEN_PERC'] = scriptData[name]['open_perc'];
-        }
-
-        let asoPrice = 0;
-        let bsoPrice = 0;
-        let astPrice = 0;
-        let bstPrice = 0;
-        asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
-        bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
-
-        astPrice = parseFloat(scriptData[name]['strikeData']['ustrikeTwo']);
-        bstPrice = parseFloat(scriptData[name]['strikeData']['bstrikeTwo']);
-
-        let ltp = parseFloat(scriptData[name]['ltp']);
-        if (ltp >= astPrice) {
-            obj['LTP'] = '<span title="AST PRICE" class="badge bg-danger">' + ltp + '</span>'
-        } else if (ltp >= asoPrice) {
-            obj['LTP'] = '<span title="ASO PRICE" class="badge bg-warning">' + ltp + '</span>'
-        } else if (ltp <= bstPrice) {
-            obj['LTP'] = '<span title="BST PRICE" class="badge bg-success">' + ltp + '</span>'
-        } else if (ltp <= bsoPrice) {
-            obj['LTP'] = '<span title="BSO PRICE" class="badge bg-warning">' + ltp + '</span>'
-        } else {
-            obj['LTP'] = ltp
-        }
-
-        obj['STRIKEDATA'] = scriptData[name]['strikeData'];
-        if (breakOutNineFifteen && breakOutNineFifteen[name]) {
-            obj['CLOSE_9_15'] = breakOutNineFifteen[name]['CLOSE_9_15'];
-        } else {
-            obj['CLOSE_9_15'] = '';
-        }
-        obj['FUTURE_TREND'] = '';
-        if (globalFuturesTrend && globalFuturesTrend[name]) {
-            obj['FUTURE_TREND'] = globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS'];
-
-            if (name == "NIFTY 50") {
-                jQ("#futures-trend-nifty").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
+            obj['VOLUME'] = 0
+            if (scriptsVolumeMap[name]) {
+                obj['VOLUME'] = scriptsVolumeMap[name];
             }
-            if (name == "NIFTY BANK") {
-                jQ("#futures-trend-nifty-bank").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
+
+            if (scriptData[name]['open_perc'] > 0) {
+                obj['OPEN_PERC'] = '<span class="badge bg-success">' + scriptData[name]['open_perc'] + '</span>'
+            } else if (scriptData[name]['open_perc'] < 0) {
+                obj['OPEN_PERC'] = '<span class="badge bg-danger">' + scriptData[name]['open_perc'] + '</span>'
+            } else {
+                obj['OPEN_PERC'] = scriptData[name]['open_perc'];
             }
-        }
-        if (list.length != 0) {
-            if (jQ.inArray(name, list) != -1) {
+
+            let asoPrice = 0;
+            let bsoPrice = 0;
+            let astPrice = 0;
+            let bstPrice = 0;
+            asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
+            bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
+
+            astPrice = parseFloat(scriptData[name]['strikeData']['ustrikeTwo']);
+            bstPrice = parseFloat(scriptData[name]['strikeData']['bstrikeTwo']);
+
+            let ltp = parseFloat(scriptData[name]['ltp']);
+            if (ltp >= astPrice) {
+                obj['LTP'] = '<span title="AST PRICE" class="badge bg-danger">' + ltp + '</span>'
+            } else if (ltp >= asoPrice) {
+                obj['LTP'] = '<span title="ASO PRICE" class="badge bg-warning">' + ltp + '</span>'
+            } else if (ltp <= bstPrice) {
+                obj['LTP'] = '<span title="BST PRICE" class="badge bg-success">' + ltp + '</span>'
+            } else if (ltp <= bsoPrice) {
+                obj['LTP'] = '<span title="BSO PRICE" class="badge bg-warning">' + ltp + '</span>'
+            } else {
+                obj['LTP'] = ltp
+            }
+
+            obj['STRIKEDATA'] = scriptData[name]['strikeData'];
+            if (breakOutNineFifteen && breakOutNineFifteen[name]) {
+                obj['CLOSE_9_15'] = breakOutNineFifteen[name]['CLOSE_9_15'];
+            } else {
+                obj['CLOSE_9_15'] = '';
+            }
+            obj['FUTURE_TREND'] = '';
+            if (globalFuturesTrend && globalFuturesTrend[name]) {
+                obj['FUTURE_TREND'] = globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS'];
+
+                if (name == "NIFTY 50") {
+                    jQ("#futures-trend-nifty").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
+                }
+                if (name == "NIFTY BANK") {
+                    jQ("#futures-trend-nifty-bank").html(globalFuturesTrend[name]['PLUS'] + ' ' + globalFuturesTrend[name]['MINUS']);
+                }
+            }
+            if (list.length != 0) {
+                if (jQ.inArray(name, list) != -1) {
+                    scripts.push(obj)
+                }
+            } else {
                 scripts.push(obj)
             }
-        } else {
-            scripts.push(obj)
+        } catch (e) {
+            console.log(e)
         }
     }
-
     if (scripts.length > 0) {
         generateStockTable(scripts)
     }
@@ -3137,275 +3143,275 @@ async function showScriptChart(quote, name, rowId, prevQuote) {
 }
 
 async function showTopChart(name, id) {
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+    try {
+        let tempName = name.replaceAll(" ", "-")
+        tempName = tempName.replaceAll("&", "-")
+        let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
 
 
-    if (name == "GIFT NIFTY") {
-        if (breakOutNineFifteen['GIFT NIFTY'] == undefined) {
-            breakOutNineFifteen['GIFT NIFTY'] = {};
-            breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] = "B/W"
+        if (name == "GIFT NIFTY") {
+            if (breakOutNineFifteen['GIFT NIFTY'] == undefined) {
+                breakOutNineFifteen['GIFT NIFTY'] = {};
+                breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-nifty-gift-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] + '</span>');
         }
-        jQ("#nine-fifteen-nifty-gift-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] + '</span>');
+
+        if (name == "NIFTY 50") {
+            if (breakOutNineFifteen['NIFTY 50'] == undefined) {
+                breakOutNineFifteen['NIFTY 50'] = {};
+                breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-nifty-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] + '</span>');
+        }
+
+        if (name == "NIFTY BANK") {
+            if (breakOutNineFifteen['NIFTY BANK'] == undefined) {
+                breakOutNineFifteen['NIFTY BANK'] = {};
+                breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-nifty-bank-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] + '</span>');
+        }
+
+        if (name == "SENSEX") {
+            if (breakOutNineFifteen['SENSEX'] == undefined) {
+                breakOutNineFifteen['SENSEX'] = {};
+                breakOutNineFifteen['SENSEX']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-sensex-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['SENSEX']['CLOSE_9_15'] + '</span>');
+        }
+
+        let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        await savePreviousStockQuote(tempName, instrumentTokens[name])
+        let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
+
+        let quote = []
+        jQ.each(data.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("DD-MM HH:mm")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            map['time'] = moment(item[0]).format("HH:mm")
+            quote.push(map);
+        });
+
+
+        let prevQuote = []
+        jQ.each(previousQuote.data.candles, function (index, item) {
+            let map = {}
+            map['date'] = moment(item[0]).format("DD-MM HH:mm")
+            map.open = item[1]
+            map.high = item[2]
+            map.low = item[3]
+            map.close = item[4]
+            map.volume = item[5]
+            prevQuote.push(map);
+        });
+
+        let scriptData = generateTrend(name)
+        let chartId = id;
+
+        let dayHigh = 0
+        let dayLow = 0
+
+        let categoryList = []
+        let dateIndex = 0
+
+
+        jQ.each(prevQuote, function (index, item) {
+            let map = {}
+            map.label = item.date;
+            map.x = dateIndex;
+            categoryList.push(map)
+            dateIndex++;
+
+            if (index == 0) {
+                dayHigh = item.high
+                dayLow = item.low
+            }
+
+            if (item.high > dayHigh) {
+                dayHigh = item.high
+            }
+
+            if (item.low < dayLow) {
+                dayLow = item.low
+            }
+        });
+
+
+        jQ.each(quote, function (index, item) {
+            let map = {}
+            map.label = item.date;
+            map.x = dateIndex;
+            categoryList.push(map)
+            dateIndex++;
+
+            if (item.high > dayHigh) {
+                dayHigh = item.high
+            }
+
+            if (item.low < dayLow) {
+                dayLow = item.low
+            }
+
+        });
+
+        let dataList = []
+        let min = 0
+        let max = 0
+        dateIndex = 0
+        let isVolumePresent = false;
+
+        jQ.each(prevQuote, function (index, item) {
+            let map = {}
+            map.open = item.open
+            map.high = item.high
+            map.low = item.low
+            map.close = item.close
+            if (item.volume) {
+                map.volume = item.volume;
+                isVolumePresent = true;
+            }
+            map.x = dateIndex
+
+            if (index == 0) {
+                min = item.high
+                max = item.high
+            }
+
+            if (item.high < min) {
+                min = item.high
+            }
+
+            if (item.high > max) {
+                max = item.high
+            }
+            dataList.push(map);
+            dateIndex++;
+        });
+
+
+        jQ.each(quote, function (index, item) {
+            let map = {}
+            map.open = item.open
+            map.high = item.high
+            map.low = item.low
+            map.close = item.close
+            if (item.volume) {
+                map.volume = item.volume;
+                isVolumePresent = true;
+            }
+            map.x = dateIndex
+
+            if (index == 0) {
+                min = item.high
+                max = item.high
+                map.displayValue = "O"
+            }
+
+            if (item.high < min) {
+                min = item.high
+            }
+
+            if (item.high > max) {
+                max = item.high
+            }
+            dataList.push(map);
+            dateIndex++;
+        });
+
+        isVolumePresent = SHOW_VOLUME_ON_CHART
+
+        let lines = [];
+        let line = {};
+
+        line.color = "#8be73a";
+        line.startvalue = scriptData['vix'].vixDDLower;
+        line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
+        lines.push(line);;
+
+        line = {};
+        line.color = "#e7543a";
+        line.startvalue = scriptData['vix'].vixDDUpper;
+        line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
+        lines.push(line);
+
+        line = {};
+        line.color = "#872b19ff";
+        line.startvalue = scriptData['strikeData'].ustrikeTwo;
+        line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
+        lines.push(line);
+
+
+        line = {};
+        line.color = "#d65db1";
+        line.startvalue = scriptData['strikeData'].ustrikeOne;
+        line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
+        lines.push(line);
+
+
+        line = {};
+        line.color = "#ff6f91";
+        line.startvalue = scriptData['strikeData'].bstrikeOne;
+        line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
+        lines.push(line);
+
+
+        line = {};
+        line.color = "#35dc35ff";
+        line.startvalue = scriptData['strikeData'].bstrikeTwo;
+        line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
+        lines.push(line);
+
+
+        line = {};
+        if (parseFloat(scriptData['open']) > parseFloat(scriptData['prevPrice']).toFixed(2)) {
+            line.color = "#5D8736";
+            line.displayvalue = "Open +ve: " + scriptData['open'];
+        } else {
+            line.color = "#A94A4A";
+            line.displayvalue = "Open -ve: " + scriptData['open'];
+        }
+        line.dashed = 1;
+        line.startvalue = scriptData['open'];
+        lines.push(line);
+
+        jQ("#" + chartId).html('')
+        jQ("#" + chartId).insertFusionCharts({
+            type: 'candlestick',
+            width: "100%",
+            height: 400,
+            dataFormat: 'json',
+            dataSource: {
+                "chart": {
+                    "thousandSeparatorPosition": "2,3",
+                    "formatNumberScale": "0", "theme": "candy",
+                    "adjustDiv": "0",
+                    showvalues: "0",
+                    labeldisplay: "ROTATE",
+                    rotatelabels: "1",
+                    "showLabels": 1,
+                    showVolumeChart: true,
+                },
+                "categories": [{
+                    "category": categoryList
+                }],
+                "dataset": [{
+                    "data": dataList,
+
+                }],
+                "trendlines": [{
+                    "line": lines
+                }]
+            }
+        });
+    } catch (e) {
+        console.error("Error in showTopChart:", e);
     }
-
-    if (name == "NIFTY 50") {
-        if (breakOutNineFifteen['NIFTY 50'] == undefined) {
-            breakOutNineFifteen['NIFTY 50'] = {};
-            breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] = "B/W"
-        }
-        jQ("#nine-fifteen-nifty-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] + '</span>');
-    }
-
-    if (name == "NIFTY BANK") {
-        if (breakOutNineFifteen['NIFTY BANK'] == undefined) {
-            breakOutNineFifteen['NIFTY BANK'] = {};
-            breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] = "B/W"
-        }
-        jQ("#nine-fifteen-nifty-bank-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] + '</span>');
-    }
-
-    if (name == "SENSEX") {
-        if (breakOutNineFifteen['SENSEX'] == undefined) {
-            breakOutNineFifteen['SENSEX'] = {};
-            breakOutNineFifteen['SENSEX']['CLOSE_9_15'] = "B/W"
-        }
-        jQ("#nine-fifteen-sensex-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['SENSEX']['CLOSE_9_15'] + '</span>');
-    }
-
-    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-    await savePreviousStockQuote(tempName, instrumentTokens[name])
-    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
-
-    let quote = []
-    jQ.each(data.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("DD-MM HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map['time'] = moment(item[0]).format("HH:mm")
-        quote.push(map);
-    });
-
-
-    let prevQuote = []
-    jQ.each(previousQuote.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("DD-MM HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        prevQuote.push(map);
-    });
-
-    let scriptData = generateTrend(name)
-    let chartId = id;
-
-    let dayHigh = 0
-    let dayLow = 0
-
-    let categoryList = []
-    let dateIndex = 0
-
-
-    jQ.each(prevQuote, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-        if (index == 0) {
-            dayHigh = item.high
-            dayLow = item.low
-        }
-
-        if (item.high > dayHigh) {
-            dayHigh = item.high
-        }
-
-        if (item.low < dayLow) {
-            dayLow = item.low
-        }
-    });
-
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-        if (item.high > dayHigh) {
-            dayHigh = item.high
-        }
-
-        if (item.low < dayLow) {
-            dayLow = item.low
-        }
-
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-    let isVolumePresent = false;
-
-    jQ.each(prevQuote, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        if (item.volume) {
-            map.volume = item.volume;
-            isVolumePresent = true;
-        }
-        map.x = dateIndex
-
-        if (index == 0) {
-            min = item.high
-            max = item.high
-        }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        if (item.volume) {
-            map.volume = item.volume;
-            isVolumePresent = true;
-        }
-        map.x = dateIndex
-
-        if (index == 0) {
-            min = item.high
-            max = item.high
-            map.displayValue = "O"
-        }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-    isVolumePresent = SHOW_VOLUME_ON_CHART
-
-    let lines = [];
-    let line = {};
-
-
-    line.color = "#8be73a";
-    line.startvalue = scriptData['vix'].vixDDLower;
-    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
-    lines.push(line);;
-
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = scriptData['vix'].vixDDUpper;
-    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
-    lines.push(line);
-
-
-
-
-    line = {};
-    line.color = "#872b19ff";
-    line.startvalue = scriptData['strikeData'].ustrikeTwo;
-    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#d65db1";
-    line.startvalue = scriptData['strikeData'].ustrikeOne;
-    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#ff6f91";
-    line.startvalue = scriptData['strikeData'].bstrikeOne;
-    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#35dc35ff";
-    line.startvalue = scriptData['strikeData'].bstrikeTwo;
-    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
-    lines.push(line);
-
-
-    line = {};
-    if (parseFloat(scriptData['open']) > parseFloat(scriptData['prevPrice']).toFixed(2)) {
-        line.color = "#5D8736";
-        line.displayvalue = "Open +ve: " + scriptData['open'];
-    } else {
-        line.color = "#A94A4A";
-        line.displayvalue = "Open -ve: " + scriptData['open'];
-    }
-    line.dashed = 1;
-    line.startvalue = scriptData['open'];
-    lines.push(line);
-
-    jQ("#" + chartId).html('')
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: 400,
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0", "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "showLabels": 1,
-                showVolumeChart: true,
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
-
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
 }
 
 function generateFutresDataTable(quote, id, prevQuote, lotSize) {
