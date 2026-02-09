@@ -2834,6 +2834,10 @@ function addAdditonalDetails(rowData, id) {
     html += '</div>'
 
     html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
+    html += '<div id="option-flow-analysis-' + tempName + '">'
+    html += '</div>'
+
+    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
     html += '<div class="row" id="oi-obv-charts' + tempName + '">'
     html += '</div>'
 

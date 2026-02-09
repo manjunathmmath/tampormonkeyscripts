@@ -464,6 +464,7 @@ async function callPredictionAnalyseTrend() {
                 let oiData = await showTrendingOI(name)
                 generateOIChartsForPrediction(oiData, name)
                 let strikes = oiData['tableData']
+                optionFlowDashboard(strikes, tempName)
                 stock[rowId]['PCR'] = oiData['pcr'] + ' : ' + oiData['chPcr']
                 let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
                 if (strikes[0]) {
@@ -592,6 +593,246 @@ async function callPredictionAnalyseTrend() {
         }
     }
 }
+// Feed scaling: OI / 100000, OBV / 100000
+const OI_THRESHOLD = 0.05;   // ~5k
+const OBV_THRESHOLD = 0.10; // ~10k
+function optionFlowDashboard(strikes, name) {
+    let html = ''
+    html += '<div class="row">'
+
+    html += '<div class="col-md-12">'
+    html += '<h3>CE / PE Option Flow Dashboard</h3>'
+    html += '<div id="summary" class="mb-3"></div>'
+
+    html += '<div class="alert alert-secondary">'
+    html += '<b>How to Read (Quick Summary)</b><br>'
+    html += '1. Final Bias → Direction filter<br>'
+    html += '2. Activity → &lt;300 skip, 300–1000 scalp, &gt;1000 trade<br>'
+    html += '3. Resistance → CE Writing strike = rejection zone<br>'
+    html += '4. Focus ATM ±1<br>'
+    html += '5. Follow Takeaway'
+    html += '</div>'
+
+    html += '<table class="table table-bordered table-sm text-center align-middle" id="flowTable">'
+    html += '<thead class="table-dark">'
+    html += '<tr>'
+    html += '<th>Strike</th>'
+    html += '<th>CE OI</th>'
+    html += '<th>CE OBV</th>'
+    html += '<th>PE OI</th>'
+    html += '<th>PE OBV</th>'
+    html += '<th>CE Meaning</th>'
+    html += '<th>PE Meaning</th>'
+    html += '<th>Market Outcome</th>'
+    html += '<th>Bias</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody></tbody>'
+    html += '</table>'
+    html += '</div>'
+
+    html += '</div>'
+
+    jQ("#option-flow-analysis-" + name).html(html);
+    let strikesData = []
+    if (strikes[0]) {
+        let striekOne = {
+            strike: strikes[0]['STRIKE'],
+            ce_oi: strikes[0]['CHG_OI_CE'],
+            ce_obv: strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv'],
+            pe_oi: strikes[0]['CHG_OI_PE'],
+            pe_obv: strikes[0]['PE_OBV'][strikes[0]['PE_OBV'].length - 1]['obv']
+        }
+        strikesData.push(striekOne)
+    }
+
+    if (strikes[1]) {
+        let striekTwo = {
+            strike: strikes[1]['STRIKE'],
+            ce_oi: strikes[1]['CHG_OI_CE'],
+            ce_obv: strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv'],
+            pe_oi: strikes[1]['CHG_OI_PE'],
+            pe_obv: strikes[1]['PE_OBV'][strikes[1]['PE_OBV'].length - 1]['obv']
+        }
+        strikesData.push(striekTwo)
+    }
+    if (strikes[2]) {
+        let striekThree = {
+            strike: strikes[2]['STRIKE'],
+            ce_oi: strikes[2]['CHG_OI_CE'],
+            ce_obv: strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv'],
+            pe_oi: strikes[2]['CHG_OI_PE'],
+            pe_obv: strikes[2]['PE_OBV'][strikes[2]['PE_OBV'].length - 1]['obv']
+        }
+        strikesData.push(striekThree)
+    }
+
+    if (strikes[3]) {
+        let striekFour = {
+            strike: strikes[3]['STRIKE'],
+            ce_oi: strikes[3]['CHG_OI_CE'],
+            ce_obv: strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv'],
+            pe_oi: strikes[3]['CHG_OI_PE'],
+            pe_obv: strikes[3]['PE_OBV'][strikes[3]['PE_OBV'].length - 1]['obv']
+        }
+        strikesData.push(striekFour)
+    }
+
+    if (strikes[4]) {
+        let striekFive = {
+            strike: strikes[4]['STRIKE'],
+            ce_oi: strikes[4]['CHG_OI_CE'],
+            ce_obv: strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv'],
+            pe_oi: strikes[4]['CHG_OI_PE'],
+            pe_obv: strikes[4]['PE_OBV'][strikes[4]['PE_OBV'].length - 1]['obv']
+        }
+        strikesData.push(striekFive)
+    }
+
+    // ================= RUN =================
+    const result = analyze(strikesData);
+
+    // ================= SUMMARY =================
+    document.getElementById("summary").innerHTML =
+        `<div class="alert alert-info">
+<b>Bull:</b> ${result.bullPct}% |
+<b>Bear:</b> ${result.bearPct}% |
+<b>Final Bias:</b> ${result.finalBias}<br>
+<b>Activity:</b> ${result.marketMode} (${result.activity})<br>
+<b>Resistance:</b> ${result.resistance || "None"}<br>
+<b>Explanation:</b> ${result.explanation}<br>
+<b>Takeaway:</b> ${result.takeaway}
+</div>`;
+
+    // ================= TABLE =================
+    const tbody = document.querySelector("#flowTable tbody");
+    tbody.innerHTML = "";
+
+    result.rows.forEach(r => {
+        let cls = "mixed";
+        if (r.Bias.includes("Bull")) cls = "bull";
+        if (r.Bias.includes("Bear")) cls = "bear";
+        if (r.Bias.includes("Range")) cls = "range";
+
+        tbody.innerHTML += `
+ <tr class="${cls}">
+ <td>${r.strike}</td>
+ <td>${r["CE OI"]}</td>
+ <td>${r["CE OBV"]}</td>
+ <td>${r["PE OI"]}</td>
+ <td>${r["PE OBV"]}</td>
+ <td>${r["CE Meaning"]}</td>
+ <td>${r["PE Meaning"]}</td>
+ <td>${r["Market Outcome"]}</td>
+ <td>${r.Bias}</td>
+ </tr>`;
+    });
+
+}
+
+// ================= HELPERS =================
+function clean(v, t) { return Math.abs(v) < t ? 0 : v; }
+function arrow(v) { if (v === 0) return "0"; return v > 0 ? "↑" : "↓"; }
+
+// ================= SIDE MEANING =================
+function sideMeaning(oi, obv, side) {
+    if (oi === 0 && obv === 0) return "Neutral";
+    if (oi > 0 && obv > 0) return side + " Buying";
+    if (oi > 0 && obv < 0) return side + " Writing";
+    if (oi < 0 && obv > 0) return side + " Short Cover";
+    if (oi < 0 && obv < 0) return side + " Long Unwind";
+    return "Neutral";
+}
+
+// ================= MASTER MATRIX =================
+function comboOutcome(ce, pe) {
+    if (ce === "CE Buying" && pe === "PE Buying") return ["Directional fight", "⚠ Mixed"];
+    if (ce === "CE Buying" && pe === "PE Writing") return ["Strong bullish", "🟢 Bull"];
+    if (ce === "CE Buying" && pe === "PE Short Cover") return ["Explosive bullish", "🟢 Bull"];
+    if (ce === "CE Writing" && pe === "PE Writing") return ["Range / theta", "⚖ Range"];
+    if (ce === "CE Writing" && pe === "PE Buying") return ["Bull trap", "🔴 Bear"];
+    if (ce === "CE Short Cover" && pe === "PE Buying") return ["Volatile", "⚠ Mixed"];
+    return ["Mixed", "⚠"];
+}
+
+// ================= ENGINE =================
+function analyze(strikes) {
+
+    let rows = [], bull = 0, bear = 0, activity = 0;
+    let atm = strikes[Math.floor(strikes.length / 2)].strike;
+    let resistance = null, maxWrite = 0;
+
+    strikes.forEach(s => {
+
+        s.ce_oi = clean(s.ce_oi, OI_THRESHOLD);
+        s.ce_obv = clean(s.ce_obv, OBV_THRESHOLD);
+        s.pe_oi = clean(s.pe_oi, OI_THRESHOLD);
+        s.pe_obv = clean(s.pe_obv, OBV_THRESHOLD);
+
+        const ce = sideMeaning(s.ce_oi, s.ce_obv, "CE");
+        const pe = sideMeaning(s.pe_oi, s.pe_obv, "PE");
+        const [outcome, bias] = comboOutcome(ce, pe);
+
+        activity += Math.abs(s.ce_obv) + Math.abs(s.pe_obv);
+
+        let weight = Math.abs(s.strike - atm) <= 50 ? 2 : 1;
+
+        if (bias.includes("Bull")) bull += 2 * weight;
+        if (bias.includes("Bear")) bear += 2 * weight;
+        if (bias.includes("Range") || bias.includes("Mixed")) { bull += 1 * weight; bear += 1 * weight; }
+
+        if (ce === "CE Writing") {
+            let strength = Math.abs(s.ce_obv);
+            if (strength > maxWrite) {
+                maxWrite = strength;
+                resistance = s.strike;
+            }
+        }
+
+        rows.push({
+            strike: s.strike,
+            "CE OI": arrow(s.ce_oi),
+            "CE OBV": arrow(s.ce_obv),
+            "PE OI": arrow(s.pe_oi),
+            "PE OBV": arrow(s.pe_obv),
+            "CE Meaning": ce,
+            "PE Meaning": pe,
+            "Market Outcome": outcome,
+            "Bias": bias
+        });
+    });
+
+    const total = bull + bear || 1;
+    const bullPct = Math.round(bull / total * 100);
+    const bearPct = Math.round(bear / total * 100);
+
+    let finalBias = "RANGE";
+    let explanation = "CE & PE both active with rejection above.";
+    let takeaway = "Scalp only — market boxed.";
+
+    if (bullPct >= 65) {
+        finalBias = "BULL";
+        explanation = "PE covering + CE accumulation dominating.";
+        takeaway = "Buy dips after 5-min higher low.";
+    }
+    if (bearPct >= 65) {
+        finalBias = "BEAR";
+        explanation = "CE writing + PE buying dominating upper strikes.";
+        takeaway = "Sell rallies near resistance; avoid longs.";
+    }
+
+    let marketMode = activity < 300 ? "LOW ACTIVITY" : activity < 1000 ? "LIGHT" : "STRONG";
+
+    return {
+        rows, bullPct, bearPct, finalBias,
+        activity: Math.round(activity),
+        marketMode, resistance, explanation, takeaway
+    };
+}
+
+
+
+
 
 function generateOIChartsForPrediction(oiData, name) {
     let scriptData = generateTrend(name)
@@ -605,7 +846,7 @@ function generateOIChartsForPrediction(oiData, name) {
         html += '<div class="row">'
         html += '<div class="col-md-12">'
         html += '<h5 style="text-align:center;">' + item.STRIKE + '</h5>'
-        html += '<span style="font-size:small;width:100%;text-align:center;display:block;">['+name+' - Open: ' + scriptData['open'] + ' : Ltp:'+scriptData['ltp']+']</span>'
+        html += '<span style="font-size:small;width:100%;text-align:center;display:block;">[' + name + ' - Open: ' + scriptData['open'] + ' : Ltp:' + scriptData['ltp'] + ']</span>'
         html += '</div>'
         html += '</div>'
 
