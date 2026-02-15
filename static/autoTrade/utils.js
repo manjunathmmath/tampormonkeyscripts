@@ -636,11 +636,11 @@ function getAllValidStocks() {
 }
 
 function getAllValidBreakOutStocks() {
-    let validBreakouts = JSON.parse(localStorage.getItem("VALID_BREAKOUT"));
+    let validBreakouts = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
     let scripts = []
     jQ.each(validBreakouts, function (index, item) {
-        if (jQ.inArray(item, scripts) === -1) {
-            scripts.push(item)
+        if (jQ.inArray(index, scripts) === -1) {
+            scripts.push(index)
         }
     });
 
