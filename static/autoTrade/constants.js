@@ -3047,3 +3047,10 @@ let futureInstrumentsList = [
 		"tradingsymbol": "ZYDUSLIFE26FEBFUT"
 	}
 ]
+
+let componentColorHeader={
+	'NIFTY 50': '#e7cc00',
+	'GIFT NIFTY': '#77e700',
+	'NIFTY BANK': '#68e398',
+	'SENSEX': '#ffbcb0',
+}

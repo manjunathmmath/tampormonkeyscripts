@@ -17,6 +17,7 @@
 // @resource     BOOTSTRAP_ICON_CSS http://localhost:3000/autoTrade/dist/font/bootstrap-icons.css
 // @resource     POPUP_WINDOW_CSS http://localhost:3000/autoTrade/common/popupwindow/popupwindow.css
 // @resource     FIXED_COLUMN_CSS http://localhost:3000/autoTrade/global/vendor/datatables/fixedColumns.dataTables.min.css
+// @resource     C3_CSS http://localhost:3000/autoTrade/global/vendor/c3/c3.css
 
 // @require      http://localhost:3000/autoTrade/global/vendor/jquery/jquery.js
 // @require      http://localhost:3000/autoTrade/dist/js/bootstrap.js
@@ -37,6 +38,10 @@
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.fusion.js
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.candy.js
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/fusioncharts.jqueryplugin.min.js
+
+// @require      http://localhost:3000/autoTrade/global/vendor/c3/d3.min.js
+// @require      http://localhost:3000/autoTrade/global/vendor/c3/c3.min.js
+
 
 
 // @require      http://localhost:3000/autoTrade/common/monkeyconfig.js

@@ -23,8 +23,10 @@ async function autoRefreshEachTabs(instance, isManual) {
 
     if (allow || isManual) {
         await updateStrorageLtpPrice(instance);
+        await commonShowPopupWindow();
         jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     }
+
     startRefresh();
 }
 
@@ -53,11 +55,17 @@ function startTimer(duration, display) {
         var h = d.getHours();
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
         if (s == 59) {
-            autoRefreshEachTabs();
+            let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
+            if (enableAutoRefresh) {
+                autoRefreshEachTabs();
+            }
         }
 
         if (m % 5 == 0 && s == 10) {
-            jQ("#start-advance-decline-refresh").trigger("click");
+            let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
+            if (enableAutoRefresh) {
+                commonShowPopupWindow();
+            }
         }
     }, 1000);
 }
@@ -108,6 +116,7 @@ async function loadOpenPrice() {
         }
         localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
     }
+    await updateStrorageLtpPrice();
     alert("Price loaded successfully.")
 
 }
@@ -235,24 +244,105 @@ jQ(document).ready(function () {
     }
 
     if (exhange && symbol && token) {
-        console.log("Exchange : " + exhange);
-        console.log("Symbol : " + symbol);
-        console.log("Token : " + token);
         showDetailsOnChartPage(exhange, symbol, token);
     }
 });
 
-function showDetailsOnChartPage(exhange, symbol, token) {
+async function showDetailsOnChartPage(exhange, symbol, token) {
     let rowData = {}
     rowData['exchange'] = exhange
     rowData['TRADINGSYMBOL'] = symbol
     rowData['token'] = token
-    let html = ''
-    let id = 0;
-    html += addAdditonalDetails(rowData, id)
-    jQ(".chart-wrapper").prepend(html);
-    showInfo(rowData, 0);
+    commonShowInidividuslStockPopupWindow(symbol)
     setTimeout(function () {
         location.reload();
     }, 300000);
-} 
+}
+
+async function commonShowInidividuslStockPopupWindow(symbol) {
+    let index = 0;
+    let tempName = symbol.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let componentColor = "#ffffff";
+    if (index % 2 === 0) {
+        componentColor = "#edecec";
+    }
+
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+    if (breakOutNineFifteen[symbol] == undefined) {
+        breakOutNineFifteen[symbol] = {};
+        breakOutNineFifteen[symbol]['CLOSE_9_15'] = "B/W"
+    }
+
+    let html = ''
+
+    html += '<div class="row" style="position:relative;" id="individual-stock-popup-window">'
+    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;background-color:' + componentColor + ';">'
+
+    html += '<div class="row" style="position:relative;background-color: ' + (componentColorHeader[symbol] == undefined ? "#ffbcb0" : componentColorHeader[symbol]) + '">'
+    html += '<div class="col-md-12">'
+
+    let bgClass = '';
+    if (breakOutNineFifteen[symbol]['CLOSE_9_15'] == "ASO") {
+        bgClass = 'bg-success';
+    }
+    if (breakOutNineFifteen[symbol]['CLOSE_9_15'] == "BSO") {
+        bgClass = 'bg-danger';
+    }
+    if (breakOutNineFifteen[symbol]['CLOSE_9_15'] == "B/W") {
+        bgClass = 'bg-info';
+    }
+
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + symbol + '" class="badge bg-secondary show-info">i</span>'
+    html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[symbol]['CLOSE_9_15'] + '</span>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">' + symbol + '</h4>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="row" style="padding:.2rem;">'
+    html += '<div class="col-md-12" style="height:13rem;position:relative;background-color:#000000;">'
+    html += '<div id="' + tempName + '-chart" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="padding:.2rem;">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;">'
+    html += '<div id="' + tempName + '-oi-obv" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">FUTURES</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div id="' + tempName + '-futures" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '</div>'
+    let title = ''
+    title += '<div class="row">'
+    title += '<div class="col-md-2">'
+    title += 'Groot Trade Bot'
+    title += '</div>'
+    title += '</div>'
+    showPopUpWindow('groot-trade-bot-stock', html, "Groot [Trade Bot]", 950, 330);
+    let divId = "popup-custom-style-groot-trade-bot-stock";
+    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    await showTopChart(symbol);
+    await showPrictionProbabilty(symbol)
+    showOIOBVBarChart(symbol);
+    let res = await showFutureDetails(symbol);
+    setFutureDetails(symbol, res);
+}

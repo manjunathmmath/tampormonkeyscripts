@@ -1,14 +1,7 @@
-let advanceDeclineTimerInstance = null
 let globalFuturesTrend = {}
-let stockTable = null
-
-
+let stockTable = null;
 jQ(document).on("click", "#show-groot-trade-bot", function (e) {
     e.preventDefault();
-    if (advanceDeclineTimerInstance) {
-        clearInterval(advanceDeclineTimerInstance);
-        advanceDeclineTimerInstance = null;
-    }
     showGrootTradeBot();
 });
 
@@ -16,171 +9,226 @@ async function showGrootTradeBot() {
 
     let html = ''
 
+    html += '<div id="main-trade-bot-container">'
+    html += '</div>'
+
+    let title = ''
+    title += '<div class="row" position:relative;">'
+    title += '<div class="col-md-2">'
+    title += 'Groot Trade Bot'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<a  id="start-auto-refresh">Refresh</a>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<input type="checkbox" id="enable-auto-refresh">'
+    title += '</div>'
+    title += '<div class="col-md-3 pop-title-extra">'
+    title += '<span id="last-refresh-time">Last @ 00:00:00</span>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<span id="refresh-timer-one">00:00</span>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<span id="refresh-loader" class="loader hide"></span>'
+    title += '</div>'
+    title += '<div class="col-md-1">'
+    title += '<span id="data-load">Load</span>'
+    title += '</div>'
+    title += '<div class="col-md-2">'
+    title += '<span id="processing-trend">...</span>'
+    title += '</div>'
+    title += '</div>'
+
+    showPopUpWindow('groot-trade-bot', html, "Groot [Trade Bot]", 950, 550);
+    let divId = "popup-custom-style-groot-trade-bot";
+    jQ("." + divId).find(".popupwindow_titlebar_button_maximize").trigger("click");
+    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+}
+
+jQ(document).on("click", "#data-load", function () {
+    let html = ''
+
     html += '<div class="row">'
-
-    html += '<div class="col-md-1">'
-    html += '<span title="Previous Day Date" class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
+    html += '<div class="col-md-12">'
+    html += 'Previous Day : <span title="Previous Day Date" class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
+    html += '</div>'
+    html += '<div class="col-md-12">'
+    html += 'Current Day : <span title="Current Day Date" class="badge bg-primary me-1">' + CURRENT_DAY + '</span>'
+    html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-1">'
-    html += '<span title="Current Day Date" class="badge bg-primary me-1">' + CURRENT_DAY + '</span>'
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<a  id="clean-storage" type="button">Clear</a>'
+    html += '</div>'
+    html += '<div class="col-md-12">'
+    html += '<a  id="load-price" type="button">Load</a>'
+    html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-1">'
-    html += '<a class="" id="clean-storage" type="button">Clear</a>'
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<a id="nine-fifteen-scan">9:15 SCAN</a>'
     html += '</div>'
-    html += '<div class="col-md-1">'
-    html += '<a class="" id="load-price" type="button">Load</a>'
-    html += '</div>'
-
-    html += '<div class="col-md-1">'
+    html += '<div class="col-md-12">'
     html += '<button id="show-oi-viewer" class="btn btn-secondary btn-sm" type="submit">';
     html += 'Analyzer'
     html += '</button>'
     html += '</div>'
+    html += '</div>'
 
-    html += '<div class="col-md-1">'
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
     html += '<a target="_blank" href="https://docs.google.com/spreadsheets/d/1mJyXOLNqSqIuDIiB1ip9-0kpNGU0pl_o/edit?gid=20807039#gid=20807039"  type="button">Past Analysis</a>'
     html += '</div>'
-
-
-
-    html += '<div class="col-md-1">'
-    html += '<a  id="start-auto-refresh">Refresh</a>'
     html += '</div>'
-    html += '<div class="col-md-1 pop-title-extra">'
-    html += '<span style="margin-left:.5rem;" id="refresh-timer-one">00:00</span>'
-    html += '</div>'
-    html += '<div class="col-md-3 pop-title-extra">'
-    html += '<span id="last-refresh-time">Last @ 00:00:00</span>'
-    html += '</div>'
+    SnackBar({
+        message: html,
+        status: "info",
+        timeout: 60000,
+        actions: [],
+        position: 'tc'
+    });
+});
 
-    html += '<div class="col-md-1">'
-    html += '<a  id="start-advance-decline-refresh" class="btn btn-secondary btn-sm btn-postion"><i class="bi bi-arrow-counterclockwise"></i></a>'
-    html += '</div>'
+jQ(document).on('click', '#nine-fifteen-scan', function (e) {
+    scanNineFifteenCandle()
+});
+
+async function scanNineFifteenCandle() {
+    let scriptData = generateTrends()
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+    if (!breakOutNineFifteen) {
+        breakOutNineFifteen = {}
+        for (let i = 0; i < FO_LIST.length; i++) {
+            let name = FO_LIST[i];
+            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
+            try {
+                let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
+                let firstCandleClose = historical.data.candles[0][4]
+                let asoPrice = 0;
+                let bsoPrice = 0;
+                asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
+                bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
+
+                if (firstCandleClose > asoPrice) {
+                    breakOutNineFifteen[name] = {};
+                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'ASO';
+                }
+
+                if (firstCandleClose < bsoPrice) {
+                    breakOutNineFifteen[name] = {};
+                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'BSO';
+                }
+            } catch (e) {
+                console.log(e)
+            }
+        }
+        localStorage.setItem("VALID_BREAKOUT_NINE_FIFTEEN", JSON.stringify(breakOutNineFifteen));
+    }
+}
 
 
-    html += '</div>'
+async function commonShowPopupWindow() {
+    jQ("#refresh-loader").removeClass("hide");
+    let html = ''
 
-
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-    html += '<div class="row">'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Gift Nifty <span id="nine-fifteen-nifty-gift-trend"></span></h6>'
-    html += '<div id="gift-nifty-top-chart">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Nifty 50<span id="nine-fifteen-nifty-trend"></span></h6>'
-    html += '<div id="nifty-to-chart">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Bank Nifty <span id="nine-fifteen-nifty-bank-trend"></span></h6>'
-    html += '<div id="bank-nifty-top-chart">'
-    html += '</div>'
-    html += '</div>'
-
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Sensex<span id="nine-fifteen-sensex-trend"></span></h6>'
-    html += '<div id="sensex-top-chart">'
-    html += '</div>'
-    html += '</div>'
-
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-    html += '<div class="row">'
-
-    html += '<div class="col-md-12">'
-    html += '<h6 class="header-class-center">'
-    html += 'Advance [ASO]/Decline [BSO]'
-    html += '</h6>'
-    html += '</div>'
-
-    html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">All <span class="badge bg-info" id="all-advance-decline-adr"></span><span class="badge bg-info" id="all-advance-decline-nine-fifteen-close"></span></h6>'
-    html += '<div id="advance-decline-chart">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Nifty<span class="badge bg-info" id="nifty-advance-decline-adr"></span><span class="badge bg-info" id="nifty-advance-decline-nine-fifteen-close"></span></h6>'
-    html += '<div id="advance-decline-nifty-chart">'
+    html += '<div class="row" style="position:relative;">'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('NIFTY 50', 1);
+    html += showComponent('NIFTY BANK', 2);
+    html += showComponentFutures('NIFTY 50', 6);
+    html += showComponentFutures('NIFTY BANK', 6);
+    html += showComponentOI('NIFTY 50');
+    html += showComponentOI('NIFTY BANK');
+    html += showComponent915Close('NIFTY 50', 6);
+    html += showComponent915Close('NIFTY BANK', 6);
+    html += showComponenAdvanceDeclineTrend('NIFTY 50', 6)
+    html += showComponenAdvanceDeclineTrend('NIFTY BANK', 6)
+    html += showComponenAdvanceDeclineFutureTrend('NIFTY 50', 6)
+    html += showComponenAdvanceDeclineFutureTrend('NIFTY BANK', 6)
     html += '</div>'
     html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">Bank<span class="badge bg-info" id="bank-advance-decline-adr"></span><span class="badge bg-info" id="bank-advance-decline-nine-fifteen-close"></span></h6>'
-    html += '<div id="advance-decline-bank-chart">'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('GIFT NIFTY', 3);
+    html += showComponent('SENSEX', 4);
+    html += showComponent915Close('ALL', 12);
+    html += showAdvanceDecline();
+    html += showAdvanceDeclineFutures();
     html += '</div>'
     html += '</div>'
-
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('RELIANCE', 5);
+    html += showComponent('HDFCBANK', 6);
+    html += showComponentFutures('RELIANCE', 6);
+    html += showComponentFutures('HDFCBANK', 6);
+    html += showComponentOI('RELIANCE');
+    html += showComponentOI('HDFCBANK');
+    html += showStockComponent();
     html += '</div>'
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-    html += '<div class="row">'
-
-    html += '<div class="col-md-12 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">'
-    html += 'Futures Trend <span class="badge bg-info" id="future-advance-decline-adr"></span>'
-    html += '</h6>'
-    html += '<div id="futures-trend-chart">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">'
-    html += 'Nifty Futures Trend <span class="badge bg-info" id="future-nifty-advance-decline-adr"></span>'
-    html += '<div id="futures-trend-nifty">'
-    html += '</div>'
-    html += '</h6>'
-    html += '<div id="futures-trend-chart-nifty">'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-6 min-height"  class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '<h6 class="header-class-center">'
-    html += 'Bank Futures Trend <span class="badge bg-info" id="future-bank-advance-decline-adr"></span>'
-    html += '<div id="futures-trend-nifty-bank">'
+
+    jQ("#main-trade-bot-container").html(html);
+
+    await callSleepForAWhile(1000)
+    await showTopChart('NIFTY 50');
+    await showTopChart('NIFTY BANK');
+    await showTopChart('GIFT NIFTY');
+    await showTopChart('SENSEX');
+    await showTopChart('RELIANCE');
+    await showTopChart('HDFCBANK');
+
+    let res = await showFutureDetails('NIFTY 50');
+    setFutureDetails('NIFTY 50', res);
+    res = await showFutureDetails('NIFTY BANK');
+    setFutureDetails('NIFTY BANK', res);
+    res = await showFutureDetails('RELIANCE');
+    setFutureDetails('RELIANCE', res);
+    res = await showFutureDetails('HDFCBANK');
+    setFutureDetails('HDFCBANK', res);
+
+    await showPrictionProbabilty('NIFTY 50')
+    showOIOBVBarChart('NIFTY 50');
+    await showPrictionProbabilty('NIFTY BANK')
+    showOIOBVBarChart('NIFTY BANK');
+    await showPrictionProbabilty('RELIANCE')
+    showOIOBVBarChart('RELIANCE');
+    await showPrictionProbabilty('HDFCBANK')
+    showOIOBVBarChart('HDFCBANK');
+
+    show915Trend('NIFTY 50');
+    show915Trend('NIFTY BANK');
+    show915Trend('ALL');
+    await showAdvacenDeclineScanner();
+    await showFuturesTrend();
+    showStockList([]);
+    jQ("#refresh-loader").addClass("hide");
+}
+
+function showStockComponent() {
+    let html = ''
+    html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">INSTRUMENTS</h4>'
     html += '</div>'
-    html += '</h6>'
-    html += '<div id="futures-trend-chart-nifty-bank">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '</div>'
-
-
-
-
-
-
-    html += '</div>'
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-1"></div>'
-
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
+    html += '<div class="col-md-12" style="height:34.5rem;position:relative;overflow-y:auto;">'
     html += '<table  class="table display nowrap" id="stock-list-table" style="width: 100%;">'
     html += '<thead>'
     html += '<tr>'
-    html += '<th></th>'
     html += '<th>SYMBOL</th>'
     html += '<th>OPEN</th>'
     html += '<th>OPEN %</th>'
     html += '<th>CH %</th>'
     html += '<th>LTP</th>'
     html += '<th>VOLUME</th>'
-    html += '<th>CLOSE 9:15</th>'
     html += '<th>TREND</th>'
-    html += '<th>FUTURE_TREND</th>'
     html += '</tr>'
     html += '</thead>'
     html += '<tbody>'
@@ -188,144 +236,1057 @@ async function showGrootTradeBot() {
     html += '</table>'
     html += '</div>'
     html += '</div>'
-
-
-    html += '<table class="table table-striped">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th scope="col">Price</th>'
-    html += '<th scope="col">OI</th>'
-    html += '<th scope="col">ChangeinOpenInterest</th>'
-    html += '<th>PchangeinOpenInterest</th>'
-    html += '<th>(Vwap -5) <= lastPrice</th>'
-    html += '<th scope="col">Result</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
-    html += '<tr>'
-    html += '<td>+</td>'
-    html += '<td>+</td>'
-    html += '<td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>LONG</td>'
-    html += '</tr>'
-    html += '<tr>'
-    html += '<td>-</td>'
-    html += '<td>+</td>'
-    html += '<td>N/A</td>'
-    html += ' <td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>SHORT</td>'
-    html += '</tr>'
-    html += '<tr>'
-    html += '<td>+</td>'
-    html += '<td>-</td>'
-    html += '<td><0</td>'
-    html += '<td><-2</td>'
-    html += '<td>N/A</td>'
-    html += '<td>SHORT COVERING</td>'
-    html += '</tr>'
-    html += '<tr>'
-    html += '<td>-</td>'
-    html += '<td>-</td>'
-    html += '<td><0</td>'
-    html += '<td><-2</td>'
-    html += '<td>N/A</td>'
-    html += '<td>LONG UNWINDING</td>'
-    html += '</tr>'
-    html += '<tr>'
-    html += ' <td>-</td>'
-    html += '<td>-</td>'
-    html += '<td>N/A</td>'
-    html += '<td>>= 10</td>'
-    html += '<td>true</td>'
-    html += '<td>Bears Coming,Sell On Rise</td>'
-    html += '</tr>'
-    html += '<tr>'
-    html += ' <td>+-</td>'
-    html += '<td>+</td>'
-    html += '<td>>0</td>'
-    html += '<td><10</td>'
-    html += '<td>true</td>'
-    html += '<td>Caution! Writers Eroding Premium</td>'
-    html += '</tr>'
-    html += '<tr>'
-    html += '<td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>N/A</td>'
-    html += '<td>Defence,Buy On Decline</td>'
-    html += '</tr>'
-
-    html += '</tbody>'
-    html += '</table>'
-
-    let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'Groot Trade Bot'
-    title += '</div>'
-    title += '<div class="col-md-2">'
-    title += '<span id="refresh-timer-one">00:00</span>'
-    title += '</div>'
-    title += '</div>'
-
-    showPopUpWindow('groot-trade-bot', html, "Groot [Trade Bot]", 950, 550);
-    let divId = "popup-custom-style-groot-trade-bot";
-    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
-    showStockList([])
+    html += '</div>'
+    return html;
 }
 
-jQ(document).on("click", "#start-advance-decline-refresh", function (e) {
-    e.preventDefault();
-    let that = jQ(this);
-    that.attr("disabled", true);
-    commonRefreshAdvanceDecline(that)
+function setFutureDetails(name, data) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    jQ("#" + tempName + "-futures").html(data['PLUS'] + '<br/>' + data['MINUS']);
+}
+
+function showAdvanceDecline() {
+    let html = ''
+    html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D ' + ' ' + '[<span id="all-advance-decline-adr">ADR</span>]</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div id="advance-decline-trend"></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+    return html;
+}
+
+function showAdvanceDeclineFutures() {
+    let html = ''
+    html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D FUTURES ' + ' ' + '[<span id="all-advance-decline-adr-future">ADR</span>]</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div id="advance-decline-futures-trend"></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+    return html;
+}
+
+function placeHolder(name) {
+    let tempName = name.replaceAll(" ", "-")
+    let html = ''
+    html += '<div class="col-md-2" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">PLACEHOLDER</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div id="' + tempName + '-placeholder"></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+function showComponent915Close(name, column) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let html = ''
+    html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">9:15 CLOSE</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
+    html += '<div id="' + tempName + '-nine-fifteen-close" ></div>'
+    html += '<div id="' + tempName + '-nine-fifteen-close-table"></div>'
+    html += '</div>'
+
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+
+function showComponenAdvanceDeclineTrend(name, column) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let html = ''
+    html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D' + '[<span id="' + tempName + '-advance-decline-adr">ADR</span>]</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
+    html += '<div id="' + tempName + '-advance-decline" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+function showComponenAdvanceDeclineFutureTrend(name, column) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let html = ''
+    html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D FUT' + '[<span id="' + tempName + '-advance-decline-adr-future">ADR</span>]</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
+    html += '<div id="' + tempName + '-advance-decline-future" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+
+function showComponentFutures(name, column) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let html = ''
+    html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUTURES</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div id="' + tempName + '-futures"></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+function showComponentOI(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let html = ''
+    html += '<div class="col-md-6" style="border:1px solid #c3c3c3;">'
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
+    html += '</div>'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;">'
+    html += '<div id="' + tempName + '-oi-obv" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+function showComponent(name, index) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let componentColor = "#ffffff";
+    if (index % 2 === 0) {
+        componentColor = "#edecec";
+    }
+
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+    if (breakOutNineFifteen[name] == undefined) {
+        breakOutNineFifteen[name] = {};
+        breakOutNineFifteen[name]['CLOSE_9_15'] = "B/W"
+    }
+
+    let html = ''
+    html += '<div class="col-md-6" style="border:1px solid #c3c3c3;background-color:' + componentColor + ';">'
+
+    html += '<div class="row" style="position:relative;background-color: ' + (componentColorHeader[name] == undefined ? "#ffbcb0" : componentColorHeader[name]) + '">'
+    html += '<div class="col-md-12">'
+
+    let bgClass = '';
+    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "ASO") {
+        bgClass = 'bg-success';
+    }
+    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "BSO") {
+        bgClass = 'bg-danger';
+    }
+    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W") {
+        bgClass = 'bg-info';
+    }
+
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
+    html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + name + '</h4>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="row" style="">'
+    html += '<div class="col-md-12" style="height:13rem;position:relative;background-color:#000000;">'
+    html += '<div id="' + tempName + '-chart" ></div>'
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+    return html;
+}
+
+jQ(document).on("click", ".show-info", function () {
+    let name = jQ(this).attr("data-name");
+    let data = generateTrend(name);
+    let html = ''
+    html += '<div style="text-align:center;">'
+    html += name
+    html += '</div>'
+    html += '<div>'
+    html += ' OPEN : ' + parseFloat(data['open']);
+    html += '</div>'
+    html += '<div>'
+    html += ' LTP : ' + parseFloat(data['ltp']);
+    html += '</div>'
+    html += '<div>'
+    html += ' ASO : ' + parseFloat(data['strikeData']['ustrikeOne']);
+    html += '</div>'
+    html += '<div>'
+    html += ' BSO : ' + parseFloat(data['strikeData']['bstrikeOne']);
+    html += '</div>'
+    html += '<div>'
+    html += ' VIXU : ' + parseFloat(data['vix']['vixDDUpper']);
+    html += '</div>'
+    html += '<div>'
+    html += ' VIXL : ' + parseFloat(data['vix']['vixDDLower']);
+    html += '</div>'
+    html += '<div>'
+    html += ' TREND : ' + data['trends'].join(", ");
+    html += '</div>'
+    callSackBarInfo(html)
 });
 
-async function commonRefreshAdvanceDecline(that) {
-    clearInterval(advanceDeclineTimerInstance)
-    await showTopChart("GIFT NIFTY", "gift-nifty-top-chart");
-    await showTopChart("NIFTY 50", "nifty-to-chart")
-    await showTopChart("NIFTY BANK", "bank-nifty-top-chart");
-    await showTopChart("SENSEX", "sensex-top-chart");
-    await showAdvacenDeclineScanner(that);
-    await showFuturesTrend();
-    showStockList([]);
-    that.removeAttr("disabled");
+async function showTopChart(name) {
+    try {
+        let tempName = name.replaceAll(" ", "-")
+        tempName = tempName.replaceAll("&", "-")
+        let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+
+
+        if (name == "GIFT NIFTY") {
+            if (breakOutNineFifteen['GIFT NIFTY'] == undefined) {
+                breakOutNineFifteen['GIFT NIFTY'] = {};
+                breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-nifty-gift-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] + '</span>');
+        }
+
+        if (name == "NIFTY 50") {
+            if (breakOutNineFifteen['NIFTY 50'] == undefined) {
+                breakOutNineFifteen['NIFTY 50'] = {};
+                breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-nifty-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] + '</span>');
+        }
+
+        if (name == "NIFTY BANK") {
+            if (breakOutNineFifteen['NIFTY BANK'] == undefined) {
+                breakOutNineFifteen['NIFTY BANK'] = {};
+                breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-nifty-bank-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] + '</span>');
+        }
+
+        if (name == "SENSEX") {
+            if (breakOutNineFifteen['SENSEX'] == undefined) {
+                breakOutNineFifteen['SENSEX'] = {};
+                breakOutNineFifteen['SENSEX']['CLOSE_9_15'] = "B/W"
+            }
+            jQ("#nine-fifteen-sensex-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['SENSEX']['CLOSE_9_15'] + '</span>');
+        }
+
+        let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        await savePreviousStockQuote(tempName, instrumentTokens[name])
+        let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
+        let scriptData = generateTrend(name)
+
+        let columns = []
+        let x = ['x']
+        let column = ["Close"]
+
+
+
+        jQ.each(data.data.candles, function (index, item) {
+            x.push(moment(item[0]).format("YYYY-MM-DD HH:mm:ss"))
+            column.push(parseFloat(item[4]))
+        });
+
+        columns.push(x)
+        columns.push(column)
+
+
+        let lines = []
+        lines.push({ value: parseFloat(scriptData['vix'].vixDDLower), text: 'VIXL: ' + scriptData['vix'].vixDDLower, class: 'vixl-line-class' });
+        lines.push({ value: parseFloat(scriptData['vix'].vixDDUpper), text: 'VIXU: ' + scriptData['vix'].vixDDUpper, class: 'vixu-line-class' });
+        lines.push({ value: parseFloat(scriptData['strikeData'].ustrikeTwo), text: 'AST: ' + scriptData['strikeData'].ustrikeTwo, class: 'ustrike-two-line-class' });
+        lines.push({ value: parseFloat(scriptData['strikeData'].ustrikeOne), text: 'ASO: ' + scriptData['strikeData'].ustrikeOne, class: 'ustrike-one-line-class' });
+        lines.push({ value: parseFloat(scriptData['strikeData'].bstrikeOne), text: 'BSO: ' + scriptData['strikeData'].bstrikeOne, class: 'bstrike-one-line-class' });
+        lines.push({ value: parseFloat(scriptData['strikeData'].bstrikeTwo), text: 'BST: ' + scriptData['strikeData'].bstrikeTwo, class: 'bstrike-two-line-class' });
+
+        let max = scriptData['vix'].vixDDUpper
+        let min = scriptData['vix'].vixDDLower
+
+        if (max < scriptData['strikeData'].ustrikeTwo) {
+            max = scriptData['strikeData'].ustrikeTwo
+        }
+
+        if (min > scriptData['strikeData'].bstrikeTwo) {
+            min = scriptData['strikeData'].bstrikeTwo
+        }
+
+
+        try {
+            if (data.data.candles[data.data.candles.length - 1][4] > max) {
+                max = data.data.candles[data.data.candles.length - 1][4]
+            }
+
+            if (data.data.candles[data.data.candles.length - 1][4] < min) {
+                min = data.data.candles[data.data.candles.length - 1][4]
+            }
+
+            if (previousQuote.data.candles[previousQuote.data.candles.length - 1][4] > max) {
+                max = previousQuote.data.candles[previousQuote.data.candles.length - 1][4]
+            }
+
+            if (previousQuote.data.candles[previousQuote.data.candles.length - 1][4] < min) {
+                min = previousQuote.data.candles[previousQuote.data.candles.length - 1][4]
+            }
+        } catch (error) {
+            console.error("Error in calculating max min for " + name, error);
+        }
+
+        let chartId = tempName;
+        var chart = c3.generate({
+            bindto: "#" + chartId + "-chart",
+            size: {
+                height: 150
+            },
+            data: {
+                x: 'x',
+                xFormat: '%Y-%m-%d %H:%M:%S',
+                columns: columns,
+                type: 'spline'
+            },
+            point: {
+                show: false
+            },
+
+            grid: {
+                x: {
+                    lines: []
+                },
+                y: {
+                    lines: lines
+                }
+            },
+
+            axis: {
+                x: {
+                    type: 'timeseries',
+                    tick: {
+                        // Display format for the x-axis ticks
+                        format: '%H:%M',
+                        rotate: 60 // Optional: rotate labels for better readability with long formats
+                    },
+                    show: false,
+                },
+                y: {
+                    show: false,
+                    min: parseFloat(min),
+                    max: parseFloat(max),
+                },
+
+            },
+            legend: {
+                show: false // Hide the legend      
+            }
+        });
+    } catch (error) {
+        console.error("Error in showTopChart for " + name, error);
+    }
+}
+
+function show915Trend(name) {
+
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let asoCount = 0;
+    let bsoCount = 0;
+
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+
+    let checkList = FO_LIST;
+    if (name == "NIFTY 50") {
+        checkList = NIFTY_50_LIST;
+    }
+
+    if (name == "NIFTY BANK") {
+        checkList = NIFTY_BANK_LIST;
+    }
+
+
+    let stockList = []
+    if (breakOutNineFifteen) {
+        jQ.each(breakOutNineFifteen, function (index, item) {
+            if (item['CLOSE_9_15'] == 'ASO') {
+                if (jQ.inArray(index, checkList) != -1) {
+                    asoCount++;
+                    stockList.push({ 'NAME': index, 'CLOSE_9_15': item['CLOSE_9_15'] });
+                }
+            }
+
+            if (item['CLOSE_9_15'] == 'BSO') {
+                if (jQ.inArray(index, checkList) != -1) {
+                    bsoCount++;
+                    stockList.push({ 'NAME': index, 'CLOSE_9_15': item['CLOSE_9_15'] });
+                }
+            }
+        });
+    }
+
+    let columns = []
+    let aso = ['ASO', asoCount]
+    let bso = ['BSO', bsoCount]
+
+    columns.push(aso);
+    columns.push(bso);
+
+    let chartId = tempName + "-nine-fifteen-close";
+    var chart = c3.generate({
+        bindto: "#" + chartId,
+        size: {
+            height: 150
+        },
+        data: {
+            columns: columns,
+            type: 'pie'
+        },
+        color: {
+            pattern: ['#5ccf76', '#bc2709'],
+        },
+        pie: {
+            label: {
+                format: function (value, ratio, id) {
+                    return value;
+                }
+            }
+        },
+        legend: {
+            show: false
+        }
+    });
+
+    let html = ''
+    html += '<table class="table table-bordered">'
+    html += '<thead><tr><th>Stock</th><th>Close</th></tr></thead>'
+    html += '<tbody>'
+    jQ.each(stockList, function (index, item) {
+        html += '<tr>'
+        html += '<td><a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + instrumentTokens[item['NAME']] + '"> '
+        html += item['NAME'];
+        html += '</a></td>'
+        html += '<td>' + item['CLOSE_9_15'] + '</td></tr>'
+    })
+    html += '</tbody></table>'
+    jQ("#" + tempName + "-nine-fifteen-close-table").html(html);
+}
+
+function showOIOBVBarChart(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let columns = [];
+
+    let x = ['x']
+
+    let oiCE = ["CE OI"]
+    let oiPE = ["PE OI"]
+
+    let oiCEOBV = ["CE OI OBV"]
+    let oiPEOBV = ["PE OI OBV"]
+
+    let data = stock[0]['DATA']['tableData']
+
+    jQ.each(data, function (index, item) {
+        x.push(item['STRIKE'])
+        oiCE.push(item['CHG_OI_CE'])
+        oiPE.push(item['CHG_OI_PE'])
+        oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
+        oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
+    })
+
+    columns.push(x)
+    columns.push(oiCE)
+    columns.push(oiPE)
+    columns.push(oiCEOBV)
+    columns.push(oiPEOBV)
+
+
+    var chart = c3.generate({
+        bindto: "#" + tempName + "-oi-obv",
+        size: {
+            height: 150
+        },
+        data: {
+            x: 'x',
+            columns: columns,
+            type: 'bar',
+            color: function (color, d) {
+                if (d.value !== undefined) {
+                    if (d.id === 'CE OI' && d.value > 0) {
+                        return '#bc2709'; // Green for positive CE OI
+                    } else if (d.id === 'CE OI' && d.value < 0) {
+                        return '#5ccf76'; // Red for negative CE OI
+                    } else if (d.id === 'PE OI' && d.value > 0) {
+                        return '#5ccf76'; // Green for positive PE OI
+                    } else if (d.id === 'PE OI' && d.value < 0) {
+                        return '#bc2709'; // Red for negative PE OI
+                    } else if (d.id === 'CE OI OBV' && d.value > 0) {
+                        return '#5ccf76'; // Green for positive CE OBV
+                    } else if (d.id === 'CE OI OBV' && d.value < 0) {
+                        return '#bc2709'; // Red for negative CE OBV
+                    } else if (d.id === 'PE OI OBV' && d.value > 0) {
+                        return '#bc2709'; // Green for positive PE OBV
+                    } else if (d.id === 'PE OI OBV' && d.value < 0) {
+                        return '#5ccf76'; // Red for negative PE OBV
+                    }
+                }
+                // For legend items or other cases, return the default color
+                return color;
+            },
+
+        },
+
+        bar: {
+            width: {
+                ratio: 0.5
+            }
+        },
+        axis: {
+            x: {
+                show: true,
+            },
+            y: {
+                show: false,
+            },
+        },
+        legend: {
+            show: false // Hide the legend      
+        }
+    });
+}
+
+async function showFutureDetails(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+    let futures;
+    jQ.each(futureInstrumentsList, function (index, item) {
+        let instName = name
+        if (instName == "NIFTY 50") {
+            instName = 'NIFTY'
+        }
+
+        if (instName == "NIFTY BANK") {
+            instName = 'BANKNIFTY'
+        }
+
+        if (item.name == instName) {
+            futures = item;
+        }
+    })
+    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+
+
+    let data = []
+    let prevData = []
+    jQ.each(cres.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map.oi = item[6]
+        data.push(map);
+    });
+
+    jQ.each(pres.data.candles, function (index, item) {
+        let map = {}
+        map['date'] = moment(item[0]).format("HH:mm")
+        map.open = item[1]
+        map.high = item[2]
+        map.low = item[3]
+        map.close = item[4]
+        map.volume = item[5]
+        map.oi = item[6]
+        prevData.push(map);
+    });
+
+    prevData = prevData[prevData.length - 1];
+    let resp = {}
+    if (tempName == "BANKNIFTY") {
+        resp = showTableAiBankNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
+    } else {
+        resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
+    }
+
+    return resp;
+}
+
+function showTableAiNiftyPrediction(quote, prevQuote, lotSize) {
+    let data = {}
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+    var vwap = vwapPrice ? vwapPrice : 0;
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / lotSize;
+    var previousOI = prevQuote['oi'] / lotSize
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
+        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
+        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
+    } else {
+        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+    var dogImgContainer = '<span class="">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="">' + captain + '</span>'
+    var lokiImgContainer = '<span class="">' + loki + '</span>'
+    var ironManImgContainer = '<span class="">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+    var RemarkType = ""
+
+    if (price == "+" && oi == "+") {
+        remark = '<div class="badge bg-success">Long</div>'
+        display = "+";
+        RemarkType = "LONG"
+    } else if (price == "-" && oi == "+") {
+        remark = '<div class="badge bg-danger">Short</div>'
+        display = "-";
+        RemarkType = "SHORT"
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<div class="badge bg-success">Short Covering</div>'
+        display = "+";
+        RemarkType = "SHOT_COVERING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<div class="badge bg-danger">Long Unwinding</div>'
+        display = "-";
+        RemarkType = "LONG_UNWINDING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<div class="badge bg-danger">Bears Coming,Sell On Rise</div>'
+        display = "-";
+        RemarkType = "BEARS_COMING_SELL_ON_RISE"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<div class="badge bg-danger">Gambling! Buy,News & Events</div>'
+        display = "+";
+        RemarkType = "GAMBLING_BUY_NEWS_AND_EVENTS"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<div class="badge bg-danger">Caution! Writers Eroding Premium</div>'
+        display = "+";
+        RemarkType = "CAUTION_WRITES_ERODING_PREMIUM"
+    } else {
+        remark = captainImgContainer + '<div class="badge bg-danger">Defence,Buy On Decline</div>'
+        display = "+";
+        RemarkType = "DEFENCE_BUY_ON_DECLINE"
+    }
+
+    data.REMARK = RemarkType
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    var openInterestMarkupBull = openInterestMarkup
+    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
+    var openInterestChangeMarkupBull = openInterestChangeMarkup
+    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
+    var niftyOILabelPlusBull = "NIFTY-OI"
+    var otherRemarkType = ""
+    var otherTrendRemarks = ""
+    if (display == "+") {
+        marketTrendPlus = '<div class=" badge bg-success">Hulk Arrived (+)</div>'
+        otherTrendRemarks += '<div class="row">'
+        otherTrendRemarks += '<div class="col-md-12">'
+        otherTrendRemarks += "Hulk Arrived (+)"
+        otherTrendRemarks += '</div>'
+        otherTrendRemarks += '</div>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<div class=" badge bg-warning">Doctor Strange Arrived (+)</div>'
+            otherTrendRemarks = ''
+            otherTrendRemarks += '<div class="row">'
+            otherTrendRemarks += '<div class="col-md-12">'
+            otherTrendRemarks += "Doctor Strange Arrived (+))"
+            otherTrendRemarks += '</div>'
+            otherTrendRemarks += '</div>'
+            imageBullPlus = doctorStrangeImgContainer
+            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<div class="  badge bg-danger">Strongly Not Recommended to buy Calls</div>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<div class=" badge bg-danger">Chitauri Army Arrived (-)</div>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<div class="  badge bg-danger">Strongly Not Recommended to Short Calls</div>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+
+    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
+
+    return data;
+}
+
+function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize) {
+
+    let data = {}
+
+    quote.volume = parseInt(quote.volume)
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+
+
+    var vwap = vwapPrice ? vwapPrice : 0;
+
+
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var close = quote.close;
+    var lastPrice = quote.close;
+
+    var previousClose = prevQuote['close']
+    var pChange = ((lastPrice - previousClose) / previousClose) * 100
+    var change = (lastPrice - previousClose).toFixed(2)
+    var shortCoveringOrLongUnwinding = false;
+    var price;
+    var oi;
+    var booleanValue = false;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap; // price spike adjustment
+    var lastPrice = lastPrice;
+    if (correctedVwap <= lastPrice) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var openInterest = quote['oi'] / lotSize;
+    var previousOI = prevQuote['oi'] / lotSize
+    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
+    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
+    var changeEvo1 = change;
+    var pChangeEvo = pchangeinOpenInterest;
+    var changeEvo = changeinOpenInterest;
+    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
+    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
+    var openInterestMarkup = '';
+    var openInterestDirectionMarkup = '';
+    var openInterestChangeMarkup = '';
+    var openInterestChangePercMarkup = '';
+
+    if (changeinOpenInterest > 0) {
+        openInterestMarkup = '<div class=" badge bg-success">' + openInterest + '</div>'
+        openInterestDirectionMarkup = '<div class=" badge bg-success" >' + upTriangle + '</div>'
+        openInterestChangeMarkup = '<div class=" badge bg-success" >' + changeinOpenInterest + '</div>'
+        oi = "+";
+    } else {
+        openInterestMarkup = '<div class=" badge bg-danger">' + openInterest + '</div>'
+        openInterestDirectionMarkup = '<div class=" badge bg-danger">' + bottomTriangle + '</div>'
+        openInterestChangeMarkup = '<div class=" badge bg-danger">' + changeinOpenInterest + '</div>'
+        oi = "-";
+    }
+
+    if (pchangeinOpenInterest > 0) {
+        openInterestChangePercMarkup = '<div class=" badge bg-success">' + pchangeinOpenInterest + '%</div>'
+    } else {
+        openInterestChangePercMarkup = '<div class=" badge bg-danger">' + pchangeinOpenInterest + '%</div>'
+    }
+
+    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
+        price = "+";
+    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
+        price = "-";
+    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
+        price = "-";
+    } else {
+        price = "+-";// no clear trend
+    }
+
+    if (changeEvo < 0 && pChangeEvo < -2) {
+        shortCoveringOrLongUnwinding = true;
+    } else {
+        shortCoveringOrLongUnwinding = false;
+    }
+
+    var remark = "No Clear Trend, Bulls are still waiting";
+
+
+    var dogImgContainer = '<span class="">' + dogImage + '</span>'
+    var bullImageImgContainer = '<span class="">' + bullImage + '</span>'
+    var bearImageImgContainer = '<span class="">' + bearImage + '</span>'
+    var hulkImageImgContainer = '<span class="">' + hulkImage + '</span>'
+    var captainImgContainer = '<span class="">' + captain + '</span>'
+    var lokiImgContainer = '<span class="">' + loki + '</span>'
+    var ironManImgContainer = '<span class="">' + ironMan + '</span>'
+    var thorImgContainer = '<span class="">' + thor + '</span>'
+    var hulNewImgContainer = '<span class="">' + hulkImageNew + '</span>'
+    var doctorStrangeImgContainer = '<span class="">' + doctor_strange + '</span>'
+    remark += dogImgContainer
+    var display = "+";
+
+    var aiStatus = ""
+
+    if (price == "+" && oi == "+") {
+        remark = '<div class="badge bg-success">Long</div>'
+        display = "+";
+        aiStatus = "LONG"
+    } else if (price == "-" && oi == "+") {
+        remark = '<div class="badge bg-danger">Short</div>'
+        display = "-";
+        aiStatus = "SHORT"
+    } else if (price == "+" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = '<div class="badge bg-success">Short Covering</div>'
+        display = "+";
+        aiStatus = "SHOT_COVERING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding) {
+        remark = dogImgContainer + '<div class="badge bg-danger">Long Unwinding</div>'
+        display = "-";
+        aiStatus = "LONG_UNWINDING"
+    } else if (price == "-" && oi == "-"
+        && shortCoveringOrLongUnwinding == false) {
+        remark = dogImgContainer + lokiImgContainer + '<div class="badge bg-danger">Bears Coming,Sell On Rise</div>'
+        display = "-";
+        aiStatus = "BEARS_COMING_SELL_ON_RISE"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo >= 10) {
+        remark = '<div class="badge bg-danger">Gambling! Buy,News & Events</div>'
+        display = "+";
+        aiStatus = "GAMBLING_BUY_NEWS_AND_EVENTS"
+    } else if (price == "+-" && oi == "+"
+        && shortCoveringOrLongUnwinding == false
+        && booleanValue == true && pChangeEvo < 10) {
+        remark = '<div class="badge bg-danger">Caution! Writers Eroding Premium</div>'
+        display = "+";
+        aiStatus = "CAUTION_WRITES_ERODING_PREMIUM"
+    } else {
+        remark = captainImgContainer + '<div class="badge bg-danger">Defence,Buy On Decline</div>'
+        display = "+";
+        aiStatus = "DEFENCE_BUY_ON_DECLINE"
+    }
+
+    data.REMARK = aiStatus
+
+    var bullRemark = remark;
+    var bearRemark = remark;
+    var marketTrendPlus = ""
+    var imageBullPlus = "";
+
+    var openInterestMarkupBull = openInterestMarkup
+    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
+    var openInterestChangeMarkupBull = openInterestChangeMarkup
+    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
+    var niftyOILabelPlusBull = "NIFTY-OI"
+    var otherRemarkType = ""
+    var otherTrendRemarks = ""
+    if (display == "+") {
+        marketTrendPlus = '<div class=" badge bg-success">Hulk Arrived (+)</div>'
+        otherTrendRemarks += '<div class="row">'
+        otherTrendRemarks += '<div class="col-md-12">'
+        otherTrendRemarks += "Hulk Arrived (+)"
+        otherTrendRemarks += '</div>'
+        otherTrendRemarks += '</div>'
+        if (pChangeEvo >= 4 && price != "+-") {
+            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
+            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
+        } else if (pChangeEvo >= 4 && price == "+-") {
+            marketTrendPlus = '<div class=" badge bg-warning">Doctor Strange Arrived (+)</div>'
+            otherTrendRemarks = ''
+            otherTrendRemarks += '<div class="row">'
+            otherTrendRemarks += '<div class="col-md-12">'
+            otherTrendRemarks += "Doctor Strange Arrived (+))"
+            otherTrendRemarks += '</div>'
+            otherTrendRemarks += '</div>'
+            imageBullPlus = doctorStrangeImgContainer
+            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
+        } else {
+            imageBullPlus = bullImageImgContainer;
+        }
+    } else {
+        marketTrendPlus = '<div class="  badge bg-danger">Strongly Not Recommended to buy Calls</div>'
+        imageBullPlus = ""
+        openInterestMarkupBull = ""
+        openInterestDirectionMarkupBull = ""
+        openInterestChangeMarkupBull = ""
+        openInterestChangePercMarkupBull = ""
+        niftyOILabelPlusBull = ""
+        bullRemark = ""
+    }
+
+    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
+
+    var marketTrendMinus = ""
+    var imageBearMinus = "";
+    var openInterestMarkupBear = openInterestMarkup
+    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
+    var openInterestChangeMarkupBear = openInterestChangeMarkup
+    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
+    var bankNiftyOILabelPlusBear = "NIFTY-OI"
+
+    if (display == "-") {
+        marketTrendMinus = '<div class=" badge bg-danger">Chitauri Army Arrived (-)</div>'
+        imageBearMinus = bearImageImgContainer
+    } else {
+        marketTrendMinus = '<div class="  badge bg-danger">Strongly Not Recommended to Short Calls</div>'
+        openInterestMarkupBear = ""
+        openInterestDirectionMarkupBear = ""
+        openInterestChangeMarkupBear = ""
+        openInterestChangePercMarkupBear = ""
+        bankNiftyOILabelPlusBear = ""
+        bearRemark = ""
+    }
+    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
+
+    return data;
 }
 
 let scriptsVolumeMap = {}
 async function showAdvacenDeclineScanner() {
     let scriptData = generateTrends()
 
-    let advanceSeries = {}
-    advanceSeries['seriesname'] = "Advance"
-    advanceSeries['data'] = []
+    let adVanceDeclineColumns = []
+    let advanceSeries = ['Advance']
+    let declineSeries = ["Decline"]
 
-    let declineSeries = {}
-    declineSeries['seriesname'] = "Decline"
-    declineSeries['data'] = []
+    let adVanceDeclineColumnsNifty = []
+    let advanceSeriesNifty = ['Advance']
+    let declineSeriesNifty = ["Decline"]
 
-
-    let advanceSeriesNifty = {}
-    advanceSeriesNifty['seriesname'] = "Advance"
-    advanceSeriesNifty['data'] = []
-
-    let declineSeriesNifty = {}
-    declineSeriesNifty['seriesname'] = "Decline"
-    declineSeriesNifty['data'] = []
-
-
-    let advanceSeriesBank = {}
-    advanceSeriesBank['seriesname'] = "Advance"
-    advanceSeriesBank['data'] = []
-
-    let declineSeriesBank = {}
-    declineSeriesBank['seriesname'] = "Decline"
-    declineSeriesBank['data'] = []
+    let adVanceDeclineColumnsNiftyBank = []
+    let advanceSeriesNiftyBank = ['Advance']
+    let declineSeriesNiftyBank = ["Decline"]
 
     let categoryList = [];
 
@@ -348,9 +1309,9 @@ async function showAdvacenDeclineScanner() {
     let allBankDeclines = 0;
     let allBank = 0;
 
-    for (let i = 0; i < FO_LIST.length; i++) {
-        let strikes = scriptData[FO_LIST[i]]['strikeData']
+    let x = ['x'];
 
+    for (let i = 0; i < FO_LIST.length; i++) {
         let asoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['ustrikeOne']);
         let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
 
@@ -362,6 +1323,7 @@ async function showAdvacenDeclineScanner() {
                 let map = {}
                 map.label = time;
                 categoryList.push(map)
+                x.push(moment(item[0]).format("YYYY-MM-DD HH:mm:ss"))
 
                 advanceMap[time] = {}
                 advanceMap[time]['SYMBOL'] = []
@@ -392,7 +1354,6 @@ async function showAdvacenDeclineScanner() {
             all = all + FO_LIST.length;
             allNifty = allNifty + NIFTY_50_LIST.length;
             allBank = allBank + NIFTY_BANK_LIST.length;
-
         });
 
         scriptsVolumeMap[FO_LIST[i]] = volume;
@@ -443,360 +1404,214 @@ async function showAdvacenDeclineScanner() {
     };
 
     jQ.each(advanceMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#37a009 '
-        val['value'] = aitem['COUNT']
-        advanceSeries['data'].push(val)
+        advanceSeries.push(aitem['COUNT'])
     });
 
     jQ.each(declineMap, function (dindex, ditem) {
-        let val = {}
-        val['color'] = '#da3224'
-        val['value'] = ditem['COUNT']
-        declineSeries['data'].push(val);
+        declineSeries.push(ditem['COUNT']);
     });
 
+    adVanceDeclineColumns.push(x);
+    adVanceDeclineColumns.push(advanceSeries);
+    adVanceDeclineColumns.push(declineSeries);
+
     jQ.each(advanceMapNifty, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#37a009 '
-        val['value'] = aitem['COUNT']
-        advanceSeriesNifty['data'].push(val)
+        advanceSeriesNifty.push(aitem['COUNT'])
     });
 
     jQ.each(declineMapNifty, function (dindex, ditem) {
-        let val = {}
-        val['color'] = '#da3224'
-        val['value'] = ditem['COUNT']
-        declineSeriesNifty['data'].push(val);
+        declineSeriesNifty.push(ditem['COUNT']);
     });
 
+    adVanceDeclineColumnsNifty.push(x);
+    adVanceDeclineColumnsNifty.push(advanceSeriesNifty);
+    adVanceDeclineColumnsNifty.push(declineSeriesNifty);
+
     jQ.each(advanceMapBank, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#37a009 '
-        val['value'] = aitem['COUNT']
-        advanceSeriesBank['data'].push(val)
+        advanceSeriesNiftyBank.push(aitem['COUNT'])
     });
 
     jQ.each(declineMapBank, function (dindex, ditem) {
-        let val = {}
-        val['color'] = '#da3224'
-        val['value'] = ditem['COUNT']
-        declineSeriesBank['data'].push(val);
+        advanceSeriesNiftyBank.push(ditem['COUNT']);
     });
 
-    jQ("#all-advance-decline-adr").html("ADR: " + ((allAdvances / allDeclines).toFixed(2)) + " | A: " + allAdvances + " | D: " + allDeclines);
-    jQ("#advance-decline-chart").insertFusionCharts({
-        type: "stackedcolumn2d",
-        width: "100%",
-        dataFormat: "json",
-        dataSource: {
-            chart: {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "paletteColors": "  #37a009,#da3224",
-                "showLabels": 1,
-                "showValues": "1"
+    adVanceDeclineColumnsNiftyBank.push(x);
+    adVanceDeclineColumnsNiftyBank.push(advanceSeriesNiftyBank);
+    adVanceDeclineColumnsNiftyBank.push(declineSeriesNiftyBank);
+
+    jQ("#all-advance-decline-adr").html("ADR:" + ((allAdvances / allDeclines).toFixed(2)) + "|A:" + allAdvances + "|D:" + allDeclines);
+
+    c3.generate({
+        bindto: "#" + "advance-decline-trend",
+        size: {
+            height: 150
+        },
+        legend: {
+            show: false
+        },
+        data: {
+            x: 'x',
+            xFormat: '%Y-%m-%d %H:%M:%S',
+            columns: adVanceDeclineColumns,
+            type: 'bar',
+            groups: [
+                ['Advance', 'Decline']
+            ],
+            colors: {
+                Advance: '#00ff00',
+                Decline: '#ff0000'
             },
-            axis: {
-                y: {
-                    tick: {
-                        format: function (d) {
-                            return (parseInt(d) == d) ? d : null;
-                        }
-                    }
-                }
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            dataset: [
-                advanceSeries,
-                declineSeries
+            groups: [
+                ['Advance', 'Decline']
             ]
         },
-        "events": {
-            dataPlotClick: function (ev, props) {
-                let symbols = []
-                let time = props['categoryLabel']
-                if (props.datasetName == "Advance") {
-                    symbols = advanceMap[time]['SYMBOL'];
-                } else {
-                    symbols = declineMap[time]['SYMBOL'];
-                }
-                showStockList(symbols)
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%H:%M',
+                    rotate: 60
+                },
+                show: false,
+            },
+        },
+        grid: {
+            y: {
+                lines: [{ value: 25 }]
             }
         }
     });
 
 
-    jQ("#nifty-advance-decline-adr").html("ADR: " + ((allNiftyAdvances / allNiftyDeclines).toFixed(2)) + " | A: " + allNiftyAdvances + " | D: " + allNiftyDeclines);
-    jQ("#advance-decline-nifty-chart").insertFusionCharts({
-        type: "stackedcolumn2d",
-        width: "100%",
-        dataFormat: "json",
-        dataSource: {
-            chart: {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "paletteColors": "  #37a009,#da3224",
-                "showLabels": 1,
-                "showValues": "1"
+    jQ("#NIFTY-BANK-advance-decline-adr").html("ADR:" + ((allBankAdvances / allBankDeclines).toFixed(2)) + "|A:" + allBankAdvances + "|D: " + allBankDeclines);
+    c3.generate({
+        bindto: "#" + "NIFTY-BANK-advance-decline",
+        size: {
+            height: 150
+        },
+        legend: {
+            show: false
+        },
+        data: {
+            x: 'x',
+            xFormat: '%Y-%m-%d %H:%M:%S',
+            columns: adVanceDeclineColumnsNiftyBank,
+            type: 'bar',
+            groups: [
+                ['Advance', 'Decline']
+            ],
+            colors: {
+                Advance: '#00ff00',
+                Decline: '#ff0000'
             },
-            axis: {
-                y: {
-                    tick: {
-                        format: function (d) {
-                            return (parseInt(d) == d) ? d : null;
-                        }
-                    }
-                }
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            dataset: [
-                advanceSeriesNifty,
-                declineSeriesNifty
+            groups: [
+                ['Advance', 'Decline']
             ]
-        }
-        ,
-        "events": {
-            dataPlotClick: function (ev, props) {
-                let symbols = []
-                let time = props['categoryLabel']
-                if (props.datasetName == "Advance") {
-                    symbols = advanceMapNifty[time]['SYMBOL'];
-                } else {
-                    symbols = declineMapNifty[time]['SYMBOL'];
-                }
-                showStockList(symbols)
+        },
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%H:%M',
+                    rotate: 60
+                },
+                show: false,
+            },
+        },
+        grid: {
+            y: {
+                lines: [{ value: 5 }]
             }
         }
     });
 
+    jQ("#NIFTY-50-advance-decline-adr").html("ADR:" + ((allNiftyAdvances / allNiftyDeclines).toFixed(2)) + " |A:" + allNiftyAdvances + " |D:" + allNiftyDeclines);
 
-    jQ("#bank-advance-decline-adr").html("ADR: " + ((allBankAdvances / allBankDeclines).toFixed(2)) + " | A: " + allBankAdvances + " | D: " + allBankDeclines);
-    jQ("#advance-decline-bank-chart").insertFusionCharts({
-        type: "stackedcolumn2d",
-        width: "100%",
-        dataFormat: "json",
-        dataSource: {
-            chart: {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "paletteColors": "  #37a009,#da3224",
-                "showLabels": 1,
-                "showValues": "1"
+    c3.generate({
+        bindto: "#" + "NIFTY-50-advance-decline",
+        size: {
+            height: 150
+        },
+        legend: {
+            show: false
+        },
+        data: {
+            x: 'x',
+            xFormat: '%Y-%m-%d %H:%M:%S',
+            columns: adVanceDeclineColumnsNifty,
+            type: 'bar',
+            groups: [
+                ['Advance', 'Decline']
+            ],
+            colors: {
+                Advance: '#00ff00',
+                Decline: '#ff0000'
             },
-            axis: {
-                y: {
-                    tick: {
-                        format: function (d) {
-                            return (parseInt(d) == d) ? d : null;
-                        }
-                    }
-                }
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            dataset: [
-                advanceSeriesBank,
-                declineSeriesBank
+            groups: [
+                ['Advance', 'Decline']
             ]
-        }
-        ,
-        "events": {
-            dataPlotClick: function (ev, props) {
-                let symbols = []
-                let time = props['categoryLabel']
-                if (props.datasetName == "Advance") {
-                    symbols = advanceMapBank[time]['SYMBOL'];
-                } else {
-                    symbols = declineMapBank[time]['SYMBOL'];
-                }
-                showStockList(symbols)
+        },
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%H:%M',
+                    rotate: 60
+                },
+                show: false,
+            },
+        },
+        grid: {
+            y: {
+                lines: [{ value: 25 }]
             }
         }
     });
-    let asoCount = 0;
-    let bsoCount = 0;
-    let asoN50Count = 0;
-    let bsoN50Count = 0;
-    let asoBankCount = 0;
-    let bsoBankCount = 0;
 
-    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
-
-    if (breakOutNineFifteen) {
-        jQ.each(breakOutNineFifteen, function (index, item) {
-            if (item['CLOSE_9_15'] == 'ASO') {
-                asoCount++;
-                if (jQ.inArray(index, NIFTY_50_LIST) != -1) {
-                    asoN50Count++;
-                }
-                if (jQ.inArray(index, NIFTY_BANK_LIST) != -1) {
-                    asoBankCount++;
-                }
-            }
-
-            if (item['CLOSE_9_15'] == 'BSO') {
-                bsoCount++;
-                if (jQ.inArray(index, NIFTY_50_LIST) != -1) {
-                    bsoN50Count++;
-                }
-                if (jQ.inArray(index, NIFTY_BANK_LIST) != -1) {
-                    bsoBankCount++;
-                }
-            }
-        });
-        jQ("#all-advance-decline-nine-fifteen-close").html("9:15 CLOSE [ASO: " + asoCount + " | BSO: " + bsoCount + "]");
-        jQ("#nifty-advance-decline-nine-fifteen-close").html("9:15 CLOSE [ASO: " + asoN50Count + " | BSO: " + bsoN50Count + "]");
-        jQ("#bank-advance-decline-nine-fifteen-close").html("9:15 CLOSE [ASO: " + asoBankCount + " | BSO: " + bsoBankCount + "]");
-    }
 
 
 }
 
+
 async function showFuturesTrend() {
 
-    let LONGSeries = {}
-    LONGSeries['seriesname'] = "Long"
-    LONGSeries['data'] = []
-
-    let SHOT_COVERINGSeries = {}
-    SHOT_COVERINGSeries['seriesname'] = "Short Covering"
-    SHOT_COVERINGSeries['data'] = []
-
-    let GAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
-    GAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "Gambling! Buy News And Events"
-    GAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
-
-    let SHORTSSeries = {}
-    SHORTSSeries['seriesname'] = "Short"
-    SHORTSSeries['data'] = []
-
-    let LONG_UNWINDINGSeries = {}
-    LONG_UNWINDINGSeries['seriesname'] = "Long Unwinding"
-    LONG_UNWINDINGSeries['data'] = []
-
-    let BEARS_COMING_SELL_ON_RISESeries = {}
-    BEARS_COMING_SELL_ON_RISESeries['seriesname'] = "Bears Coming,Sell On Rise"
-    BEARS_COMING_SELL_ON_RISESeries['data'] = []
-
-    let CAUTION_WRITES_ERODING_PREMIUMSeries = {}
-    CAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "Caution! Writers Eroding Premium"
-    CAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
-
-    let DEFENCE_BUY_ON_DECLINESeries = {}
-    DEFENCE_BUY_ON_DECLINESeries['seriesname'] = "Defence,Buy On Decline"
-    DEFENCE_BUY_ON_DECLINESeries['data'] = []
-
-    let BULLSSeries = {}
-    BULLSSeries['seriesname'] = "Bulls"
-    BULLSSeries['data'] = []
-
-    let BEARSSeries = {}
-    BEARSSeries['seriesname'] = "Bears"
-    BEARSSeries['data'] = []
+    let LONGSeries = ['Long']
+    let SHOT_COVERINGSeries = ['Short Covering']
+    let GAMBLING_BUY_NEWS_AND_EVENTSSeries = ['Gambling! Buy News And Events']
+    let SHORTSSeries = ['Short']
+    let LONG_UNWINDINGSeries = ['Long Unwinding']
+    let BEARS_COMING_SELL_ON_RISESeries = ['Bears Coming,Sell On Rise']
+    let CAUTION_WRITES_ERODING_PREMIUMSeries = ['Caution! Writers Eroding Premium']
+    let DEFENCE_BUY_ON_DECLINESeries = ['Defence,Buy On Decline']
+    let BULLSSeries = ['Bulls']
+    let BEARSSeries = ['Bears']
+    let allFuturesSeries = []
 
 
-
-    let NiftyLONGSeries = {}
-    NiftyLONGSeries['seriesname'] = "Long"
-    NiftyLONGSeries['data'] = []
-
-    let NiftySHOT_COVERINGSeries = {}
-    NiftySHOT_COVERINGSeries['seriesname'] = "Short Covering"
-    NiftySHOT_COVERINGSeries['data'] = []
-
-    let NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
-    NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "Gambling! Buy News And Events"
-    NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
-
-    let NiftySHORTSSeries = {}
-    NiftySHORTSSeries['seriesname'] = "Short"
-    NiftySHORTSSeries['data'] = []
-
-    let NiftyLONG_UNWINDINGSeries = {}
-    NiftyLONG_UNWINDINGSeries['seriesname'] = "Long Unwinding"
-    NiftyLONG_UNWINDINGSeries['data'] = []
-
-    let NiftyBEARS_COMING_SELL_ON_RISESeries = {}
-    NiftyBEARS_COMING_SELL_ON_RISESeries['seriesname'] = "Bears Coming,Sell On Rise"
-    NiftyBEARS_COMING_SELL_ON_RISESeries['data'] = []
-
-    let NiftyCAUTION_WRITES_ERODING_PREMIUMSeries = {}
-    NiftyCAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "Caution! Writers Eroding Premium"
-    NiftyCAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
-
-    let NiftyDEFENCE_BUY_ON_DECLINESeries = {}
-    NiftyDEFENCE_BUY_ON_DECLINESeries['seriesname'] = "Defence,Buy On Decline"
-    NiftyDEFENCE_BUY_ON_DECLINESeries['data'] = []
-
-    let NiftyBULLSSeries = {}
-    NiftyBULLSSeries['seriesname'] = "Bulls"
-    NiftyBULLSSeries['data'] = []
-
-    let NiftyBEARSSeries = {}
-    NiftyBEARSSeries['seriesname'] = "Bears"
-    NiftyBEARSSeries['data'] = []
+    let NiftyLONGSeries = ["Long"]
+    let NiftySHOT_COVERINGSeries = ['Short Covering']
+    let NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries = ['Gambling! Buy News And Events']
+    let NiftySHORTSSeries = ['Short']
+    let NiftyLONG_UNWINDINGSeries = ['Long Unwinding']
+    let NiftyBEARS_COMING_SELL_ON_RISESeries = ['Bears Coming,Sell On Rise']
+    let NiftyCAUTION_WRITES_ERODING_PREMIUMSeries = ['Caution! Writers Eroding Premium']
+    let NiftyDEFENCE_BUY_ON_DECLINESeries = ['Defence,Buy On Decline']
+    let NiftyBULLSSeries = ['Bulls']
+    let NiftyBEARSSeries = ['Bears']
+    let allNiftyFuturesSeries = []
 
 
-    let NiftyBankLONGSeries = {}
-    NiftyBankLONGSeries['seriesname'] = "Long"
-    NiftyBankLONGSeries['data'] = []
-
-    let NiftyBankSHOT_COVERINGSeries = {}
-    NiftyBankSHOT_COVERINGSeries['seriesname'] = "Short Covering"
-    NiftyBankSHOT_COVERINGSeries['data'] = []
-
-    let NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries = {}
-    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries['seriesname'] = "Gambling! Buy News And Events"
-    NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'] = []
-
-    let NiftyBankSHORTSSeries = {}
-    NiftyBankSHORTSSeries['seriesname'] = "Short"
-    NiftyBankSHORTSSeries['data'] = []
-
-    let NiftyBankLONG_UNWINDINGSeries = {}
-    NiftyBankLONG_UNWINDINGSeries['seriesname'] = "Long Unwinding"
-    NiftyBankLONG_UNWINDINGSeries['data'] = []
-
-    let NiftyBankBEARS_COMING_SELL_ON_RISESeries = {}
-    NiftyBankBEARS_COMING_SELL_ON_RISESeries['seriesname'] = "Bears Coming,Sell On Rise"
-    NiftyBankBEARS_COMING_SELL_ON_RISESeries['data'] = []
-
-    let NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries = {}
-    NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries['seriesname'] = "Caution! Writers Eroding Premium"
-    NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries['data'] = []
-
-    let NiftyBankDEFENCE_BUY_ON_DECLINESeries = {}
-    NiftyBankDEFENCE_BUY_ON_DECLINESeries['seriesname'] = "Defence,Buy On Decline"
-    NiftyBankDEFENCE_BUY_ON_DECLINESeries['data'] = []
-
-    let NiftyBankBULLSSeries = {}
-    NiftyBankBULLSSeries['seriesname'] = "Bulls"
-    NiftyBankBULLSSeries['data'] = []
-
-    let NiftyBankBEARSSeries = {}
-    NiftyBankBEARSSeries['seriesname'] = "Bears"
-    NiftyBankBEARSSeries['data'] = []
+    let NiftyBankLONGSeries = ["Long"]
+    let NiftyBankSHOT_COVERINGSeries = ['Short Covering']
+    let NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries = ['Gambling! Buy News And Events']
+    let NiftyBankSHORTSSeries = ['Short']
+    let NiftyBankLONG_UNWINDINGSeries = ['Long Unwinding']
+    let NiftyBankBEARS_COMING_SELL_ON_RISESeries = ['Bears Coming,Sell On Rise']
+    let NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries = ['Caution! Writers Eroding Premium']
+    let NiftyBankDEFENCE_BUY_ON_DECLINESeries = ['Defence,Buy On Decline']
+    let NiftyBankBULLSSeries = ['Bulls']
+    let NiftyBankBEARSSeries = ['Bears']
+    let allNiftyBankFuturesSeries = []
 
 
     let LONGMap = {}
@@ -847,6 +1662,8 @@ async function showFuturesTrend() {
     let allNiftyBankFuturesAdvances = 0;
     let allNiftyBankFuturesDeclines = 0;
 
+    let x = ['x'];
+
 
     for (let i = 0; i < allList.length; i++) {
         let name = allList[i];
@@ -888,6 +1705,7 @@ async function showFuturesTrend() {
                     let map = {}
                     map.label = time;
                     categoryList.push(map)
+                    x.push(moment(item[0]).format("YYYY-MM-DD HH:mm:ss"))
 
                     LONGMap[time] = {}
                     LONGMap[time]['SYMBOL'] = []
@@ -1172,18 +1990,18 @@ async function showFuturesTrend() {
                 }
 
                 if (BULLSMap[time]) {
-                    BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + CAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
-                    NiftyBULLSMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + NiftySHOT_COVERINGMap[time]['COUNT'] + NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
-                    NiftyBankBULLSMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + NiftyBankSHOT_COVERINGMap[time]['COUNT'] + NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT'] + NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['COUNT']
+                    BULLSMap[time]['COUNT'] = LONGMap[time]['COUNT'] + SHOT_COVERINGMap[time]['COUNT'] + GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
+                    NiftyBULLSMap[time]['COUNT'] = NiftyLONGMap[time]['COUNT'] + NiftySHOT_COVERINGMap[time]['COUNT'] + NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
+                    NiftyBankBULLSMap[time]['COUNT'] = NiftyBankLONGMap[time]['COUNT'] + NiftyBankSHOT_COVERINGMap[time]['COUNT'] + NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['COUNT']
                     allFuturesAdvances += BULLSMap[time]['COUNT']
                     allNiftyFuturesAdvances += NiftyBULLSMap[time]['COUNT']
                     allNiftyBankFuturesAdvances += NiftyBankBULLSMap[time]['COUNT']
                 }
 
                 if (BEARSMap[time]) {
-                    BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + DEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
-                    NiftyBEARSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + NiftyLONG_UNWINDINGMap[time]['COUNT'] + NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + NiftyDEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
-                    NiftyBankBEARSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT'] + NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['COUNT']
+                    BEARSMap[time]['COUNT'] = SHORTSMap[time]['COUNT'] + LONG_UNWINDINGMap[time]['COUNT'] + BEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
+                    NiftyBEARSMap[time]['COUNT'] = NiftySHORTSMap[time]['COUNT'] + NiftyLONG_UNWINDINGMap[time]['COUNT'] + NiftyBEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
+                    NiftyBankBEARSMap[time]['COUNT'] = NiftyBankSHORTSMap[time]['COUNT'] + NiftyBankLONG_UNWINDINGMap[time]['COUNT'] + NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['COUNT']
                     allFuturesDeclines += BEARSMap[time]['COUNT']
                     allNiftyFuturesDeclines += NiftyBEARSMap[time]['COUNT']
                     allNiftyBankFuturesDeclines += NiftyBankBEARSMap[time]['COUNT']
@@ -1194,578 +2012,334 @@ async function showFuturesTrend() {
         }
     }
 
+
     jQ.each(LONGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#3A6F43'
-        val['value'] = aitem['COUNT']
-        LONGSeries['data'].push(val)
+        LONGSeries.push(aitem['COUNT'])
     });
 
     jQ.each(SHORTSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#D73535'
-        val['value'] = aitem['COUNT']
-        SHORTSSeries['data'].push(val)
+        SHORTSSeries.push(aitem['COUNT'])
     });
 
     jQ.each(SHOT_COVERINGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#59AC77'
-        val['value'] = aitem['COUNT']
-        SHOT_COVERINGSeries['data'].push(val)
+        SHOT_COVERINGSeries.push(aitem['COUNT'])
     });
-
 
     jQ.each(GAMBLING_BUY_NEWS_AND_EVENTSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#628141'
-        val['value'] = aitem['COUNT']
-        GAMBLING_BUY_NEWS_AND_EVENTSSeries['data'].push(val)
+        GAMBLING_BUY_NEWS_AND_EVENTSSeries.push(aitem['COUNT'])
     });
 
-
     jQ.each(LONG_UNWINDINGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#FF4646'
-        val['value'] = aitem['COUNT']
-        LONG_UNWINDINGSeries['data'].push(val)
+        LONG_UNWINDINGSeries.push(aitem['COUNT'])
     });
 
 
     jQ.each(BEARS_COMING_SELL_ON_RISEMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#F90716'
-        val['value'] = aitem['COUNT']
-        BEARS_COMING_SELL_ON_RISESeries['data'].push(val)
+        BEARS_COMING_SELL_ON_RISESeries.push(aitem['COUNT'])
     });
 
     jQ.each(CAUTION_WRITES_ERODING_PREMIUMMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#F39EB6'
-        val['value'] = aitem['COUNT']
-        CAUTION_WRITES_ERODING_PREMIUMSeries['data'].push(val)
+        CAUTION_WRITES_ERODING_PREMIUMSeries.push(aitem['COUNT'])
     });
 
     jQ.each(DEFENCE_BUY_ON_DECLINEMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#E4F1AC'
-        val['value'] = aitem['COUNT']
-        DEFENCE_BUY_ON_DECLINESeries['data'].push(val)
+        DEFENCE_BUY_ON_DECLINESeries.push(aitem['COUNT'])
     });
 
-
     jQ.each(BULLSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#3A6F43'
-        val['value'] = aitem['COUNT']
-        BULLSSeries['data'].push(val)
+        BULLSSeries.push(aitem['COUNT'])
     });
 
     jQ.each(BEARSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#D73535'
-        val['value'] = aitem['COUNT']
-        BEARSSeries['data'].push(val)
+        BEARSSeries.push(aitem['COUNT'])
     });
 
-
-
+    allFuturesSeries.push(x);
+    allFuturesSeries.push(LONGSeries);
+    allFuturesSeries.push(SHORTSSeries);
+    allFuturesSeries.push(SHOT_COVERINGSeries);
+    allFuturesSeries.push(GAMBLING_BUY_NEWS_AND_EVENTSSeries);
+    allFuturesSeries.push(LONG_UNWINDINGSeries);
+    allFuturesSeries.push(BEARS_COMING_SELL_ON_RISESeries);
+    allFuturesSeries.push(CAUTION_WRITES_ERODING_PREMIUMSeries);
+    allFuturesSeries.push(DEFENCE_BUY_ON_DECLINESeries);
+    allFuturesSeries.push(BULLSSeries);
+    allFuturesSeries.push(BEARSSeries);
 
     jQ.each(NiftyLONGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#3A6F43'
-        val['value'] = aitem['COUNT']
-        NiftyLONGSeries['data'].push(val)
+        NiftyLONGSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftySHORTSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#D73535'
-        val['value'] = aitem['COUNT']
-        NiftySHORTSSeries['data'].push(val)
+        NiftySHORTSSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftySHOT_COVERINGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#59AC77'
-        val['value'] = aitem['COUNT']
-        NiftySHOT_COVERINGSeries['data'].push(val)
+        NiftySHOT_COVERINGSeries.push(aitem['COUNT'])
     });
-
 
     jQ.each(NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#628141'
-        val['value'] = aitem['COUNT']
-        NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'].push(val)
+        NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries.push(aitem['COUNT'])
     });
-
 
     jQ.each(NiftyLONG_UNWINDINGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#FF4646'
-        val['value'] = aitem['COUNT']
-        NiftyLONG_UNWINDINGSeries['data'].push(val)
+        NiftyLONG_UNWINDINGSeries.push(aitem['COUNT'])
     });
 
-
     jQ.each(NiftyBEARS_COMING_SELL_ON_RISEMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#F90716'
-        val['value'] = aitem['COUNT']
-        NiftyBEARS_COMING_SELL_ON_RISESeries['data'].push(val)
+        NiftyBEARS_COMING_SELL_ON_RISESeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyCAUTION_WRITES_ERODING_PREMIUMMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#F39EB6'
-        val['value'] = aitem['COUNT']
-        NiftyCAUTION_WRITES_ERODING_PREMIUMSeries['data'].push(val)
+        NiftyCAUTION_WRITES_ERODING_PREMIUMSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyDEFENCE_BUY_ON_DECLINEMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#E4F1AC'
-        val['value'] = aitem['COUNT']
-        NiftyDEFENCE_BUY_ON_DECLINESeries['data'].push(val)
+        NiftyDEFENCE_BUY_ON_DECLINESeries.push(aitem['COUNT'])
     });
 
-
     jQ.each(NiftyBULLSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#3A6F43'
-        val['value'] = aitem['COUNT']
-        NiftyBULLSSeries['data'].push(val)
+        NiftyBULLSSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyBEARSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#D73535'
-        val['value'] = aitem['COUNT']
-        NiftyBEARSSeries['data'].push(val)
+        NiftyBEARSSeries.push(aitem['COUNT'])
     });
 
-
-
+    allNiftyFuturesSeries.push(x);
+    allNiftyFuturesSeries.push(NiftyLONGSeries);
+    allNiftyFuturesSeries.push(NiftySHORTSSeries);
+    allNiftyFuturesSeries.push(NiftySHOT_COVERINGSeries);
+    allNiftyFuturesSeries.push(NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries);
+    allNiftyFuturesSeries.push(NiftyLONG_UNWINDINGSeries);
+    allNiftyFuturesSeries.push(NiftyBEARS_COMING_SELL_ON_RISESeries);
+    allNiftyFuturesSeries.push(NiftyCAUTION_WRITES_ERODING_PREMIUMSeries);
+    allNiftyFuturesSeries.push(NiftyDEFENCE_BUY_ON_DECLINESeries);
+    allNiftyFuturesSeries.push(NiftyBULLSSeries);
+    allNiftyFuturesSeries.push(NiftyBEARSSeries);
 
     jQ.each(NiftyBankLONGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#3A6F43'
-        val['value'] = aitem['COUNT']
-        NiftyBankLONGSeries['data'].push(val)
+        NiftyBankLONGSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyBankSHORTSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#D73535'
-        val['value'] = aitem['COUNT']
-        NiftyBankSHORTSSeries['data'].push(val)
+        NiftyBankSHORTSSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyBankSHOT_COVERINGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#59AC77'
-        val['value'] = aitem['COUNT']
-        NiftyBankSHOT_COVERINGSeries['data'].push(val)
+        NiftyBankSHOT_COVERINGSeries.push(aitem['COUNT'])
     });
 
 
     jQ.each(NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#628141'
-        val['value'] = aitem['COUNT']
-        NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries['data'].push(val)
+        NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries.push(aitem['COUNT'])
     });
 
 
     jQ.each(NiftyBankLONG_UNWINDINGMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#FF4646'
-        val['value'] = aitem['COUNT']
-        NiftyBankLONG_UNWINDINGSeries['data'].push(val)
+        NiftyBankLONG_UNWINDINGSeries.push(aitem['COUNT'])
     });
 
 
     jQ.each(NiftyBankBEARS_COMING_SELL_ON_RISEMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#F90716'
-        val['value'] = aitem['COUNT']
-        NiftyBankBEARS_COMING_SELL_ON_RISESeries['data'].push(val)
+        NiftyBankBEARS_COMING_SELL_ON_RISESeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#F39EB6'
-        val['value'] = aitem['COUNT']
-        NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries['data'].push(val)
+        NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyBankDEFENCE_BUY_ON_DECLINEMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#E4F1AC'
-        val['value'] = aitem['COUNT']
-        NiftyBankDEFENCE_BUY_ON_DECLINESeries['data'].push(val)
+        NiftyBankDEFENCE_BUY_ON_DECLINESeries.push(aitem['COUNT'])
     });
 
 
     jQ.each(NiftyBankBULLSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#3A6F43'
-        val['value'] = aitem['COUNT']
-        NiftyBankBULLSSeries['data'].push(val)
+        NiftyBankBULLSSeries.push(aitem['COUNT'])
     });
 
     jQ.each(NiftyBankBEARSMap, function (aindex, aitem) {
-        let val = {}
-        val['color'] = '#D73535'
-        val['value'] = aitem['COUNT']
-        NiftyBankBEARSSeries['data'].push(val)
+        NiftyBankBEARSSeries.push(aitem['COUNT'])
     });
 
+    allNiftyBankFuturesSeries.push(x);
+    allNiftyBankFuturesSeries.push(NiftyBankLONGSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankSHORTSSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankSHOT_COVERINGSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankLONG_UNWINDINGSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankBEARS_COMING_SELL_ON_RISESeries);
+    allNiftyBankFuturesSeries.push(NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankDEFENCE_BUY_ON_DECLINESeries);
+    allNiftyBankFuturesSeries.push(NiftyBankBULLSSeries);
+    allNiftyBankFuturesSeries.push(NiftyBankBEARSSeries);
 
-    jQ("#future-advance-decline-adr").html("ADR: " + ((allFuturesAdvances / allFuturesDeclines).toFixed(2)) + " | A: " + allFuturesAdvances + " | D: " + allFuturesDeclines);
-
-    jQ("#future-nifty-advance-decline-adr").html("ADR: " + ((allNiftyFuturesAdvances / allNiftyFuturesDeclines).toFixed(2)) + " | A: " + allNiftyFuturesAdvances + " | D: " + allNiftyFuturesDeclines);
-
-    jQ("#future-bank-advance-decline-adr").html("ADR: " + ((allNiftyBankFuturesAdvances / allNiftyBankFuturesDeclines).toFixed(2)) + " | A: " + allNiftyBankFuturesAdvances + " | D: " + allNiftyBankFuturesDeclines);
 
 
-    jQ("#futures-trend-chart").insertFusionCharts({
-        type: "stackedcolumn2d",
-        width: '100%',
-        dataFormat: "json",
-        dataSource: {
-            chart: {
+    jQ("#all-advance-decline-adr-future").html("ADR:" + ((allFuturesAdvances / allFuturesDeclines).toFixed(2)) + "|A:" + allFuturesAdvances + "|D:" + allFuturesDeclines);
 
-                "paletteColors": "#3A6F43,#D73535,#59AC77,#628141,#FF4646,#F90716,#F39EB6,#E4F1AC",
-                "formatNumberScale": "0",
-                "adjustDiv": "1", "theme": "candy",
-                showvalues: "0",
-                rotatelabels: "0",
-                "showLabels": 1,
-                "showValues": "1",
-                "legendItemFontSize": "10",
+    jQ("#NIFTY-50-advance-decline-adr-future").html("ADR:" + ((allNiftyFuturesAdvances / allNiftyFuturesDeclines).toFixed(2)) + "|A:" + allNiftyFuturesAdvances + "|D:" + allNiftyFuturesDeclines);
+
+    jQ("#NIFTY-BANK-advance-decline-adr-future").html("ADR:" + ((allNiftyBankFuturesAdvances / allNiftyBankFuturesDeclines).toFixed(2)) + "|A:" + allNiftyBankFuturesAdvances + "|D:" + allNiftyBankFuturesDeclines);
+
+
+
+
+    c3.generate({
+        bindto: "#" + "advance-decline-futures-trend",
+        size: {
+            height: 150
+        },
+        legend: {
+            show: false
+        },
+        data: {
+            x: 'x',
+            xFormat: '%Y-%m-%d %H:%M:%S',
+            columns: allFuturesSeries,
+            type: 'bar',
+            groups: [
+                ['Long', 'Short', 'Short Covering', 'Gambling! Buy News And Events', 'Long Unwinding', 'Bears Coming,Sell On Rise', 'Caution! Writers Eroding Premium', 'Defence,Buy On Decline', 'Bulls', 'Bears']
+            ],
+            colors: {
+                Long: '#00ff00',
+                Short: '#ff0000',
+                'Short Covering': '#00ff00',
+                'Gambling! Buy News And Events': '#00ff00',
+                'Long Unwinding': '#ff0000',
+                'Bears Coming,Sell On Rise': '#ff0000',
+                'Caution! Writers Eroding Premium': '#f3ff44',
+                'Defence,Buy On Decline': '#ff0000',
+                Bulls: '#00ff00',
+                Bears: '#ff0000'
             },
-            axis: {
-                y: {
-                    tick: {
-                        format: function (d) {
-                            return (parseInt(d) == d) ? d : null;
-                        }
-                    }
-                }
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            dataset: [
-                LONGSeries,
-                SHORTSSeries,
-                SHOT_COVERINGSeries,
-                GAMBLING_BUY_NEWS_AND_EVENTSSeries,
-                LONG_UNWINDINGSeries,
-                BEARS_COMING_SELL_ON_RISESeries,
-                CAUTION_WRITES_ERODING_PREMIUMSeries,
-                DEFENCE_BUY_ON_DECLINESeries,
-                BULLSSeries,
-                BEARSSeries
+            groups: [
+                ['Long', 'Short', 'Short Covering', 'Gambling! Buy News And Events', 'Long Unwinding', 'Bears Coming,Sell On Rise', 'Caution! Writers Eroding Premium', 'Defence,Buy On Decline', 'Bulls', 'Bears']
             ]
         },
-        "events": {
-            dataPlotClick: function (ev, props) {
-                console.log(props)
-                let symbols = []
-                let time = props['categoryLabel']
-                if (props.datasetName == "Long") {
-                    symbols = LONGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Short") {
-                    symbols = SHORTSMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Short Covering") {
-                    symbols = SHOT_COVERINGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Gambling! Buy News And Events") {
-                    symbols = GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Long Unwinding") {
-                    symbols = LONG_UNWINDINGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Bears Coming,Sell On Rise") {
-                    symbols = BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Caution! Writers Eroding Premium") {
-                    symbols = CAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Defence,Buy On Decline") {
-                    symbols = DEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
-                }
-
-
-                if (props.datasetName == "Bulls") {
-                    jQ.each(LONGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(SHOT_COVERINGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(GAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-                }
-
-
-                if (props.datasetName == "Bears") {
-                    jQ.each(SHORTSMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(LONG_UNWINDINGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(BEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-                }
-                showStockList(symbols)
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%H:%M',
+                    rotate: 60
+                },
+                show: false,
+            },
+        },
+        grid: {
+            y: {
+                lines: [{ value: 25 }]
             }
         }
     });
 
 
-    jQ("#futures-trend-chart-nifty").insertFusionCharts({
-        type: "stackedcolumn2d",
-        width: '100%',
-        dataFormat: "json",
-        dataSource: {
-            chart: {
-
-                "paletteColors": "#3A6F43,#D73535,#59AC77,#628141,#FF4646,#F90716,#F39EB6,#E4F1AC",
-                "formatNumberScale": "0",
-                "adjustDiv": "1", "theme": "candy",
-                showvalues: "0",
-                rotatelabels: "0",
-                "showLabels": 1,
-                "showValues": "1",
-                "legendItemFontSize": "10",
+    c3.generate({
+        bindto: "#" + "NIFTY-50-advance-decline-future",
+        size: {
+            height: 150
+        },
+        legend: {
+            show: false
+        },
+        data: {
+            x: 'x',
+            xFormat: '%Y-%m-%d %H:%M:%S',
+            columns: allNiftyFuturesSeries,
+            type: 'bar',
+            groups: [
+                ['Long', 'Short', 'Short Covering', 'Gambling! Buy News And Events', 'Long Unwinding', 'Bears Coming,Sell On Rise', 'Caution! Writers Eroding Premium', 'Defence,Buy On Decline', 'Bulls', 'Bears']
+            ],
+            colors: {
+                Long: '#00ff00',
+                Short: '#ff0000',
+                'Short Covering': '#00ff00',
+                'Gambling! Buy News And Events': '#00ff00',
+                'Long Unwinding': '#ff0000',
+                'Bears Coming,Sell On Rise': '#ff0000',
+                'Caution! Writers Eroding Premium': '#f3ff44',
+                'Defence,Buy On Decline': '#ff0000',
+                Bulls: '#00ff00',
+                Bears: '#ff0000'
             },
-            axis: {
-                y: {
-                    tick: {
-                        format: function (d) {
-                            return (parseInt(d) == d) ? d : null;
-                        }
-                    }
-                }
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            dataset: [
-                NiftyLONGSeries,
-                NiftySHORTSSeries,
-                NiftySHOT_COVERINGSeries,
-                NiftyGAMBLING_BUY_NEWS_AND_EVENTSSeries,
-                NiftyLONG_UNWINDINGSeries,
-                NiftyBEARS_COMING_SELL_ON_RISESeries,
-                NiftyCAUTION_WRITES_ERODING_PREMIUMSeries,
-                NiftyDEFENCE_BUY_ON_DECLINESeries,
-                NiftyBULLSSeries,
-                NiftyBEARSSeries
+            groups: [
+                ['Long', 'Short', 'Short Covering', 'Gambling! Buy News And Events', 'Long Unwinding', 'Bears Coming,Sell On Rise', 'Caution! Writers Eroding Premium', 'Defence,Buy On Decline', 'Bulls', 'Bears']
             ]
         },
-        "events": {
-            dataPlotClick: function (ev, props) {
-                console.log(props)
-                let symbols = []
-                let time = props['categoryLabel']
-                if (props.datasetName == "Long") {
-                    symbols = NiftyLONGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Short") {
-                    symbols = NiftySHORTSMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Short Covering") {
-                    symbols = NiftySHOT_COVERINGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Gambling! Buy News And Events") {
-                    symbols = NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Long Unwinding") {
-                    symbols = NiftyLONG_UNWINDINGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Bears Coming,Sell On Rise") {
-                    symbols = NiftyBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Caution! Writers Eroding Premium") {
-                    symbols = NiftyCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Defence,Buy On Decline") {
-                    symbols = NiftyDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Bulls") {
-                    jQ.each(NiftyLONGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftySHOT_COVERINGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftyGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-                }
-
-
-                if (props.datasetName == "Bears") {
-                    jQ.each(NiftySHORTSMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftyLONG_UNWINDINGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftyBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-                }
-
-                showStockList(symbols)
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%H:%M',
+                    rotate: 60
+                },
+                show: false,
+            },
+        },
+        grid: {
+            y: {
+                lines: [{ value: 25 }]
             }
         }
     });
 
 
-    jQ("#futures-trend-chart-nifty-bank").insertFusionCharts({
-        type: "stackedcolumn2d",
-        width: '100%',
-        dataFormat: "json",
-        dataSource: {
-            chart: {
 
-                "paletteColors": "#3A6F43,#D73535,#59AC77,#628141,#FF4646,#F90716,#F39EB6,#E4F1AC",
-                "formatNumberScale": "0",
-                "adjustDiv": "1", "theme": "candy",
-                showvalues: "0",
-                rotatelabels: "0",
-                "showLabels": 1,
-                "showValues": "1",
-                "legendItemFontSize": "10",
+    c3.generate({
+        bindto: "#" + "NIFTY-BANK-advance-decline-future",
+        size: {
+            height: 150
+        },
+        legend: {
+            show: false
+        },
+        data: {
+            x: 'x',
+            xFormat: '%Y-%m-%d %H:%M:%S',
+            columns: allNiftyBankFuturesSeries,
+            type: 'bar',
+            groups: [
+                ['Long', 'Short', 'Short Covering', 'Gambling! Buy News And Events', 'Long Unwinding', 'Bears Coming,Sell On Rise', 'Caution! Writers Eroding Premium', 'Defence,Buy On Decline', 'Bulls', 'Bears']
+            ],
+            colors: {
+                Long: '#00ff00',
+                Short: '#ff0000',
+                'Short Covering': '#00ff00',
+                'Gambling! Buy News And Events': '#00ff00',
+                'Long Unwinding': '#ff0000',
+                'Bears Coming,Sell On Rise': '#ff0000',
+                'Caution! Writers Eroding Premium': '#f3ff44',
+                'Defence,Buy On Decline': '#ff0000',
+                Bulls: '#00ff00',
+                Bears: '#ff0000'
+
             },
-            axis: {
-                y: {
-                    tick: {
-                        format: function (d) {
-                            return (parseInt(d) == d) ? d : null;
-                        }
-                    }
-                }
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            dataset: [
-                NiftyBankLONGSeries,
-                NiftyBankSHORTSSeries,
-                NiftyBankSHOT_COVERINGSeries,
-                NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSSeries,
-                NiftyBankLONG_UNWINDINGSeries,
-                NiftyBankBEARS_COMING_SELL_ON_RISESeries,
-                NiftyBankCAUTION_WRITES_ERODING_PREMIUMSeries,
-                NiftyBankDEFENCE_BUY_ON_DECLINESeries,
-                NiftyBankBULLSSeries,
-                NiftyBankBEARSSeries
+            groups: [
+                ['Long', 'Short', 'Short Covering', 'Gambling! Buy News And Events', 'Long Unwinding', 'Bears Coming,Sell On Rise', 'Caution! Writers Eroding Premium', 'Defence,Buy On Decline', 'Bulls', 'Bears']
             ]
         },
-        "events": {
-            dataPlotClick: function (ev, props) {
-                console.log(props)
-                let symbols = []
-                let time = props['categoryLabel']
-                if (props.datasetName == "Long") {
-                    symbols = NiftyBankLONGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Short") {
-                    symbols = NiftyBankSHORTSMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Short Covering") {
-                    symbols = NiftyBankSHOT_COVERINGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Gambling! Buy News And Events") {
-                    symbols = NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Long Unwinding") {
-                    symbols = NiftyBankLONG_UNWINDINGMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Bears Coming,Sell On Rise") {
-                    symbols = NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Caution! Writers Eroding Premium") {
-                    symbols = NiftyBankCAUTION_WRITES_ERODING_PREMIUMMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Defence,Buy On Decline") {
-                    symbols = NiftyBankDEFENCE_BUY_ON_DECLINEMap[time]['SYMBOL'];
-                }
-
-                if (props.datasetName == "Bulls") {
-                    jQ.each(NiftyBankLONGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ(NiftyBankSHOT_COVERINGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftyBankGAMBLING_BUY_NEWS_AND_EVENTSMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-                }
-
-                if (props.datasetName == "Bears") {
-                    jQ.each(NiftyBankSHORTSMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftyBankLONG_UNWINDINGMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-
-                    jQ.each(NiftyBankBEARS_COMING_SELL_ON_RISEMap[time]['SYMBOL'], function (index, item) {
-                        symbols.push(item)
-                    });
-                }
-                showStockList(symbols)
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%H:%M',
+                    rotate: 60
+                },
+                show: false,
+            },
+        },
+        grid: {
+            y: {
+                lines: [{ value: 25 }]
             }
         }
     });
+
+
+
 }
+
 
 function showStockList(list) {
     console.log(scriptsVolumeMap)
@@ -1892,13 +2466,6 @@ function generateStockTable(data) {
         ],
         "columns": [
             {
-                "class": 'details-control',
-                "orderable": false,
-                "data": null,
-                "defaultContent": ''
-            },
-
-            {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
@@ -1925,9 +2492,7 @@ function generateStockTable(data) {
                 }
             },
             { "data": "VOLUME" },
-            { "data": "CLOSE_9_15" },
             { "data": "TREND" },
-            { "data": "FUTURE_TREND" },
         ],
         "fnInitComplete": function (oSettings, json) {
             showExtraButtons()
@@ -1938,13 +2503,8 @@ function generateStockTable(data) {
 }
 
 function showExtraButtons() {
-
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<button id="nine-fifteen-scan" class="dt-button bg-info" type="button"><span>9.15 SCAN</span></button>');
-    jQ("#stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ALL</span></button>')
-
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="index" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>INDEX</span></button>')
-
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>ASO</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>BSO</span></button>')
     jQ("#stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info extra-buttons" type="button"><span>N50</span></button>')
@@ -1990,2030 +2550,3 @@ jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e)
     });
     showStockList(list)
 });
-
-jQ(document).on('click', '#nine-fifteen-scan', function (e) {
-    scanNineFifteenCandle()
-});
-
-async function scanNineFifteenCandle() {
-    let scriptData = generateTrends()
-    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
-    if (!breakOutNineFifteen) {
-        breakOutNineFifteen = {}
-        let stockData = stockTable.rows().data().toArray();
-        for (let i = 0; i < stockData.length; i++) {
-            let row = stockData[i];
-            let name = row['TRADINGSYMBOL'];
-            jQ("#stock-list-table_wrapper  #processing-trend").html("Processing.... " + (i + 1) + "/" + stockData.length);
-            try {
-                let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
-                let firstCandleClose = historical.data.candles[0][4]
-                let asoPrice = 0;
-                let bsoPrice = 0;
-                asoPrice = parseFloat(row['STRIKEDATA']['ustrikeOne']);
-                bsoPrice = parseFloat(row['STRIKEDATA']['bstrikeOne']);
-
-                if (firstCandleClose > asoPrice) {
-                    row['CLOSE_9_15'] = 'ASO';
-                    breakOutNineFifteen[name] = {};
-                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'ASO';
-                }
-
-                if (firstCandleClose < bsoPrice) {
-                    row['CLOSE_9_15'] = 'BSO';
-                    breakOutNineFifteen[name] = {};
-                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'BSO';
-                }
-            } catch (e) {
-                console.log(e)
-            }
-        }
-        localStorage.setItem("VALID_BREAKOUT_NINE_FIFTEEN", JSON.stringify(breakOutNineFifteen));
-    }
-    showStockList([]);
-}
-
-function updateStockTable(id, row) {
-    jQ('#stock-list-table').DataTable().row(id).data(row).draw(false);
-}
-
-jQ(document).on('click', '#stock-list-table tbody td.details-control', function (e) {
-    e.preventDefault()
-    let tr = jQ(this).closest('tr');
-    let row = stockTable.row(tr);
-    let id = stockTable.row(this).index();
-    if (row.child.isShown()) {
-        row.child.hide();
-        tr.removeClass('shown');
-    } else {
-        row.child(addAdditonalDetails(row.data(), id)).show();
-        tr.addClass('shown');
-        showInfo(row.data(), id)
-    }
-});
-
-async function showInfo(rowData, id) {
-    let name = rowData['TRADINGSYMBOL']
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-    await savePreviousStockQuote(tempName, instrumentTokens[name])
-    let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
-
-    let quote = []
-    jQ.each(data.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("DD-MM HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map['time'] = moment(item[0]).format("HH:mm")
-        quote.push(map);
-    });
-
-
-    let prevQuote = []
-    jQ.each(previousQuote.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("DD-MM HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        prevQuote.push(map);
-    });
-    showScriptChart(quote, name, id, prevQuote);
-    showScriptData(quote, name, prevQuote)
-    showPrictionProbabilty(name)
-    await show15MinutesChart(name)
-    await showHourChart(name);
-    await showFutureDetails(name);
-}
-
-async function showFutureDetails(name) {
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let futures;
-    jQ.each(futureInstrumentsList, function (index, item) {
-        let instName = name
-        if (instName == "NIFTY 50") {
-            instName = 'NIFTY'
-        }
-
-        if (instName == "NIFTY BANK") {
-            instName = 'BANKNIFTY'
-        }
-
-        if (item.name == instName) {
-            futures = item;
-        }
-    })
-    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
-
-    let first = cres.data['candles'][0];
-    let prev = pres.data['candles'][0];
-
-    let data = []
-    let prevData = []
-    jQ.each(cres.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map.oi = item[6]
-        data.push(map);
-    });
-
-    jQ.each(pres.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map.oi = item[6]
-        prevData.push(map);
-    });
-
-    let strikeDiff = nseFutreStrikeDiff[name];
-    strikeDiff = strikeDiff.split(",");
-    let strikeOne = parseInt(strikeDiff[0])
-    let strikeTwo = parseInt(strikeDiff[1])
-
-    let ustrikeOne = (parseFloat(first[1]) + strikeOne);
-    let ustrikeTwo = (ustrikeOne + strikeTwo);
-    let bstrikeOne = (parseFloat(first[1]) - strikeOne);
-    let bstrikeTwo = (bstrikeOne - strikeTwo);
-
-    let strikeMap = {}
-    strikeMap['strikeDiff'] = parseFloat(strikeDiff).toFixed(2);
-    strikeMap['bstrikeOne'] = parseFloat(bstrikeOne).toFixed(2);
-    strikeMap['bstrikeTwo'] = parseFloat(bstrikeTwo).toFixed(2);
-    strikeMap['ustrikeOne'] = parseFloat(ustrikeOne).toFixed(2);
-    strikeMap['ustrikeTwo'] = parseFloat(ustrikeTwo).toFixed(2);
-
-    let chartId = 'chart-container-' + tempName + "-futures";
-    let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
-
-    var vix = getVixRange(parseFloat(prev[4]), parseFloat(vixQuote[4]))
-
-    var vixLowerRange = 0;
-    var vixUpperRange = 0;
-    var vixDDRange = 0;
-
-    vixLowerRange = parseFloat(vix.vixDDLower)
-    vixUpperRange = parseFloat(vix.vixDDUpper)
-    vixDDRange = parseFloat(vix.vixDDRange);
-
-
-    let categoryList = []
-    let dateIndex = 0
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        map.volume = item.volume
-        map.x = dateIndex
-
-        if (index == 0) {
-            min = item.high
-            max = item.high
-        }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-    let lines = [];
-    let line = {};
-
-    line.color = "#8be73a";
-    line.startvalue = vixLowerRange;
-    line.displayvalue = 'Vix lower range ' + vixLowerRange;
-    lines.push(line);;
-
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = vixUpperRange;
-    line.displayvalue = 'Vix upper range ' + vixUpperRange;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.bstrikeTwo;
-    line.displayvalue = "BST " + strikeMap.bstrikeTwo;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.ustrikeTwo;
-    line.displayvalue = "AST " + strikeMap.ustrikeTwo;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.bstrikeOne;
-    line.displayvalue = "BSO " + strikeMap.bstrikeOne;
-    lines.push(line);
-
-    line = {};
-    line.color = "#9f3ae7";
-    line.startvalue = strikeMap.ustrikeOne;
-    line.displayvalue = "ASO " + strikeMap.ustrikeOne;
-    lines.push(line);
-    isVolumePresent = SHOW_VOLUME_ON_CHART
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: 400,
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "adjustDiv": "0", "theme": "candy",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                "pYAxisMinValue": min,
-                "pYAxisMaxValue": max,
-                "showLabels": 1,
-                showVolumeChart: true,
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
-
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
-
-    prevData = prevData[prevData.length - 1];
-    generateFutresDataTable(data, tempName, prevData, futures['lot_size'])
-    generateFuturesOiPriceAnalysis(data, tempName, prevData, futures['lot_size'])
-
-    let resp = {}
-    if (tempName == "BANKNIFTY") {
-        resp = showTableAiBankNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
-    } else {
-        resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
-    }
-    jQ("#future-trend-probability" + tempName).html(resp['PLUS'] + ' ' + resp['MINUS']);
-}
-
-function generateFuturesOiPriceAnalysis(data, tempName, prevData, lotSize) {
-    var previousOI = prevData['oi'] / lotSize
-    let price = []
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.value = item.close;
-        price.push(map)
-    });
-
-    let oiChange = []
-    jQ.each(data, function (index, item) {
-        let map = {}
-        let oi = item.oi / lotSize
-        var changeinOpenInterest = (oi - previousOI).toFixed(2)
-        map.value = changeinOpenInterest;
-        oiChange.push(map)
-    });
-
-    let oi = []
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.value = item.oi / lotSize;
-        oi.push(map)
-    });
-
-    let categoryList = []
-    let dateIndex = 0
-    jQ.each(data, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-    });
-
-    let chartId = 'chart-container-' + tempName + "-oi-price-analysis";
-    jQ("#" + chartId).insertFusionCharts({
-        type: "multiaxisline",
-        width: "100%",
-        dataFormat: "json",
-        dataSource: {
-            chart: {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                caption: "OI/Price Analysis",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                plothighlighteffect: "fadeout",
-                theme: "fusion",
-                showVolumeChart: true,
-            },
-            axis: [
-                {
-                    title: "OI Change",
-                    divlineisdashed: "1",
-                    color: "#D73535",
-                    dataset: [
-                        {
-                            seriesname: "OI Change",
-                            linethickness: "2",
-                            data: oiChange
-                        }
-                    ],
-                },
-                {
-                    title: "OI",
-                    divlineisdashed: "1",
-                    color: "#258ebe",
-                    dataset: [
-                        {
-                            seriesname: "OI",
-                            linethickness: "2",
-                            data: oi
-                        }
-                    ],
-                },
-                {
-                    title: "Price",
-                    axisonleft: "0",
-                    divlineisdashed: "1",
-                    color: "#b925be",
-                    dataset: [
-                        {
-                            seriesname: "Price",
-                            dashed: "1",
-                            linethickness: "2",
-                            data: price
-                        }
-                    ]
-                },
-            ],
-            categories: [
-                {
-                    category: categoryList
-                }
-            ],
-
-        }
-    });
-
-}
-
-
-async function show15MinutesChart(name, rowId) {
-    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(CURRENT_DAY).add(-14, 'days').format("YYYY-MM-DD"), CURRENT_DAY, '15minute');
-    let quote = []
-    jQ.each(data.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("DD-MM HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map['time'] = moment(item[0]).format("HH:mm")
-        quote.push(map);
-    });
-    let scriptData = generateTrend(name)
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-") + '-fifteen';
-
-    let dayHigh = 0
-    let dayLow = 0
-
-    let categoryList = []
-    let dateIndex = 0
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-        if (item.high > dayHigh) {
-            dayHigh = item.high
-        }
-
-        if (item.low < dayLow) {
-            dayLow = item.low
-        }
-
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-    let isVolumePresent = false;
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        if (item.volume) {
-            map.volume = item.volume;
-            isVolumePresent = true;
-        }
-        map.x = dateIndex
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-    isVolumePresent = SHOW_VOLUME_ON_CHART
-
-    let lines = [];
-    let line = {};
-
-
-    line.color = "#8be73a";
-    line.startvalue = scriptData['vix'].vixDDLower;
-    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
-    lines.push(line);;
-
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = scriptData['vix'].vixDDUpper;
-    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
-    lines.push(line);
-
-
-
-
-    line = {};
-    line.color = "#872b19ff";
-    line.startvalue = scriptData['strikeData'].ustrikeTwo;
-    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#d65db1";
-    line.startvalue = scriptData['strikeData'].ustrikeOne;
-    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#ff6f91";
-    line.startvalue = scriptData['strikeData'].bstrikeOne;
-    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#35dc35ff";
-    line.startvalue = scriptData['strikeData'].bstrikeTwo;
-    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
-    lines.push(line);
-
-    jQ("#" + chartId).html('')
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: 400,
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                showVolumeChart: true,
-
-                "showLabels": 1
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
-
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
-}
-
-async function showHourChart(name, rowId) {
-    let data = await getHistoricalDataUsingPromise(instrumentTokens[name], moment(CURRENT_DAY).add(-14, 'days').format("YYYY-MM-DD"), CURRENT_DAY, '60minute');
-    let quote = []
-    jQ.each(data.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("DD-MM HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map['time'] = moment(item[0]).format("HH:mm")
-        quote.push(map);
-    });
-    let scriptData = generateTrend(name)
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-") + '-hour';
-
-    let dayHigh = 0
-    let dayLow = 0
-
-    let categoryList = []
-    let dateIndex = 0
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-        if (item.high > dayHigh) {
-            dayHigh = item.high
-        }
-
-        if (item.low < dayLow) {
-            dayLow = item.low
-        }
-
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-    let isVolumePresent = false;
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        if (item.volume) {
-            map.volume = item.volume;
-            isVolumePresent = true;
-        }
-        map.x = dateIndex
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-    isVolumePresent = SHOW_VOLUME_ON_CHART
-
-    let lines = [];
-    let line = {};
-
-
-    line.color = "#8be73a";
-    line.startvalue = scriptData['vix'].vixDDLower;
-    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
-    lines.push(line);;
-
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = scriptData['vix'].vixDDUpper;
-    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
-    lines.push(line);
-
-
-
-
-    line = {};
-    line.color = "#872b19ff";
-    line.startvalue = scriptData['strikeData'].ustrikeTwo;
-    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#d65db1";
-    line.startvalue = scriptData['strikeData'].ustrikeOne;
-    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#ff6f91";
-    line.startvalue = scriptData['strikeData'].bstrikeOne;
-    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#35dc35ff";
-    line.startvalue = scriptData['strikeData'].bstrikeTwo;
-    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
-    lines.push(line);
-
-    jQ("#" + chartId).html('')
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: 400,
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                showVolumeChart: true,
-
-                "showLabels": 1
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
-
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
-}
-
-async function showScriptData(quote, name, prevQuote) {
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let stockDataTable = jQ("#script-data-" + tempName);
-    let html = ''
-    quote.reverse()
-    jQ.each(quote, function (index, item) {
-        let cssClass = ''
-        if (item.volume > 50000) {
-            cssClass = 'alert-warning'
-        }
-
-        html += '<tr class="' + item.cssClass + '">'
-        html += '<td>' + item.date + '</td>'
-        html += '<td>' + item.open + '</td>'
-        html += '<td>' + item.high + '</td>'
-        html += '<td>' + item.low + '</td>'
-
-        let closeHtml = ''
-        if ((item.close - item.previousClose) < 0) {
-            closeHtml += '<span class="badge bg-danger">' + item.close + '</span>'
-        } else {
-            closeHtml += '<span class="badge bg-success">' + item.close + '</span>'
-        }
-
-        html += '<td>' + closeHtml + '</td>'
-        html += '<td>' + item.volume + '</td>'
-        html += '</tr>'
-    })
-    stockDataTable.find("tbody").html(html)
-    stockDataTable.show()
-}
-
-function addAdditonalDetails(rowData, id) {
-
-    let tempName = rowData['TRADINGSYMBOL'].replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-
-    let html = ''
-
-    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-");
-
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row analyser-container">'
-    html += '<div class="col-md-12">'
-    html += '<table  class="table display nowrap" id="predictor-stock-list-table' + tempName + '" style="width: 100%;">'
-
-    html += '<thead>'
-
-    html += '<tr>'
-    html += '<th>PCR</th>'
-    html += '<th id="pcr-prediction' + tempName + '">PCR</th>'
-    html += '</tr>'
-
-    html += '<tr>'
-    html += '<th>OI PROBABILITY</th>'
-    html += '<th  id="prediction-prediction' + tempName + '">PROBABILITY</th>'
-    html += '</tr>'
-
-    html += '<tr>'
-    html += '<th>FUTURE PROBABILITY</th>'
-    html += '<th  id="future-trend-probability' + tempName + '">FUTURE TREND</th>'
-    html += '</tr>'
-
-    html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
-    html += '</table>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
-
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-hour"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-fifteen"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="col-md-4">'
-    html += '<div id="' + chartId + '-five"class="shadow-lg p-1 mb-2 bg-body-tertiary rounded">'
-    html += '</div>'
-    html += '</div>'
-
-    html += '</div>'
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<table  class="table display nowrap"  style="width: 100%;">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class atm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '<th colspan="3" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '</tr>'
-    html += '<tr>'
-    html += '<th id="STRIKE_LOWER_ONE_CE-prediction' + tempName + '" class="number-align" >CE</th>'
-    html += '<th id="STRIKE_LOWER_ONE-prediction' + tempName + '" class="text-align">S</th>'
-    html += '<th id="STRIKE_LOWER_ONE_PE-prediction' + tempName + '" class="number-align">PE</th> '
-
-    html += '<th id="STRIKE_LOWER_TWO_CE-prediction' + tempName + '" class="number-align">CE</th>'
-    html += '<th id="STRIKE_LOWER_TWO-prediction' + tempName + '" class="text-align">S</th>'
-    html += '<th id="STRIKE_LOWER_TWO_PE-prediction' + tempName + '" class="number-align">PE</th> '
-
-    html += '<th id="STRIKE_ATM_CE-prediction' + tempName + '" class="number-align">CE</th>'
-    html += '<th id="STRIKE_ATM-prediction' + tempName + '" class="text-align">S</th>'
-    html += '<th id="STRIKE_ATM_PE-prediction' + tempName + '" class="number-align">PE</th> '
-
-    html += '<th id="STRIKE_UPPER_ONE_CE-prediction' + tempName + '" class="number-align">CE</th>'
-    html += '<th id="STRIKE_UPPER_ONE-prediction' + tempName + '" class="text-align">S</th>'
-    html += '<th id="STRIKE_UPPER_ONE_PE-prediction' + tempName + '" class="number-align">PE</th> '
-
-    html += '<th id="STRIKE_UPPER_TWO_CE-prediction' + tempName + '" class="number-align">CE</th>'
-    html += '<th id="STRIKE_UPPER_TWO-prediction' + tempName + '" class="text-align">S</th>'
-    html += '<th id="STRIKE_UPPER_TWO_PE-prediction' + tempName + '" class="number-align">PE</th> '
-    html += '<tr>'
-    html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
-    html += '</table>'
-
-
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div id="option-flow-analysis-' + tempName + '">'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row" id="oi-obv-charts' + tempName + '">'
-    html += '</div>'
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
-    html += '<div id="' + chartId + '-oi-price-analysis" class="col-md-12">'
-    html += '</div>';
-    html += '</div>'
-
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
-    html += '<div id="' + chartId + '-futures" class="col-md-12">'
-    html += '</div>';
-    html += '</div>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<table class="historical-future-data-analyzer" id="historical-future-data-analyzer-list-table-' + tempName + '" style="width: 100%">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th>DATE</th>'
-    html += '<th>OI TREND</th>'
-    html += '<th>CHANGE</th>'
-    html += '<th>VWAP SIGNAL</th>'
-    html += '<th>AI</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
-
-    html += '</tbody>'
-    html += '</table>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-
-    html += '<div class="row">'
-    html += '<div class="col-md-12" style="max-height:400px;height:400px;overflow:auto">'
-    html += '<table  id="script-data-' + tempName + '" class="table table-hover" style="display: none;">'
-    html += '<thead>'
-    html += '<tr>'
-    html += '<th>DATE</th>'
-    html += '<th>OPEN</th>'
-    html += '<th>HIGH</th>'
-    html += '<th>LOW</th>'
-    html += '<th>CLOSE</th>'
-    html += '<th>VOLUME</th>'
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
-    html += '</table>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<div class="row">'
-
-    html += '<div class="col-md-6">'
-    html += '<h6>Bullish Probability</h6>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Advances > Declines supporting the bullish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Price is below ASO/AST/VIXU ?'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bullish trend ?'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bullish trend ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> CE OBV  > PE OBV ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bullish trend [Buy,Buy on decline,Short convering] ? '
-
-    html += '</div>';
-
-    html += '<div class="col-md-6">'
-    html += '<h6>Bearish Probability</h6>'
-    html += '<div class="px-3 py-2 border-bottom mb-3"></div>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> Declines > Advances supporting the bullish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Price is above BSO/BST/VIXL'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox" /> OI data supporting the bearish trend'
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> 1 hour and 15 min timeframe indicates bearish trend ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> PE OBV  > CE OBV ? '
-    html += '<br/>'
-    html += '<input style="vertical-align:middle;" type="checkbox"/> Futures trend indicates bearish trend [Short,Sell on rise,Long unwanding] ? '
-    html += '</div>';
-
-    html += '</div>';
-
-    return html;
-}
-
-async function showScriptChart(quote, name, rowId, prevQuote) {
-
-    let scriptData = generateTrend(name)
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    let chartId = 'chart-container-' + tempName.replaceAll(" ", "-").replaceAll("&", "-") + '-five';
-
-    let dayHigh = 0
-    let dayLow = 0
-
-    let categoryList = []
-    let dateIndex = 0
-
-
-    jQ.each(prevQuote, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-        if (index == 0) {
-            dayHigh = item.high
-            dayLow = item.low
-        }
-
-        if (item.high > dayHigh) {
-            dayHigh = item.high
-        }
-
-        if (item.low < dayLow) {
-            dayLow = item.low
-        }
-    });
-
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.label = item.date;
-        map.x = dateIndex;
-        categoryList.push(map)
-        dateIndex++;
-
-        if (item.high > dayHigh) {
-            dayHigh = item.high
-        }
-
-        if (item.low < dayLow) {
-            dayLow = item.low
-        }
-
-    });
-
-    let dataList = []
-    let min = 0
-    let max = 0
-    dateIndex = 0
-    let isVolumePresent = false;
-
-    jQ.each(prevQuote, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        if (item.volume) {
-            map.volume = item.volume;
-            isVolumePresent = true;
-        }
-        map.x = dateIndex
-
-        if (index == 0) {
-            min = item.high
-            max = item.high
-        }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-
-    jQ.each(quote, function (index, item) {
-        let map = {}
-        map.open = item.open
-        map.high = item.high
-        map.low = item.low
-        map.close = item.close
-        if (item.volume) {
-            map.volume = item.volume;
-            isVolumePresent = true;
-        }
-        map.x = dateIndex
-
-        if (index == 0) {
-            min = item.high
-            max = item.high
-            map.displayValue = "O"
-        }
-
-        if (item.high < min) {
-            min = item.high
-        }
-
-        if (item.high > max) {
-            max = item.high
-        }
-        dataList.push(map);
-        dateIndex++;
-    });
-
-    isVolumePresent = SHOW_VOLUME_ON_CHART
-
-    let lines = [];
-    let line = {};
-
-
-    line.color = "#8be73a";
-    line.startvalue = scriptData['vix'].vixDDLower;
-    line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
-    lines.push(line);;
-
-    line = {};
-    line.color = "#e7543a";
-    line.startvalue = scriptData['vix'].vixDDUpper;
-    line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
-    lines.push(line);
-
-
-
-
-    line = {};
-    line.color = "#872b19ff";
-    line.startvalue = scriptData['strikeData'].ustrikeTwo;
-    line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#d65db1";
-    line.startvalue = scriptData['strikeData'].ustrikeOne;
-    line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#ff6f91";
-    line.startvalue = scriptData['strikeData'].bstrikeOne;
-    line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
-    lines.push(line);
-
-
-    line = {};
-    line.color = "#35dc35ff";
-    line.startvalue = scriptData['strikeData'].bstrikeTwo;
-    line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
-    lines.push(line);
-
-
-    line = {};
-    if (parseFloat(scriptData['open']) > parseFloat(scriptData['prevPrice']).toFixed(2)) {
-        line.color = "#5D8736";
-        line.displayvalue = "Open +ve: " + scriptData['open'];
-    } else {
-        line.color = "#A94A4A";
-        line.displayvalue = "Open -ve: " + scriptData['open'];
-    }
-    line.dashed = 1;
-    line.startvalue = scriptData['open'];
-    lines.push(line);
-
-    jQ("#" + chartId).html('')
-    jQ("#" + chartId).insertFusionCharts({
-        type: 'candlestick',
-        width: "100%",
-        height: 400,
-        dataFormat: 'json',
-        dataSource: {
-            "chart": {
-                "thousandSeparatorPosition": "2,3",
-                "formatNumberScale": "0",
-                "theme": "candy",
-                "adjustDiv": "0",
-                showvalues: "0",
-                labeldisplay: "ROTATE",
-                rotatelabels: "1",
-                showVolumeChart: true,
-
-                "showLabels": 1
-            },
-            "categories": [{
-                "category": categoryList
-            }],
-            "dataset": [{
-                "data": dataList,
-
-            }],
-            "trendlines": [{
-                "line": lines
-            }]
-        }
-    });
-}
-
-async function showTopChart(name, id) {
-    try {
-        let tempName = name.replaceAll(" ", "-")
-        tempName = tempName.replaceAll("&", "-")
-        let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
-
-
-        if (name == "GIFT NIFTY") {
-            if (breakOutNineFifteen['GIFT NIFTY'] == undefined) {
-                breakOutNineFifteen['GIFT NIFTY'] = {};
-                breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-nifty-gift-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] + '</span>');
-        }
-
-        if (name == "NIFTY 50") {
-            if (breakOutNineFifteen['NIFTY 50'] == undefined) {
-                breakOutNineFifteen['NIFTY 50'] = {};
-                breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-nifty-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] + '</span>');
-        }
-
-        if (name == "NIFTY BANK") {
-            if (breakOutNineFifteen['NIFTY BANK'] == undefined) {
-                breakOutNineFifteen['NIFTY BANK'] = {};
-                breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-nifty-bank-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] + '</span>');
-        }
-
-        if (name == "SENSEX") {
-            if (breakOutNineFifteen['SENSEX'] == undefined) {
-                breakOutNineFifteen['SENSEX'] = {};
-                breakOutNineFifteen['SENSEX']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-sensex-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['SENSEX']['CLOSE_9_15'] + '</span>');
-        }
-
-        let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        await savePreviousStockQuote(tempName, instrumentTokens[name])
-        let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
-
-        let quote = []
-        jQ.each(data.data.candles, function (index, item) {
-            let map = {}
-            map['date'] = moment(item[0]).format("DD-MM HH:mm")
-            map.open = item[1]
-            map.high = item[2]
-            map.low = item[3]
-            map.close = item[4]
-            map.volume = item[5]
-            map['time'] = moment(item[0]).format("HH:mm")
-            quote.push(map);
-        });
-
-
-        let prevQuote = []
-        jQ.each(previousQuote.data.candles, function (index, item) {
-            let map = {}
-            map['date'] = moment(item[0]).format("DD-MM HH:mm")
-            map.open = item[1]
-            map.high = item[2]
-            map.low = item[3]
-            map.close = item[4]
-            map.volume = item[5]
-            prevQuote.push(map);
-        });
-
-        let scriptData = generateTrend(name)
-        let chartId = id;
-
-        let dayHigh = 0
-        let dayLow = 0
-
-        let categoryList = []
-        let dateIndex = 0
-
-
-        jQ.each(prevQuote, function (index, item) {
-            let map = {}
-            map.label = item.date;
-            map.x = dateIndex;
-            categoryList.push(map)
-            dateIndex++;
-
-            if (index == 0) {
-                dayHigh = item.high
-                dayLow = item.low
-            }
-
-            if (item.high > dayHigh) {
-                dayHigh = item.high
-            }
-
-            if (item.low < dayLow) {
-                dayLow = item.low
-            }
-        });
-
-
-        jQ.each(quote, function (index, item) {
-            let map = {}
-            map.label = item.date;
-            map.x = dateIndex;
-            categoryList.push(map)
-            dateIndex++;
-
-            if (item.high > dayHigh) {
-                dayHigh = item.high
-            }
-
-            if (item.low < dayLow) {
-                dayLow = item.low
-            }
-
-        });
-
-        let dataList = []
-        let min = 0
-        let max = 0
-        dateIndex = 0
-        let isVolumePresent = false;
-
-        jQ.each(prevQuote, function (index, item) {
-            let map = {}
-            map.open = item.open
-            map.high = item.high
-            map.low = item.low
-            map.close = item.close
-            if (item.volume) {
-                map.volume = item.volume;
-                isVolumePresent = true;
-            }
-            map.x = dateIndex
-
-            if (index == 0) {
-                min = item.high
-                max = item.high
-            }
-
-            if (item.high < min) {
-                min = item.high
-            }
-
-            if (item.high > max) {
-                max = item.high
-            }
-            dataList.push(map);
-            dateIndex++;
-        });
-
-
-        jQ.each(quote, function (index, item) {
-            let map = {}
-            map.open = item.open
-            map.high = item.high
-            map.low = item.low
-            map.close = item.close
-            if (item.volume) {
-                map.volume = item.volume;
-                isVolumePresent = true;
-            }
-            map.x = dateIndex
-
-            if (index == 0) {
-                min = item.high
-                max = item.high
-                map.displayValue = "O"
-            }
-
-            if (item.high < min) {
-                min = item.high
-            }
-
-            if (item.high > max) {
-                max = item.high
-            }
-            dataList.push(map);
-            dateIndex++;
-        });
-
-        isVolumePresent = SHOW_VOLUME_ON_CHART
-
-        let lines = [];
-        let line = {};
-
-        line.color = "#8be73a";
-        line.startvalue = scriptData['vix'].vixDDLower;
-        line.displayvalue = 'VIXL: ' + scriptData['vix'].vixDDLower;
-        lines.push(line);;
-
-        line = {};
-        line.color = "#e7543a";
-        line.startvalue = scriptData['vix'].vixDDUpper;
-        line.displayvalue = 'VIXU: ' + scriptData['vix'].vixDDUpper;
-        lines.push(line);
-
-        line = {};
-        line.color = "#872b19ff";
-        line.startvalue = scriptData['strikeData'].ustrikeTwo;
-        line.displayvalue = "AST [NO BUYING]" + scriptData['strikeData'].ustrikeTwo;
-        lines.push(line);
-
-
-        line = {};
-        line.color = "#d65db1";
-        line.startvalue = scriptData['strikeData'].ustrikeOne;
-        line.displayvalue = "ASO: " + scriptData['strikeData'].ustrikeOne;
-        lines.push(line);
-
-
-        line = {};
-        line.color = "#ff6f91";
-        line.startvalue = scriptData['strikeData'].bstrikeOne;
-        line.displayvalue = "BSO: " + scriptData['strikeData'].bstrikeOne;
-        lines.push(line);
-
-
-        line = {};
-        line.color = "#35dc35ff";
-        line.startvalue = scriptData['strikeData'].bstrikeTwo;
-        line.displayvalue = "BST [NO SELLING]: " + scriptData['strikeData'].bstrikeTwo;
-        lines.push(line);
-
-
-        line = {};
-        if (parseFloat(scriptData['open']) > parseFloat(scriptData['prevPrice']).toFixed(2)) {
-            line.color = "#5D8736";
-            line.displayvalue = "Open +ve: " + scriptData['open'];
-        } else {
-            line.color = "#A94A4A";
-            line.displayvalue = "Open -ve: " + scriptData['open'];
-        }
-        line.dashed = 1;
-        line.startvalue = scriptData['open'];
-        lines.push(line);
-
-        jQ("#" + chartId).html('')
-        jQ("#" + chartId).insertFusionCharts({
-            type: 'candlestick',
-            width: "100%",
-            height: 400,
-            dataFormat: 'json',
-            dataSource: {
-                "chart": {
-                    "thousandSeparatorPosition": "2,3",
-                    "formatNumberScale": "0", "theme": "candy",
-                    "adjustDiv": "0",
-                    showvalues: "0",
-                    labeldisplay: "ROTATE",
-                    rotatelabels: "1",
-                    "showLabels": 1,
-                    showVolumeChart: true,
-                },
-                "categories": [{
-                    "category": categoryList
-                }],
-                "dataset": [{
-                    "data": dataList,
-
-                }],
-                "trendlines": [{
-                    "line": lines
-                }]
-            }
-        });
-    } catch (e) {
-        console.error("Error in showTopChart:", e);
-    }
-}
-
-function generateFutresDataTable(quote, id, prevQuote, lotSize) {
-    lotSize = parseInt(lotSize)
-    jQ('#historical-future-data-analyzer-list-table-' + id).DataTable({
-        "processing": true,
-        "order": [[0, "desc"]],
-        "pageLength": 50,
-        "bPaginate": false,
-        "data": quote,
-        "bDestroy": true,
-        "scrollX": true,
-        "scrollY": "500px",
-        "columnDefs": [
-            {
-                "targets": [],
-                "visible": false,
-                "searchable": false
-            }
-        ],
-        "columns": [
-            { "data": "date" },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
-                    var upTriangle = '<i class="bi bi-caret-up"></i>'
-
-                    var openInterest = row.oi / lotSize;
-                    var previousOI = prevQuote.oi / lotSize
-                    var changeinOpenInterest = (openInterest - previousOI)
-                    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
-
-                    var oiPrice = ''
-                    var oiPriceChang = ''
-                    var oiPriceChangDirection = ''
-                    var oiPricePer = ''
-                    if (changeinOpenInterest > 0) {
-                        oiPrice += '<span class="badge bg-success">' + openInterest.toFixed(0) + '</span>'
-                        oiPriceChang += '<span class="badge bg-success">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
-                        oiPriceChangDirection += '<span class="badge bg-success">' + upTriangle + '</span>'
-
-                    } else {
-                        oiPrice += '<span class="badge bg-danger">' + openInterest.toFixed(0) + '</span>'
-                        oiPriceChang += '<span class="badge bg-danger">' + parseFloat(changeinOpenInterest).toFixed(2) + '</span>'
-                        oiPriceChangDirection += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
-                    }
-
-                    if (pchangeinOpenInterest > 0) {
-                        oiPricePer += '<span class="badge bg-success">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
-                    } else {
-                        oiPricePer += '<span class="badge bg-danger">' + parseFloat(pchangeinOpenInterest).toFixed(2) + '%</span>'
-                    }
-
-                    return oiPrice + " " + oiPriceChangDirection + " " + oiPricePer + " " + oiPriceChang
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var change = (row.close - prevQuote.close)
-                    return change.toFixed(2)
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-                    var cTypicalPrice = (parseFloat(row.high) + parseFloat(row.low) + parseFloat(row.close)) / 3
-                    var cVolumePrice = cTypicalPrice * parseFloat(row.volume)
-                    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-                    var totalVolumePrice = cVolumePrice + pVolumePrice
-                    var totalVolume = parseInt(row.volume) + parseInt(prevQuote.volume)
-                    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
-                    var vwap = vwapPrice ? vwapPrice : 0;
-                    var correctedVwap = vwap;
-                    if (id == "BANKNIFTY") {
-                        correctedVwap = correctedVwap;
-                    }
-                    var booleanValue = false;
-                    if (correctedVwap <= row.close) {
-                        booleanValue = true;
-                    } else {
-                        booleanValue = false;
-                    }
-                    var buyResult = Math.abs(row.open - row.low);
-                    var sellResult = Math.abs(row.open - row.high);
-                    var openPrice = row.open;
-                    var highPrice = row.high;
-                    var lowPrice = row.low;
-                    var lastPrice = row.close;
-                    var prevClose = prevQuote.close
-
-                    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
-                    var upTriangle = '<i class="bi bi-caret-up"></i>'
-                    var futureTrend = ''
-                    var futureDirection = ''
-                    var diffNiftyOpenPrevOpen = Math.abs(openPrice - prevClose);
-                    var diffNiftyOpenPrevOpenResult = false;
-                    if (diffNiftyOpenPrevOpen >= 1 && diffNiftyOpenPrevOpen <= 11) {
-                        diffNiftyOpenPrevOpenResult = true
-                    }
-                    if (id == "BANKNIFTY") {
-                        if (buyResult >= 0 && buyResult <= 30) {
-                            var trend = "Strong BUY";
-                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-                        } else if (sellResult >= 0 && sellResult <= 30) {
-                            var trend = "Strong SELL";
-                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
-                        } else if (openPrice > prevClose && lastPrice >= openPrice
-                            && booleanValue == true) {
-                            var trend = "BUY";
-                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-                        } else if (booleanValue == true && lastPrice > openPrice) {
-                            var trend = "BUY On Decline";
-                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-                        } else {
-                            var trend = "SELL";
-                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
-                        }
-                    } else {
-                        if (buyResult >= 0 && buyResult <= 11 && booleanValue == true) {
-                            var trend = "Strong BUY";
-                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-                        } else if (sellResult >= 0 && sellResult <= 9 && booleanValue == false) {
-                            var trend = "Strong SELL";
-                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
-                        } else if (openPrice > prevClose && lastPrice > openPrice
-                            && booleanValue == true) {
-                            var trend = "BUY";
-                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-                        } else if (diffNiftyOpenPrevOpenResult == true
-                            && booleanValue == true && lastPrice > openPrice) {
-                            var trend = "BUY On Decline";
-                            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
-                        } else {
-                            var trend = "SELL";
-                            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
-                            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
-                        }
-                    }
-                    return futureTrend + " " + futureDirection
-                }
-            },
-            {
-                "data": '',
-                render: function (data, type, row, meta) {
-                    let resp = {};
-                    if (id == "BANKNIFTY") {
-                        resp = showTableAiBankNiftyPrediction(row, prevQuote, lotSize)
-                    } else {
-                        resp = showTableAiNiftyPrediction(row, prevQuote, lotSize)
-                    }
-                    return resp['PLUS'] + '<br/>' + resp['MINUS'];
-                }
-            },
-        ],
-        "fnInitComplete": function (oSettings, json) {
-        }
-    });
-}
-
-function showTableAiNiftyPrediction(quote, prevQuote, lotSize) {
-    let data = {}
-    quote.volume = parseInt(quote.volume)
-    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
-    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
-    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-    var totalVolumePrice = cVolumePrice + pVolumePrice
-    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
-    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
-    var vwap = vwapPrice ? vwapPrice : 0;
-    var openPrice = quote.open;
-    var highPrice = quote.high;
-    var lowPrice = quote.low;
-    var lastPrice = quote.close;
-    var previousClose = prevQuote['close']
-    var pChange = ((lastPrice - previousClose) / previousClose) * 100
-    var change = (lastPrice - previousClose).toFixed(2)
-    var shortCoveringOrLongUnwinding = false;
-    var price;
-    var oi;
-    var booleanValue = false;
-    var correctedVwap = vwap;
-    var lastPrice = lastPrice;
-    if (correctedVwap <= lastPrice) {
-        booleanValue = true;
-    } else {
-        booleanValue = false;
-    }
-    var openInterest = quote['oi'] / lotSize;
-    var previousOI = prevQuote['oi'] / lotSize
-    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
-    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
-    var changeEvo1 = change;
-    var pChangeEvo = pchangeinOpenInterest;
-    var changeEvo = changeinOpenInterest;
-    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
-    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
-    var openInterestMarkup = '';
-    var openInterestDirectionMarkup = '';
-    var openInterestChangeMarkup = '';
-    var openInterestChangePercMarkup = '';
-
-    if (changeinOpenInterest > 0) {
-        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
-        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
-        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
-        oi = "+";
-    } else {
-        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
-        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
-        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
-        oi = "-";
-    }
-
-    if (pchangeinOpenInterest > 0) {
-        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
-    } else {
-        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
-    }
-
-    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
-        price = "+";
-    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
-        price = "-";
-    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
-        price = "-";
-    } else {
-        price = "+-";// no clear trend
-    }
-
-    if (changeEvo < 0 && pChangeEvo < -2) {
-        shortCoveringOrLongUnwinding = true;
-    } else {
-        shortCoveringOrLongUnwinding = false;
-    }
-
-    var remark = "No Clear Trend, Bulls are still waiting";
-
-    var dogImgContainer = '<span class="badge bg-light">' + dogImage + '</span>'
-    var bullImageImgContainer = '<span class="badge bg-light">' + bullImage + '</span>'
-    var bearImageImgContainer = '<span class="badge bg-light">' + bearImage + '</span>'
-    var hulkImageImgContainer = '<span class="badge bg-light">' + hulkImage + '</span>'
-    var captainImgContainer = '<span class="badge bg-light">' + captain + '</span>'
-    var lokiImgContainer = '<span class="badge bg-light">' + loki + '</span>'
-    var ironManImgContainer = '<span class="badge bg-light">' + ironMan + '</span>'
-    var thorImgContainer = '<span class="badge bg-light">' + thor + '</span>'
-    var hulNewImgContainer = '<span class="badge bg-light">' + hulkImageNew + '</span>'
-    var doctorStrangeImgContainer = '<span class="badge bg-light">' + doctor_strange + '</span>'
-    remark += dogImgContainer
-    var display = "+";
-
-    var RemarkType = ""
-
-    if (price == "+" && oi == "+") {
-        remark = '<span class="badge bg-success">Long</span>'
-        display = "+";
-        RemarkType = "LONG"
-    } else if (price == "-" && oi == "+") {
-        remark = '<span class="badge bg-danger">Short</span>'
-        display = "-";
-        RemarkType = "SHORT"
-    } else if (price == "+" && oi == "-"
-        && shortCoveringOrLongUnwinding) {
-        remark = '<span class="badge bg-success">Short Covering</span>'
-        display = "+";
-        RemarkType = "SHOT_COVERING"
-    } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding) {
-        remark = dogImgContainer + '<span class="badge bg-danger">Long Unwinding</span>'
-        display = "-";
-        RemarkType = "LONG_UNWINDING"
-    } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding == false) {
-        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger">Bears Coming,Sell On Rise</span>'
-        display = "-";
-        RemarkType = "BEARS_COMING_SELL_ON_RISE"
-    } else if (price == "+-" && oi == "+"
-        && shortCoveringOrLongUnwinding == false
-        && booleanValue == true && pChangeEvo >= 10) {
-        remark = '<span class="badge bg-danger">Gambling! Buy,News & Events</span>'
-        display = "+";
-        RemarkType = "GAMBLING_BUY_NEWS_AND_EVENTS"
-    } else if (price == "+-" && oi == "+"
-        && shortCoveringOrLongUnwinding == false
-        && booleanValue == true && pChangeEvo < 10) {
-        remark = '<span class="badge bg-danger">Caution! Writers Eroding Premium</span>'
-        display = "+";
-        RemarkType = "CAUTION_WRITES_ERODING_PREMIUM"
-    } else {
-        remark = captainImgContainer + '<span class="badge bg-danger">Defence,Buy On Decline</span>'
-        display = "+";
-        RemarkType = "DEFENCE_BUY_ON_DECLINE"
-    }
-
-    data.REMARK = RemarkType
-
-    var bullRemark = remark;
-    var bearRemark = remark;
-    var marketTrendPlus = ""
-    var imageBullPlus = "";
-
-    var openInterestMarkupBull = openInterestMarkup
-    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
-    var openInterestChangeMarkupBull = openInterestChangeMarkup
-    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
-    var niftyOILabelPlusBull = "NIFTY-OI"
-    var otherRemarkType = ""
-    var otherTrendRemarks = ""
-    if (display == "+") {
-        marketTrendPlus = '<span class=" badge bg-success">Hulk Arrived (+)</span>'
-        otherTrendRemarks += '<div class="row">'
-        otherTrendRemarks += '<div class="col-md-12">'
-        otherTrendRemarks += "Hulk Arrived (+)"
-        otherTrendRemarks += '</div>'
-        otherTrendRemarks += '</div>'
-        if (pChangeEvo >= 4 && price != "+-") {
-            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
-            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
-        } else if (pChangeEvo >= 4 && price == "+-") {
-            marketTrendPlus = '<span class=" badge bg-warning">Doctor Strange Arrived (+)</span>'
-            otherTrendRemarks = ''
-            otherTrendRemarks += '<div class="row">'
-            otherTrendRemarks += '<div class="col-md-12">'
-            otherTrendRemarks += "Doctor Strange Arrived (+))"
-            otherTrendRemarks += '</div>'
-            otherTrendRemarks += '</div>'
-            imageBullPlus = doctorStrangeImgContainer
-            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
-        } else {
-            imageBullPlus = bullImageImgContainer;
-        }
-    } else {
-        marketTrendPlus = '<span class="  badge bg-danger">Strongly Not Recommended to buy Calls</span>'
-        imageBullPlus = ""
-        openInterestMarkupBull = ""
-        openInterestDirectionMarkupBull = ""
-        openInterestChangeMarkupBull = ""
-        openInterestChangePercMarkupBull = ""
-        niftyOILabelPlusBull = ""
-        bullRemark = ""
-    }
-
-    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
-
-    var marketTrendMinus = ""
-    var imageBearMinus = "";
-    var openInterestMarkupBear = openInterestMarkup
-    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
-    var openInterestChangeMarkupBear = openInterestChangeMarkup
-    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
-    var bankNiftyOILabelPlusBear = "NIFTY-OI"
-
-    if (display == "-") {
-        marketTrendMinus = '<span class=" badge bg-danger">Chitauri Army Arrived (-)</span>'
-        imageBearMinus = bearImageImgContainer
-    } else {
-        marketTrendMinus = '<span class="  badge bg-danger">Strongly Not Recommended to Short Calls</span>'
-        openInterestMarkupBear = ""
-        openInterestDirectionMarkupBear = ""
-        openInterestChangeMarkupBear = ""
-        openInterestChangePercMarkupBear = ""
-        bankNiftyOILabelPlusBear = ""
-        bearRemark = ""
-    }
-
-    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
-
-    return data;
-}
-
-function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize) {
-
-    let data = {}
-
-    quote.volume = parseInt(quote.volume)
-    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
-    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
-    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-    var totalVolumePrice = cVolumePrice + pVolumePrice
-    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
-    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
-
-
-    var vwap = vwapPrice ? vwapPrice : 0;
-
-
-    var openPrice = quote.open;
-    var highPrice = quote.high;
-    var lowPrice = quote.low;
-    var close = quote.close;
-    var lastPrice = quote.close;
-
-    var previousClose = prevQuote['close']
-    var pChange = ((lastPrice - previousClose) / previousClose) * 100
-    var change = (lastPrice - previousClose).toFixed(2)
-    var shortCoveringOrLongUnwinding = false;
-    var price;
-    var oi;
-    var booleanValue = false;
-    var correctedVwap = vwap;
-    correctedVwap = correctedVwap; // price spike adjustment
-    var lastPrice = lastPrice;
-    if (correctedVwap <= lastPrice) {
-        booleanValue = true;
-    } else {
-        booleanValue = false;
-    }
-    var openInterest = quote['oi'] / lotSize;
-    var previousOI = prevQuote['oi'] / lotSize
-    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
-    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
-    var changeEvo1 = change;
-    var pChangeEvo = pchangeinOpenInterest;
-    var changeEvo = changeinOpenInterest;
-    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
-    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
-    var openInterestMarkup = '';
-    var openInterestDirectionMarkup = '';
-    var openInterestChangeMarkup = '';
-    var openInterestChangePercMarkup = '';
-
-    if (changeinOpenInterest > 0) {
-        openInterestMarkup = '<span class=" badge bg-success">' + openInterest + '</span>'
-        openInterestDirectionMarkup = '<span class=" badge bg-success" >' + upTriangle + '</span>'
-        openInterestChangeMarkup = '<span class=" badge bg-success" >' + changeinOpenInterest + '</span>'
-        oi = "+";
-    } else {
-        openInterestMarkup = '<span class=" badge bg-danger">' + openInterest + '</span>'
-        openInterestDirectionMarkup = '<span class=" badge bg-danger">' + bottomTriangle + '</span>'
-        openInterestChangeMarkup = '<span class=" badge bg-danger">' + changeinOpenInterest + '</span>'
-        oi = "-";
-    }
-
-    if (pchangeinOpenInterest > 0) {
-        openInterestChangePercMarkup = '<span class=" badge bg-success">' + pchangeinOpenInterest + '%</span>'
-    } else {
-        openInterestChangePercMarkup = '<span class=" badge bg-danger">' + pchangeinOpenInterest + '%</span>'
-    }
-
-    if (changeEvo1 > 10 && booleanValue == true) { // percentage bull side
-        price = "+";
-    } else if (changeEvo1 <= -10 && booleanValue == false) { // bear side,long unwinding
-        price = "-";
-    } else if (changeEvo1 >= 10 && booleanValue == false) { // bear side, short
-        price = "-";
-    } else {
-        price = "+-";// no clear trend
-    }
-
-    if (changeEvo < 0 && pChangeEvo < -2) {
-        shortCoveringOrLongUnwinding = true;
-    } else {
-        shortCoveringOrLongUnwinding = false;
-    }
-
-    var remark = "No Clear Trend, Bulls are still waiting";
-
-
-    var dogImgContainer = '<span class="badge bg-light">' + dogImage + '</span>'
-    var bullImageImgContainer = '<span class="badge bg-light">' + bullImage + '</span>'
-    var bearImageImgContainer = '<span class="badge bg-light">' + bearImage + '</span>'
-    var hulkImageImgContainer = '<span class="badge bg-light">' + hulkImage + '</span>'
-    var captainImgContainer = '<span class="badge bg-light">' + captain + '</span>'
-    var lokiImgContainer = '<span class="badge bg-light">' + loki + '</span>'
-    var ironManImgContainer = '<span class="badge bg-light">' + ironMan + '</span>'
-    var thorImgContainer = '<span class="badge bg-light">' + thor + '</span>'
-    var hulNewImgContainer = '<span class="badge bg-light">' + hulkImageNew + '</span>'
-    var doctorStrangeImgContainer = '<span class="badge bg-light">' + doctor_strange + '</span>'
-    remark += dogImgContainer
-    var display = "+";
-
-    var aiStatus = ""
-
-    if (price == "+" && oi == "+") {
-        remark = '<span class="badge bg-success">Long</span>'
-        display = "+";
-        aiStatus = "LONG"
-    } else if (price == "-" && oi == "+") {
-        remark = '<span class="badge bg-danger">Short</span>'
-        display = "-";
-        aiStatus = "SHORT"
-    } else if (price == "+" && oi == "-"
-        && shortCoveringOrLongUnwinding) {
-        remark = '<span class="badge bg-success">Short Covering</span>'
-        display = "+";
-        aiStatus = "SHOT_COVERING"
-    } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding) {
-        remark = dogImgContainer + '<span class="badge bg-danger">Long Unwinding</span>'
-        display = "-";
-        aiStatus = "LONG_UNWINDING"
-    } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding == false) {
-        remark = dogImgContainer + lokiImgContainer + '<span class="badge bg-danger">Bears Coming,Sell On Rise</span>'
-        display = "-";
-        aiStatus = "BEARS_COMING_SELL_ON_RISE"
-    } else if (price == "+-" && oi == "+"
-        && shortCoveringOrLongUnwinding == false
-        && booleanValue == true && pChangeEvo >= 10) {
-        remark = '<span class="badge bg-danger">Gambling! Buy,News & Events</span>'
-        display = "+";
-        aiStatus = "GAMBLING_BUY_NEWS_AND_EVENTS"
-    } else if (price == "+-" && oi == "+"
-        && shortCoveringOrLongUnwinding == false
-        && booleanValue == true && pChangeEvo < 10) {
-        remark = '<span class="badge bg-danger">Caution! Writers Eroding Premium</span>'
-        display = "+";
-        aiStatus = "CAUTION_WRITES_ERODING_PREMIUM"
-    } else {
-        remark = captainImgContainer + '<span class="badge bg-danger">Defence,Buy On Decline</span>'
-        display = "+";
-        aiStatus = "DEFENCE_BUY_ON_DECLINE"
-    }
-
-    data.REMARK = aiStatus
-
-    var bullRemark = remark;
-    var bearRemark = remark;
-    var marketTrendPlus = ""
-    var imageBullPlus = "";
-
-    var openInterestMarkupBull = openInterestMarkup
-    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
-    var openInterestChangeMarkupBull = openInterestChangeMarkup
-    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
-    var niftyOILabelPlusBull = "NIFTY-OI"
-    var otherRemarkType = ""
-    var otherTrendRemarks = ""
-    if (display == "+") {
-        marketTrendPlus = '<span class=" badge bg-success">Hulk Arrived (+)</span>'
-        otherTrendRemarks += '<div class="row">'
-        otherTrendRemarks += '<div class="col-md-12">'
-        otherTrendRemarks += "Hulk Arrived (+)"
-        otherTrendRemarks += '</div>'
-        otherTrendRemarks += '</div>'
-        if (pChangeEvo >= 4 && price != "+-") {
-            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
-            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
-        } else if (pChangeEvo >= 4 && price == "+-") {
-            marketTrendPlus = '<span class=" badge bg-warning">Doctor Strange Arrived (+)</span>'
-            otherTrendRemarks = ''
-            otherTrendRemarks += '<div class="row">'
-            otherTrendRemarks += '<div class="col-md-12">'
-            otherTrendRemarks += "Doctor Strange Arrived (+))"
-            otherTrendRemarks += '</div>'
-            otherTrendRemarks += '</div>'
-            imageBullPlus = doctorStrangeImgContainer
-            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
-        } else {
-            imageBullPlus = bullImageImgContainer;
-        }
-    } else {
-        marketTrendPlus = '<span class="  badge bg-danger">Strongly Not Recommended to buy Calls</span>'
-        imageBullPlus = ""
-        openInterestMarkupBull = ""
-        openInterestDirectionMarkupBull = ""
-        openInterestChangeMarkupBull = ""
-        openInterestChangePercMarkupBull = ""
-        niftyOILabelPlusBull = ""
-        bullRemark = ""
-    }
-
-    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
-
-    var marketTrendMinus = ""
-    var imageBearMinus = "";
-    var openInterestMarkupBear = openInterestMarkup
-    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
-    var openInterestChangeMarkupBear = openInterestChangeMarkup
-    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
-    var bankNiftyOILabelPlusBear = "NIFTY-OI"
-
-    if (display == "-") {
-        marketTrendMinus = '<span class=" badge bg-danger">Chitauri Army Arrived (-)</span>'
-        imageBearMinus = bearImageImgContainer
-    } else {
-        marketTrendMinus = '<span class="  badge bg-danger">Strongly Not Recommended to Short Calls</span>'
-        openInterestMarkupBear = ""
-        openInterestDirectionMarkupBear = ""
-        openInterestChangeMarkupBear = ""
-        openInterestChangePercMarkupBear = ""
-        bankNiftyOILabelPlusBear = ""
-        bearRemark = ""
-    }
-    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
-
-    return data;
-}

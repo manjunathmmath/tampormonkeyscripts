@@ -175,9 +175,19 @@ span.bullsVersesBears {
   max-height: 25px !important;
 }
 
-.historical-future-data-analyzer img,#stock-list-table img,#futures-trend-nifty img,#futures-trend-nifty-bank img ,.analyser-container img{
+.historical-future-data-analyzer img,
+#stock-list-table img,
+#futures-trend-nifty img,
+#futures-trend-nifty-bank img,
+.analyser-container img #main-trade-bot-container img {
   max-width: 15px !important;
   max-height: 15px !important;
+}
+
+#main-trade-bot-container img,
+#individual-stock-popup-window img {
+  max-width: 50px !important;
+  max-height: 50px !important;
 }
 
 .popupwindow_content {
@@ -200,7 +210,7 @@ span.bullsVersesBears {
   margin-bottom: unset !important;
 }
 
-.sentiment-count{
+.sentiment-count {
   padding: .4rem;
 }
 
@@ -405,11 +415,157 @@ td.details-control {
   background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAANbY1E9YMgAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAMDSURBVHjarFXdS5NRGH/eufyK2ZZWvqKiyZQQpQ9hNKVIHZLzpq7Ey8SbQhG66R+IPqCuCqKLrsK8kbCMhcOwNdimglZ24WSVHyxzVjqZQ9+P0/Mcz1upE7vwjB/nnOfjt3Oej/NKkHqYEGmIA4h0saahITYQiljr2x2lFHszIgthQeQgDgpSEGQJRByxikgiVARLdSoiy0QcRVR2dHRc8fv9nmg0OqvrukagNclIRzbCNjPFwbiATlWAcPT39z9VFGWD7TJIRzZkK3y2kEriSvmyLJ+LRCIfySmpJZk3Nsiuf+pmLaGLrDnYxLonO9mr7wMsoSY4MdmSD/oeExySJBJAsSoOBoN3HQ5H07KyDI+/PoI3S0M8OGTEpM1I0VR7uA6ull6D3PQ8CAQCHqfTeQPFMxRXI5O2rq6uhvb29k4NNOlO+DYMx4bRH386gv0DXYeZ5AxE1iJw4Ug9FBcWl8VisYnR0dFZSpJJEB5qbW29JEmS6d2SD3wxH2gaUmsqqLoG3roh8NYO8T1mB1TUjf0Yg7f4p+TT1tZ2WdzSbBBml5eXn6SAeqKvQVWRTFdBUdFZVf9kjuRch4QKknu+ebi8oqKCfLMpjmZRtOlWqzWXlFPxKXRQ8LISBFyBLaXgq/fz2ek9y+fPq1/4bLFYrEYDmLfXD8WMTrazsv4OVVN5qtaVjc0ywWsbOrPRTvF4/JfNZsuTM2SYW53nKT01cJrP4y3j3NjYi7xDQU4Bl6PvT9FFmkn05Vo4HJ4gpSvfxeO2GS+VJ8AYioghnZDWjXIjl09PT38gDjIxCFd6enr6sCz05sJmqLJWcSIOdDzRV8nBsy5kdosdWorcVEp6b2/vc9HfSppxh1AoFHe73faSopKyM3k1EF4J49XnttSizvgOqm3VcKvmJsjZMoyMjAxibz9Bjph4LFK33mJykT2YfMgaXrrY8Wd2Voo4/6Ke3Xt/n0UT0e2tl2+03n49Dlm7vTg7nq+FhYV5g4jWez1f//vAZgj9+l4PrLTfn4DfAgwAXP8AAdHdgRsAAAAASUVORK5CYII=') no-repeat center center;
   cursor: pointer;
 }
+
 .fusioncharts-datalabels {
-    font-size:8px !important;
+  font-size: 8px !important;
 }
 
-.bull { background:#d4edda; }
-.bear { background:#f8d7da; }
-.range { background:#fff3cd; }
-.mixed { background:#e2e3e5; }
+.bull {
+  background: #d4edda;
+}
+
+.bear {
+  background: #f8d7da;
+}
+
+.range {
+  background: #fff3cd;
+}
+
+.mixed {
+  background: #e2e3e5;
+}
+
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+}
+
+.vixl-line-class,
+.vixl-line-class line {
+  stroke: #00ff00 !important;
+}
+
+.vixu-line-class,
+.vixu-line-class line {
+  stroke: #ff0000 !important;
+}
+
+.ustrike-two-line-class,
+.ustrike-two-line-class line {
+  stroke: #ff4800 !important;
+}
+
+.ustrike-one-line-class,
+.ustrike-one-line-class line {
+  stroke: #ffcc00 !important;
+}
+
+.bstrike-one-line-class,
+.bstrike-one-line-class line {
+  stroke: #84ff00 !important;
+}
+
+.bstrike-two-line-class,
+.bstrike-two-line-class line {
+  stroke: #e1ff00 !important;
+}
+
+
+div.badge {
+  display: block !important;
+}
+
+.loader {
+  transform: rotateZ(45deg);
+  perspective: 1000px;
+  border-radius: 50%;
+  width: 2rem;
+  height: 1rem;
+  color: #000000;
+  position: absolute;
+}
+
+.loader:before,
+.loader:after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: inherit;
+  height: inherit;
+  border-radius: 50%;
+  transform: rotateX(70deg);
+  animation: 1s spin linear infinite;
+}
+
+.loader:after {
+  color: #FF3D00;
+  transform: rotateY(70deg);
+  animation-delay: .4s;
+}
+
+@keyframes rotate {
+  0% {
+    transform: translate(-50%, -50%) rotateZ(0deg);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotateZ(360deg);
+  }
+}
+
+@keyframes rotateccw {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+@keyframes spin {
+
+  0%,
+  100% {
+    box-shadow: .2em 0px 0 0px currentcolor;
+  }
+
+  12% {
+    box-shadow: .2em .2em 0 0 currentcolor;
+  }
+
+  25% {
+    box-shadow: 0 .2em 0 0px currentcolor;
+  }
+
+  37% {
+    box-shadow: -.2em .2em 0 0 currentcolor;
+  }
+
+  50% {
+    box-shadow: -.2em 0 0 0 currentcolor;
+  }
+
+  62% {
+    box-shadow: -.2em -.2em 0 0 currentcolor;
+  }
+
+  75% {
+    box-shadow: 0px -.2em 0 0 currentcolor;
+  }
+
+  87% {
+    box-shadow: .2em -.2em 0 0 currentcolor;
+  }
+}

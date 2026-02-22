@@ -336,7 +336,6 @@ function callSackBarInfo(message) {
         status: "info",
         timeout: 20000,
         actions: [],
-        container: "app",
         position: 'bd'
     });
 }
@@ -450,7 +449,6 @@ function showPopUpWindow(index, html, title, width, height) {
         height: height,
         resizable: true,
         resizeOpacity: 1,
-        keepInViewport: true,              // Boolean
         mouseMoveEvents: true              // Boolean
     });
     jQ.PopupWindowMinimizedArea({
@@ -466,18 +464,6 @@ function showPopUpWindow(index, html, title, width, height) {
         jQ("." + popupCustomClass + " .pop-title-extra").show();
     });
 
-    jQ("#" + divId).on("maximize.popupwindow", function () {
-        if (stockTable) {
-            jQ('#stock-list-table').DataTable().columns.adjust().draw();
-            jQ(".historical-future-data-analyzer").DataTable().columns.adjust().draw();
-            jQ('#future-list-table').DataTable().columns.adjust().draw();
-        }
-    });
-
-    if(advanceDeclineTimerInstance){
-        clearInterval(advanceDeclineTimerInstance);
-        advanceDeclineTimerInstance = null;
-    }
 };
 
 
