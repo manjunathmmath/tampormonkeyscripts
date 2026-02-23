@@ -23,7 +23,8 @@ async function autoRefreshEachTabs(instance, isManual) {
 
     if (allow || isManual) {
         await updateStrorageLtpPrice(instance);
-        await commonShowPopupWindow();
+        if (isManual) { await commonShowPopupWindow(); }
+
         jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     }
 
