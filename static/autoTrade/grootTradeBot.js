@@ -104,9 +104,19 @@ async function scanNineFifteenCandle() {
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
     if (!breakOutNineFifteen) {
         breakOutNineFifteen = {}
-        for (let i = 0; i < FO_LIST.length; i++) {
-            let name = FO_LIST[i];
-            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
+        let instru = [];
+        let checkInstr = []
+        jQ.each(instrumentTokens, function (index, item) {
+            if (jQ.inArray(index, checkInstr) === -1) {
+                instru.push(index)
+                checkInstr.push(index)
+            }
+        });
+
+
+        for (let i = 0; i < instru.length; i++) {
+            let name = instru[i];
+            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
             try {
                 let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
                 let firstCandleClose = historical.data.candles[0][4]
@@ -114,6 +124,7 @@ async function scanNineFifteenCandle() {
                 let bsoPrice = 0;
                 asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
                 bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
+                console.log(name, firstCandleClose, asoPrice, bsoPrice)
 
                 if (firstCandleClose > asoPrice) {
                     breakOutNineFifteen[name] = {};
@@ -158,9 +169,9 @@ async function commonShowPopupWindow() {
     html += showComponent('GIFT NIFTY', 3);
     html += showComponent('SENSEX', 4);
     html += showComponent915Close('ALL', 12);
+    html += showTrendScoreBoard();
     html += showAdvanceDecline();
     html += showAdvanceDeclineFutures();
-    html += showTrendScoreBoard();
     html += '</div>'
     html += '</div>'
     html += '<div class="col-md-4">'
@@ -314,7 +325,7 @@ function setScore() {
         ALL_9_15_CLOSE_SCORE = 1;
     }
 
-    let SCORE = ALL_9_15_CLOSE_SCORE + NIFTY_50_9_15_CLOSE_SCORE + NIFTY_BANK_9_15_CLOSE_SCORE + GIFT_NIFTY_9_15_CLOSE_SCORE + SENSEX_9_15_CLOSE_SCORE + RELIANCE_9_15_CLOSE_SCORE + HDFCBANK_9_15_CLOSE_SCORE+ALL_ADVANCE_DECLINE_SCORE+NIFTY_50_ADVANCE_DECLINE_SCORE+NIFTY_BANK_ADVANCE_DECLINE_SCORE+ALL_FUTURES_TREND_SCORE+NIFTY_50_FUTURES_TREND_SCORE+NIFTY_BANK_FUTURES_TREND_SCORE+NIFTY_50_OI_OBV_SCORE+NIFTY_BANK_OI_OBV_SCORE+RELIANCE_OI_OBV_SCORE+HDFCBANK_OI_OBV_SCORE;
+    let SCORE = ALL_9_15_CLOSE_SCORE + NIFTY_50_9_15_CLOSE_SCORE + NIFTY_BANK_9_15_CLOSE_SCORE + GIFT_NIFTY_9_15_CLOSE_SCORE + SENSEX_9_15_CLOSE_SCORE + RELIANCE_9_15_CLOSE_SCORE + HDFCBANK_9_15_CLOSE_SCORE + ALL_ADVANCE_DECLINE_SCORE + NIFTY_50_ADVANCE_DECLINE_SCORE + NIFTY_BANK_ADVANCE_DECLINE_SCORE + ALL_FUTURES_TREND_SCORE + NIFTY_50_FUTURES_TREND_SCORE + NIFTY_BANK_FUTURES_TREND_SCORE + NIFTY_50_OI_OBV_SCORE + NIFTY_BANK_OI_OBV_SCORE + RELIANCE_OI_OBV_SCORE + HDFCBANK_OI_OBV_SCORE;
     chart = c3.generate({
         bindto: "#trend-scoreboard",
         data: {
@@ -323,12 +334,12 @@ function setScore() {
             ],
             type: 'gauge',
         },
-            color: {
-        pattern: ['#FF0000', '#F97600', '#F6C600', '#60B044'], 
-        threshold: {
-            values: [3, 6, 9, 10] 
+        color: {
+            pattern: ['#FF0000', '#F97600', '#F6C600', '#60B044'],
+            threshold: {
+                values: [3, 6, 9, 10]
+            }
         }
-    }
     });
 
 }
@@ -1577,15 +1588,15 @@ async function showAdvacenDeclineScanner() {
     adVanceDeclineColumnsNiftyBank.push(advanceSeriesNiftyBank);
     adVanceDeclineColumnsNiftyBank.push(declineSeriesNiftyBank);
 
-    if(allAdvances > allDeclines){
+    if (allAdvances > allDeclines) {
         ALL_ADVANCE_DECLINE_SCORE = 1;
     }
 
-    if(allNiftyAdvances > allNiftyDeclines){
+    if (allNiftyAdvances > allNiftyDeclines) {
         NIFTY_50_ADVANCE_DECLINE_SCORE = 1;
-    }   
+    }
 
-    if(allBankAdvances > allBankDeclines){
+    if (allBankAdvances > allBankDeclines) {
         NIFTY_BANK_ADVANCE_DECLINE_SCORE = 1;
     }
 
@@ -2323,15 +2334,15 @@ async function showFuturesTrend() {
     allNiftyBankFuturesSeries.push(NiftyBankBULLSSeries);
     allNiftyBankFuturesSeries.push(NiftyBankBEARSSeries);
 
-    if(allFuturesAdvances > allFuturesDeclines){
+    if (allFuturesAdvances > allFuturesDeclines) {
         ALL_FUTURES_TREND_SCORE = 1;
     }
 
-    if(allNiftyFuturesAdvances > allNiftyFuturesDeclines){
+    if (allNiftyFuturesAdvances > allNiftyFuturesDeclines) {
         NIFTY_FUTURES_TREND_SCORE = 1;
     }
 
-    if(allNiftyBankFuturesAdvances > allNiftyBankFuturesDeclines){
+    if (allNiftyBankFuturesAdvances > allNiftyBankFuturesDeclines) {
         NIFTY_BANK_FUTURES_TREND_SCORE = 1;
     }
 

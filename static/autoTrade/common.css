@@ -569,3 +569,8 @@ div.badge {
     box-shadow: .2em -.2em 0 0 currentcolor;
   }
 }
+
+.c3-line {
+  stroke-width: 2px !important;
+  stroke: #fff !important;
+}
