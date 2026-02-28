@@ -24,7 +24,7 @@ async function showGrootTradeBot() {
     title += '<a  id="start-auto-refresh">Refresh</a>'
     title += '</div>'
     title += '<div class="col-md-1">'
-    title += '<input type="checkbox" id="enable-auto-refresh">'
+    title += '<input title="Enable refresh" type="checkbox" id="enable-auto-refresh">'
     title += '</div>'
     title += '<div class="col-md-3 pop-title-extra">'
     title += '<span id="last-refresh-time">Last @ 00:00:00</span>'
@@ -124,7 +124,6 @@ async function scanNineFifteenCandle() {
                 let bsoPrice = 0;
                 asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
                 bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
-                console.log(name, firstCandleClose, asoPrice, bsoPrice)
 
                 if (firstCandleClose > asoPrice) {
                     breakOutNineFifteen[name] = {};
@@ -599,6 +598,12 @@ jQ(document).on("click", ".show-info", function () {
     html += ' BSO : ' + parseFloat(data['strikeData']['bstrikeOne']);
     html += '</div>'
     html += '<div>'
+    html += ' AST : ' + parseFloat(data['strikeData']['ustrikeTwo']);
+    html += '</div>'
+    html += '<div>'
+    html += ' BST : ' + parseFloat(data['strikeData']['bstrikeTwo']);
+    html += '</div>'
+    html += '<div>'
     html += ' VIXU : ' + parseFloat(data['vix']['vixDDUpper']);
     html += '</div>'
     html += '<div>'
@@ -760,6 +765,27 @@ async function showTopChart(name) {
     }
 }
 
+function updateScoresOfOI(name, item) {
+    let SCORE = 0
+    if (item['CHG_OI_PE'] > item['CHG_OI_CE']) {
+        SCORE++
+    } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > item['PE_OBV'][item['PE_OBV'].length - 1]['obv']) {
+        SCORE++
+    } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] < 0) {
+        SCORE++
+    }
+
+    if (name == "NIFTY 50") {
+        NIFTY_50_OI_OBV_SCORE += SCORE
+    } else if (name == "NIFTY BANK") {
+        NIFTY_BANK_OI_OBV_SCORE += SCORE
+    } else if (name == "RELIANCE") {
+        RELIANCE_OI_OBV_SCORE += SCORE
+    } else if (name == "HDFCBANK") {
+        HDFCBANK_OI_OBV_SCORE += SCORE
+    }
+}
+
 function show915Trend(name) {
 
     let tempName = name.replaceAll(" ", "-")
@@ -850,6 +876,8 @@ function showOIOBVBarChart(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
+
+
     let columns = [];
 
     let x = ['x']
@@ -868,6 +896,8 @@ function showOIOBVBarChart(name) {
         oiPE.push(item['CHG_OI_PE'])
         oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
         oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
+
+
     })
 
     columns.push(x)
@@ -889,21 +919,21 @@ function showOIOBVBarChart(name) {
             color: function (color, d) {
                 if (d.value !== undefined) {
                     if (d.id === 'CE OI' && d.value > 0) {
-                        return '#bc2709'; // Green for positive CE OI
+                        return '#bc2709'; //Calls are being sold and the price is expected to go down, so red color
                     } else if (d.id === 'CE OI' && d.value < 0) {
-                        return '#5ccf76'; // Red for negative CE OI
+                        return '#bc2709'; // Call writing is happening and the price is expected to go up, so green color
                     } else if (d.id === 'PE OI' && d.value > 0) {
-                        return '#5ccf76'; // Green for positive PE OI
+                        return '#5ccf76'; //Put writing is happening and the price is expected to go up, so green color
                     } else if (d.id === 'PE OI' && d.value < 0) {
-                        return '#bc2709'; // Red for negative PE OI
+                        return '#5ccf76'; // Put buying closing the  positions
                     } else if (d.id === 'CE OI OBV' && d.value > 0) {
-                        return '#5ccf76'; // Green for positive CE OBV
+                        return '#5ccf76'; // Call are bein bought
                     } else if (d.id === 'CE OI OBV' && d.value < 0) {
-                        return '#bc2709'; // Red for negative CE OBV
+                        return '#bc2709'; // Call writing is happening
                     } else if (d.id === 'PE OI OBV' && d.value > 0) {
-                        return '#bc2709'; // Green for positive PE OBV
+                        return '#bc2709'; // Puts arebeing bought   
                     } else if (d.id === 'PE OI OBV' && d.value < 0) {
-                        return '#5ccf76'; // Red for negative PE OBV
+                        return '#5ccf76'; // Put writing is happening
                     }
                 }
                 // For legend items or other cases, return the default color
@@ -2339,7 +2369,7 @@ async function showFuturesTrend() {
     }
 
     if (allNiftyFuturesAdvances > allNiftyFuturesDeclines) {
-        NIFTY_FUTURES_TREND_SCORE = 1;
+        NIFTY_50_FUTURES_TREND_SCORE = 1;
     }
 
     if (allNiftyBankFuturesAdvances > allNiftyBankFuturesDeclines) {
@@ -2512,8 +2542,6 @@ async function showFuturesTrend() {
 }
 
 function showStockList(list) {
-    console.log(scriptsVolumeMap)
-    console.log(globalFuturesTrend)
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
     let instru = [];
     let scripts = []
