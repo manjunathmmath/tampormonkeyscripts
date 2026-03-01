@@ -574,3 +574,12 @@ div.badge {
   stroke-width: 2px !important;
   stroke: #fff !important;
 }
+
+#trend-scoreboard-outcome{
+  font-size: 1rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center !important;
+
+}

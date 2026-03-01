@@ -197,7 +197,7 @@ async function commonShowPopupWindow() {
     await showTopChart('RELIANCE');
     await showTopChart('HDFCBANK');
 
-    let res = await showFutureDetails('NIFTY 50');
+    /*let res = await showFutureDetails('NIFTY 50');
     setFutureDetails('NIFTY 50', res);
     res = await showFutureDetails('NIFTY BANK');
     setFutureDetails('NIFTY BANK', res);
@@ -213,16 +213,56 @@ async function commonShowPopupWindow() {
     await showPrictionProbabilty('RELIANCE')
     showOIOBVBarChart('RELIANCE');
     await showPrictionProbabilty('HDFCBANK')
-    showOIOBVBarChart('HDFCBANK');
+    showOIOBVBarChart('HDFCBANK');*/
 
     show915Trend('NIFTY 50');
     show915Trend('NIFTY BANK');
     show915Trend('ALL');
-    await showAdvacenDeclineScanner();
-    await showFuturesTrend();
+    //await showAdvacenDeclineScanner();
+    //await showFuturesTrend();
     setScore()
     showStockList([]);
     jQ("#refresh-loader").addClass("hide");
+}
+
+function getTradeSignal(nifty, sensex, bank) {
+
+    const strategyMap = {
+
+        "ASO-ASO-ASO": { outcome: "Buy", level: "at BSO/BST" },
+        "ASO-ASO-BSO": { outcome: "Buy/Sell", level: "at BSO/BST at AST/ASO" },
+        "ASO-ASO-B/W": { outcome: "Buy/Sell", level: "at BSO/BST at AST/ASO" },
+        "ASO-BSO-ASO": { outcome: "Buy", level: "at BSO/BST" },
+        "ASO-BSO-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "ASO-BSO-B/W": { outcome: "Sell", level: "at ASO/AST" },
+        "ASO-B/W-ASO": { outcome: "Buy", level: "at BSO/BST" },
+        "ASO-B/W-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "ASO-B/W-B/W": { outcome: "Buy", level: "at BSO/BST" },
+
+        "BSO-ASO-ASO": { outcome: "Buy/Sell", level: "at BSO/BST at AST/ASO" },
+        "BSO-ASO-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "BSO-ASO-B/W": { outcome: "Sell", level: "at ASO/AST" },
+        "BSO-BSO-ASO": { outcome: "Sell", level: "at ASO/AST" },
+        "BSO-BSO-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "BSO-BSO-B/W": { outcome: "Sell", level: "at ASO/AST" },
+        "BSO-B/W-ASO": { outcome: "Buy", level: "at BSO/BST" },
+        "BSO-B/W-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "BSO-B/W-B/W": { outcome: "Sell", level: "at ASO/AST" },
+
+        "B/W-ASO-ASO": { outcome: "Buy", level: "at BSO/BST" },
+        "B/W-ASO-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "B/W-ASO-B/W": { outcome: "Buy/Sell", level: "at BSO/BST at AST/ASO" },
+        "B/W-BSO-ASO": { outcome: "Buy/Sell", level: "at BSO/BST at AST/ASO" },
+        "B/W-BSO-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "B/W-BSO-B/W": { outcome: "Sell", level: "at ASO/AST" },
+        "B/W-B/W-ASO": { outcome: "Buy", level: "at BSO/BST" },
+        "B/W-B/W-BSO": { outcome: "Sell", level: "at ASO/AST" },
+        "B/W-B/W-B/W": { outcome: "Sell", level: "at ASO/AST" }
+    };
+
+    const key = `${nifty}-${sensex}-${bank}`;
+
+    return strategyMap[key] || { outcome: "Invalid Input", level: "No Level" };
 }
 
 
@@ -341,6 +381,21 @@ function setScore() {
         }
     });
 
+    let output = getTradeSignal(breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'], breakOutNineFifteen['SENSEX']['CLOSE_9_15'], breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']);
+
+    let html = ''
+    if (output['outcome'] == "Buy") {
+        html += '<span class="badge bg-success">' + output['outcome'] + '</span>';
+    } else if (output['outcome'] == "Sell") {
+        html += '<span class="badge bg-danger">' + output['outcome'] + '</span>';
+    } else {
+        html += '<span class="badge bg-secondary">' + output['outcome'] + '</span>';
+    }
+
+    html += '<div>Level : ' + output['level'] + '</div>'
+
+    jQ("#trend-scoreboard-outcome").html(html);
+
 }
 
 
@@ -419,7 +474,10 @@ function showTrendScoreBoard() {
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">TREND SCOREBOARD</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
-    html += '<div id="trend-scoreboard"></div>'
+    html += '<div class="row">'
+    html += '<div class="col-md-6" id="trend-scoreboard"></div>'
+    html += '<div class="col-md-6" id="trend-scoreboard-outcome"></div>'
+    html += '</div>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
