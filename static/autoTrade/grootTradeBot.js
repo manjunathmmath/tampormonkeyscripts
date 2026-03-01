@@ -197,7 +197,7 @@ async function commonShowPopupWindow() {
     await showTopChart('RELIANCE');
     await showTopChart('HDFCBANK');
 
-    /*let res = await showFutureDetails('NIFTY 50');
+    let res = await showFutureDetails('NIFTY 50');
     setFutureDetails('NIFTY 50', res);
     res = await showFutureDetails('NIFTY BANK');
     setFutureDetails('NIFTY BANK', res);
@@ -213,13 +213,13 @@ async function commonShowPopupWindow() {
     await showPrictionProbabilty('RELIANCE')
     showOIOBVBarChart('RELIANCE');
     await showPrictionProbabilty('HDFCBANK')
-    showOIOBVBarChart('HDFCBANK');*/
+    showOIOBVBarChart('HDFCBANK');
 
     show915Trend('NIFTY 50');
     show915Trend('NIFTY BANK');
     show915Trend('ALL');
-    //await showAdvacenDeclineScanner();
-    //await showFuturesTrend();
+    await showAdvacenDeclineScanner();
+    await showFuturesTrend();
     setScore()
     showStockList([]);
     jQ("#refresh-loader").addClass("hide");
@@ -471,7 +471,8 @@ function showTrendScoreBoard() {
     html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">TREND SCOREBOARD</h4>'
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;" class="badge bg-secondary show-notes">i</span>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">TREND SCOREBOARD </h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
     html += '<div class="row">'
@@ -483,6 +484,31 @@ function showTrendScoreBoard() {
     html += '</div>'
 
     return html;
+}
+
+jQ(document).on("click", ".show-notes", function () {
+    showNotes();
+});
+
+function showNotes() {
+    let htmlNote = ''
+    htmlNote += '<div class="row" style="">'
+    htmlNote += '<div class="col-md-12">'
+    htmlNote += '<h5 style="text-align:center;">NOTES</h5>'
+    htmlNote += '</div>'
+    htmlNote += '<div class="col-md-12">'
+    htmlNote += '<ul>'
+    htmlNote += '<li>Depending on the number of ASO/BSO and  9:15 ASO/BSO</li>'
+    htmlNote += '<li>2 ASO is strong uptrend</li>'
+    htmlNote += '<li>2 BSO is strong downtrend</li>'
+    htmlNote += '<li>Sensex ASO doesn\'t have much weightage</li>'
+    htmlNote += '<li>Check OI/OBV"</li>'
+    htmlNote += '<li>Check VIX range</li>'
+    htmlNote += '</ul>'
+    htmlNote += '</div>'
+    htmlNote += '</div>'
+
+    callSackBarInfo(htmlNote)
 }
 
 function placeHolder(name) {
