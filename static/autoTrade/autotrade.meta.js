@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         marketTrend
-// @namespace    marketTrend
+// @name         Groot Bot
+// @namespace    Groot Bot
 // @version      2.0
-// @description  Get the Market Trend
+// @description  Groot Bot
 // @author       Manjunath
 // @match        https://kite.zerodha.com/*
 // @grant        GM_setValue

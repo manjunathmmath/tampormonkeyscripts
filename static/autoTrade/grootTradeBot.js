@@ -190,36 +190,115 @@ async function commonShowPopupWindow() {
     jQ("#main-trade-bot-container").html(html);
 
     await callSleepForAWhile(1000)
-    await showTopChart('NIFTY 50');
-    await showTopChart('NIFTY BANK');
-    await showTopChart('GIFT NIFTY');
-    await showTopChart('SENSEX');
-    await showTopChart('RELIANCE');
-    await showTopChart('HDFCBANK');
-
-    let res = await showFutureDetails('NIFTY 50');
-    setFutureDetails('NIFTY 50', res);
-    res = await showFutureDetails('NIFTY BANK');
-    setFutureDetails('NIFTY BANK', res);
-    res = await showFutureDetails('RELIANCE');
-    setFutureDetails('RELIANCE', res);
-    res = await showFutureDetails('HDFCBANK');
-    setFutureDetails('HDFCBANK', res);
-
-    await showPrictionProbabilty('NIFTY 50')
-    showOIOBVBarChart('NIFTY 50');
-    await showPrictionProbabilty('NIFTY BANK')
-    showOIOBVBarChart('NIFTY BANK');
-    await showPrictionProbabilty('RELIANCE')
-    showOIOBVBarChart('RELIANCE');
-    await showPrictionProbabilty('HDFCBANK')
-    showOIOBVBarChart('HDFCBANK');
 
     show915Trend('NIFTY 50');
     show915Trend('NIFTY BANK');
     show915Trend('ALL');
-    await showAdvacenDeclineScanner();
-    await showFuturesTrend();
+
+    try {
+        await showTopChart('NIFTY 50');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showTopChart('NIFTY BANK');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showTopChart('GIFT NIFTY');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showTopChart('SENSEX');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showTopChart('RELIANCE');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showTopChart('HDFCBANK');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        let res = await showFutureDetails('NIFTY 50');
+        setFutureDetails('NIFTY 50', res);
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        res = await showFutureDetails('NIFTY BANK');
+        setFutureDetails('NIFTY BANK', res);
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        res = await showFutureDetails('RELIANCE');
+        setFutureDetails('RELIANCE', res);
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        res = await showFutureDetails('HDFCBANK');
+        setFutureDetails('HDFCBANK', res);
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showPrictionProbabilty('NIFTY 50')
+        showOIOBVBarChart('NIFTY 50');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showPrictionProbabilty('NIFTY BANK')
+        showOIOBVBarChart('NIFTY BANK');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showPrictionProbabilty('RELIANCE')
+        showOIOBVBarChart('RELIANCE');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showPrictionProbabilty('HDFCBANK')
+        showOIOBVBarChart('HDFCBANK');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showAdvacenDeclineScanner();
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showFuturesTrend();
+    } catch (e) {
+        console.log(e)
+    }
+
     setScore()
     showStockList([]);
     jQ("#refresh-loader").addClass("hide");
@@ -625,9 +704,15 @@ function showComponent(name, index) {
     }
 
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
-    if (breakOutNineFifteen[name] == undefined) {
+    if (!breakOutNineFifteen) {
+        breakOutNineFifteen = {}
         breakOutNineFifteen[name] = {};
-        breakOutNineFifteen[name]['CLOSE_9_15'] = "B/W"
+        breakOutNineFifteen[name]['CLOSE_9_15'] = "N/A"
+    } else {
+        if (!breakOutNineFifteen[name]) {
+            breakOutNineFifteen[name] = {};
+            breakOutNineFifteen[name]['CLOSE_9_15'] = "N/A"
+        }
     }
 
     let html = ''
@@ -643,7 +728,7 @@ function showComponent(name, index) {
     if (breakOutNineFifteen[name]['CLOSE_9_15'] == "BSO") {
         bgClass = 'bg-danger';
     }
-    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W") {
+    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W" || breakOutNineFifteen[name]['CLOSE_9_15'] == "N/A") {
         bgClass = 'bg-info';
     }
 
@@ -703,55 +788,50 @@ async function showTopChart(name) {
     try {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
-        let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
-
-
-        if (name == "GIFT NIFTY") {
-            if (breakOutNineFifteen['GIFT NIFTY'] == undefined) {
-                breakOutNineFifteen['GIFT NIFTY'] = {};
-                breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-nifty-gift-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] + '</span>');
-        }
-
-        if (name == "NIFTY 50") {
-            if (breakOutNineFifteen['NIFTY 50'] == undefined) {
-                breakOutNineFifteen['NIFTY 50'] = {};
-                breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-nifty-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] + '</span>');
-        }
-
-        if (name == "NIFTY BANK") {
-            if (breakOutNineFifteen['NIFTY BANK'] == undefined) {
-                breakOutNineFifteen['NIFTY BANK'] = {};
-                breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-nifty-bank-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] + '</span>');
-        }
-
-        if (name == "SENSEX") {
-            if (breakOutNineFifteen['SENSEX'] == undefined) {
-                breakOutNineFifteen['SENSEX'] = {};
-                breakOutNineFifteen['SENSEX']['CLOSE_9_15'] = "B/W"
-            }
-            jQ("#nine-fifteen-sensex-trend").html('<span class="badge bg-info">9:15 CLOSE : ' + breakOutNineFifteen['SENSEX']['CLOSE_9_15'] + '</span>');
-        }
 
         let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
         await savePreviousStockQuote(tempName, instrumentTokens[name])
         let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
         let scriptData = generateTrend(name)
 
+        let max = scriptData['vix'].vixDDUpper
+        let min = scriptData['vix'].vixDDLower
+
+        if (max < scriptData['strikeData'].ustrikeTwo) {
+            max = scriptData['strikeData'].ustrikeTwo
+        }
+
+        if (min > scriptData['strikeData'].bstrikeTwo) {
+            min = scriptData['strikeData'].bstrikeTwo
+        }
+
+        try {
+            if (previousQuote.data.candles[previousQuote.data.candles.length - 1][4] > max) {
+                max = previousQuote.data.candles[previousQuote.data.candles.length - 1][4]
+            }
+
+            if (previousQuote.data.candles[previousQuote.data.candles.length - 1][4] < min) {
+                min = previousQuote.data.candles[previousQuote.data.candles.length - 1][4]
+            }
+        } catch (error) {
+            console.error("Error in calculating max min for " + name, error);
+        }
+
         let columns = []
         let x = ['x']
         let column = ["Close"]
 
-
-
         jQ.each(data.data.candles, function (index, item) {
             x.push(moment(item[0]).format("YYYY-MM-DD HH:mm:ss"))
-            column.push(parseFloat(item[4]))
+            column.push(parseFloat(item[4]));
+
+            if (item[4] > max) {
+                max = item[4]
+            }
+
+            if (item[4] < min) {
+                min = item[4]
+            }
         });
 
         columns.push(x)
@@ -766,37 +846,7 @@ async function showTopChart(name) {
         lines.push({ position: 'start', value: parseFloat(scriptData['strikeData'].bstrikeOne), text: 'BSO: ' + scriptData['strikeData'].bstrikeOne, class: 'bstrike-one-line-class' });
         lines.push({ position: 'start', value: parseFloat(scriptData['strikeData'].bstrikeTwo), text: 'BST: ' + scriptData['strikeData'].bstrikeTwo, class: 'bstrike-two-line-class' });
 
-        let max = scriptData['vix'].vixDDUpper
-        let min = scriptData['vix'].vixDDLower
 
-        if (max < scriptData['strikeData'].ustrikeTwo) {
-            max = scriptData['strikeData'].ustrikeTwo
-        }
-
-        if (min > scriptData['strikeData'].bstrikeTwo) {
-            min = scriptData['strikeData'].bstrikeTwo
-        }
-
-
-        try {
-            if (data.data.candles[data.data.candles.length - 1][4] > max) {
-                max = data.data.candles[data.data.candles.length - 1][4]
-            }
-
-            if (data.data.candles[data.data.candles.length - 1][4] < min) {
-                min = data.data.candles[data.data.candles.length - 1][4]
-            }
-
-            if (previousQuote.data.candles[previousQuote.data.candles.length - 1][4] > max) {
-                max = previousQuote.data.candles[previousQuote.data.candles.length - 1][4]
-            }
-
-            if (previousQuote.data.candles[previousQuote.data.candles.length - 1][4] < min) {
-                min = previousQuote.data.candles[previousQuote.data.candles.length - 1][4]
-            }
-        } catch (error) {
-            console.error("Error in calculating max min for " + name, error);
-        }
 
         let chartId = tempName;
         var chart = c3.generate({
