@@ -463,15 +463,24 @@ function setScore() {
     let output = getTradeSignal(breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'], breakOutNineFifteen['SENSEX']['CLOSE_9_15'], breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']);
 
     let html = ''
-    if (output['outcome'] == "Buy") {
-        html += '<span class="badge bg-success">' + output['outcome'] + '</span>';
-    } else if (output['outcome'] == "Sell") {
-        html += '<span class="badge bg-danger">' + output['outcome'] + '</span>';
-    } else {
-        html += '<span class="badge bg-secondary">' + output['outcome'] + '</span>';
-    }
 
+    html += '<div class="row">'
+
+    html += '<div class="col-md-12">'
+    if (output['outcome'] == "Buy") {
+        html += '<div class="badge bg-success">' + output['outcome'] + '</div>';
+    } else if (output['outcome'] == "Sell") {
+        html += '<div class="badge bg-danger">' + output['outcome'] + '</div>';
+    } else {
+        html += '<div class="badge bg-secondary">' + output['outcome'] + '</div>';
+    }
+    html += '</div>'
+    
+    html += '<div class="col-md-12">'
     html += '<div>Level : ' + output['level'] + '</div>'
+    html += '</div>'
+
+    html += '</div>'
 
     jQ("#trend-scoreboard-outcome").html(html);
 
