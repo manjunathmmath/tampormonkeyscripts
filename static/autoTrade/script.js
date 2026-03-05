@@ -97,6 +97,7 @@ async function loadOpenPrice() {
         let storageObj = {};
         for (let i = 0; i < instru.length; i++) {
             try {
+                jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
                 let name = instru[i]['TRADINGSYMBOL']
                 let tempName = name.replaceAll(" ", "-")
                 tempName = tempName.replaceAll("&", "-")

@@ -128,11 +128,12 @@ async function scanNineFifteenCandle() {
                 if (firstCandleClose > asoPrice) {
                     breakOutNineFifteen[name] = {};
                     breakOutNineFifteen[name]['CLOSE_9_15'] = 'ASO';
-                }
-
-                if (firstCandleClose < bsoPrice) {
+                } else if (firstCandleClose < bsoPrice) {
                     breakOutNineFifteen[name] = {};
                     breakOutNineFifteen[name]['CLOSE_9_15'] = 'BSO';
+                } else {
+                    breakOutNineFifteen[name] = {};
+                    breakOutNineFifteen[name]['CLOSE_9_15'] = 'B/W';
                 }
             } catch (e) {
                 console.log(e)
@@ -423,6 +424,7 @@ function setScore() {
 
         }
     }
+
     if (breakOutNineFifteen['HDFCBANK']) {
         if (breakOutNineFifteen['HDFCBANK']['CLOSE_9_15'] == "ASO") {
             HDFCBANK_9_15_CLOSE_SCORE = 1;
@@ -475,7 +477,7 @@ function setScore() {
         html += '<div class="badge bg-secondary">' + output['outcome'] + '</div>';
     }
     html += '</div>'
-    
+
     html += '<div class="col-md-12">'
     html += '<div>Level : ' + output['level'] + '</div>'
     html += '</div>'
@@ -713,15 +715,9 @@ function showComponent(name, index) {
     }
 
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+
     if (!breakOutNineFifteen) {
         breakOutNineFifteen = {}
-        breakOutNineFifteen[name] = {};
-        breakOutNineFifteen[name]['CLOSE_9_15'] = "N/A"
-    } else {
-        if (!breakOutNineFifteen[name]) {
-            breakOutNineFifteen[name] = {};
-            breakOutNineFifteen[name]['CLOSE_9_15'] = "N/A"
-        }
     }
 
     let html = ''
@@ -731,15 +727,21 @@ function showComponent(name, index) {
     html += '<div class="col-md-12">'
 
     let bgClass = '';
-    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "ASO") {
-        bgClass = 'bg-success';
+    if (breakOutNineFifteen[name]) {
+        if (breakOutNineFifteen[name]['CLOSE_9_15'] == "ASO") {
+            bgClass = 'bg-success';
+        }
+        if (breakOutNineFifteen[name]['CLOSE_9_15'] == "BSO") {
+            bgClass = 'bg-danger';
+        }
+        if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W") {
+            bgClass = 'bg-info';
+        }
+    }else{
+        breakOutNineFifteen[name] = {}
+        breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
     }
-    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "BSO") {
-        bgClass = 'bg-danger';
-    }
-    if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W" || breakOutNineFifteen[name]['CLOSE_9_15'] == "N/A") {
-        bgClass = 'bg-info';
-    }
+
 
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
     html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
@@ -1636,6 +1638,7 @@ async function showAdvacenDeclineScanner() {
     for (let i = 0; i < FO_LIST.length; i++) {
         let asoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['ustrikeOne']);
         let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
+        jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
 
         let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
         let volume = 0;
@@ -2000,6 +2003,7 @@ async function showFuturesTrend() {
 
     for (let i = 0; i < allList.length; i++) {
         let name = allList[i];
+        jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + allList.length);
         jQ.each(futureInstrumentsList, function (index, item) {
             let instName = name
             if (instName == "NIFTY 50") {
