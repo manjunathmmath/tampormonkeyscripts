@@ -144,6 +144,7 @@ async function scanNineFifteenCandle() {
 }
 
 async function commonShowPopupWindow() {
+    resetCount()
     jQ("#refresh-loader").removeClass("hide");
     let html = ''
 
@@ -305,6 +306,29 @@ async function commonShowPopupWindow() {
     jQ("#refresh-loader").addClass("hide");
 }
 
+
+function resetCount(){
+    ALL_9_15_CLOSE_SCORE = 0;
+    NIFTY_50_9_15_CLOSE_SCORE = 0;
+    NIFTY_BANK_9_15_CLOSE_SCORE = 0;
+    GIFT_NIFTY_9_15_CLOSE_SCORE = 0;
+    SENSEX_9_15_CLOSE_SCORE = 0;
+    RELIANCE_9_15_CLOSE_SCORE = 0;
+    HDFCBANK_9_15_CLOSE_SCORE = 0;
+
+    ALL_ADVANCE_DECLINE_SCORE = 0;
+    NIFTY_50_ADVANCE_DECLINE_SCORE = 0;
+    NIFTY_BANK_ADVANCE_DECLINE_SCORE = 0;
+
+    ALL_FUTURES_TREND_SCORE = 0;
+    NIFTY_50_FUTURES_TREND_SCORE = 0;
+    NIFTY_BANK_FUTURES_TREND_SCORE = 0;
+
+    NIFTY_50_OI_OBV_SCORE = 0;
+    NIFTY_BANK_OI_OBV_SCORE = 0;
+    RELIANCE_OI_OBV_SCORE = 0;
+    HDFCBANK_OI_OBV_SCORE = 0;
+}
 function getTradeSignal(nifty, sensex, bank) {
 
     const strategyMap = {
@@ -368,26 +392,7 @@ let RELIANCE_OI_OBV_SCORE = 0;
 let HDFCBANK_OI_OBV_SCORE = 0;
 
 function setScore() {
-    ALL_9_15_CLOSE_SCORE = 0;
-    NIFTY_50_9_15_CLOSE_SCORE = 0;
-    NIFTY_BANK_9_15_CLOSE_SCORE = 0;
-    GIFT_NIFTY_9_15_CLOSE_SCORE = 0;
-    SENSEX_9_15_CLOSE_SCORE = 0;
-    RELIANCE_9_15_CLOSE_SCORE = 0;
-    HDFCBANK_9_15_CLOSE_SCORE = 0;
 
-    ALL_ADVANCE_DECLINE_SCORE = 0;
-    NIFTY_50_ADVANCE_DECLINE_SCORE = 0;
-    NIFTY_BANK_ADVANCE_DECLINE_SCORE = 0;
-
-    ALL_FUTURES_TREND_SCORE = 0;
-    NIFTY_50_FUTURES_TREND_SCORE = 0;
-    NIFTY_BANK_FUTURES_TREND_SCORE = 0;
-
-    NIFTY_50_OI_OBV_SCORE = 0;
-    NIFTY_BANK_OI_OBV_SCORE = 0;
-    RELIANCE_OI_OBV_SCORE = 0;
-    HDFCBANK_OI_OBV_SCORE = 0;
 
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
     if (!breakOutNineFifteen) {
@@ -397,37 +402,48 @@ function setScore() {
     if (breakOutNineFifteen['GIFT NIFTY']) {
         if (breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] == "ASO") {
             GIFT_NIFTY_9_15_CLOSE_SCORE = 1;
+        } else if (breakOutNineFifteen['GIFT NIFTY']['CLOSE_9_15'] == "BSO") {
+            GIFT_NIFTY_9_15_CLOSE_SCORE = -1;
         }
     }
 
     if (breakOutNineFifteen['NIFTY 50']) {
         if (breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] == "ASO") {
             NIFTY_50_9_15_CLOSE_SCORE = 1;
+        } else if (breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'] == "BSO") {
+            NIFTY_50_9_15_CLOSE_SCORE = -1;
         }
     }
 
     if (breakOutNineFifteen['NIFTY BANK']) {
         if (breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] == "ASO") {
             NIFTY_BANK_9_15_CLOSE_SCORE = 1;
+        } else if (breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15'] == "BSO") {
+            NIFTY_BANK_9_15_CLOSE_SCORE = -1;
         }
     }
 
     if (breakOutNineFifteen['SENSEX']) {
         if (breakOutNineFifteen['SENSEX']['CLOSE_9_15'] == "ASO") {
             SENSEX_9_15_CLOSE_SCORE = 1;
+        } else if (breakOutNineFifteen['SENSEX']['CLOSE_9_15'] == "BSO") {
+            SENSEX_9_15_CLOSE_SCORE = -1;
         }
     }
 
     if (breakOutNineFifteen['RELIANCE']) {
         if (breakOutNineFifteen['RELIANCE']['CLOSE_9_15'] == "ASO") {
             RELIANCE_9_15_CLOSE_SCORE = 1;
-
+        } else if (breakOutNineFifteen['RELIANCE']['CLOSE_9_15'] == "BSO") {
+            RELIANCE_9_15_CLOSE_SCORE = -1;
         }
     }
 
     if (breakOutNineFifteen['HDFCBANK']) {
         if (breakOutNineFifteen['HDFCBANK']['CLOSE_9_15'] == "ASO") {
             HDFCBANK_9_15_CLOSE_SCORE = 1;
+        } else if (breakOutNineFifteen['HDFCBANK']['CLOSE_9_15'] == "BSO") {
+            HDFCBANK_9_15_CLOSE_SCORE = -1;
         }
     }
     let asoCount = 0;
@@ -443,9 +459,28 @@ function setScore() {
 
     if (asoCount > bsoCount) {
         ALL_9_15_CLOSE_SCORE = 1;
+    } else if (bsoCount > asoCount) {
+        ALL_9_15_CLOSE_SCORE = -1;
     }
 
-    let SCORE = ALL_9_15_CLOSE_SCORE + NIFTY_50_9_15_CLOSE_SCORE + NIFTY_BANK_9_15_CLOSE_SCORE + GIFT_NIFTY_9_15_CLOSE_SCORE + SENSEX_9_15_CLOSE_SCORE + RELIANCE_9_15_CLOSE_SCORE + HDFCBANK_9_15_CLOSE_SCORE + ALL_ADVANCE_DECLINE_SCORE + NIFTY_50_ADVANCE_DECLINE_SCORE + NIFTY_BANK_ADVANCE_DECLINE_SCORE + ALL_FUTURES_TREND_SCORE + NIFTY_50_FUTURES_TREND_SCORE + NIFTY_BANK_FUTURES_TREND_SCORE + NIFTY_50_OI_OBV_SCORE + NIFTY_BANK_OI_OBV_SCORE + RELIANCE_OI_OBV_SCORE + HDFCBANK_OI_OBV_SCORE;
+    let SCORE = ALL_9_15_CLOSE_SCORE +
+        NIFTY_50_9_15_CLOSE_SCORE +
+        NIFTY_BANK_9_15_CLOSE_SCORE +
+        GIFT_NIFTY_9_15_CLOSE_SCORE +
+        SENSEX_9_15_CLOSE_SCORE +
+        RELIANCE_9_15_CLOSE_SCORE +
+        HDFCBANK_9_15_CLOSE_SCORE +
+        ALL_ADVANCE_DECLINE_SCORE +
+        NIFTY_50_ADVANCE_DECLINE_SCORE +
+        NIFTY_BANK_ADVANCE_DECLINE_SCORE +
+        ALL_FUTURES_TREND_SCORE +
+        NIFTY_50_FUTURES_TREND_SCORE +
+        NIFTY_BANK_FUTURES_TREND_SCORE +
+        NIFTY_50_OI_OBV_SCORE +
+        NIFTY_BANK_OI_OBV_SCORE +
+        RELIANCE_OI_OBV_SCORE +
+        HDFCBANK_OI_OBV_SCORE;
+
     chart = c3.generate({
         bindto: "#trend-scoreboard",
         data: {
@@ -454,10 +489,19 @@ function setScore() {
             ],
             type: 'gauge',
         },
+        gauge: {
+            min: -10, // Set minimum to a negative number
+            max: 10,  // Set maximum
+            label: {
+                format: function (value, ratio) {
+                    return value; // Display the actual value
+                }
+            },
+        },
         color: {
             pattern: ['#FF0000', '#F97600', '#F6C600', '#60B044'],
             threshold: {
-                values: [3, 6, 9, 10]
+                values: [-1, 0, 3, 6]
             }
         }
     });
@@ -485,6 +529,113 @@ function setScore() {
     html += '</div>'
 
     jQ("#trend-scoreboard-outcome").html(html);
+
+    html = ''
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table  class="table display nowrap" style="width: 100%;">'
+    html += '<thead>'
+    html += '<tr>'
+    html += '<th>SCORE FLAG</th>'
+    html += '<th>SCORE</th>'
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+
+    html += '<tr>'
+    html += '<td>ALL_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + ALL_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_50_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + NIFTY_50_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_BANK_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + NIFTY_BANK_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>GIFT_NIFTY_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + GIFT_NIFTY_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>SENSEX_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + SENSEX_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>RELIANCE_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + RELIANCE_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>HDFCBANK_9_15_CLOSE_SCORE</td>'
+    html += '<td>' + HDFCBANK_9_15_CLOSE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>ALL_ADVANCE_DECLINE_SCORE</td>'
+    html += '<td>' + ALL_ADVANCE_DECLINE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_50_ADVANCE_DECLINE_SCORE</td>'
+    html += '<td>' + NIFTY_50_ADVANCE_DECLINE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_BANK_ADVANCE_DECLINE_SCORE</td>'
+    html += '<td>' + NIFTY_BANK_ADVANCE_DECLINE_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>ALL_FUTURES_TREND_SCORE</td>'
+    html += '<td>' + ALL_FUTURES_TREND_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_50_FUTURES_TREND_SCORE</td>'
+    html += '<td>' + NIFTY_50_FUTURES_TREND_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_BANK_FUTURES_TREND_SCORE</td>'
+    html += '<td>' + NIFTY_BANK_FUTURES_TREND_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_50_OI_OBV_SCORE</td>'
+    html += '<td>' + NIFTY_50_OI_OBV_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>NIFTY_BANK_OI_OBV_SCORE</td>'
+    html += '<td>' + NIFTY_BANK_OI_OBV_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>RELIANCE_OI_OBV_SCORE</td>'
+    html += '<td>' + RELIANCE_OI_OBV_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '<tr>'
+    html += '<td>HDFCBANK_OI_OBV_SCORE</td>'
+    html += '<td>' + HDFCBANK_OI_OBV_SCORE + '</td>'
+    html += '</tr>'
+
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
+
+
+
+    jQ("#trend-scoreboard-table").html(html);
 
 }
 
@@ -564,10 +715,13 @@ function showTrendScoreBoard() {
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" class="badge bg-secondary show-notes">i</span>'
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">TREND SCOREBOARD </h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;overflow-y:auto;">'
     html += '<div class="row">'
     html += '<div class="col-md-6" id="trend-scoreboard"></div>'
     html += '<div class="col-md-6" id="trend-scoreboard-outcome"></div>'
+    html += '</div>'
+    html += '<div class="row">'
+    html += '<div class="col-md-12" id="trend-scoreboard-table"></div>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
@@ -591,8 +745,10 @@ function showNotes() {
     htmlNote += '<li>Depending on the number of ASO/BSO and  9:15 ASO/BSO</li>'
     htmlNote += '<li>2 ASO is strong uptrend</li>'
     htmlNote += '<li>2 BSO is strong downtrend</li>'
-    htmlNote += '<li>Sensex ASO doesn\'t have much weightage</li>'
+    htmlNote += '<li>Sensex ASO/BSO doesn\'t have much weightage</li>'
+    htmlNote += '<li>Check RELIANCE AND HDFC BANK</li>'
     htmlNote += '<li>Check OI/OBV"</li>'
+    htmlNote += '<li>Check VIX -ve/+ve </li>'
     htmlNote += '<li>Check VIX range</li>'
     htmlNote += '</ul>'
     htmlNote += '</div>'
@@ -737,15 +893,16 @@ function showComponent(name, index) {
         if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W") {
             bgClass = 'bg-info';
         }
-    }else{
+    } else {
         breakOutNineFifteen[name] = {}
         breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
     }
 
+    let link = '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
 
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
     html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + name + '</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + link + '</h4>'
     html += '</div>'
     html += '</div>'
 
@@ -918,6 +1075,14 @@ function updateScoresOfOI(name, item) {
         SCORE++
     } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] < 0) {
         SCORE++
+    }
+
+    if (item['CHG_OI_CE'] > item['CHG_OI_PE']) {
+        SCORE--
+    } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] > item['CE_OBV'][item['CE_OBV'].length - 1]['obv']) {
+        SCORE--
+    } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > 0) {
+        SCORE--
     }
 
     if (name == "NIFTY 50") {
@@ -1766,14 +1931,20 @@ async function showAdvacenDeclineScanner() {
 
     if (allAdvances > allDeclines) {
         ALL_ADVANCE_DECLINE_SCORE = 1;
+    } else if (allDeclines > allAdvances) {
+        ALL_ADVANCE_DECLINE_SCORE = -1;
     }
 
     if (allNiftyAdvances > allNiftyDeclines) {
         NIFTY_50_ADVANCE_DECLINE_SCORE = 1;
+    } else if (allNiftyDeclines > allNiftyAdvances) {
+        NIFTY_50_ADVANCE_DECLINE_SCORE = -1;
     }
 
     if (allBankAdvances > allBankDeclines) {
         NIFTY_BANK_ADVANCE_DECLINE_SCORE = 1;
+    } else if (allBankDeclines > allBankAdvances) {
+        NIFTY_BANK_ADVANCE_DECLINE_SCORE = -1;
     }
 
     jQ("#all-advance-decline-adr").html("ADR:" + ((allAdvances / allDeclines).toFixed(2)) + "|A:" + allAdvances + "|D:" + allDeclines);
@@ -2513,14 +2684,20 @@ async function showFuturesTrend() {
 
     if (allFuturesAdvances > allFuturesDeclines) {
         ALL_FUTURES_TREND_SCORE = 1;
+    } else if (allFuturesDeclines > allFuturesAdvances) {
+        ALL_FUTURES_TREND_SCORE = -1;
     }
 
     if (allNiftyFuturesAdvances > allNiftyFuturesDeclines) {
         NIFTY_50_FUTURES_TREND_SCORE = 1;
+    } else if (allNiftyFuturesDeclines > allNiftyFuturesAdvances) {
+        NIFTY_50_FUTURES_TREND_SCORE = -1;
     }
 
     if (allNiftyBankFuturesAdvances > allNiftyBankFuturesDeclines) {
         NIFTY_BANK_FUTURES_TREND_SCORE = 1;
+    } else if (allNiftyBankFuturesDeclines > allNiftyBankFuturesAdvances) {
+        NIFTY_BANK_FUTURES_TREND_SCORE = -1;
     }
 
 
@@ -2818,7 +2995,7 @@ function generateStockTable(data) {
                     html += data;
                     html += '</a>'
 
-                    html += '<span class="badge bg-info">'
+                    html += '<span class="badge bg-info" style="float:right;">'
                     html += '<a title="Sensibull Strategy Builder" target="_blank" href="https://web.sensibull.com/option-strategy-builder?instrument_symbol=' + data + '"> '
                     html += 'SB';
                     html += '</a>'
