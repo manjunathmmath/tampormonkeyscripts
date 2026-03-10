@@ -490,8 +490,8 @@ function setScore() {
             type: 'gauge',
         },
         gauge: {
-            min: -10, // Set minimum to a negative number
-            max: 10,  // Set maximum
+            min: -20, // Set minimum to a negative number
+            max: 20,  // Set maximum
             label: {
                 format: function (value, ratio) {
                     return value; // Display the actual value
@@ -501,7 +501,7 @@ function setScore() {
         color: {
             pattern: ['#FF0000', '#F97600', '#F6C600', '#60B044'],
             threshold: {
-                values: [-1, 0, 3, 6]
+                values: [0, 1, 5, 8]
             }
         }
     });
@@ -898,7 +898,7 @@ function showComponent(name, index) {
         breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
     }
 
-    let link = '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
+    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
 
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
     html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
@@ -1173,9 +1173,10 @@ function show915Trend(name) {
     html += '<tbody>'
     jQ.each(stockList, function (index, item) {
         html += '<tr>'
-        html += '<td><a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + instrumentTokens[item['NAME']] + '"> '
-        html += item['NAME'];
-        html += '</a></td>'
+        let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + instrumentTokens[item['NAME']] + '">' + item['NAME'] + '</a>'
+        html += '<td>' 
+        html += link;
+        html += '</td>'
         html += '<td>' + item['CLOSE_9_15'] + '</td></tr>'
     })
     html += '</tbody></table>'
@@ -2991,7 +2992,7 @@ function generateStockTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
                     html += data;
                     html += '</a>'
 

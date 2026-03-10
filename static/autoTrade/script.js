@@ -234,9 +234,9 @@ jQ(document).ready(function () {
     const url = new URL(location);
     const path = url.pathname;
     const segments = path.split('/');
-    let exhange = segments[4];
-    let symbol = segments[5];
-    let token = segments[6];
+    let exhange = segments[6];
+    let symbol = segments[7];
+    let token = segments[8];
     if (symbol == "NIFTY%2050") {
         symbol = "NIFTY 50"
     }
@@ -244,7 +244,6 @@ jQ(document).ready(function () {
     if (symbol == "NIFTY%20BANK") {
         symbol = "NIFTY BANK"
     }
-
     if (exhange && symbol && token) {
         showDetailsOnChartPage(exhange, symbol, token);
     }
