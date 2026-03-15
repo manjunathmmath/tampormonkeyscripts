@@ -151,22 +151,22 @@ span.bullsVersesBears {
 }
 
 .above-strike-one {
-  background-color: #e8cf13 !important;
+  background-color: #28e813 !important;
   color: #000;
 }
 
 .above-strike-two {
-  background-color: #e86231 !important;
+  background-color: #4fe145 !important;
   color: #000;
 }
 
 .below-strike-one {
-  background-color: #c0f56b !important;
+  background-color: #dc3a12 !important;
   color: #000;
 }
 
 .below-strike-two {
-  background-color: #48ed27 !important;
+  background-color: #dcb73f !important;
   color: #000;
 }
 
@@ -480,7 +480,7 @@ td.details-control {
 }
 
 
-div.badge {
+.popupwindow_container div.badge {
   display: block !important;
 }
 
@@ -582,4 +582,29 @@ div.badge {
   align-items: center;
   justify-content: center !important;
 
+}
+
+.popupwindow_container *{
+  font-family: unset !important;
+}
+
+.ustrike-two-line-class text {
+  stroke-width: unset !important;
+}
+
+.ustrike-one-line-class text {
+  stroke-width: unset !important;
+}
+
+.bstrike-one-line-class text {
+  stroke-width: unset !important;
+}
+
+.bstrike-two-line-class text {
+  stroke-width: unset !important;
+}
+
+
+.refresh-chart,.refresh-advance-decline-futures,.refresh-advance-decline,.refresh-oi-obv,.refresh-futures{
+  cursor: pointer;
 }

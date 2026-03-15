@@ -4,7 +4,7 @@ async function autoRefreshEachTabs(instance, isManual) {
 
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 15:00:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY_DATE + " 16:30:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
     let allow = true;
 
     if (!(currentTime >= checkTime)) {
@@ -24,12 +24,10 @@ async function autoRefreshEachTabs(instance, isManual) {
     if (allow || isManual) {
         await updateStrorageLtpPrice(instance);
         if (isManual) { await commonShowPopupWindow(); }
-
-        jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     }
-
     startRefresh();
 }
+
 
 jQ(document).on("click", "#start-auto-refresh", function (e) {
     e.preventDefault();
@@ -48,6 +46,28 @@ function startRefresh() {
     startTimer(REFRESH_TIME, display);
 };
 
+
+function autoStartScanLtp() {
+    setInterval(function () {
+        var d = new Date();
+        var s = d.getSeconds();
+        var m = d.getMinutes();
+        var h = d.getHours();
+        if (s == 59) {
+            let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
+            if (storageLtpObj != null) {
+                console.log("Loading ltp prices ........")
+                updateStrorageLtpPrice();
+            }
+        }
+    }, 1000);
+}
+
+jQ(document).ready(function () {
+    autoStartScanLtp()
+})
+
+
 function startTimer(duration, display) {
     timerInstance = setInterval(function () {
         var d = new Date();
@@ -55,13 +75,6 @@ function startTimer(duration, display) {
         var m = d.getMinutes();
         var h = d.getHours();
         display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
-        if (s == 59) {
-            let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
-            if (enableAutoRefresh) {
-                autoRefreshEachTabs();
-            }
-        }
-
         if (m % 5 == 0 && s == 10) {
             let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
             if (enableAutoRefresh) {
@@ -126,7 +139,7 @@ async function loadOpenPrice() {
 async function loadPreMarketOpenPrice() {
     let marketWatchSideBar = jQ(".marketwatch-pagination");
     let tabs = marketWatchSideBar.find(".pagination a.item");
-    for (let i = 0; i < (tabs.length - 1); i++) {
+    for (let i = 0; i < 1; i++) {
         jQ(".marketwatch-pagination a.item")[i].click();
         await callSleepForAWhile(1000);
         await scanPreMarketpPrice();
@@ -181,15 +194,17 @@ async function scanPreMarketpPrice() {
 async function updateStrorageLtpPrice(instance) {
     let marketWatchSideBar = jQ(".marketwatch-pagination");
     let tabs = marketWatchSideBar.find(".pagination a.item");
-    for (let i = 0; i < (tabs.length - 1); i++) {
-        jQ(".marketwatch-pagination a.item")[i].click();
-        await callSleepForAWhile(1000);
-        await scanLtpPrice();
+    if (tabs.length != 0) {
+        for (let i = 0; i < 1; i++) {
+            jQ(".marketwatch-pagination a.item")[i].click();
+            await callSleepForAWhile(1000);
+            await scanLtpPrice();
+        }
+        if (instance) {
+            instance.attr("disabled", false)
+        }
+        jQ(".marketwatch-pagination a.item")[0].click();
     }
-    if (instance) {
-        instance.attr("disabled", false)
-    }
-    jQ(".marketwatch-pagination a.item")[0].click();
 }
 
 async function scanLtpPrice() {
@@ -202,12 +217,13 @@ async function scanLtpPrice() {
     if (!storageLtpObj) {
         storageLtpObj = {}
     }
-
+    let scriptData = generateTrends()
     jQ.each(tabs, function (index, item) {
         if (index == 0 || index == 1) {
             if (jQ(item).hasClass("selected")) {
                 if (instruments.length > 0) {
                     jQ(instruments).each(function (iindex, iitem) {
+                        let that = jQ(this);
                         let name = jQ(this).find(".symbol").find(".name").html();
                         let price = jQ(this).find(".price").find(".last-price").html();
                         let obj = {}
@@ -221,6 +237,52 @@ async function scanLtpPrice() {
                         obj['name'] = name.trim()
                         obj['ltp'] = parseFloat(price.trim()).toFixed(2);
                         storageLtpObj[name] = obj
+
+
+                        that.find(".item-info-wrapper").find(".strike-info").remove();
+
+                        let currentPrice = parseFloat(price.trim()).toFixed(2);
+                        if (name != "INDIA VIX") {
+                            if (scriptData) {
+                                let asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
+                                let bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
+
+                                let astPrice = parseFloat(scriptData[name]['strikeData']['ustrikeTwo']);
+                                let bstPrice = parseFloat(scriptData[name]['strikeData']['bstrikeTwo']);
+
+                                let vixDDUpper = scriptData[name]['vix']['vixDDUpper']
+                                let vixDDLower = scriptData[name]['vix']['vixDDLower']
+
+                                if (currentPrice >= parseFloat(astPrice)) {
+                                    let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
+                                    that.find(".item-info-wrapper").append(strike);
+                                }
+
+                                if (currentPrice >= parseFloat(asoPrice)) {
+                                    let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
+                                    that.find(".item-info-wrapper").append(strike);
+                                }
+                                if (currentPrice <= parseFloat(bstPrice)) {
+                                    let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
+                                    that.find(".item-info-wrapper").append(strike);
+                                }
+
+                                if (currentPrice <= parseFloat(bsoPrice)) {
+                                    let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
+                                    that.find(".item-info-wrapper").append(strike);
+                                }
+
+                                if (currentPrice <= parseFloat(vixDDLower)) {
+                                    let strike = '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
+                                    that.find(".item-info-wrapper").append(strike);
+                                }
+
+                                if (currentPrice >= parseFloat(vixDDUpper)) {
+                                    let strike = '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
+                                    that.find(".item-info-wrapper").append(strike);
+                                }
+                            }
+                        }
                     });
                 }
             }

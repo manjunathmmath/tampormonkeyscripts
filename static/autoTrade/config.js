@@ -44,6 +44,22 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: true
         },
+         OVX: {
+            type: 'text',
+            default: 68.90 //https://in.investing.com/indices/cboe-crude-oil-volatility-historical-data
+        },
+        VXSLV: {
+            type: 'text',
+            default: 27.95 //https://in.investing.com/indices/cboe-silver-etf-volatility
+        },
+        GVZ: {
+            type: 'text',
+            default: 16.45 //https://www.investing.com/indices/cboe-gold-volatitity
+        },
+        VIX: {
+            type: 'text',
+            default: 21.44 //https://in.investing.com/indices/volatility-s-p-500
+        },
     }
 });
 
@@ -62,3 +78,7 @@ const ENABLE_SOUND = g_config.get('enable_sound');
 const SENSEX_EXPIRY_DATE = g_config.get('sensex_expiry_date');
 const USE_LTP_FOR_STRIKE = g_config.get('use_ltp_for_strike');
 let OPTION_STRIKE_LIST = NSE_LIST.concat(BSE_LIST)
+const OVX = g_config.get('OVX'); //CRUDE vix
+const VXSLV = g_config.get("VXSLV") //SILVER VIX
+const GVZ = g_config.get("GVZ") //GOLD VIX
+const VIX = g_config.get("VIX") //CBOE Volatility Index

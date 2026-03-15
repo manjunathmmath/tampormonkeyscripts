@@ -6,8 +6,6 @@ jQ(document).on("click", "#show-groot-trade-bot", function (e) {
 });
 
 
-
-
 async function showGrootTradeBot() {
 
     let html = ''
@@ -69,6 +67,10 @@ jQ(document).on("click", "#data-load", function () {
     html += '<a  id="load-price" type="button">Load</a>'
     html += '</div>'
     html += '</div>'
+
+    html += '<a href="#" id="add-to-watch-list">'
+    html += 'Add Watchlist'
+    html += '</a>'
 
     html += '<div class="row">'
     html += '<div class="col-md-12">'
@@ -146,6 +148,7 @@ async function scanNineFifteenCandle() {
 async function commonShowPopupWindow() {
     resetCount()
     jQ("#refresh-loader").removeClass("hide");
+    jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     let html = ''
 
     html += '<div class="row" style="position:relative;">'
@@ -189,9 +192,36 @@ async function commonShowPopupWindow() {
     html += '</div>'
 
 
+    html += '<div class="row" style="position:relative;">'
+    html += '<div class="col-md-12">'
+    html += '<hr/>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="row" style="position:relative;">'
+
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('CRUDEOIL', 1);
+     html += showComponent('ICICIBANK', 1);
+    html += '</div>'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponentFutures('CRUDEOIL', 6);
+    html += showComponentFutures('ICICIBANK', 6);
+    html += '</div>'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponentOI('CRUDEOIL');
+    html += showComponentOI('ICICIBANK');
+    html += '</div>'
+    html += '</div>'
+
+    html += '</div>'
+
+
+
     jQ("#main-trade-bot-container").html(html);
 
-    await callSleepForAWhile(1000)
+   await callSleepForAWhile(1000)
 
     show915Trend('NIFTY 50');
     show915Trend('NIFTY BANK');
@@ -301,13 +331,50 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
+
+     try {
+        await showTopChart('ICICIBANK');
+    } catch (e) {
+        console.log(e)
+    }
+
+     try {
+        let res = await showFutureDetails('ICICIBANK');
+        setFutureDetails('ICICIBANK', res);
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showPrictionProbabilty('ICICIBANK')
+        showOIOBVBarChart('ICICIBANK');
+    } catch (e) {
+        console.log(e)
+    }
+
     setScore()
     showStockList([]);
+
+    try {
+        await showTopChartMCX('CRUDEOIL');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        res = await showFutureDetailsMCX('CRUDEOIL');
+        setFutureDetails('CRUDEOIL', res);
+        await showPrictionProbabiltyMCX('CRUDEOIL', res)
+        showOIOBVBarChart('CRUDEOIL');
+    } catch (e) {
+        console.log(e)
+    }
+
     jQ("#refresh-loader").addClass("hide");
 }
 
 
-function resetCount(){
+function resetCount() {
     ALL_9_15_CLOSE_SCORE = 0;
     NIFTY_50_9_15_CLOSE_SCORE = 0;
     NIFTY_BANK_9_15_CLOSE_SCORE = 0;
@@ -634,7 +701,6 @@ function setScore() {
     html += '</div>'
 
 
-
     jQ("#trend-scoreboard-table").html(html);
 
 }
@@ -680,6 +746,8 @@ function showAdvanceDecline() {
     html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;"  data-name="' + name + '" class="badge bg-secondary refresh-advance-decline"><i class="bi bi-arrow-clockwise"></i></span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D ' + ' ' + '[<span id="all-advance-decline-adr">ADR</span>]</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
@@ -696,6 +764,8 @@ function showAdvanceDeclineFutures() {
     html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;"  data-name="' + name + '" class="badge bg-secondary refresh-advance-decline-futures"><i class="bi bi-arrow-clockwise"></i></span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D FUTURES ' + ' ' + '[<span id="all-advance-decline-adr-future">ADR</span>]</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
@@ -834,6 +904,8 @@ function showComponentFutures(name, column) {
     html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;"  data-name="' + name + '" class="badge bg-secondary refresh-futures"><i class="bi bi-arrow-clockwise"></i></span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUTURES</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
@@ -851,6 +923,8 @@ function showComponentOI(name) {
     html += '<div class="col-md-6" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-name="' + name + '" class="badge bg-secondary refresh-oi-obv"><i class="bi bi-arrow-clockwise"></i></span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;">'
@@ -898,9 +972,11 @@ function showComponent(name, index) {
         breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
     }
 
-    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
+    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
 
-    html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
+    html += '<span style="position: absolute;left: 2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
+    html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary refresh-chart"><i class="bi bi-arrow-clockwise"></i></span>'
+
     html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + link + '</h4>'
     html += '</div>'
@@ -915,6 +991,112 @@ function showComponent(name, index) {
     return html;
 }
 
+
+jQ(document).on("click", ".refresh-chart", function () {
+    let name = jQ(this).attr("data-name");
+    let that = jQ(this)
+    commonRefershChart(name, that)
+})
+
+async function commonRefershChart(name, that) {
+    try {
+        that.attr("disabled", true);
+        if (name != 'CRUDEOIL') {
+            await showTopChart(name);
+        } else {
+            await showTopChartMCX(name);
+        }
+
+        that.attr("disabled", false)
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+jQ(document).on("click", ".refresh-futures", function () {
+    let name = jQ(this).attr("data-name");
+    let that = jQ(this)
+    commonRefershFutures(name, that)
+})
+
+async function commonRefershFutures(name, that) {
+    try {
+        that.attr("disabled", true);
+        let res = {}
+        if (name != 'CRUDEOIL') {
+            res = await showFutureDetails(name);
+            setFutureDetails(name, res);
+        } else {
+            res = await showFutureDetailsMCX(name);
+            setFutureDetails(name, res);
+        }
+        that.attr("disabled", false)
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+
+jQ(document).on("click", ".refresh-oi-obv", function () {
+    let name = jQ(this).attr("data-name");
+    let that = jQ(this)
+    commonRefershOIOBV(name, that)
+})
+
+async function commonRefershOIOBV(name, that) {
+    try {
+        that.attr("disabled", true);
+        let res = {}
+        if (name != 'CRUDEOIL') {
+            await showPrictionProbabilty(name)
+            showOIOBVBarChart(name);
+        } else {
+            res = await showFutureDetailsMCX(name);
+            setFutureDetails(name, res);
+            await showPrictionProbabiltyMCX(name, res)
+            showOIOBVBarChart(name);
+        }
+        that.attr("disabled", false)
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+
+jQ(document).on("click", ".refresh-advance-decline", function () {
+    let name = jQ(this).attr("data-name");
+    let that = jQ(this)
+    commonRefershAdvanceDecline(name, that)
+})
+
+async function commonRefershAdvanceDecline(name, that) {
+    try {
+        that.attr("disabled", true);
+        await showAdvacenDeclineScanner();
+        that.attr("disabled", false)
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+
+jQ(document).on("click", ".refresh-advance-decline-futures", function () {
+    let name = jQ(this).attr("data-name");
+    let that = jQ(this)
+    commonRefershAdvanceDeclineFutures(name, that)
+})
+
+async function commonRefershAdvanceDeclineFutures(name, that) {
+    try {
+        that.attr("disabled", true);
+        await showFuturesTrend();
+        that.attr("disabled", false)
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+
 jQ(document).on("click", ".show-info", function () {
     let name = jQ(this).attr("data-name");
     let data = generateTrend(name);
@@ -923,20 +1105,20 @@ jQ(document).on("click", ".show-info", function () {
     html += name
     html += '</div>'
     html += '<div>'
-    html += ' OPEN : ' + parseFloat(data['open']);
-    html += '</div>'
     html += '<div>'
     html += ' LTP : ' + parseFloat(data['ltp']);
+    html += '</div>'
+    html += ' OPEN : ' + parseFloat(data['open']);
     html += '</div>'
     html += '<div>'
     html += ' ASO : ' + parseFloat(data['strikeData']['ustrikeOne']);
     html += '</div>'
     html += '<div>'
+    html += ' AST : ' + parseFloat(data['strikeData']['ustrikeTwo']);
+    html += '</div>'
     html += ' BSO : ' + parseFloat(data['strikeData']['bstrikeOne']);
     html += '</div>'
     html += '<div>'
-    html += ' AST : ' + parseFloat(data['strikeData']['ustrikeTwo']);
-    html += '</div>'
     html += '<div>'
     html += ' BST : ' + parseFloat(data['strikeData']['bstrikeTwo']);
     html += '</div>'
@@ -1173,8 +1355,8 @@ function show915Trend(name) {
     html += '<tbody>'
     jQ.each(stockList, function (index, item) {
         html += '<tr>'
-        let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + instrumentTokens[item['NAME']] + '">' + item['NAME'] + '</a>'
-        html += '<td>' 
+        let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + instrumentTokens[item['NAME']] + '">' + item['NAME'] + '</a>'
+        html += '<td>'
         html += link;
         html += '</td>'
         html += '<td>' + item['CLOSE_9_15'] + '</td></tr>'
@@ -1196,8 +1378,8 @@ function showOIOBVBarChart(name) {
     let oiCE = ["CE OI"]
     let oiPE = ["PE OI"]
 
-    let oiCEOBV = ["CE OI OBV"]
-    let oiPEOBV = ["PE OI OBV"]
+    let oiCEOBV = ["CE OBV"]
+    let oiPEOBV = ["PE OBV"]
 
     let data = stock[0]['DATA']['tableData']
 
@@ -1227,7 +1409,14 @@ function showOIOBVBarChart(name) {
             x: 'x',
             columns: columns,
             type: 'bar',
-            color: function (color, d) {
+            colors: {
+                'CE OI': '#FF0000',
+                'PE OI': '#11ff00',
+                'CE OBV': '#d400ff',
+                'PE OBV': '#0059ff'
+
+            },
+            /*color: function (color, d) {
                 if (d.value !== undefined) {
                     if (d.id === 'CE OI' && d.value > 0) {
                         return '#bc2709'; //Calls are being sold and the price is expected to go down, so red color
@@ -1249,7 +1438,7 @@ function showOIOBVBarChart(name) {
                 }
                 // For legend items or other cases, return the default color
                 return color;
-            },
+            },*/
 
         },
 

@@ -1,6 +1,7 @@
 async function callAddToWatchList() {
     for (let i = 0; i < FO_LIST.length; i++) {
-        addToWatchList("NSE", FO_LIST[i], (i + 1), 2)
+        addToWatchList("NSE", FO_LIST[i], (i + 1), 1)
+        jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
         await callSleepForAWhile(1000)
     }
 }
@@ -18,7 +19,7 @@ function addToWatchList(segment, tradingsymbol, weight, watch_id) {
             exchange: segment,
             tradingsymbol: tradingsymbol,
             weight: weight,
-            group: 'GROUP:NS8PUSP7'
+            group: 'GROUP:V1skCzzE'
         }
     });
 }
@@ -31,12 +32,6 @@ jQ(document).ready(function () {
 });
 
 function makeUIChanges() {
-    var html = '';
-    html += '<a href="#" id="add-to-watch-list" style="display:none;">'
-    html += 'Add Watchlist'
-    html += '</a>'
-    jQ('body').first().find(".app-nav").append(html);
-
     html = '';
     html += '<a href="#" id="show-groot-trade-bot" style="padding:10px;">'
     html += 'Groot'

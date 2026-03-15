@@ -9,7 +9,7 @@ let nseStrikeDiff = {
 	'ALKEM': '50,100',
 	'AMBER': '100,200',
 	'AMBUJACEM': '5,10',
-	'ANGELONE': '50,100',
+	'ANGELONE': '5,10',
 	'APLAPOLLO': '20,40',
 	'APOLLOHOSP': '50,100',
 	'ASHOKLEY': '2.5,5',
@@ -93,7 +93,6 @@ let nseStrikeDiff = {
 	'INFY': '20,40',
 	'INOXWIND': '2.5,5',
 	'IOC': '1,2',
-	'IRCTC': '5,10',
 	'IREDA': '1,2',
 	'IRFC': '1,2',
 	'ITC': '2.5,5',
@@ -350,7 +349,6 @@ let FO_LIST = [
 	'INFY',
 	'INOXWIND',
 	'IOC',
-	'IRCTC',
 	'IREDA',
 	'IRFC',
 	'ITC',
@@ -560,7 +558,6 @@ let instrumentTokens = {
 	'INFY': 408065,
 	'INOXWIND': 2010113,
 	'IOC': 415745,
-	'IRCTC': 3484417,
 	'IREDA': 5186817,
 	'IRFC': 519425,
 	'ITC': 424961,
@@ -937,7 +934,7 @@ let nseFutreStrikeDiff = {
 	'ALKEM': '50,100',
 	'AMBER': '100,200',
 	'AMBUJACEM': '5,10',
-	'ANGELONE': '50,100',
+	'ANGELONE': '5,10',
 	'APLAPOLLO': '20,40',
 	'APOLLOHOSP': '50,100',
 	'ASHOKLEY': '2.5,5',
@@ -1021,7 +1018,6 @@ let nseFutreStrikeDiff = {
 	'INFY': '20,40',
 	'INOXWIND': '2.5,5',
 	'IOC': '1,2',
-	'IRCTC': '5,10',
 	'IREDA': '1,2',
 	'IRFC': '1,2',
 	'ITC': '2.5,5',
@@ -1133,7 +1129,7 @@ let nseFutreStrikeDiff = {
 	'WAAREEENER': '50,100',
 	'WIPRO': '2.5,5',
 	'YESBANK': '1,2',
-	'ZYDUSLIFE': '10,20'
+	'ZYDUSLIFE': '10,20',
 }
 
 let futureInstrumentsList = [
