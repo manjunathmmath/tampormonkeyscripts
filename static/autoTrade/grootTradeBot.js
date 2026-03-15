@@ -45,6 +45,12 @@ async function showGrootTradeBot() {
     let divId = "popup-custom-style-groot-trade-bot";
     jQ("." + divId).find(".popupwindow_titlebar_button_maximize").trigger("click");
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+
+    let statusHtml = ''
+    statusHtml += '<div class="row" position:relative;" id="status-bar-container">'
+    statusHtml += '</div>'
+
+    jQ("." + divId).find(".popupwindow_statusbar_content").html(statusHtml)
 }
 
 jQ(document).on("click", "#data-load", function () {
@@ -203,7 +209,7 @@ async function commonShowPopupWindow() {
     html += '<div class="col-md-4">'
     html += '<div class="row" style="position:relative;">'
     html += showComponent('CRUDEOIL', 1);
-     html += showComponent('ICICIBANK', 1);
+    html += showComponent('ICICIBANK', 1);
     html += '</div>'
     html += '<div class="row" style="position:relative;">'
     html += showComponentFutures('CRUDEOIL', 6);
@@ -221,7 +227,7 @@ async function commonShowPopupWindow() {
 
     jQ("#main-trade-bot-container").html(html);
 
-   await callSleepForAWhile(1000)
+    await callSleepForAWhile(1000)
 
     show915Trend('NIFTY 50');
     show915Trend('NIFTY BANK');
@@ -332,13 +338,13 @@ async function commonShowPopupWindow() {
     }
 
 
-     try {
+    try {
         await showTopChart('ICICIBANK');
     } catch (e) {
         console.log(e)
     }
 
-     try {
+    try {
         let res = await showFutureDetails('ICICIBANK');
         setFutureDetails('ICICIBANK', res);
     } catch (e) {

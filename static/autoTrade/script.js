@@ -204,10 +204,31 @@ async function updateStrorageLtpPrice(instance) {
             instance.attr("disabled", false)
         }
         jQ(".marketwatch-pagination a.item")[0].click();
+
     }
 }
 
+function updateStatusBar(that) {
+    let name = that.find(".symbol").find(".name").html();
+    let price = that.find(".price").find(".last-price").html();
+    let perc = that.find(".price-change").find(".change-absolute").html();
+
+    let html = ''
+
+    html += '<div class="col-md-2">'
+    html += '<span>' + name + ': </span>'
+    html += '<span badge bg-info>' + price + ' </span>'
+    if (perc > 0) {
+        html += '<span class="badge bg-success"> ['+ perc + ']</span>'
+    } else {
+        html += '<span class="badge bg-danger"> [' + perc + ']</span>'
+    }
+    html += '</div>'
+    jQ("#status-bar-container").append(html)
+}
+
 async function scanLtpPrice() {
+    jQ("#status-bar-container").html('')
     await callSleepForAWhile(1000)
     let marketWatchSideBar = jQ(".marketwatch-pagination");
     let tabs = marketWatchSideBar.find(".pagination a.item");
@@ -282,6 +303,9 @@ async function scanLtpPrice() {
                                     that.find(".item-info-wrapper").append(strike);
                                 }
                             }
+                        }
+                        if (name == "INDIA VIX" || name == "NIFTY 50" || name == "NIFTY BANK") {
+                            updateStatusBar(that)
                         }
                     });
                 }
