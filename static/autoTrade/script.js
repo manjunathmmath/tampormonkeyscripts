@@ -53,6 +53,10 @@ function autoStartScanLtp() {
         var s = d.getSeconds();
         var m = d.getMinutes();
         var h = d.getHours();
+        var display = document.querySelector('#refresh-timer-one');
+        if (display) {
+            display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
+        }
         if (s == 59) {
             let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
             if (storageLtpObj != null) {
@@ -74,7 +78,6 @@ function startTimer(duration, display) {
         var s = d.getSeconds();
         var m = d.getMinutes();
         var h = d.getHours();
-        display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
         if (m % 5 == 0 && s == 10) {
             let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
             if (enableAutoRefresh) {
@@ -219,7 +222,7 @@ function updateStatusBar(that) {
     html += '<span>' + name + ': </span>'
     html += '<span badge bg-info>' + price + ' </span>'
     if (perc > 0) {
-        html += '<span class="badge bg-success"> ['+ perc + ']</span>'
+        html += '<span class="badge bg-success"> [' + perc + ']</span>'
     } else {
         html += '<span class="badge bg-danger"> [' + perc + ']</span>'
     }
@@ -304,7 +307,7 @@ async function scanLtpPrice() {
                                 }
                             }
                         }
-                        if (name == "INDIA VIX" || name == "NIFTY 50" || name == "NIFTY BANK") {
+                        if (name == "INDIA VIX" || name == "NIFTY 50" || name == "NIFTY BANK"|| name == "SENSEX") {
                             updateStatusBar(that)
                         }
                     });

@@ -479,6 +479,10 @@ td.details-control {
   stroke: #e1ff00 !important;
 }
 
+.open-price-class,
+.open-price-class line {
+  stroke: #ffffff !important;
+}
 
 .popupwindow_container div.badge {
   display: block !important;

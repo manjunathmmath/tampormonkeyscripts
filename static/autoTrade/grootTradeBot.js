@@ -28,9 +28,6 @@ async function showGrootTradeBot() {
     title += '<span id="last-refresh-time">Last @ 00:00:00</span>'
     title += '</div>'
     title += '<div class="col-md-1">'
-    title += '<span id="refresh-timer-one">00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-1">'
     title += '<span id="refresh-loader" class="loader hide"></span>'
     title += '</div>'
     title += '<div class="col-md-1">'
@@ -47,7 +44,14 @@ async function showGrootTradeBot() {
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
 
     let statusHtml = ''
-    statusHtml += '<div class="row" position:relative;" id="status-bar-container">'
+    statusHtml += '<div class="row" position:relative;" >'
+    statusHtml += '<div class="col-md-11">'
+    statusHtml += '<div class="row" id="status-bar-container">'
+    statusHtml += '</div>'
+    statusHtml += '</div>'
+    statusHtml += '<div class="col-md-1" style="text-align:right;">'
+    statusHtml += '<span id="refresh-timer-one">00:00</span>'
+    statusHtml += '</div>'
     statusHtml += '</div>'
 
     jQ("." + divId).find(".popupwindow_statusbar_content").html(statusHtml)
@@ -182,6 +186,7 @@ async function commonShowPopupWindow() {
     html += showTrendScoreBoard();
     html += showAdvanceDecline();
     html += showAdvanceDeclineFutures();
+    html += showStockComponent();
     html += '</div>'
     html += '</div>'
     html += '<div class="col-md-4">'
@@ -192,38 +197,16 @@ async function commonShowPopupWindow() {
     html += showComponentFutures('HDFCBANK', 6);
     html += showComponentOI('RELIANCE');
     html += showComponentOI('HDFCBANK');
-    html += showStockComponent();
-    html += '</div>'
-    html += '</div>'
-    html += '</div>'
-
-
-    html += '<div class="row" style="position:relative;">'
-    html += '<div class="col-md-12">'
-    html += '<hr/>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="row" style="position:relative;">'
-
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('CRUDEOIL', 1);
+    
     html += showComponent('ICICIBANK', 1);
-    html += '</div>'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponentFutures('CRUDEOIL', 6);
+    html += showComponent('CRUDEOIL', 1);
     html += showComponentFutures('ICICIBANK', 6);
-    html += '</div>'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponentOI('CRUDEOIL');
+    html += showComponentFutures('CRUDEOIL', 6);
     html += showComponentOI('ICICIBANK');
+    html += showComponentOI('CRUDEOIL');
     html += '</div>'
     html += '</div>'
-
     html += '</div>'
-
-
 
     jQ("#main-trade-bot-container").html(html);
 
@@ -325,20 +308,7 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
-    try {
-        await showAdvacenDeclineScanner();
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showFuturesTrend();
-    } catch (e) {
-        console.log(e)
-    }
-
-
-    try {
+     try {
         await showTopChart('ICICIBANK');
     } catch (e) {
         console.log(e)
@@ -358,10 +328,7 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
-    setScore()
-    showStockList([]);
-
-    try {
+     try {
         await showTopChartMCX('CRUDEOIL');
     } catch (e) {
         console.log(e)
@@ -375,6 +342,21 @@ async function commonShowPopupWindow() {
     } catch (e) {
         console.log(e)
     }
+
+    try {
+        await showAdvacenDeclineScanner();
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showFuturesTrend();
+    } catch (e) {
+        console.log(e)
+    }
+   
+    setScore()
+    showStockList([]);
 
     jQ("#refresh-loader").addClass("hide");
 }
@@ -719,7 +701,7 @@ function showStockComponent() {
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">INSTRUMENTS</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:34.5rem;position:relative;overflow-y:auto;">'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<table  class="table display nowrap" id="stock-list-table" style="width: 100%;">'
     html += '<thead>'
     html += '<tr>'
@@ -876,7 +858,7 @@ function showComponenAdvanceDeclineTrend(name, column) {
     html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D' + '[<span id="' + tempName + '-advance-decline-adr">ADR</span>]</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">INDEX ' + '[<span id="' + tempName + '-advance-decline-adr">ADR</span>]</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-advance-decline" ></div>'
@@ -893,7 +875,7 @@ function showComponenAdvanceDeclineFutureTrend(name, column) {
     html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">A/D FUT' + '[<span id="' + tempName + '-advance-decline-adr-future">ADR</span>]</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUT ' + '[<span id="' + tempName + '-advance-decline-adr-future">ADR</span>]</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-advance-decline-future" ></div>'
@@ -989,7 +971,7 @@ function showComponent(name, index) {
     html += '</div>'
 
     html += '<div class="row" style="">'
-    html += '<div class="col-md-12" style="height:13rem;position:relative;background-color:#000000;">'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;background-color:#000000;">'
     html += '<div id="' + tempName + '-chart" ></div>'
     html += '</div>'
     html += '</div>'
@@ -1149,6 +1131,7 @@ async function showTopChart(name) {
         await savePreviousStockQuote(tempName, instrumentTokens[name])
         let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
         let scriptData = generateTrend(name)
+        let open = scriptData['open']
 
         let max = scriptData['vix'].vixDDUpper
         let min = scriptData['vix'].vixDDLower
@@ -1202,6 +1185,8 @@ async function showTopChart(name) {
         lines.push({ position: 'start', value: parseFloat(scriptData['strikeData'].bstrikeOne), text: 'BSO: ' + scriptData['strikeData'].bstrikeOne, class: 'bstrike-one-line-class' });
         lines.push({ position: 'start', value: parseFloat(scriptData['strikeData'].bstrikeTwo), text: 'BST: ' + scriptData['strikeData'].bstrikeTwo, class: 'bstrike-two-line-class' });
 
+
+         lines.push({ position: 'start', value: parseFloat(open), text: 'OPEN: ' + open, class: 'open-price-class' });
 
 
         let chartId = tempName;
