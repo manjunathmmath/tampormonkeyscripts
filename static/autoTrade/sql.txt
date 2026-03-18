@@ -1,3 +1,23 @@
+select 
+name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
+from 
+    kite_instruments 
+where 
+    segment in('MCX-OPT') 
+    and  expiry like'%-03-2026%' and name in('CRUDEOIL','CRUDEOILM','GOLDM','NATURALGAS','NATGASMINI','SILVER','SILVERM')
+    order by name;
+    
+    select 
+name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
+from 
+    kite_instruments 
+where 
+    segment in('MCX-FUT') 
+    and  expiry like'%-03-2026%' and name in('CRUDEOIL','CRUDEOILM','GOLDM','NATURALGAS','NATGASMINI','SILVER','SILVERM')
+    order by name;
+
+
+
 select  
     name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
 from 
