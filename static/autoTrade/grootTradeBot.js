@@ -87,15 +87,21 @@ jQ(document).on("click", "#data-load", function () {
     html += '<a id="nine-fifteen-scan">9:15 SCAN</a>'
     html += '</div>'
     html += '<div class="col-md-12">'
-    html += '<button id="show-oi-viewer" class="btn btn-secondary btn-sm" type="submit">';
+    html += '<a id="show-oi-viewer">';
     html += 'Analyzer'
-    html += '</button>'
+    html += '</a>'
     html += '</div>'
     html += '</div>'
 
     html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<a target="_blank" href="https://docs.google.com/spreadsheets/d/1mJyXOLNqSqIuDIiB1ip9-0kpNGU0pl_o/edit?gid=20807039#gid=20807039"  type="button">Past Analysis</a>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<a target="_blank" href="https://tradingeconomics.com/stocks"  type="button">World</a>'
     html += '</div>'
     html += '</div>'
     SnackBar({
@@ -808,6 +814,7 @@ function showNotes() {
     htmlNote += '<li>Check OI/OBV"</li>'
     htmlNote += '<li>Check VIX -ve/+ve </li>'
     htmlNote += '<li>Check VIX range</li>'
+    htmlNote += '<li>Check World Market/Europe Market around 12.45 - 1PM</li>'
     htmlNote += '</ul>'
     htmlNote += '</div>'
     htmlNote += '</div>'

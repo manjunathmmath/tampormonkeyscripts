@@ -612,3 +612,7 @@ td.details-control {
 .refresh-chart,.refresh-advance-decline-futures,.refresh-advance-decline,.refresh-oi-obv,.refresh-futures{
   cursor: pointer;
 }
+
+.popupwindow_statusbar,.popupwindow,.popupwindow_titlebar{
+  background-color: #fff !important;
+}

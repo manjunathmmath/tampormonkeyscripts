@@ -390,7 +390,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="row" style="padding:.2rem;">'
+    html += '<div class="row">'
     html += '<div class="col-md-12" style="height:13rem;position:relative;background-color:#000000;">'
     html += '<div id="' + tempName + '-chart" ></div>'
     html += '</div>'
@@ -399,7 +399,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
 
 
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
-    html += '<div class="row" style="padding:.2rem;">'
+    html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
     html += '</div>'
@@ -410,7 +410,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '</div>'
 
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
-    html += '<div class="row" style="">'
+    html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">FUTURES</h4>'
     html += '</div>'
