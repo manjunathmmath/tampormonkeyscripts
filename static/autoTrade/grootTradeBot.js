@@ -70,40 +70,41 @@ jQ(document).on("click", "#data-load", function () {
     html += '</div>'
 
     html += '<div class="row">'
+
     html += '<div class="col-md-12">'
     html += '<a  id="clean-storage" type="button">Clear</a>'
     html += '</div>'
+
     html += '<div class="col-md-12">'
     html += '<a  id="load-price" type="button">Load</a>'
     html += '</div>'
-    html += '</div>'
 
-    html += '<a href="#" id="add-to-watch-list">'
-    html += 'Add Watchlist'
-    html += '</a>'
-
-    html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<a id="nine-fifteen-scan">9:15 SCAN</a>'
     html += '</div>'
-    html += '<div class="col-md-12">'
-    html += '<a id="show-oi-viewer">';
-    html += 'Analyzer'
-    html += '</a>'
-    html += '</div>'
-    html += '</div>'
 
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<a target="_blank" href="https://docs.google.com/spreadsheets/d/1mJyXOLNqSqIuDIiB1ip9-0kpNGU0pl_o/edit?gid=20807039#gid=20807039"  type="button">Past Analysis</a>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="row">'
     html += '<div class="col-md-12">'
     html += '<a target="_blank" href="https://tradingeconomics.com/stocks"  type="button">World</a>'
     html += '</div>'
+
+    html += '<div class="col-md-12">'
+    html += '<a id="show-oi-viewer">Analyzer</a>'
     html += '</div>'
+
+    html += '<div class="col-md-12">'
+    html += '<a target="_blank" href="https://docs.google.com/spreadsheets/d/1mJyXOLNqSqIuDIiB1ip9-0kpNGU0pl_o/edit?gid=20807039#gid=20807039"  type="button">Past Analysis</a>'
+    html += '</div>'
+
+    html += '<div class="col-md-12">'
+    html += '<a href="#" id="add-to-watch-list">Add Watchlist</a>'
+    html += '</div>'
+
+    html += '</div>'
+
+
+
+
+
     SnackBar({
         message: html,
         status: "info",
@@ -203,7 +204,7 @@ async function commonShowPopupWindow() {
     html += showComponentFutures('HDFCBANK', 6);
     html += showComponentOI('RELIANCE');
     html += showComponentOI('HDFCBANK');
-    
+
     html += showComponent('ICICIBANK', 1);
     html += showComponent('CRUDEOIL', 1);
     html += showComponentFutures('ICICIBANK', 6);
@@ -314,7 +315,7 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
-     try {
+    try {
         await showTopChart('ICICIBANK');
     } catch (e) {
         console.log(e)
@@ -334,7 +335,7 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
-     try {
+    try {
         await showTopChartMCX('CRUDEOIL');
     } catch (e) {
         console.log(e)
@@ -360,7 +361,7 @@ async function commonShowPopupWindow() {
     } catch (e) {
         console.log(e)
     }
-   
+
     setScore()
     showStockList([]);
 
@@ -811,9 +812,12 @@ function showNotes() {
     htmlNote += '<li>2 BSO is strong downtrend</li>'
     htmlNote += '<li>Sensex ASO/BSO doesn\'t have much weightage</li>'
     htmlNote += '<li>Check RELIANCE AND HDFC BANK</li>'
-    htmlNote += '<li>Check OI/OBV"</li>'
+    htmlNote += '<li>Check OI/OBV</li>'
     htmlNote += '<li>Check VIX -ve/+ve </li>'
     htmlNote += '<li>Check VIX range</li>'
+    htmlNote += '<li>Check ADR</li>'
+    htmlNote += '<li>Check CRUDE OIL</li>'
+    htmlNote += '<li>Check Future Trend</li>'
     htmlNote += '<li>Check World Market/Europe Market around 12.45 - 1PM</li>'
     htmlNote += '</ul>'
     htmlNote += '</div>'
@@ -1193,7 +1197,7 @@ async function showTopChart(name) {
         lines.push({ position: 'start', value: parseFloat(scriptData['strikeData'].bstrikeTwo), text: 'BST: ' + scriptData['strikeData'].bstrikeTwo, class: 'bstrike-two-line-class' });
 
 
-         lines.push({ position: 'start', value: parseFloat(open), text: 'OPEN: ' + open, class: 'open-price-class' });
+        lines.push({ position: 'start', value: parseFloat(open), text: 'OPEN: ' + open, class: 'open-price-class' });
 
 
         let chartId = tempName;

@@ -42,7 +42,10 @@ function makeUIChanges() {
 
 jQ(document).on("click", "#add-to-watch-list", function (e) {
     e.preventDefault();
-    callAddToWatchList();
+    let result = confirm("Are you sure you want to add to watch list?");
+    if (result === true) {
+        callAddToWatchList();
+    }
 });
 
 
