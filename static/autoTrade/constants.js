@@ -214,46 +214,6 @@ let nseStrikeDiff = {
 	'GIFT NIFTY': '50,50',
 }
 
-let REFRESH_LIST = [
-	'NIFTY 50',
-	'NIFTY BANK',
-	'SENSEX',
-	'NIFTY MID SELECT',
-	'NIFTY FIN SERVICE',
-	'BANKEX',
-	'RELIANCE',
-	'HDFCBANK',
-	"ICICIBANK",
-	"INFY",
-	"KOTAKBANK",
-	"AXISBANK",
-	"SBIN",
-]
-
-let INDEX_LIST = [
-	'NIFTY 50',
-	'NIFTY BANK',
-	'RELIANCE',
-	'HDFCBANK',
-	'SENSEX'
-]
-
-let TRACK_LIST = [
-	'NIFTY 50',
-	'HDFCBANK',
-	'ICICIBANK',
-	'RELIANCE',
-	'INFY',
-	'NIFTY BANK',
-	'AXISBANK',
-	'SBIN',
-	'KOTAKBANK',
-	'NIFTY MID SELECT',
-	'NIFTY FIN SERVICE',
-	'SENSEX',
-	'GIFT NIFTY'
-]
-
 let FO_LIST = [
 	'360ONE',
 	'ABB',
@@ -460,216 +420,216 @@ let FO_LIST = [
 	'WAAREEENER',
 	'WIPRO',
 	'YESBANK',
-	'ZYDUSLIFE'
+	'ZYDUSLIFE',
 ]
 
 let instrumentTokens = {
-	'360ONE': 3343617,
 	'ABB': 3329,
-	'ABCAPITAL': 5533185,
-	'ADANIENSOL': 2615553,
 	'ADANIENT': 6401,
-	'ADANIGREEN': 912129,
-	'ADANIPORTS': 3861249,
-	'ALKEM': 2995969,
-	'AMBER': 303361,
-	'AMBUJACEM': 325121,
-	'ANGELONE': 82945,
-	'APLAPOLLO': 6599681,
 	'APOLLOHOSP': 40193,
 	'ASHOKLEY': 54273,
+	'IEX': 56321,
 	'ASIANPAINT': 60417,
-	'ASTRAL': 3691009,
-	'AUBANK': 5436929,
 	'AUROPHARMA': 70401,
-	'AXISBANK': 1510401,
-	'BAJAJ-AUTO': 4267265,
-	'BAJAJFINSV': 4268801,
 	'BAJAJHLDNG': 78081,
+	'TIINDIA': 79873,
 	'BAJFINANCE': 81153,
-	'BANDHANBNK': 579329,
-	'BANKBARODA': 1195009,
-	'BANKINDIA': 1214721,
-	'BDL': 548865,
+	'ANGELONE': 82945,
+	'CAMS': 87553,
 	'BEL': 98049,
 	'BHARATFORG': 108033,
-	'BHARTIARTL': 2714625,
 	'BHEL': 112129,
-	'BIOCON': 2911489,
-	'BLUESTARCO': 2127617,
-	'BOSCHLTD': 558337,
+	'HDFCLIFE': 119553,
+	'MAZDOCK': 130305,
 	'BPCL': 134657,
 	'BRITANNIA': 140033,
-	'BSE': 5013761,
-	'CAMS': 87553,
-	'CANBK': 2763265,
-	'CDSL': 5420545,
-	'CGPOWER': 194561,
+	'EXIDEIND': 173057,
 	'CHOLAFIN': 175361,
 	'CIPLA': 177665,
-	'COALINDIA': 5215745,
-	'COFORGE': 2955009,
-	'COLPAL': 3876097,
-	'CONCOR': 1215745,
-	'CROMPTON': 4376065,
-	'CUMMINSIND': 486657,
+	'CGPOWER': 194561,
 	'DABUR': 197633,
-	'DALBHARAT': 2067201,
-	'DELHIVERY': 2457345,
-	'DIVISLAB': 2800641,
-	'DIXON': 5552641,
-	'DLF': 3771393,
-	'DMART': 5097729,
 	'DRREDDY': 225537,
 	'EICHERMOT': 232961,
-	'ETERNAL': 1304833,
-	'EXIDEIND': 173057,
 	'FEDERALBNK': 261889,
-	'FORTIS': 3735553,
-	'GAIL': 1207553,
-	'GLENMARK': 1895937,
-	'GMRAIRPORT': 3463169,
-	'GODREJCP': 2585345,
-	'GODREJPROP': 4576001,
+	'AMBER': 303361,
 	'GRASIM': 315393,
-	'HAL': 589569,
-	'HAVELLS': 2513665,
-	'HCLTECH': 1850625,
-	'HDFCAMC': 1086465,
+	'AMBUJACEM': 325121,
 	'HDFCBANK': 341249,
-	'HDFCLIFE': 119553,
 	'HEROMOTOCO': 345089,
 	'HINDALCO': 348929,
-	'HINDPETRO': 359937,
 	'HINDUNILVR': 356865,
+	'HINDPETRO': 359937,
 	'HINDZINC': 364545,
-	'HUDCO': 5331201,
-	'ICICIBANK': 1270529,
-	'ICICIGI': 5573121,
-	'ICICIPRULI': 4774913,
-	'IDEA': 3677697,
-	'IDFCFIRSTB': 2863105,
-	'IEX': 56321,
 	'INDHOTEL': 387073,
-	'INDIANB': 3663105,
-	'INDIGO': 2865921,
-	'INDUSINDBK': 1346049,
-	'INDUSTOWER': 7458561,
 	'INFY': 408065,
-	'INOXWIND': 2010113,
 	'IOC': 415745,
-	'IREDA': 5186817,
-	'IRFC': 519425,
 	'ITC': 424961,
-	'JINDALSTEL': 1723649,
-	'JIOFIN': 4644609,
-	'JSWENERGY': 4574465,
-	'JSWSTEEL': 3001089,
-	'JUBLFOOD': 4632577,
-	'KALYANKJIL': 756481,
-	'KAYNES': 3095553,
-	'KEI': 3407361,
-	'KFINTECH': 3419905,
+	'CUMMINSIND': 486657,
 	'KOTAKBANK': 492033,
-	'KPITTECH': 2478849,
-	'LAURUSLABS': 4923905,
+	'TRENT': 502785,
 	'LICHSGFIN': 511233,
-	'LICI': 2426881,
-	'LODHA': 824321,
-	'LT': 2939649,
-	'LTF': 6386689,
-	'LTM': 4561409,
-	'LUPIN': 2672641,
+	'IRFC': 519425,
 	'M&M': 519937,
-	'MANAPPURAM': 4879617,
-	'MANKIND': 3937281,
-	'MARICO': 1041153,
-	'MARUTI': 2815745,
-	'MAXHEALTH': 5728513,
-	'MAZDOCK': 130305,
-	'MCX': 7982337,
 	'MFSL': 548353,
-	'MOTHERSON': 1076225,
-	'MPHASIS': 1152769,
-	'MUTHOOTFIN': 6054401,
-	'NATIONALUM': 1629185,
-	'NAUKRI': 3520257,
-	'NBCC': 8042241,
-	'NESTLEIND': 4598529,
-	'NHPC': 4454401,
-	'NMDC': 3924993,
-	'NTPC': 2977281,
-	'NUVAMA': 4792577,
-	'NYKAA': 1675521,
-	'OBEROIRLTY': 5181953,
-	'OFSS': 2748929,
-	'OIL': 4464129,
+	'BDL': 548865,
+	'BOSCHLTD': 558337,
+	'BANDHANBNK': 579329,
+	'HAL': 589569,
 	'ONGC': 633601,
-	'PAGEIND': 3689729,
-	'PATANJALI': 4359425,
-	'PAYTM': 1716481,
-	'PERSISTENT': 4701441,
-	'PETRONET': 2905857,
-	'PFC': 3660545,
-	'PGEL': 6491649,
-	'PHOENIXLTD': 3725313,
 	'PIDILITIND': 681985,
-	'PIIND': 6191105,
-	'PNB': 2730497,
-	'PNBHOUSING': 4840449,
-	'POLICYBZR': 1703937,
-	'POLYCAB': 2455041,
-	'POWERGRID': 3834113,
-	'POWERINDIA': 4724993,
-	'PPLPHARMA': 2962177,
-	'PREMIERENE': 6412545,
-	'PRESTIGE': 5197313,
-	'RBLBANK': 4708097,
-	'RECLTD': 3930881,
 	'RELIANCE': 738561,
-	'RVNL': 2445313,
+	'KALYANKJIL': 756481,
 	'SAIL': 758529,
-	'SAMMAANCAP': 7712001,
-	'SBICARD': 4600577,
-	'SBILIFE': 5582849,
 	'SBIN': 779521,
+	'VEDL': 784129,
 	'SHREECEM': 794369,
-	'SHRIRAMFIN': 1102337,
 	'SIEMENS': 806401,
-	'SOLARINDS': 3412993,
-	'SONACOMS': 1199105,
+	'LODHA': 824321,
 	'SRF': 837889,
 	'SUNPHARMA': 857857,
 	'SUPREMEIND': 860929,
-	'SUZLON': 3076609,
-	'SWIGGY': 6928897,
-	'SYNGENE': 2622209,
-	'TATACONSUM': 878593,
 	'TATAELXSI': 873217,
 	'TATAPOWER': 877057,
-	'TATASTEEL': 895745,
-	'TATATECH': 5195009,
-	'TCS': 2953217,
-	'TECHM': 3465729,
-	'TIINDIA': 79873,
-	'TITAN': 897537,
+	'TATACONSUM': 878593,
 	'TMPV': 884737,
+	'TATASTEEL': 895745,
+	'TITAN': 897537,
 	'TORNTPHARM': 900609,
-	'TORNTPOWER': 3529217,
-	'TRENT': 502785,
-	'TVSMOTOR': 2170625,
-	'ULTRACEMCO': 2952193,
-	'UNIONBANK': 2752769,
-	'UNITDSPR': 2674433,
-	'UNOMINDA': 3623425,
-	'UPL': 2889473,
-	'VBL': 4843777,
-	'VEDL': 784129,
+	'ADANIGREEN': 912129,
 	'VOLTAS': 951809,
-	'WAAREEENER': 6632193,
 	'WIPRO': 969473,
-	'YESBANK': 3050241,
+	'MARICO': 1041153,
+	'MOTHERSON': 1076225,
+	'HDFCAMC': 1086465,
+	'SHRIRAMFIN': 1102337,
+	'MPHASIS': 1152769,
+	'BANKBARODA': 1195009,
+	'SONACOMS': 1199105,
+	'GAIL': 1207553,
+	'BANKINDIA': 1214721,
+	'CONCOR': 1215745,
+	'ICICIBANK': 1270529,
+	'ETERNAL': 1304833,
+	'INDUSINDBK': 1346049,
+	'AXISBANK': 1510401,
+	'NATIONALUM': 1629185,
+	'NYKAA': 1675521,
+	'POLICYBZR': 1703937,
+	'PAYTM': 1716481,
+	'JINDALSTEL': 1723649,
+	'HCLTECH': 1850625,
+	'GLENMARK': 1895937,
+	'INOXWIND': 2010113,
 	'ZYDUSLIFE': 2029825,
+	'DALBHARAT': 2067201,
+	'BLUESTARCO': 2127617,
+	'TVSMOTOR': 2170625,
+	'LICI': 2426881,
+	'RVNL': 2445313,
+	'POLYCAB': 2455041,
+	'DELHIVERY': 2457345,
+	'KPITTECH': 2478849,
+	'HAVELLS': 2513665,
+	'GODREJCP': 2585345,
+	'ADANIENSOL': 2615553,
+	'SYNGENE': 2622209,
+	'LUPIN': 2672641,
+	'UNITDSPR': 2674433,
+	'BHARTIARTL': 2714625,
+	'PNB': 2730497,
+	'OFSS': 2748929,
+	'UNIONBANK': 2752769,
+	'CANBK': 2763265,
+	'DIVISLAB': 2800641,
+	'MARUTI': 2815745,
+	'IDFCFIRSTB': 2863105,
+	'INDIGO': 2865921,
+	'UPL': 2889473,
+	'PETRONET': 2905857,
+	'BIOCON': 2911489,
+	'LT': 2939649,
+	'ULTRACEMCO': 2952193,
+	'TCS': 2953217,
+	'COFORGE': 2955009,
+	'PPLPHARMA': 2962177,
+	'NTPC': 2977281,
+	'ALKEM': 2995969,
+	'JSWSTEEL': 3001089,
+	'YESBANK': 3050241,
+	'SUZLON': 3076609,
+	'KAYNES': 3095553,
+	'360ONE': 3343617,
+	'KEI': 3407361,
+	'SOLARINDS': 3412993,
+	'KFINTECH': 3419905,
+	'GMRAIRPORT': 3463169,
+	'TECHM': 3465729,
+	'NAUKRI': 3520257,
+	'TORNTPOWER': 3529217,
+	'UNOMINDA': 3623425,
+	'PFC': 3660545,
+	'INDIANB': 3663105,
+	'IDEA': 3677697,
+	'PAGEIND': 3689729,
+	'ASTRAL': 3691009,
+	'PHOENIXLTD': 3725313,
+	'FORTIS': 3735553,
+	'DLF': 3771393,
+	'POWERGRID': 3834113,
+	'ADANIPORTS': 3861249,
+	'COLPAL': 3876097,
+	'NMDC': 3924993,
+	'RECLTD': 3930881,
+	'MANKIND': 3937281,
+	'BAJAJ-AUTO': 4267265,
+	'BAJAJFINSV': 4268801,
+	'PATANJALI': 4359425,
+	'CROMPTON': 4376065,
+	'NHPC': 4454401,
+	'OIL': 4464129,
+	'LTM': 4561409,
+	'JSWENERGY': 4574465,
+	'GODREJPROP': 4576001,
+	'NESTLEIND': 4598529,
+	'SBICARD': 4600577,
+	'JUBLFOOD': 4632577,
+	'JIOFIN': 4644609,
+	'PERSISTENT': 4701441,
+	'RBLBANK': 4708097,
+	'POWERINDIA': 4724993,
+	'ICICIPRULI': 4774913,
+	'NUVAMA': 4792577,
+	'PNBHOUSING': 4840449,
+	'VBL': 4843777,
+	'MANAPPURAM': 4879617,
+	'LAURUSLABS': 4923905,
+	'BSE': 5013761,
+	'DMART': 5097729,
+	'OBEROIRLTY': 5181953,
+	'IREDA': 5186817,
+	'TATATECH': 5195009,
+	'PRESTIGE': 5197313,
+	'COALINDIA': 5215745,
+	'HUDCO': 5331201,
+	'CDSL': 5420545,
+	'AUBANK': 5436929,
+	'ABCAPITAL': 5533185,
+	'DIXON': 5552641,
+	'ICICIGI': 5573121,
+	'SBILIFE': 5582849,
+	'MAXHEALTH': 5728513,
+	'MUTHOOTFIN': 6054401,
+	'PIIND': 6191105,
+	'LTF': 6386689,
+	'PREMIERENE': 6412545,
+	'PGEL': 6491649,
+	'APLAPOLLO': 6599681,
+	'WAAREEENER': 6632193,
+	'SWIGGY': 6928897,
+	'INDUSTOWER': 7458561,
+	'SAMMAANCAP': 7712001,
+	'MCX': 7982337,
+	'NBCC': 8042241,
 	'NIFTY 50': 256265,
 	'SENSEX': 265,
 	'NIFTY BANK': 260105,
@@ -758,167 +718,6 @@ let INDICES = [
 	'SENSEX',
 	'GIFT NIFTY'
 ]
-
-var NIFTY_50_WEIGHT = {
-	"HDFCBANK": 12.72,
-	"RELIANCE": 8.90,
-	"ICICIBANK": 8.05,
-	"INFY": 4.75,
-	"LT": 4.02,
-	"ITC": 3.26,
-	"TCS": 4.05,
-	"AXISBANK": 3.05,
-	"M&M": 2.78,
-	"BHARTIARTL": 4.92,
-	"SBIN": 3.42,
-}
-
-var NIFTY_BANK_WEIGHT = {
-	"HDFCBANK": 25.14,
-	"ICICIBANK": 20.17,
-	"KOTAKBANK": 9.23,
-	"AXISBANK": 9.29,
-	"SBIN": 9.63,
-	"INDUSINDBK": 3.69,
-	"BANKBARODA": 3.49,
-	"AUBANK": 3.60,
-	"FEDERALBNK": 4.31,
-	"IDFCFIRSTB": 3.59,
-}
-
-var WEIGHTAGE_STOCK_SHOW = [
-	"HDFCBANK",
-	"RELIANCE",
-	"ICICIBANK",
-	"KOTAKBANK",
-	"AXISBANK",
-	"SBIN"
-]
-
-var INDICES_WEIGHT = {
-	'GIFT NIFTY': 1,
-	'NIFTY 50': 60,
-	'NIFTY BANK': 20,
-	'SENSEX': 5,
-	'NIFTY MID SELECT': 5,
-	'NIFTY FIN SERVICE': 5,
-	'BANKEX': 5,
-}
-
-let MOVEMENTSTOCKS = [
-	'CANBK',
-	'IOC',
-	'JIOFIN',
-	'PNB',
-	'SAIL',
-	'IRFC',
-	'NMDC',
-	'BEL',
-	'GMRAIRPORT',
-	'HFCL',
-	'NBCC',
-	'NHPC',
-	'WIPRO',
-	'MOTHERSON',
-	'TATASTEEL',
-	'BANKBARODA',
-	'BANKINDIA',
-	'GAIL',
-	'IDFCFIRSTB',
-	'ONGC',
-	'POWERGRID',
-	'UNIONBANK',
-	'RBLBANK',
-	'TMPV',
-	'BHEL',
-	'NTPC',
-	'ITC',
-	'HUDCO',
-	'NATIONALUM',
-	'TATAPOWER',
-	'RELIANCE',
-	'BANDHANBNK',
-	'FEDERALBNK',
-	'SBIN',
-	'ASHOKLEY',
-	'PFC',
-	'BPCL',
-	'KALYANKJIL',
-	'NYKAA',
-	'VEDL',
-	'ICICIBANK',
-	'MANAPPURAM',
-	'INDUSTOWER',
-	'RECLTD',
-	'IGL',
-	'HDFCBANK',
-	'AXISBANK',
-	'COALINDIA',
-	'NCC',
-	'LTF',
-	'VBL',
-	'HINDCOPPER',
-	'ABCAPITAL',
-	'SHRIRAMFIN',
-	'IEX',
-	'HINDALCO',
-	'HINDPETRO',
-	'PAYTM',
-	'DELHIVERY',
-	'INDUSINDBK',
-	'INFY',
-	'BHARTIARTL',
-	'JSWENERGY',
-	'BIOCON',
-	'CROMPTON',
-	'YESBANK',
-	'DLF',
-	'CDSL',
-	'INDHOTEL',
-	'KOTAKBANK',
-	'AUBANK',
-	'ETERNAL',
-	'EXIDEIND',
-	'AMBUJACEM',
-	'SONACOMS',
-	'OIL',
-	'DABUR',
-	'INOXWIND',
-	'UPL',
-	'ADANIGREEN',
-	'BSOFT',
-	'HDFCLIFE',
-	'PETRONET',
-	'CGPOWER',
-	'AARTIIND',
-	'IREDA',
-];
-
-let instrumentOrder = {
-	'NIFTY 50': 1,
-	'NIFTY BANK': 2,
-	'SENSEX': 3,
-	'NIFTY MID SELECT': 4,
-	'NIFTY FIN SERVICE': 5,
-	'BANKEX': 6,
-	'GIFT NIFTY': 7,
-	'RELIANCE': 8,
-	'HDFCBANK': 9,
-	"ICICIBANK": 10,
-	"INFY": 11,
-	"KOTAKBANK": 12,
-	"AXISBANK": 13,
-	"SBIN": 14,
-	"LT": 15,
-	"ITC": 16,
-	"TCS": 17,
-	"BHARTIARTL": 18,
-	"INDUSINDBK": 19,
-	"BANKBARODA": 20,
-	"AUBANK": 21,
-	"FEDERALBNK": 22,
-	"IDFCFIRSTB": 23,
-}
 
 let nseFutreStrikeDiff = {
 	'NIFTY 50': '50,50',
@@ -1129,1911 +928,1901 @@ let nseFutreStrikeDiff = {
 	'WAAREEENER': '50,100',
 	'WIPRO': '2.5,5',
 	'YESBANK': '1,2',
-	'ZYDUSLIFE': '10,20',
+	'ZYDUSLIFE': '10,20'
 }
 
 let futureInstrumentsList = [
 	{
-		"name": "NIFTY",
-		"instrument_token": "13238786",
-		"expiry": "30-03-2026",
-		"lot_size": "65",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NIFTY26MARFUT"
-	},
-	{
-		"name": "BANKNIFTY",
-		"instrument_token": "13235458",
-		"expiry": "30-03-2026",
-		"lot_size": "30",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BANKNIFTY26MARFUT"
-	},
-	{
-		"name": "360ONE",
-		"instrument_token": "13240834",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "360ONE26MARFUT"
-	},
-	{
-		"name": "ABB",
-		"instrument_token": "13241090",
-		"expiry": "30-03-2026",
-		"lot_size": "125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ABB26MARFUT"
-	},
-	{
-		"name": "ABCAPITAL",
-		"instrument_token": "13241346",
-		"expiry": "30-03-2026",
-		"lot_size": "3100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ABCAPITAL26MARFUT"
-	},
-	{
-		"name": "ADANIENSOL",
-		"instrument_token": "13241602",
-		"expiry": "30-03-2026",
-		"lot_size": "675",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ADANIENSOL26MARFUT"
-	},
-	{
-		"name": "ADANIENT",
-		"instrument_token": "13242370",
-		"expiry": "30-03-2026",
-		"lot_size": "309",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ADANIENT26MARFUT"
-	},
-	{
-		"name": "ADANIGREEN",
-		"instrument_token": "13242626",
-		"expiry": "30-03-2026",
-		"lot_size": "600",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ADANIGREEN26MARFUT"
-	},
-	{
-		"name": "ADANIPORTS",
-		"instrument_token": "13243906",
-		"expiry": "30-03-2026",
-		"lot_size": "475",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ADANIPORTS26MARFUT"
-	},
-	{
-		"name": "ALKEM",
-		"instrument_token": "13244162",
-		"expiry": "30-03-2026",
-		"lot_size": "125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ALKEM26MARFUT"
-	},
-	{
-		"name": "AMBER",
-		"instrument_token": "13244418",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "AMBER26MARFUT"
-	},
-	{
-		"name": "AMBUJACEM",
-		"instrument_token": "13244674",
-		"expiry": "30-03-2026",
-		"lot_size": "1050",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "AMBUJACEM26MARFUT"
-	},
-	{
-		"name": "ANGELONE",
-		"instrument_token": "13247234",
-		"expiry": "30-03-2026",
-		"lot_size": "250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ANGELONE26MARFUT"
-	},
-	{
-		"name": "APLAPOLLO",
-		"instrument_token": "13247490",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "APLAPOLLO26MARFUT"
-	},
-	{
-		"name": "APOLLOHOSP",
-		"instrument_token": "13249538",
-		"expiry": "30-03-2026",
-		"lot_size": "125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "APOLLOHOSP26MARFUT"
-	},
-	{
-		"name": "ASHOKLEY",
-		"instrument_token": "13249794",
-		"expiry": "30-03-2026",
-		"lot_size": "5000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ASHOKLEY26MARFUT"
-	},
-	{
-		"name": "ASIANPAINT",
-		"instrument_token": "13253890",
-		"expiry": "30-03-2026",
-		"lot_size": "250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ASIANPAINT26MARFUT"
-	},
-	{
-		"name": "ASTRAL",
-		"instrument_token": "13254146",
-		"expiry": "30-03-2026",
-		"lot_size": "425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ASTRAL26MARFUT"
-	},
-	{
-		"name": "AUBANK",
-		"instrument_token": "13259522",
-		"expiry": "30-03-2026",
-		"lot_size": "1000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "AUBANK26MARFUT"
-	},
-	{
-		"name": "AUROPHARMA",
-		"instrument_token": "13259778",
-		"expiry": "30-03-2026",
-		"lot_size": "550",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "AUROPHARMA26MARFUT"
-	},
-	{
-		"name": "AXISBANK",
-		"instrument_token": "13264130",
-		"expiry": "30-03-2026",
-		"lot_size": "625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "AXISBANK26MARFUT"
-	},
-	{
-		"name": "BAJAJ-AUTO",
-		"instrument_token": "13264386",
-		"expiry": "30-03-2026",
-		"lot_size": "75",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BAJAJ-AUTO26MARFUT"
-	},
-	{
-		"name": "BAJAJFINSV",
-		"instrument_token": "13264642",
-		"expiry": "30-03-2026",
-		"lot_size": "250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BAJAJFINSV26MARFUT"
-	},
-	{
-		"name": "BAJAJHLDNG",
-		"instrument_token": "13265410",
-		"expiry": "30-03-2026",
-		"lot_size": "50",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BAJAJHLDNG26MARFUT"
-	},
-	{
-		"name": "BAJFINANCE",
-		"instrument_token": "13265666",
-		"expiry": "30-03-2026",
-		"lot_size": "750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BAJFINANCE26MARFUT"
-	},
-	{
-		"name": "BANDHANBNK",
-		"instrument_token": "13265922",
-		"expiry": "30-03-2026",
-		"lot_size": "3600",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BANDHANBNK26MARFUT"
-	},
-	{
-		"name": "BANKBARODA",
-		"instrument_token": "13266178",
-		"expiry": "30-03-2026",
-		"lot_size": "2925",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BANKBARODA26MARFUT"
-	},
-	{
-		"name": "BANKINDIA",
-		"instrument_token": "13266434",
-		"expiry": "30-03-2026",
-		"lot_size": "5200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BANKINDIA26MARFUT"
-	},
-	{
-		"name": "BDL",
-		"instrument_token": "13266690",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BDL26MARFUT"
-	},
-	{
-		"name": "BEL",
-		"instrument_token": "13266946",
-		"expiry": "30-03-2026",
-		"lot_size": "1425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BEL26MARFUT"
-	},
-	{
-		"name": "BHARATFORG",
-		"instrument_token": "13267202",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BHARATFORG26MARFUT"
-	},
-	{
-		"name": "BHARTIARTL",
-		"instrument_token": "13267458",
-		"expiry": "30-03-2026",
-		"lot_size": "475",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BHARTIARTL26MARFUT"
-	},
-	{
-		"name": "BHEL",
-		"instrument_token": "13267714",
-		"expiry": "30-03-2026",
-		"lot_size": "2625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BHEL26MARFUT"
-	},
-	{
-		"name": "BIOCON",
-		"instrument_token": "13267970",
-		"expiry": "30-03-2026",
-		"lot_size": "2500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BIOCON26MARFUT"
-	},
-	{
-		"name": "BLUESTARCO",
-		"instrument_token": "13268226",
-		"expiry": "30-03-2026",
-		"lot_size": "325",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BLUESTARCO26MARFUT"
-	},
-	{
-		"name": "BOSCHLTD",
-		"instrument_token": "13268482",
-		"expiry": "30-03-2026",
-		"lot_size": "25",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BOSCHLTD26MARFUT"
-	},
-	{
-		"name": "BPCL",
-		"instrument_token": "13268738",
-		"expiry": "30-03-2026",
-		"lot_size": "1975",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BPCL26MARFUT"
-	},
-	{
-		"name": "BRITANNIA",
-		"instrument_token": "13268994",
-		"expiry": "30-03-2026",
-		"lot_size": "125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BRITANNIA26MARFUT"
-	},
-	{
-		"name": "BSE",
-		"instrument_token": "13269762",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "BSE26MARFUT"
-	},
-	{
-		"name": "CAMS",
-		"instrument_token": "13270018",
-		"expiry": "30-03-2026",
-		"lot_size": "750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CAMS26MARFUT"
-	},
-	{
-		"name": "CANBK",
-		"instrument_token": "13270274",
-		"expiry": "30-03-2026",
-		"lot_size": "6750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CANBK26MARFUT"
-	},
-	{
-		"name": "CDSL",
-		"instrument_token": "13270530",
-		"expiry": "30-03-2026",
-		"lot_size": "475",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CDSL26MARFUT"
-	},
-	{
-		"name": "CGPOWER",
-		"instrument_token": "13271810",
-		"expiry": "30-03-2026",
-		"lot_size": "850",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CGPOWER26MARFUT"
-	},
-	{
-		"name": "CHOLAFIN",
-		"instrument_token": "13272066",
-		"expiry": "30-03-2026",
-		"lot_size": "625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CHOLAFIN26MARFUT"
-	},
-	{
-		"name": "CIPLA",
-		"instrument_token": "13272834",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CIPLA26MARFUT"
-	},
-	{
-		"name": "COALINDIA",
-		"instrument_token": "13273090",
-		"expiry": "30-03-2026",
-		"lot_size": "1350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "COALINDIA26MARFUT"
-	},
-	{
-		"name": "COFORGE",
-		"instrument_token": "13273346",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "COFORGE26MARFUT"
-	},
-	{
-		"name": "COLPAL",
-		"instrument_token": "13273602",
-		"expiry": "30-03-2026",
-		"lot_size": "225",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "COLPAL26MARFUT"
-	},
-	{
-		"name": "CONCOR",
-		"instrument_token": "13274114",
-		"expiry": "30-03-2026",
-		"lot_size": "1250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CONCOR26MARFUT"
-	},
-	{
-		"name": "CROMPTON",
-		"instrument_token": "13274370",
-		"expiry": "30-03-2026",
-		"lot_size": "1800",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CROMPTON26MARFUT"
-	},
-	{
-		"name": "CUMMINSIND",
-		"instrument_token": "13275906",
-		"expiry": "30-03-2026",
-		"lot_size": "200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "CUMMINSIND26MARFUT"
-	},
-	{
-		"name": "DABUR",
-		"instrument_token": "13276162",
-		"expiry": "30-03-2026",
-		"lot_size": "1250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DABUR26MARFUT"
-	},
-	{
-		"name": "DALBHARAT",
-		"instrument_token": "13276418",
-		"expiry": "30-03-2026",
-		"lot_size": "325",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DALBHARAT26MARFUT"
-	},
-	{
-		"name": "DELHIVERY",
-		"instrument_token": "13276674",
-		"expiry": "30-03-2026",
-		"lot_size": "2075",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DELHIVERY26MARFUT"
-	},
-	{
-		"name": "DIVISLAB",
-		"instrument_token": "13277442",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DIVISLAB26MARFUT"
-	},
-	{
-		"name": "DIXON",
-		"instrument_token": "13277698",
-		"expiry": "30-03-2026",
-		"lot_size": "50",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DIXON26MARFUT"
-	},
-	{
-		"name": "DLF",
-		"instrument_token": "13278978",
-		"expiry": "30-03-2026",
-		"lot_size": "825",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DLF26MARFUT"
-	},
-	{
-		"name": "DMART",
-		"instrument_token": "13279234",
-		"expiry": "30-03-2026",
-		"lot_size": "150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DMART26MARFUT"
-	},
-	{
-		"name": "DRREDDY",
-		"instrument_token": "13279490",
-		"expiry": "30-03-2026",
-		"lot_size": "625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "DRREDDY26MARFUT"
-	},
-	{
-		"name": "EICHERMOT",
-		"instrument_token": "13279746",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "EICHERMOT26MARFUT"
-	},
-	{
-		"name": "ETERNAL",
-		"instrument_token": "13280002",
-		"expiry": "30-03-2026",
-		"lot_size": "2425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ETERNAL26MARFUT"
-	},
-	{
-		"name": "EXIDEIND",
-		"instrument_token": "13280258",
-		"expiry": "30-03-2026",
-		"lot_size": "1800",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "EXIDEIND26MARFUT"
-	},
-	{
-		"name": "FEDERALBNK",
-		"instrument_token": "13280514",
-		"expiry": "30-03-2026",
-		"lot_size": "5000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "FEDERALBNK26MARFUT"
-	},
-	{
-		"name": "FINNIFTY",
-		"instrument_token": "13238274",
-		"expiry": "30-03-2026",
-		"lot_size": "60",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "FINNIFTY26MARFUT"
-	},
-	{
-		"name": "FORTIS",
-		"instrument_token": "13280770",
-		"expiry": "30-03-2026",
-		"lot_size": "775",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "FORTIS26MARFUT"
-	},
-	{
-		"name": "GAIL",
-		"instrument_token": "13281026",
-		"expiry": "30-03-2026",
-		"lot_size": "3150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "GAIL26MARFUT"
-	},
-	{
-		"name": "GLENMARK",
-		"instrument_token": "13281282",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "GLENMARK26MARFUT"
-	},
-	{
-		"name": "GMRAIRPORT",
-		"instrument_token": "13281538",
-		"expiry": "30-03-2026",
-		"lot_size": "6975",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "GMRAIRPORT26MARFUT"
-	},
-	{
-		"name": "GODREJCP",
-		"instrument_token": "13281794",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "GODREJCP26MARFUT"
-	},
-	{
-		"name": "GODREJPROP",
-		"instrument_token": "13282050",
-		"expiry": "30-03-2026",
-		"lot_size": "275",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "GODREJPROP26MARFUT"
-	},
-	{
-		"name": "GRASIM",
-		"instrument_token": "13282306",
-		"expiry": "30-03-2026",
-		"lot_size": "250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "GRASIM26MARFUT"
-	},
-	{
-		"name": "HAL",
-		"instrument_token": "13282562",
-		"expiry": "30-03-2026",
-		"lot_size": "150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HAL26MARFUT"
-	},
-	{
-		"name": "HAVELLS",
-		"instrument_token": "13282818",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HAVELLS26MARFUT"
-	},
-	{
-		"name": "HCLTECH",
-		"instrument_token": "13284098",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HCLTECH26MARFUT"
-	},
-	{
-		"name": "HDFCAMC",
-		"instrument_token": "13284354",
-		"expiry": "30-03-2026",
-		"lot_size": "300",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HDFCAMC26MARFUT"
-	},
-	{
-		"name": "HDFCBANK",
-		"instrument_token": "13284610",
-		"expiry": "30-03-2026",
-		"lot_size": "550",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HDFCBANK26MARFUT"
-	},
-	{
-		"name": "HDFCLIFE",
-		"instrument_token": "13284866",
-		"expiry": "30-03-2026",
-		"lot_size": "1100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HDFCLIFE26MARFUT"
-	},
-	{
-		"name": "HEROMOTOCO",
-		"instrument_token": "13286146",
-		"expiry": "30-03-2026",
-		"lot_size": "150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HEROMOTOCO26MARFUT"
-	},
-	{
-		"name": "HINDALCO",
-		"instrument_token": "13286402",
-		"expiry": "30-03-2026",
-		"lot_size": "700",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HINDALCO26MARFUT"
-	},
-	{
-		"name": "HINDPETRO",
-		"instrument_token": "13286658",
-		"expiry": "30-03-2026",
-		"lot_size": "2025",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HINDPETRO26MARFUT"
-	},
-	{
-		"name": "HINDUNILVR",
-		"instrument_token": "13286914",
-		"expiry": "30-03-2026",
-		"lot_size": "300",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HINDUNILVR26MARFUT"
-	},
-	{
-		"name": "HINDZINC",
-		"instrument_token": "13287170",
-		"expiry": "30-03-2026",
-		"lot_size": "1225",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HINDZINC26MARFUT"
-	},
-	{
-		"name": "HUDCO",
-		"instrument_token": "13287426",
-		"expiry": "30-03-2026",
-		"lot_size": "2775",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "HUDCO26MARFUT"
-	},
-	{
-		"name": "ICICIBANK",
-		"instrument_token": "13288706",
-		"expiry": "30-03-2026",
-		"lot_size": "700",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ICICIBANK26MARFUT"
-	},
-	{
-		"name": "ICICIGI",
-		"instrument_token": "13288962",
-		"expiry": "30-03-2026",
-		"lot_size": "325",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ICICIGI26MARFUT"
-	},
-	{
-		"name": "ICICIPRULI",
-		"instrument_token": "13289474",
-		"expiry": "30-03-2026",
-		"lot_size": "925",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ICICIPRULI26MARFUT"
-	},
-	{
-		"name": "IDEA",
-		"instrument_token": "13289730",
-		"expiry": "30-03-2026",
-		"lot_size": "71475",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "IDEA26MARFUT"
-	},
-	{
-		"name": "IDFCFIRSTB",
-		"instrument_token": "13290754",
-		"expiry": "30-03-2026",
-		"lot_size": "9275",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "IDFCFIRSTB26MARFUT"
-	},
-	{
-		"name": "IEX",
-		"instrument_token": "13291010",
-		"expiry": "30-03-2026",
-		"lot_size": "3750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "IEX26MARFUT"
-	},
-	{
-		"name": "INDHOTEL",
-		"instrument_token": "13291266",
-		"expiry": "30-03-2026",
-		"lot_size": "1000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INDHOTEL26MARFUT"
-	},
-	{
-		"name": "INDIANB",
-		"instrument_token": "13291522",
-		"expiry": "30-03-2026",
-		"lot_size": "1000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INDIANB26MARFUT"
-	},
-	{
-		"name": "INDIGO",
-		"instrument_token": "13292034",
-		"expiry": "30-03-2026",
-		"lot_size": "150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INDIGO26MARFUT"
-	},
-	{
-		"name": "INDUSINDBK",
-		"instrument_token": "13292290",
-		"expiry": "30-03-2026",
-		"lot_size": "700",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INDUSINDBK26MARFUT"
-	},
-	{
-		"name": "INDUSTOWER",
-		"instrument_token": "13293570",
-		"expiry": "30-03-2026",
-		"lot_size": "1700",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INDUSTOWER26MARFUT"
-	},
-	{
-		"name": "INFY",
-		"instrument_token": "13293826",
-		"expiry": "30-03-2026",
-		"lot_size": "400",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INFY26MARFUT"
-	},
-	{
-		"name": "INOXWIND",
-		"instrument_token": "13294850",
-		"expiry": "30-03-2026",
-		"lot_size": "3575",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "INOXWIND26MARFUT"
-	},
-	{
-		"name": "IOC",
-		"instrument_token": "13295106",
-		"expiry": "30-03-2026",
-		"lot_size": "4875",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "IOC26MARFUT"
-	},
-	{
-		"name": "IREDA",
-		"instrument_token": "13295362",
-		"expiry": "30-03-2026",
-		"lot_size": "3450",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "IREDA26MARFUT"
-	},
-	{
-		"name": "IRFC",
-		"instrument_token": "13295618",
-		"expiry": "30-03-2026",
-		"lot_size": "4250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "IRFC26MARFUT"
-	},
-	{
-		"name": "ITC",
-		"instrument_token": "13296386",
-		"expiry": "30-03-2026",
-		"lot_size": "1600",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ITC26MARFUT"
-	},
-	{
-		"name": "JINDALSTEL",
-		"instrument_token": "13296642",
-		"expiry": "30-03-2026",
-		"lot_size": "625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "JINDALSTEL26MARFUT"
-	},
-	{
-		"name": "JIOFIN",
-		"instrument_token": "13298434",
-		"expiry": "30-03-2026",
-		"lot_size": "2350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "JIOFIN26MARFUT"
-	},
-	{
-		"name": "JSWENERGY",
-		"instrument_token": "13298690",
-		"expiry": "30-03-2026",
-		"lot_size": "1000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "JSWENERGY26MARFUT"
-	},
-	{
-		"name": "JSWSTEEL",
-		"instrument_token": "13298946",
-		"expiry": "30-03-2026",
-		"lot_size": "675",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "JSWSTEEL26MARFUT"
-	},
-	{
-		"name": "JUBLFOOD",
-		"instrument_token": "13299202",
-		"expiry": "30-03-2026",
-		"lot_size": "1250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "JUBLFOOD26MARFUT"
-	},
-	{
-		"name": "KALYANKJIL",
-		"instrument_token": "13299458",
-		"expiry": "30-03-2026",
-		"lot_size": "1175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "KALYANKJIL26MARFUT"
-	},
-	{
-		"name": "KAYNES",
-		"instrument_token": "13299714",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "KAYNES26MARFUT"
-	},
-	{
-		"name": "KEI",
-		"instrument_token": "13299970",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "KEI26MARFUT"
-	},
-	{
-		"name": "KFINTECH",
-		"instrument_token": "13300226",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "KFINTECH26MARFUT"
-	},
-	{
-		"name": "KOTAKBANK",
-		"instrument_token": "13300994",
-		"expiry": "30-03-2026",
-		"lot_size": "2000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "KOTAKBANK26MARFUT"
-	},
-	{
-		"name": "KPITTECH",
-		"instrument_token": "13301250",
-		"expiry": "30-03-2026",
-		"lot_size": "425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "KPITTECH26MARFUT"
-	},
-	{
-		"name": "LAURUSLABS",
-		"instrument_token": "13302018",
-		"expiry": "30-03-2026",
-		"lot_size": "850",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LAURUSLABS26MARFUT"
-	},
-	{
-		"name": "LICHSGFIN",
-		"instrument_token": "13302274",
-		"expiry": "30-03-2026",
-		"lot_size": "1000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LICHSGFIN26MARFUT"
-	},
-	{
-		"name": "LICI",
-		"instrument_token": "13302530",
-		"expiry": "30-03-2026",
-		"lot_size": "700",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LICI26MARFUT"
-	},
-	{
-		"name": "LODHA",
-		"instrument_token": "13302786",
-		"expiry": "30-03-2026",
-		"lot_size": "450",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LODHA26MARFUT"
-	},
-	{
-		"name": "LT",
-		"instrument_token": "13303298",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LT26MARFUT"
-	},
-	{
-		"name": "LTF",
-		"instrument_token": "13303554",
-		"expiry": "30-03-2026",
-		"lot_size": "2250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LTF26MARFUT"
-	},
-	{
-		"name": "LTM",
-		"instrument_token": "13303810",
-		"expiry": "30-03-2026",
-		"lot_size": "150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LTM26MARFUT"
-	},
-	{
-		"name": "LUPIN",
-		"instrument_token": "13304066",
-		"expiry": "30-03-2026",
-		"lot_size": "425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "LUPIN26MARFUT"
-	},
-	{
-		"name": "M&M",
-		"instrument_token": "13304578",
-		"expiry": "30-03-2026",
-		"lot_size": "200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "M&M26MARFUT"
-	},
-	{
-		"name": "MANAPPURAM",
-		"instrument_token": "13304834",
-		"expiry": "30-03-2026",
-		"lot_size": "3000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MANAPPURAM26MARFUT"
-	},
-	{
-		"name": "MANKIND",
-		"instrument_token": "13305090",
-		"expiry": "30-03-2026",
-		"lot_size": "225",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MANKIND26MARFUT"
-	},
-	{
-		"name": "MARICO",
-		"instrument_token": "13305346",
-		"expiry": "30-03-2026",
-		"lot_size": "1200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MARICO26MARFUT"
-	},
-	{
-		"name": "MARUTI",
-		"instrument_token": "13305602",
-		"expiry": "30-03-2026",
-		"lot_size": "50",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MARUTI26MARFUT"
-	},
-	{
-		"name": "MAXHEALTH",
-		"instrument_token": "13305858",
-		"expiry": "30-03-2026",
-		"lot_size": "525",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MAXHEALTH26MARFUT"
-	},
-	{
-		"name": "MAZDOCK",
-		"instrument_token": "13306114",
-		"expiry": "30-03-2026",
-		"lot_size": "200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MAZDOCK26MARFUT"
-	},
-	{
-		"name": "MCX",
-		"instrument_token": "13306370",
-		"expiry": "30-03-2026",
-		"lot_size": "625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MCX26MARFUT"
-	},
-	{
-		"name": "MFSL",
-		"instrument_token": "13306626",
-		"expiry": "30-03-2026",
-		"lot_size": "400",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MFSL26MARFUT"
-	},
-	{
-		"name": "MIDCPNIFTY",
-		"instrument_token": "13238530",
-		"expiry": "30-03-2026",
-		"lot_size": "120",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MIDCPNIFTY26MARFUT"
-	},
-	{
-		"name": "MOTHERSON",
-		"instrument_token": "13306882",
-		"expiry": "30-03-2026",
-		"lot_size": "6150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MOTHERSON26MARFUT"
-	},
-	{
-		"name": "MPHASIS",
-		"instrument_token": "13307138",
-		"expiry": "30-03-2026",
-		"lot_size": "275",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MPHASIS26MARFUT"
-	},
-	{
-		"name": "MUTHOOTFIN",
-		"instrument_token": "13307394",
-		"expiry": "30-03-2026",
-		"lot_size": "275",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "MUTHOOTFIN26MARFUT"
-	},
-	{
-		"name": "NATIONALUM",
-		"instrument_token": "13307650",
-		"expiry": "30-03-2026",
-		"lot_size": "3750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NATIONALUM26MARFUT"
-	},
-	{
-		"name": "NAUKRI",
-		"instrument_token": "13307906",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NAUKRI26MARFUT"
-	},
-	{
-		"name": "NBCC",
-		"instrument_token": "13308162",
-		"expiry": "30-03-2026",
-		"lot_size": "6500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NBCC26MARFUT"
-	},
-	{
-		"name": "NESTLEIND",
-		"instrument_token": "13308418",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NESTLEIND26MARFUT"
-	},
-	{
-		"name": "NHPC",
-		"instrument_token": "13308674",
-		"expiry": "30-03-2026",
-		"lot_size": "6400",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NHPC26MARFUT"
-	},
-	{
-		"name": "NIFTYNXT50",
-		"instrument_token": "13239042",
-		"expiry": "30-03-2026",
-		"lot_size": "25",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NIFTYNXT5026MARFUT"
-	},
-	{
-		"name": "NMDC",
-		"instrument_token": "13308930",
-		"expiry": "30-03-2026",
-		"lot_size": "6750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NMDC26MARFUT"
-	},
-	{
-		"name": "NTPC",
-		"instrument_token": "13309186",
-		"expiry": "30-03-2026",
-		"lot_size": "1500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NTPC26MARFUT"
-	},
-	{
-		"name": "NUVAMA",
-		"instrument_token": "13309442",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NUVAMA26MARFUT"
-	},
-	{
-		"name": "NYKAA",
-		"instrument_token": "13310210",
-		"expiry": "30-03-2026",
-		"lot_size": "3125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "NYKAA26MARFUT"
-	},
-	{
-		"name": "OBEROIRLTY",
-		"instrument_token": "13310466",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "OBEROIRLTY26MARFUT"
-	},
-	{
-		"name": "OFSS",
-		"instrument_token": "13310722",
-		"expiry": "30-03-2026",
-		"lot_size": "75",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "OFSS26MARFUT"
-	},
-	{
-		"name": "OIL",
-		"instrument_token": "13310978",
-		"expiry": "30-03-2026",
-		"lot_size": "1400",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "OIL26MARFUT"
-	},
-	{
-		"name": "ONGC",
-		"instrument_token": "13311234",
-		"expiry": "30-03-2026",
-		"lot_size": "2250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ONGC26MARFUT"
-	},
-	{
-		"name": "PAGEIND",
-		"instrument_token": "13311490",
-		"expiry": "30-03-2026",
-		"lot_size": "15",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PAGEIND26MARFUT"
-	},
-	{
-		"name": "PATANJALI",
-		"instrument_token": "13311746",
-		"expiry": "30-03-2026",
-		"lot_size": "900",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PATANJALI26MARFUT"
-	},
-	{
-		"name": "PAYTM",
-		"instrument_token": "13312002",
-		"expiry": "30-03-2026",
-		"lot_size": "725",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PAYTM26MARFUT"
-	},
-	{
-		"name": "PERSISTENT",
-		"instrument_token": "13312258",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PERSISTENT26MARFUT"
-	},
-	{
-		"name": "PETRONET",
-		"instrument_token": "13312514",
-		"expiry": "30-03-2026",
-		"lot_size": "1900",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PETRONET26MARFUT"
-	},
-	{
-		"name": "PFC",
-		"instrument_token": "13312770",
-		"expiry": "30-03-2026",
-		"lot_size": "1300",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PFC26MARFUT"
-	},
-	{
-		"name": "PGEL",
-		"instrument_token": "13313026",
-		"expiry": "30-03-2026",
-		"lot_size": "950",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PGEL26MARFUT"
-	},
-	{
-		"name": "PHOENIXLTD",
-		"instrument_token": "13313282",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PHOENIXLTD26MARFUT"
-	},
-	{
-		"name": "PIDILITIND",
-		"instrument_token": "13313538",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PIDILITIND26MARFUT"
-	},
-	{
-		"name": "PIIND",
-		"instrument_token": "13313794",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PIIND26MARFUT"
-	},
-	{
-		"name": "PNB",
-		"instrument_token": "13314050",
-		"expiry": "30-03-2026",
-		"lot_size": "8000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PNB26MARFUT"
-	},
-	{
-		"name": "PNBHOUSING",
-		"instrument_token": "13314562",
-		"expiry": "30-03-2026",
-		"lot_size": "650",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PNBHOUSING26MARFUT"
-	},
-	{
-		"name": "POLICYBZR",
-		"instrument_token": "13314818",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "POLICYBZR26MARFUT"
-	},
-	{
-		"name": "POLYCAB",
-		"instrument_token": "13315074",
-		"expiry": "30-03-2026",
-		"lot_size": "125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "POLYCAB26MARFUT"
-	},
-	{
-		"name": "POWERGRID",
-		"instrument_token": "13315330",
-		"expiry": "30-03-2026",
-		"lot_size": "1900",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "POWERGRID26MARFUT"
-	},
-	{
-		"name": "POWERINDIA",
-		"instrument_token": "13315586",
-		"expiry": "30-03-2026",
-		"lot_size": "50",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "POWERINDIA26MARFUT"
-	},
-	{
-		"name": "PPLPHARMA",
-		"instrument_token": "13315842",
-		"expiry": "30-03-2026",
-		"lot_size": "2625",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PPLPHARMA26MARFUT"
-	},
-	{
-		"name": "PREMIERENE",
-		"instrument_token": "13316610",
-		"expiry": "30-03-2026",
-		"lot_size": "575",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PREMIERENE26MARFUT"
-	},
-	{
-		"name": "PRESTIGE",
-		"instrument_token": "13316866",
-		"expiry": "30-03-2026",
-		"lot_size": "450",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "PRESTIGE26MARFUT"
-	},
-	{
-		"name": "RBLBANK",
-		"instrument_token": "13317122",
-		"expiry": "30-03-2026",
-		"lot_size": "3175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "RBLBANK26MARFUT"
-	},
-	{
-		"name": "RECLTD",
-		"instrument_token": "13317378",
-		"expiry": "30-03-2026",
-		"lot_size": "1400",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "RECLTD26MARFUT"
-	},
-	{
-		"name": "RELIANCE",
-		"instrument_token": "13317890",
-		"expiry": "30-03-2026",
-		"lot_size": "500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "RELIANCE26MARFUT"
-	},
-	{
-		"name": "RVNL",
-		"instrument_token": "13318146",
-		"expiry": "30-03-2026",
-		"lot_size": "1525",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "RVNL26MARFUT"
-	},
-	{
-		"name": "SAIL",
-		"instrument_token": "13318658",
-		"expiry": "30-03-2026",
-		"lot_size": "4700",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SAIL26MARFUT"
-	},
-	{
-		"name": "SAMMAANCAP",
-		"instrument_token": "13318914",
-		"expiry": "30-03-2026",
-		"lot_size": "4300",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SAMMAANCAP26MARFUT"
-	},
-	{
-		"name": "SBICARD",
-		"instrument_token": "13319170",
-		"expiry": "30-03-2026",
-		"lot_size": "800",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SBICARD26MARFUT"
-	},
-	{
-		"name": "SBILIFE",
-		"instrument_token": "13319426",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SBILIFE26MARFUT"
-	},
-	{
-		"name": "SBIN",
-		"instrument_token": "13319682",
-		"expiry": "30-03-2026",
-		"lot_size": "750",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SBIN26MARFUT"
-	},
-	{
-		"name": "SHREECEM",
-		"instrument_token": "13319938",
-		"expiry": "30-03-2026",
-		"lot_size": "25",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SHREECEM26MARFUT"
-	},
-	{
-		"name": "SHRIRAMFIN",
-		"instrument_token": "13320450",
-		"expiry": "30-03-2026",
-		"lot_size": "825",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SHRIRAMFIN26MARFUT"
-	},
-	{
-		"name": "SIEMENS",
-		"instrument_token": "13320706",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SIEMENS26MARFUT"
-	},
-	{
-		"name": "SOLARINDS",
-		"instrument_token": "13320962",
-		"expiry": "30-03-2026",
-		"lot_size": "50",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SOLARINDS26MARFUT"
-	},
-	{
-		"name": "SONACOMS",
-		"instrument_token": "13321218",
-		"expiry": "30-03-2026",
-		"lot_size": "1225",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SONACOMS26MARFUT"
-	},
-	{
-		"name": "SRF",
-		"instrument_token": "13321474",
-		"expiry": "30-03-2026",
-		"lot_size": "200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SRF26MARFUT"
-	},
-	{
-		"name": "SUNPHARMA",
-		"instrument_token": "13321730",
-		"expiry": "30-03-2026",
-		"lot_size": "350",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SUNPHARMA26MARFUT"
-	},
-	{
-		"name": "SUPREMEIND",
-		"instrument_token": "13321986",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SUPREMEIND26MARFUT"
-	},
-	{
-		"name": "SUZLON",
-		"instrument_token": "13322242",
-		"expiry": "30-03-2026",
-		"lot_size": "9025",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SUZLON26MARFUT"
-	},
-	{
-		"name": "SWIGGY",
-		"instrument_token": "13323778",
-		"expiry": "30-03-2026",
-		"lot_size": "1300",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SWIGGY26MARFUT"
-	},
-	{
-		"name": "SYNGENE",
-		"instrument_token": "13324034",
-		"expiry": "30-03-2026",
-		"lot_size": "1000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "SYNGENE26MARFUT"
-	},
-	{
-		"name": "TATACONSUM",
-		"instrument_token": "13324546",
-		"expiry": "30-03-2026",
-		"lot_size": "550",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TATACONSUM26MARFUT"
-	},
-	{
-		"name": "TATAELXSI",
-		"instrument_token": "13324802",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TATAELXSI26MARFUT"
-	},
-	{
-		"name": "TATAPOWER",
-		"instrument_token": "13325058",
-		"expiry": "30-03-2026",
-		"lot_size": "1450",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TATAPOWER26MARFUT"
-	},
-	{
-		"name": "TATASTEEL",
-		"instrument_token": "13325314",
-		"expiry": "30-03-2026",
-		"lot_size": "5500",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TATASTEEL26MARFUT"
-	},
-	{
-		"name": "TATATECH",
-		"instrument_token": "13325570",
-		"expiry": "30-03-2026",
-		"lot_size": "800",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TATATECH26MARFUT"
-	},
-	{
-		"name": "TCS",
-		"instrument_token": "13325826",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TCS26MARFUT"
-	},
-	{
-		"name": "TECHM",
-		"instrument_token": "13326082",
-		"expiry": "30-03-2026",
-		"lot_size": "600",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TECHM26MARFUT"
-	},
-	{
-		"name": "TIINDIA",
-		"instrument_token": "13326338",
-		"expiry": "30-03-2026",
-		"lot_size": "200",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TIINDIA26MARFUT"
-	},
-	{
-		"name": "TITAN",
-		"instrument_token": "13326594",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TITAN26MARFUT"
-	},
-	{
-		"name": "TMPV",
-		"instrument_token": "13326850",
-		"expiry": "30-03-2026",
-		"lot_size": "800",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TMPV26MARFUT"
-	},
-	{
-		"name": "TORNTPHARM",
-		"instrument_token": "13327106",
-		"expiry": "30-03-2026",
-		"lot_size": "250",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TORNTPHARM26MARFUT"
-	},
-	{
-		"name": "TORNTPOWER",
-		"instrument_token": "13327362",
-		"expiry": "30-03-2026",
-		"lot_size": "425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TORNTPOWER26MARFUT"
-	},
-	{
-		"name": "TRENT",
-		"instrument_token": "13327618",
-		"expiry": "30-03-2026",
-		"lot_size": "100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TRENT26MARFUT"
-	},
-	{
-		"name": "TVSMOTOR",
-		"instrument_token": "13327874",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "TVSMOTOR26MARFUT"
-	},
-	{
-		"name": "ULTRACEMCO",
-		"instrument_token": "13328130",
-		"expiry": "30-03-2026",
-		"lot_size": "50",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ULTRACEMCO26MARFUT"
-	},
-	{
-		"name": "UNIONBANK",
-		"instrument_token": "13328386",
-		"expiry": "30-03-2026",
-		"lot_size": "4425",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "UNIONBANK26MARFUT"
-	},
-	{
-		"name": "UNITDSPR",
-		"instrument_token": "13328642",
-		"expiry": "30-03-2026",
-		"lot_size": "400",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "UNITDSPR26MARFUT"
-	},
-	{
-		"name": "UNOMINDA",
-		"instrument_token": "13328898",
-		"expiry": "30-03-2026",
-		"lot_size": "550",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "UNOMINDA26MARFUT"
-	},
-	{
-		"name": "UPL",
-		"instrument_token": "13329154",
-		"expiry": "30-03-2026",
-		"lot_size": "1355",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "UPL26MARFUT"
-	},
-	{
-		"name": "VBL",
-		"instrument_token": "13329410",
-		"expiry": "30-03-2026",
-		"lot_size": "1125",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "VBL26MARFUT"
-	},
-	{
-		"name": "VEDL",
-		"instrument_token": "13329666",
-		"expiry": "30-03-2026",
-		"lot_size": "1150",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "VEDL26MARFUT"
-	},
-	{
-		"name": "VOLTAS",
-		"instrument_token": "13329922",
-		"expiry": "30-03-2026",
-		"lot_size": "375",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "VOLTAS26MARFUT"
-	},
-	{
-		"name": "WAAREEENER",
-		"instrument_token": "13330690",
-		"expiry": "30-03-2026",
-		"lot_size": "175",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "WAAREEENER26MARFUT"
-	},
-	{
-		"name": "WIPRO",
-		"instrument_token": "13330946",
-		"expiry": "30-03-2026",
-		"lot_size": "3000",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "WIPRO26MARFUT"
-	},
-	{
-		"name": "YESBANK",
-		"instrument_token": "13334786",
-		"expiry": "30-03-2026",
-		"lot_size": "31100",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "YESBANK26MARFUT"
-	},
-	{
-		"name": "ZYDUSLIFE",
-		"instrument_token": "13335042",
-		"expiry": "30-03-2026",
-		"lot_size": "900",
-		"instrument_type": "FUT",
-		"strike": "0",
-		"tradingsymbol": "ZYDUSLIFE26MARFUT"
+		"name" : "NIFTY",
+		"instrument_token" : "17072898",
+		"expiry" : "28-04-2026",
+		"lot_size" : "65",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NIFTY26APRFUT"
+	},
+	{
+		"name" : "BANKNIFTY",
+		"instrument_token" : "17072130",
+		"expiry" : "28-04-2026",
+		"lot_size" : "30",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BANKNIFTY26APRFUT"
+	},
+	{
+		"name" : "360ONE",
+		"instrument_token" : "17073410",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "360ONE26APRFUT"
+	},
+	{
+		"name" : "ABB",
+		"instrument_token" : "17073666",
+		"expiry" : "28-04-2026",
+		"lot_size" : "125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ABB26APRFUT"
+	},
+	{
+		"name" : "ABCAPITAL",
+		"instrument_token" : "17073922",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ABCAPITAL26APRFUT"
+	},
+	{
+		"name" : "ADANIENSOL",
+		"instrument_token" : "17074178",
+		"expiry" : "28-04-2026",
+		"lot_size" : "675",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ADANIENSOL26APRFUT"
+	},
+	{
+		"name" : "ADANIENT",
+		"instrument_token" : "17075970",
+		"expiry" : "28-04-2026",
+		"lot_size" : "309",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ADANIENT26APRFUT"
+	},
+	{
+		"name" : "ADANIGREEN",
+		"instrument_token" : "17076226",
+		"expiry" : "28-04-2026",
+		"lot_size" : "600",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ADANIGREEN26APRFUT"
+	},
+	{
+		"name" : "ADANIPORTS",
+		"instrument_token" : "17076482",
+		"expiry" : "28-04-2026",
+		"lot_size" : "475",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ADANIPORTS26APRFUT"
+	},
+	{
+		"name" : "ALKEM",
+		"instrument_token" : "17076738",
+		"expiry" : "28-04-2026",
+		"lot_size" : "125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ALKEM26APRFUT"
+	},
+	{
+		"name" : "AMBER",
+		"instrument_token" : "17076994",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "AMBER26APRFUT"
+	},
+	{
+		"name" : "AMBUJACEM",
+		"instrument_token" : "17077250",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1050",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "AMBUJACEM26APRFUT"
+	},
+	{
+		"name" : "ANGELONE",
+		"instrument_token" : "17077506",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ANGELONE26APRFUT"
+	},
+	{
+		"name" : "APLAPOLLO",
+		"instrument_token" : "17077762",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "APLAPOLLO26APRFUT"
+	},
+	{
+		"name" : "APOLLOHOSP",
+		"instrument_token" : "17078018",
+		"expiry" : "28-04-2026",
+		"lot_size" : "125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "APOLLOHOSP26APRFUT"
+	},
+	{
+		"name" : "ASHOKLEY",
+		"instrument_token" : "17078274",
+		"expiry" : "28-04-2026",
+		"lot_size" : "5000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ASHOKLEY26APRFUT"
+	},
+	{
+		"name" : "ASIANPAINT",
+		"instrument_token" : "17078530",
+		"expiry" : "28-04-2026",
+		"lot_size" : "250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ASIANPAINT26APRFUT"
+	},
+	{
+		"name" : "ASTRAL",
+		"instrument_token" : "17078786",
+		"expiry" : "28-04-2026",
+		"lot_size" : "425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ASTRAL26APRFUT"
+	},
+	{
+		"name" : "AUBANK",
+		"instrument_token" : "17079042",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "AUBANK26APRFUT"
+	},
+	{
+		"name" : "AUROPHARMA",
+		"instrument_token" : "17079298",
+		"expiry" : "28-04-2026",
+		"lot_size" : "550",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "AUROPHARMA26APRFUT"
+	},
+	{
+		"name" : "AXISBANK",
+		"instrument_token" : "17079554",
+		"expiry" : "28-04-2026",
+		"lot_size" : "625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "AXISBANK26APRFUT"
+	},
+	{
+		"name" : "BAJAJ-AUTO",
+		"instrument_token" : "17079810",
+		"expiry" : "28-04-2026",
+		"lot_size" : "75",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BAJAJ-AUTO26APRFUT"
+	},
+	{
+		"name" : "BAJAJFINSV",
+		"instrument_token" : "17080066",
+		"expiry" : "28-04-2026",
+		"lot_size" : "250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BAJAJFINSV26APRFUT"
+	},
+	{
+		"name" : "BAJAJHLDNG",
+		"instrument_token" : "17080322",
+		"expiry" : "28-04-2026",
+		"lot_size" : "50",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BAJAJHLDNG26APRFUT"
+	},
+	{
+		"name" : "BAJFINANCE",
+		"instrument_token" : "17080578",
+		"expiry" : "28-04-2026",
+		"lot_size" : "750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BAJFINANCE26APRFUT"
+	},
+	{
+		"name" : "BANDHANBNK",
+		"instrument_token" : "17080834",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3600",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BANDHANBNK26APRFUT"
+	},
+	{
+		"name" : "BANKBARODA",
+		"instrument_token" : "17081090",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2925",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BANKBARODA26APRFUT"
+	},
+	{
+		"name" : "BANKINDIA",
+		"instrument_token" : "17081346",
+		"expiry" : "28-04-2026",
+		"lot_size" : "5200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BANKINDIA26APRFUT"
+	},
+	{
+		"name" : "BDL",
+		"instrument_token" : "17081602",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BDL26APRFUT"
+	},
+	{
+		"name" : "BEL",
+		"instrument_token" : "17081858",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BEL26APRFUT"
+	},
+	{
+		"name" : "BHARATFORG",
+		"instrument_token" : "17082114",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BHARATFORG26APRFUT"
+	},
+	{
+		"name" : "BHARTIARTL",
+		"instrument_token" : "17082370",
+		"expiry" : "28-04-2026",
+		"lot_size" : "475",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BHARTIARTL26APRFUT"
+	},
+	{
+		"name" : "BHEL",
+		"instrument_token" : "17082626",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BHEL26APRFUT"
+	},
+	{
+		"name" : "BIOCON",
+		"instrument_token" : "17082882",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BIOCON26APRFUT"
+	},
+	{
+		"name" : "BLUESTARCO",
+		"instrument_token" : "17083138",
+		"expiry" : "28-04-2026",
+		"lot_size" : "325",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BLUESTARCO26APRFUT"
+	},
+	{
+		"name" : "BOSCHLTD",
+		"instrument_token" : "17083394",
+		"expiry" : "28-04-2026",
+		"lot_size" : "25",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BOSCHLTD26APRFUT"
+	},
+	{
+		"name" : "BPCL",
+		"instrument_token" : "17083650",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1975",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BPCL26APRFUT"
+	},
+	{
+		"name" : "BRITANNIA",
+		"instrument_token" : "17083906",
+		"expiry" : "28-04-2026",
+		"lot_size" : "125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BRITANNIA26APRFUT"
+	},
+	{
+		"name" : "BSE",
+		"instrument_token" : "17084162",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "BSE26APRFUT"
+	},
+	{
+		"name" : "CAMS",
+		"instrument_token" : "17084418",
+		"expiry" : "28-04-2026",
+		"lot_size" : "750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CAMS26APRFUT"
+	},
+	{
+		"name" : "CANBK",
+		"instrument_token" : "17084674",
+		"expiry" : "28-04-2026",
+		"lot_size" : "6750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CANBK26APRFUT"
+	},
+	{
+		"name" : "CDSL",
+		"instrument_token" : "17088258",
+		"expiry" : "28-04-2026",
+		"lot_size" : "475",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CDSL26APRFUT"
+	},
+	{
+		"name" : "CGPOWER",
+		"instrument_token" : "17088514",
+		"expiry" : "28-04-2026",
+		"lot_size" : "850",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CGPOWER26APRFUT"
+	},
+	{
+		"name" : "CHOLAFIN",
+		"instrument_token" : "17088770",
+		"expiry" : "28-04-2026",
+		"lot_size" : "625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CHOLAFIN26APRFUT"
+	},
+	{
+		"name" : "CIPLA",
+		"instrument_token" : "17094658",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CIPLA26APRFUT"
+	},
+	{
+		"name" : "COALINDIA",
+		"instrument_token" : "17094914",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "COALINDIA26APRFUT"
+	},
+	{
+		"name" : "COFORGE",
+		"instrument_token" : "17095170",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "COFORGE26APRFUT"
+	},
+	{
+		"name" : "COLPAL",
+		"instrument_token" : "17095426",
+		"expiry" : "28-04-2026",
+		"lot_size" : "225",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "COLPAL26APRFUT"
+	},
+	{
+		"name" : "CONCOR",
+		"instrument_token" : "17095682",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CONCOR26APRFUT"
+	},
+	{
+		"name" : "CROMPTON",
+		"instrument_token" : "17095938",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1800",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CROMPTON26APRFUT"
+	},
+	{
+		"name" : "CUMMINSIND",
+		"instrument_token" : "17096706",
+		"expiry" : "28-04-2026",
+		"lot_size" : "200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "CUMMINSIND26APRFUT"
+	},
+	{
+		"name" : "DABUR",
+		"instrument_token" : "17096962",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DABUR26APRFUT"
+	},
+	{
+		"name" : "DALBHARAT",
+		"instrument_token" : "17097218",
+		"expiry" : "28-04-2026",
+		"lot_size" : "325",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DALBHARAT26APRFUT"
+	},
+	{
+		"name" : "DELHIVERY",
+		"instrument_token" : "17097474",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2075",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DELHIVERY26APRFUT"
+	},
+	{
+		"name" : "DIVISLAB",
+		"instrument_token" : "17097730",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DIVISLAB26APRFUT"
+	},
+	{
+		"name" : "DIXON",
+		"instrument_token" : "17105666",
+		"expiry" : "28-04-2026",
+		"lot_size" : "50",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DIXON26APRFUT"
+	},
+	{
+		"name" : "DLF",
+		"instrument_token" : "17105922",
+		"expiry" : "28-04-2026",
+		"lot_size" : "825",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DLF26APRFUT"
+	},
+	{
+		"name" : "DMART",
+		"instrument_token" : "17106178",
+		"expiry" : "28-04-2026",
+		"lot_size" : "150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DMART26APRFUT"
+	},
+	{
+		"name" : "DRREDDY",
+		"instrument_token" : "17106434",
+		"expiry" : "28-04-2026",
+		"lot_size" : "625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "DRREDDY26APRFUT"
+	},
+	{
+		"name" : "EICHERMOT",
+		"instrument_token" : "17106690",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "EICHERMOT26APRFUT"
+	},
+	{
+		"name" : "ETERNAL",
+		"instrument_token" : "17106946",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ETERNAL26APRFUT"
+	},
+	{
+		"name" : "EXIDEIND",
+		"instrument_token" : "17107202",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1800",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "EXIDEIND26APRFUT"
+	},
+	{
+		"name" : "FEDERALBNK",
+		"instrument_token" : "17107458",
+		"expiry" : "28-04-2026",
+		"lot_size" : "5000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "FEDERALBNK26APRFUT"
+	},
+	{
+		"name" : "FINNIFTY",
+		"instrument_token" : "17072386",
+		"expiry" : "28-04-2026",
+		"lot_size" : "60",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "FINNIFTY26APRFUT"
+	},
+	{
+		"name" : "FORTIS",
+		"instrument_token" : "17107714",
+		"expiry" : "28-04-2026",
+		"lot_size" : "775",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "FORTIS26APRFUT"
+	},
+	{
+		"name" : "GAIL",
+		"instrument_token" : "17109762",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "GAIL26APRFUT"
+	},
+	{
+		"name" : "GLENMARK",
+		"instrument_token" : "17110018",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "GLENMARK26APRFUT"
+	},
+	{
+		"name" : "GMRAIRPORT",
+		"instrument_token" : "17110530",
+		"expiry" : "28-04-2026",
+		"lot_size" : "6975",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "GMRAIRPORT26APRFUT"
+	},
+	{
+		"name" : "GODREJCP",
+		"instrument_token" : "17110786",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "GODREJCP26APRFUT"
+	},
+	{
+		"name" : "GODREJPROP",
+		"instrument_token" : "17111042",
+		"expiry" : "28-04-2026",
+		"lot_size" : "275",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "GODREJPROP26APRFUT"
+	},
+	{
+		"name" : "GRASIM",
+		"instrument_token" : "17111298",
+		"expiry" : "28-04-2026",
+		"lot_size" : "250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "GRASIM26APRFUT"
+	},
+	{
+		"name" : "HAL",
+		"instrument_token" : "17111554",
+		"expiry" : "28-04-2026",
+		"lot_size" : "150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HAL26APRFUT"
+	},
+	{
+		"name" : "HAVELLS",
+		"instrument_token" : "17111810",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HAVELLS26APRFUT"
+	},
+	{
+		"name" : "HCLTECH",
+		"instrument_token" : "17112066",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HCLTECH26APRFUT"
+	},
+	{
+		"name" : "HDFCAMC",
+		"instrument_token" : "17112322",
+		"expiry" : "28-04-2026",
+		"lot_size" : "300",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HDFCAMC26APRFUT"
+	},
+	{
+		"name" : "HDFCBANK",
+		"instrument_token" : "17112578",
+		"expiry" : "28-04-2026",
+		"lot_size" : "550",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HDFCBANK26APRFUT"
+	},
+	{
+		"name" : "HDFCLIFE",
+		"instrument_token" : "17112834",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HDFCLIFE26APRFUT"
+	},
+	{
+		"name" : "HEROMOTOCO",
+		"instrument_token" : "17113090",
+		"expiry" : "28-04-2026",
+		"lot_size" : "150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HEROMOTOCO26APRFUT"
+	},
+	{
+		"name" : "HINDALCO",
+		"instrument_token" : "17113346",
+		"expiry" : "28-04-2026",
+		"lot_size" : "700",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HINDALCO26APRFUT"
+	},
+	{
+		"name" : "HINDPETRO",
+		"instrument_token" : "17113602",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2025",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HINDPETRO26APRFUT"
+	},
+	{
+		"name" : "HINDUNILVR",
+		"instrument_token" : "17113858",
+		"expiry" : "28-04-2026",
+		"lot_size" : "300",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HINDUNILVR26APRFUT"
+	},
+	{
+		"name" : "HINDZINC",
+		"instrument_token" : "17114114",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1225",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HINDZINC26APRFUT"
+	},
+	{
+		"name" : "HUDCO",
+		"instrument_token" : "17114370",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2775",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "HUDCO26APRFUT"
+	},
+	{
+		"name" : "ICICIBANK",
+		"instrument_token" : "17114626",
+		"expiry" : "28-04-2026",
+		"lot_size" : "700",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ICICIBANK26APRFUT"
+	},
+	{
+		"name" : "ICICIGI",
+		"instrument_token" : "17114882",
+		"expiry" : "28-04-2026",
+		"lot_size" : "325",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ICICIGI26APRFUT"
+	},
+	{
+		"name" : "ICICIPRULI",
+		"instrument_token" : "17115138",
+		"expiry" : "28-04-2026",
+		"lot_size" : "925",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ICICIPRULI26APRFUT"
+	},
+	{
+		"name" : "IDEA",
+		"instrument_token" : "17115394",
+		"expiry" : "28-04-2026",
+		"lot_size" : "71475",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "IDEA26APRFUT"
+	},
+	{
+		"name" : "IDFCFIRSTB",
+		"instrument_token" : "17115650",
+		"expiry" : "28-04-2026",
+		"lot_size" : "9275",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "IDFCFIRSTB26APRFUT"
+	},
+	{
+		"name" : "IEX",
+		"instrument_token" : "17115906",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "IEX26APRFUT"
+	},
+	{
+		"name" : "INDHOTEL",
+		"instrument_token" : "17116162",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INDHOTEL26APRFUT"
+	},
+	{
+		"name" : "INDIANB",
+		"instrument_token" : "17116418",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INDIANB26APRFUT"
+	},
+	{
+		"name" : "INDIGO",
+		"instrument_token" : "17116674",
+		"expiry" : "28-04-2026",
+		"lot_size" : "150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INDIGO26APRFUT"
+	},
+	{
+		"name" : "INDUSINDBK",
+		"instrument_token" : "17116930",
+		"expiry" : "28-04-2026",
+		"lot_size" : "700",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INDUSINDBK26APRFUT"
+	},
+	{
+		"name" : "INDUSTOWER",
+		"instrument_token" : "17117186",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1700",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INDUSTOWER26APRFUT"
+	},
+	{
+		"name" : "INFY",
+		"instrument_token" : "17117442",
+		"expiry" : "28-04-2026",
+		"lot_size" : "400",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INFY26APRFUT"
+	},
+	{
+		"name" : "INOXWIND",
+		"instrument_token" : "17117698",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3575",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "INOXWIND26APRFUT"
+	},
+	{
+		"name" : "IOC",
+		"instrument_token" : "17117954",
+		"expiry" : "28-04-2026",
+		"lot_size" : "4875",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "IOC26APRFUT"
+	},
+	{
+		"name" : "IREDA",
+		"instrument_token" : "17118210",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3450",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "IREDA26APRFUT"
+	},
+	{
+		"name" : "IRFC",
+		"instrument_token" : "17118466",
+		"expiry" : "28-04-2026",
+		"lot_size" : "4250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "IRFC26APRFUT"
+	},
+	{
+		"name" : "ITC",
+		"instrument_token" : "17118722",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1600",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ITC26APRFUT"
+	},
+	{
+		"name" : "JINDALSTEL",
+		"instrument_token" : "17118978",
+		"expiry" : "28-04-2026",
+		"lot_size" : "625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "JINDALSTEL26APRFUT"
+	},
+	{
+		"name" : "JIOFIN",
+		"instrument_token" : "17119234",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "JIOFIN26APRFUT"
+	},
+	{
+		"name" : "JSWENERGY",
+		"instrument_token" : "17119490",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "JSWENERGY26APRFUT"
+	},
+	{
+		"name" : "JSWSTEEL",
+		"instrument_token" : "17119746",
+		"expiry" : "28-04-2026",
+		"lot_size" : "675",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "JSWSTEEL26APRFUT"
+	},
+	{
+		"name" : "JUBLFOOD",
+		"instrument_token" : "17120002",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "JUBLFOOD26APRFUT"
+	},
+	{
+		"name" : "KALYANKJIL",
+		"instrument_token" : "17120258",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "KALYANKJIL26APRFUT"
+	},
+	{
+		"name" : "KAYNES",
+		"instrument_token" : "17120514",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "KAYNES26APRFUT"
+	},
+	{
+		"name" : "KEI",
+		"instrument_token" : "17120770",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "KEI26APRFUT"
+	},
+	{
+		"name" : "KFINTECH",
+		"instrument_token" : "17121026",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "KFINTECH26APRFUT"
+	},
+	{
+		"name" : "KOTAKBANK",
+		"instrument_token" : "17121282",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "KOTAKBANK26APRFUT"
+	},
+	{
+		"name" : "KPITTECH",
+		"instrument_token" : "17121538",
+		"expiry" : "28-04-2026",
+		"lot_size" : "425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "KPITTECH26APRFUT"
+	},
+	{
+		"name" : "LAURUSLABS",
+		"instrument_token" : "17121794",
+		"expiry" : "28-04-2026",
+		"lot_size" : "850",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LAURUSLABS26APRFUT"
+	},
+	{
+		"name" : "LICHSGFIN",
+		"instrument_token" : "17122050",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LICHSGFIN26APRFUT"
+	},
+	{
+		"name" : "LICI",
+		"instrument_token" : "17122306",
+		"expiry" : "28-04-2026",
+		"lot_size" : "700",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LICI26APRFUT"
+	},
+	{
+		"name" : "LODHA",
+		"instrument_token" : "17122562",
+		"expiry" : "28-04-2026",
+		"lot_size" : "450",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LODHA26APRFUT"
+	},
+	{
+		"name" : "LT",
+		"instrument_token" : "17122818",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LT26APRFUT"
+	},
+	{
+		"name" : "LTF",
+		"instrument_token" : "17123074",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LTF26APRFUT"
+	},
+	{
+		"name" : "LTM",
+		"instrument_token" : "17123330",
+		"expiry" : "28-04-2026",
+		"lot_size" : "150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LTM26APRFUT"
+	},
+	{
+		"name" : "LUPIN",
+		"instrument_token" : "17123586",
+		"expiry" : "28-04-2026",
+		"lot_size" : "425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "LUPIN26APRFUT"
+	},
+	{
+		"name" : "M&M",
+		"instrument_token" : "17123842",
+		"expiry" : "28-04-2026",
+		"lot_size" : "200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "M&M26APRFUT"
+	},
+	{
+		"name" : "MANAPPURAM",
+		"instrument_token" : "17124098",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MANAPPURAM26APRFUT"
+	},
+	{
+		"name" : "MANKIND",
+		"instrument_token" : "17124354",
+		"expiry" : "28-04-2026",
+		"lot_size" : "225",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MANKIND26APRFUT"
+	},
+	{
+		"name" : "MARICO",
+		"instrument_token" : "17125378",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MARICO26APRFUT"
+	},
+	{
+		"name" : "MARUTI",
+		"instrument_token" : "17125634",
+		"expiry" : "28-04-2026",
+		"lot_size" : "50",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MARUTI26APRFUT"
+	},
+	{
+		"name" : "MAXHEALTH",
+		"instrument_token" : "17125890",
+		"expiry" : "28-04-2026",
+		"lot_size" : "525",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MAXHEALTH26APRFUT"
+	},
+	{
+		"name" : "MAZDOCK",
+		"instrument_token" : "17126146",
+		"expiry" : "28-04-2026",
+		"lot_size" : "200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MAZDOCK26APRFUT"
+	},
+	{
+		"name" : "MCX",
+		"instrument_token" : "17126402",
+		"expiry" : "28-04-2026",
+		"lot_size" : "625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MCX26APRFUT"
+	},
+	{
+		"name" : "MFSL",
+		"instrument_token" : "17126658",
+		"expiry" : "28-04-2026",
+		"lot_size" : "400",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MFSL26APRFUT"
+	},
+	{
+		"name" : "MIDCPNIFTY",
+		"instrument_token" : "17072642",
+		"expiry" : "28-04-2026",
+		"lot_size" : "120",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MIDCPNIFTY26APRFUT"
+	},
+	{
+		"name" : "MOTHERSON",
+		"instrument_token" : "17126914",
+		"expiry" : "28-04-2026",
+		"lot_size" : "6150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MOTHERSON26APRFUT"
+	},
+	{
+		"name" : "MPHASIS",
+		"instrument_token" : "17127170",
+		"expiry" : "28-04-2026",
+		"lot_size" : "275",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MPHASIS26APRFUT"
+	},
+	{
+		"name" : "MUTHOOTFIN",
+		"instrument_token" : "17127426",
+		"expiry" : "28-04-2026",
+		"lot_size" : "275",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "MUTHOOTFIN26APRFUT"
+	},
+	{
+		"name" : "NATIONALUM",
+		"instrument_token" : "17127682",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NATIONALUM26APRFUT"
+	},
+	{
+		"name" : "NAUKRI",
+		"instrument_token" : "17127938",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NAUKRI26APRFUT"
+	},
+	{
+		"name" : "NBCC",
+		"instrument_token" : "17128194",
+		"expiry" : "28-04-2026",
+		"lot_size" : "6500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NBCC26APRFUT"
+	},
+	{
+		"name" : "NESTLEIND",
+		"instrument_token" : "17128450",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NESTLEIND26APRFUT"
+	},
+	{
+		"name" : "NHPC",
+		"instrument_token" : "17128706",
+		"expiry" : "28-04-2026",
+		"lot_size" : "6400",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NHPC26APRFUT"
+	},
+	{
+		"name" : "NIFTYNXT50",
+		"instrument_token" : "17073154",
+		"expiry" : "28-04-2026",
+		"lot_size" : "25",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NIFTYNXT5026APRFUT"
+	},
+	{
+		"name" : "NMDC",
+		"instrument_token" : "17138434",
+		"expiry" : "28-04-2026",
+		"lot_size" : "6750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NMDC26APRFUT"
+	},
+	{
+		"name" : "NTPC",
+		"instrument_token" : "17138946",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NTPC26APRFUT"
+	},
+	{
+		"name" : "NUVAMA",
+		"instrument_token" : "17139202",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NUVAMA26APRFUT"
+	},
+	{
+		"name" : "NYKAA",
+		"instrument_token" : "17139970",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "NYKAA26APRFUT"
+	},
+	{
+		"name" : "OBEROIRLTY",
+		"instrument_token" : "17140226",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "OBEROIRLTY26APRFUT"
+	},
+	{
+		"name" : "OFSS",
+		"instrument_token" : "17140482",
+		"expiry" : "28-04-2026",
+		"lot_size" : "75",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "OFSS26APRFUT"
+	},
+	{
+		"name" : "OIL",
+		"instrument_token" : "17141506",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1400",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "OIL26APRFUT"
+	},
+	{
+		"name" : "ONGC",
+		"instrument_token" : "17141762",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ONGC26APRFUT"
+	},
+	{
+		"name" : "PAGEIND",
+		"instrument_token" : "17142018",
+		"expiry" : "28-04-2026",
+		"lot_size" : "15",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PAGEIND26APRFUT"
+	},
+	{
+		"name" : "PATANJALI",
+		"instrument_token" : "17142274",
+		"expiry" : "28-04-2026",
+		"lot_size" : "900",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PATANJALI26APRFUT"
+	},
+	{
+		"name" : "PAYTM",
+		"instrument_token" : "17142530",
+		"expiry" : "28-04-2026",
+		"lot_size" : "725",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PAYTM26APRFUT"
+	},
+	{
+		"name" : "PERSISTENT",
+		"instrument_token" : "17142786",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PERSISTENT26APRFUT"
+	},
+	{
+		"name" : "PETRONET",
+		"instrument_token" : "17143042",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1900",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PETRONET26APRFUT"
+	},
+	{
+		"name" : "PFC",
+		"instrument_token" : "17143298",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1300",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PFC26APRFUT"
+	},
+	{
+		"name" : "PGEL",
+		"instrument_token" : "17143554",
+		"expiry" : "28-04-2026",
+		"lot_size" : "950",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PGEL26APRFUT"
+	},
+	{
+		"name" : "PHOENIXLTD",
+		"instrument_token" : "17143810",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PHOENIXLTD26APRFUT"
+	},
+	{
+		"name" : "PIDILITIND",
+		"instrument_token" : "17144066",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PIDILITIND26APRFUT"
+	},
+	{
+		"name" : "PIIND",
+		"instrument_token" : "17144322",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PIIND26APRFUT"
+	},
+	{
+		"name" : "PNB",
+		"instrument_token" : "17147650",
+		"expiry" : "28-04-2026",
+		"lot_size" : "8000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PNB26APRFUT"
+	},
+	{
+		"name" : "PNBHOUSING",
+		"instrument_token" : "17147906",
+		"expiry" : "28-04-2026",
+		"lot_size" : "650",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PNBHOUSING26APRFUT"
+	},
+	{
+		"name" : "POLICYBZR",
+		"instrument_token" : "17148162",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "POLICYBZR26APRFUT"
+	},
+	{
+		"name" : "POLYCAB",
+		"instrument_token" : "17148418",
+		"expiry" : "28-04-2026",
+		"lot_size" : "125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "POLYCAB26APRFUT"
+	},
+	{
+		"name" : "POWERGRID",
+		"instrument_token" : "17148674",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1900",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "POWERGRID26APRFUT"
+	},
+	{
+		"name" : "POWERINDIA",
+		"instrument_token" : "17148930",
+		"expiry" : "28-04-2026",
+		"lot_size" : "50",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "POWERINDIA26APRFUT"
+	},
+	{
+		"name" : "PPLPHARMA",
+		"instrument_token" : "17151490",
+		"expiry" : "28-04-2026",
+		"lot_size" : "2625",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PPLPHARMA26APRFUT"
+	},
+	{
+		"name" : "PREMIERENE",
+		"instrument_token" : "17151746",
+		"expiry" : "28-04-2026",
+		"lot_size" : "575",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PREMIERENE26APRFUT"
+	},
+	{
+		"name" : "PRESTIGE",
+		"instrument_token" : "17152002",
+		"expiry" : "28-04-2026",
+		"lot_size" : "450",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "PRESTIGE26APRFUT"
+	},
+	{
+		"name" : "RBLBANK",
+		"instrument_token" : "17152258",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "RBLBANK26APRFUT"
+	},
+	{
+		"name" : "RECLTD",
+		"instrument_token" : "17152514",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1400",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "RECLTD26APRFUT"
+	},
+	{
+		"name" : "RELIANCE",
+		"instrument_token" : "17152770",
+		"expiry" : "28-04-2026",
+		"lot_size" : "500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "RELIANCE26APRFUT"
+	},
+	{
+		"name" : "RVNL",
+		"instrument_token" : "17153026",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1525",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "RVNL26APRFUT"
+	},
+	{
+		"name" : "SAIL",
+		"instrument_token" : "17153282",
+		"expiry" : "28-04-2026",
+		"lot_size" : "4700",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SAIL26APRFUT"
+	},
+	{
+		"name" : "SAMMAANCAP",
+		"instrument_token" : "17153538",
+		"expiry" : "28-04-2026",
+		"lot_size" : "4300",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SAMMAANCAP26APRFUT"
+	},
+	{
+		"name" : "SBICARD",
+		"instrument_token" : "17153794",
+		"expiry" : "28-04-2026",
+		"lot_size" : "800",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SBICARD26APRFUT"
+	},
+	{
+		"name" : "SBILIFE",
+		"instrument_token" : "17154050",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SBILIFE26APRFUT"
+	},
+	{
+		"name" : "SBIN",
+		"instrument_token" : "17154306",
+		"expiry" : "28-04-2026",
+		"lot_size" : "750",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SBIN26APRFUT"
+	},
+	{
+		"name" : "SHREECEM",
+		"instrument_token" : "17154562",
+		"expiry" : "28-04-2026",
+		"lot_size" : "25",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SHREECEM26APRFUT"
+	},
+	{
+		"name" : "SHRIRAMFIN",
+		"instrument_token" : "17154818",
+		"expiry" : "28-04-2026",
+		"lot_size" : "825",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SHRIRAMFIN26APRFUT"
+	},
+	{
+		"name" : "SIEMENS",
+		"instrument_token" : "17155074",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SIEMENS26APRFUT"
+	},
+	{
+		"name" : "SOLARINDS",
+		"instrument_token" : "17155330",
+		"expiry" : "28-04-2026",
+		"lot_size" : "50",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SOLARINDS26APRFUT"
+	},
+	{
+		"name" : "SONACOMS",
+		"instrument_token" : "17155586",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1225",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SONACOMS26APRFUT"
+	},
+	{
+		"name" : "SRF",
+		"instrument_token" : "17155842",
+		"expiry" : "28-04-2026",
+		"lot_size" : "200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SRF26APRFUT"
+	},
+	{
+		"name" : "SUNPHARMA",
+		"instrument_token" : "17156098",
+		"expiry" : "28-04-2026",
+		"lot_size" : "350",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SUNPHARMA26APRFUT"
+	},
+	{
+		"name" : "SUPREMEIND",
+		"instrument_token" : "17156354",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SUPREMEIND26APRFUT"
+	},
+	{
+		"name" : "SUZLON",
+		"instrument_token" : "17156610",
+		"expiry" : "28-04-2026",
+		"lot_size" : "9025",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SUZLON26APRFUT"
+	},
+	{
+		"name" : "SWIGGY",
+		"instrument_token" : "17156866",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1300",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "SWIGGY26APRFUT"
+	},
+	{
+		"name" : "TATACONSUM",
+		"instrument_token" : "17157122",
+		"expiry" : "28-04-2026",
+		"lot_size" : "550",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TATACONSUM26APRFUT"
+	},
+	{
+		"name" : "TATAELXSI",
+		"instrument_token" : "17157378",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TATAELXSI26APRFUT"
+	},
+	{
+		"name" : "TATAPOWER",
+		"instrument_token" : "17157634",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1450",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TATAPOWER26APRFUT"
+	},
+	{
+		"name" : "TATASTEEL",
+		"instrument_token" : "17157890",
+		"expiry" : "28-04-2026",
+		"lot_size" : "5500",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TATASTEEL26APRFUT"
+	},
+	{
+		"name" : "TATATECH",
+		"instrument_token" : "17158146",
+		"expiry" : "28-04-2026",
+		"lot_size" : "800",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TATATECH26APRFUT"
+	},
+	{
+		"name" : "TCS",
+		"instrument_token" : "17158402",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TCS26APRFUT"
+	},
+	{
+		"name" : "TECHM",
+		"instrument_token" : "17158658",
+		"expiry" : "28-04-2026",
+		"lot_size" : "600",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TECHM26APRFUT"
+	},
+	{
+		"name" : "TIINDIA",
+		"instrument_token" : "17158914",
+		"expiry" : "28-04-2026",
+		"lot_size" : "200",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TIINDIA26APRFUT"
+	},
+	{
+		"name" : "TITAN",
+		"instrument_token" : "17159170",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TITAN26APRFUT"
+	},
+	{
+		"name" : "TMPV",
+		"instrument_token" : "17159426",
+		"expiry" : "28-04-2026",
+		"lot_size" : "800",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TMPV26APRFUT"
+	},
+	{
+		"name" : "TORNTPHARM",
+		"instrument_token" : "17159682",
+		"expiry" : "28-04-2026",
+		"lot_size" : "250",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TORNTPHARM26APRFUT"
+	},
+	{
+		"name" : "TORNTPOWER",
+		"instrument_token" : "17159938",
+		"expiry" : "28-04-2026",
+		"lot_size" : "425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TORNTPOWER26APRFUT"
+	},
+	{
+		"name" : "TRENT",
+		"instrument_token" : "17160194",
+		"expiry" : "28-04-2026",
+		"lot_size" : "100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TRENT26APRFUT"
+	},
+	{
+		"name" : "TVSMOTOR",
+		"instrument_token" : "17160450",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "TVSMOTOR26APRFUT"
+	},
+	{
+		"name" : "ULTRACEMCO",
+		"instrument_token" : "17160706",
+		"expiry" : "28-04-2026",
+		"lot_size" : "50",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ULTRACEMCO26APRFUT"
+	},
+	{
+		"name" : "UNIONBANK",
+		"instrument_token" : "17160962",
+		"expiry" : "28-04-2026",
+		"lot_size" : "4425",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "UNIONBANK26APRFUT"
+	},
+	{
+		"name" : "UNITDSPR",
+		"instrument_token" : "17161218",
+		"expiry" : "28-04-2026",
+		"lot_size" : "400",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "UNITDSPR26APRFUT"
+	},
+	{
+		"name" : "UNOMINDA",
+		"instrument_token" : "17161474",
+		"expiry" : "28-04-2026",
+		"lot_size" : "550",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "UNOMINDA26APRFUT"
+	},
+	{
+		"name" : "UPL",
+		"instrument_token" : "17161730",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1355",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "UPL26APRFUT"
+	},
+	{
+		"name" : "VBL",
+		"instrument_token" : "17161986",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1125",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "VBL26APRFUT"
+	},
+	{
+		"name" : "VEDL",
+		"instrument_token" : "17162242",
+		"expiry" : "28-04-2026",
+		"lot_size" : "1150",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "VEDL26APRFUT"
+	},
+	{
+		"name" : "VOLTAS",
+		"instrument_token" : "17162498",
+		"expiry" : "28-04-2026",
+		"lot_size" : "375",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "VOLTAS26APRFUT"
+	},
+	{
+		"name" : "WAAREEENER",
+		"instrument_token" : "17162754",
+		"expiry" : "28-04-2026",
+		"lot_size" : "175",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "WAAREEENER26APRFUT"
+	},
+	{
+		"name" : "WIPRO",
+		"instrument_token" : "17163010",
+		"expiry" : "28-04-2026",
+		"lot_size" : "3000",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "WIPRO26APRFUT"
+	},
+	{
+		"name" : "YESBANK",
+		"instrument_token" : "17163266",
+		"expiry" : "28-04-2026",
+		"lot_size" : "31100",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "YESBANK26APRFUT"
+	},
+	{
+		"name" : "ZYDUSLIFE",
+		"instrument_token" : "17163522",
+		"expiry" : "28-04-2026",
+		"lot_size" : "900",
+		"instrument_type" : "FUT",
+		"strike" : "0",
+		"tradingsymbol" : "ZYDUSLIFE26APRFUT"
 	}
 ]
-
 
 let componentColorHeader = {
 	'NIFTY 50': '#e7cc00',

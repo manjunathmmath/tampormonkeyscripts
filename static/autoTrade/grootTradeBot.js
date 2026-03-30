@@ -1261,6 +1261,14 @@ function updateScoresOfOI(name, item) {
         SCORE++
     }
 
+    if (item['OI_PE'] > item['OI_CE']) {
+        SCORE++
+    }
+
+     if (item['OI_CE'] > item['OI_PE']) {
+        SCORE--
+    }
+
     if (item['CHG_OI_CE'] > item['CHG_OI_PE']) {
         SCORE--
     } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] > item['CE_OBV'][item['CE_OBV'].length - 1]['obv']) {

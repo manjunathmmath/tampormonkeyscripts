@@ -259,7 +259,7 @@ async function showOiAnalyzer() {
 
 let trendingScannerTable = null
 function generateTrendingStockTable(data) {
-    let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
+    let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
     jQ("#trending-stock-list-table").show()
     trendingScannerTable = jQ('#trending-stock-list-table').DataTable({
         fixedColumns: {
@@ -292,7 +292,7 @@ function generateTrendingStockTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -860,7 +860,8 @@ async function callAnalyseTrend() {
 
                 trendingStocks[rowId]['PCR'] = pcrHtml + ' : ' + chPcrHtml
 
-                let link = "https://kite.zerodha.com/chart/ext/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
+                let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
+
                 if (strikes[0]) {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE_OBV'] = strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv']
