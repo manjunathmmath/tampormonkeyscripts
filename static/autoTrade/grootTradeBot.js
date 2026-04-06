@@ -45,9 +45,15 @@ async function showGrootTradeBot() {
 
     let statusHtml = ''
     statusHtml += '<div class="row" position:relative;" >'
-    statusHtml += '<div class="col-md-11">'
+    statusHtml += '<div class="col-md-9">'
     statusHtml += '<div class="row" id="status-bar-container">'
     statusHtml += '</div>'
+    statusHtml += '</div>'
+    statusHtml += '<div class="col-md-1" style="text-align:right;">'
+    statusHtml += '<a id="show-oi-viewer">Analyzer</a>'
+    statusHtml += '</div>'
+    statusHtml += '<div class="col-md-1" style="text-align:right;">'
+    statusHtml += '<a id="show-stock-viewer">Stocks</a>'
     statusHtml += '</div>'
     statusHtml += '<div class="col-md-1" style="text-align:right;">'
     statusHtml += '<span id="refresh-timer-one">00:00</span>'
@@ -87,9 +93,11 @@ jQ(document).on("click", "#data-load", function () {
     html += '<a target="_blank" href="https://tradingeconomics.com/stocks"  type="button">World</a>'
     html += '</div>'
 
+    /*
     html += '<div class="col-md-12">'
     html += '<a id="show-oi-viewer">Analyzer</a>'
     html += '</div>'
+    */
 
     html += '<div class="col-md-12">'
     html += '<a target="_blank" href="https://docs.google.com/spreadsheets/d/1mJyXOLNqSqIuDIiB1ip9-0kpNGU0pl_o/edit?gid=20807039#gid=20807039"  type="button">Past Analysis</a>'
@@ -100,10 +108,6 @@ jQ(document).on("click", "#data-load", function () {
     html += '</div>'
 
     html += '</div>'
-
-
-
-
 
     SnackBar({
         message: html,
@@ -695,7 +699,6 @@ function setScore() {
     html += '</div>'
     html += '</div>'
 
-
     jQ("#trend-scoreboard-table").html(html);
 
 }
@@ -734,6 +737,20 @@ function setFutureDetails(name, data) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     jQ("#" + tempName + "-futures").html(data['PLUS'] + '<br/>' + data['MINUS']);
+
+    if (name != "CRUDEOIL") {
+        let scriptData = generateTrend(name)
+        let premium = parseFloat(scriptData['ltp']) - parseFloat(data['quote']['close']);
+        let html = '';
+        if (premium > 0) {
+            html += '<div class="badge bg-success">+' + premium.toFixed(0) + '</div>';
+        } else if (premium < 0) {
+            html += '<div class="badge bg-danger">' + premium.toFixed(0) + '</div>';
+        } else {
+            html += '<div class="badge bg-secondary">' + premium.toFixed(0) + '</div>';
+        }
+        jQ("#" + tempName + "-futures-premium").html(html);
+    }
 }
 
 function showAdvanceDecline() {
@@ -904,6 +921,7 @@ function showComponentFutures(name, column) {
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<span style="position: absolute;left: .2rem;top: .2rem;"  data-name="' + name + '" class="badge bg-secondary refresh-futures"><i class="bi bi-arrow-clockwise"></i></span>'
+    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;left: 2.4rem;top: .2rem;"  data-name="' + name + '">PREMIUM</span>'
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUTURES</h4>'
     html += '</div>'
@@ -923,7 +941,7 @@ function showComponentOI(name) {
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-name="' + name + '" class="badge bg-secondary refresh-oi-obv"><i class="bi bi-arrow-clockwise"></i></span>'
-
+    html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;right: .2rem;top: .2rem;" data-name="' + name + '">PCR</span>'
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;">'
@@ -1265,7 +1283,7 @@ function updateScoresOfOI(name, item) {
         SCORE++
     }
 
-     if (item['OI_CE'] > item['OI_PE']) {
+    if (item['OI_CE'] > item['OI_PE']) {
         SCORE--
     }
 
@@ -1379,35 +1397,79 @@ function showOIOBVBarChart(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
-
-
     let columns = [];
 
     let x = ['x']
 
+    let oiCECH = ["CH CE OI"]
+    let oiPECH = ["CH PE OI"]
     let oiCE = ["CE OI"]
     let oiPE = ["PE OI"]
+
+    let oiCESUM = ["SUM CE OI"]
+    let oiPESUM = ["SUM PE OI"]
 
     let oiCEOBV = ["CE OBV"]
     let oiPEOBV = ["PE OBV"]
 
     let data = stock[0]['DATA']['tableData']
+    let oiData = stock[0]['DATA']
+
+    let pcrHtml = ''
+    let chPcrHtml = ''
+
+    if (parseFloat(oiData['pcr'].trim()) > 1.3) {
+        pcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['pcr'] + '</span>'
+    } else if (parseFloat(oiData['pcr'].trim()) > 0.7 && parseFloat(oiData['pcr'].trim()) < 1.0) {
+        pcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-info">' + oiData['pcr'] + '</span>'
+    } else if (parseFloat(oiData['pcr'].trim()) < 0.5) {
+        pcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['pcr'] + '</span>'
+    } else if (parseFloat(oiData['pcr'].trim()) > 1.0 && parseFloat(oiData['pcr'].trim()) < 1.3) {
+        pcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['pcr'] + '</span>'
+    } else if (parseFloat(oiData['pcr'].trim()) < 0.7) {
+        pcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['pcr'] + '</span>'
+    }
+
+
+    if (parseFloat(oiData['chPcr'].trim()) > 1.3) {
+        chPcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['chPcr'] + '</span>'
+    } else if (parseFloat(oiData['chPcr'].trim()) > 0.7 && parseFloat(oiData['chPcr'].trim()) < 1.0) {
+        chPcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-info">' + oiData['chPcr'] + '</span>'
+    } else if (parseFloat(oiData['chPcr'].trim()) < 0.5) {
+        chPcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
+    } else if (parseFloat(oiData['chPcr'].trim()) > 1.0 && parseFloat(oiData['chPcr'].trim()) < 1.3) {
+        chPcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['chPcr'] + '</span>'
+    } else if (parseFloat(oiData['chPcr'].trim()) < 0.7) {
+        chPcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
+    }
+
+
+    jQ("#" + tempName + "-pcr-probability").html(pcrHtml + " | " + chPcrHtml)
 
     jQ.each(data, function (index, item) {
         x.push(item['STRIKE'])
-        oiCE.push(item['CHG_OI_CE'])
-        oiPE.push(item['CHG_OI_PE'])
+        oiCE.push(item['OI_CE'])
+        oiPE.push(item['OI_PE'])
+        oiCECH.push(item['CHG_OI_CE'])
+        oiPECH.push(item['CHG_OI_PE'])
+        let sumCE = parseFloat(item['OI_CE']) + parseFloat(item['CHG_OI_CE'])
+        let sumPE = parseFloat(item['OI_PE']) + parseFloat(item['CHG_OI_PE'])
+        oiCESUM.push(sumCE.toFixed(1))
+        oiPESUM.push(sumPE.toFixed(1))
         oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
         oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
-
-
     })
 
     columns.push(x)
+    columns.push(oiCECH)
+    columns.push(oiPECH)
     columns.push(oiCE)
     columns.push(oiPE)
     columns.push(oiCEOBV)
     columns.push(oiPEOBV)
+    columns.push(oiCESUM)
+    columns.push(oiPESUM)
+
 
 
     var chart = c3.generate({
@@ -1422,6 +1484,10 @@ function showOIOBVBarChart(name) {
             colors: {
                 'CE OI': '#FF0000',
                 'PE OI': '#11ff00',
+                'CH CE OI': '#FF0000',
+                'CH PE OI': '#11ff00',
+                'SUM CE OI': '#FF0000',
+                'SUM PE OI': '#11ff00',
                 'CE OBV': '#d400ff',
                 'PE OBV': '#0059ff'
 
@@ -1526,7 +1592,7 @@ async function showFutureDetails(name) {
     } else {
         resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
     }
-
+    resp['quote'] = data[data.length - 1]
     return resp;
 }
 

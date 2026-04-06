@@ -846,17 +846,32 @@ async function callAnalyseTrend() {
                 let strikes = oiData['tableData']
                 let pcrHtml = ''
                 let chPcrHtml = ''
-                if (parseFloat(oiData['pcr'].trim()) < 1 && parseFloat(oiData['pcr'].trim()) > 0) {
-                    pcrHtml += '<span class="badge bg-danger">' + oiData['pcr'] + '</span>'
-                } else {
-                    pcrHtml += '<span class="badge bg-success">' + oiData['pcr'] + '</span>'
+
+                if(parseFloat(oiData['pcr'].trim()) > 1.3){
+                    pcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['pcr'] + '</span>'
+                }else if (parseFloat(oiData['pcr'].trim()) > 0.7 && parseFloat(oiData['pcr'].trim()) < 1.0) {
+                    pcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-neutral">' + oiData['pcr'] + '</span>'
+                }else if(parseFloat(oiData['pcr'].trim()) < 0.5){
+                    pcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['pcr'] + '</span>'
+                }else if (parseFloat(oiData['pcr'].trim()) > 1.0 && parseFloat(oiData['pcr'].trim()) < 1.3 ) {
+                    pcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['pcr'] + '</span>'
+                }else if(parseFloat(oiData['pcr'].trim()) < 0.7){
+                    pcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['pcr'] + '</span>'
                 }
 
-                if (parseFloat(oiData['chPcr'].trim()) < 1 && parseFloat(oiData['chPcr'].trim()) > 0) {
-                    chPcrHtml += '<span class="badge bg-danger">' + oiData['chPcr'] + '</span>'
-                } else {
-                    chPcrHtml += '<span class="badge bg-success">' + oiData['chPcr'] + '</span>'
+                
+                if(parseFloat(oiData['chPcr'].trim()) > 1.3){
+                    chPcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['chPcr'] + '</span>'
+                }else if (parseFloat(oiData['chPcr'].trim()) > 0.7 && parseFloat(oiData['chPcr'].trim()) < 1.0) {
+                    chPcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-neutral">' + oiData['chPcr'] + '</span>'
+                }else if(parseFloat(oiData['chPcr'].trim()) < 0.5){
+                    chPcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
+                }else if (parseFloat(oiData['chPcr'].trim()) > 1.0 && parseFloat(oiData['chPcr'].trim()) < 1.3 ) {
+                    chPcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['chPcr'] + '</span>'
+                }else if(parseFloat(oiData['chPcr'].trim()) < 0.7){
+                    chPcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
                 }
+
 
                 trendingStocks[rowId]['PCR'] = pcrHtml + ' : ' + chPcrHtml
 

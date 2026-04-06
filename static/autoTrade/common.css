@@ -185,7 +185,7 @@ span.bullsVersesBears {
 }
 
 #main-trade-bot-container img,
-#individual-stock-popup-window img {
+#individual-stock-popup-window img,#oi-viewer-scanner-content img {
   max-width: 50px !important;
   max-height: 50px !important;
 }

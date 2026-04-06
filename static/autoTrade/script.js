@@ -218,7 +218,7 @@ function updateStatusBar(that) {
 
     let html = ''
 
-    html += '<div class="col-md-2">'
+    html += '<div class="col-md-3">'
     html += '<span>' + name + ': </span>'
     html += '<span badge bg-info>' + price + ' </span>'
     if (perc > 0) {
@@ -307,7 +307,7 @@ async function scanLtpPrice() {
                                 }
                             }
                         }
-                        if (name == "INDIA VIX" || name == "NIFTY 50" || name == "NIFTY BANK"|| name == "SENSEX") {
+                        if (name == "INDIA VIX" || name == "NIFTY 50" || name == "NIFTY BANK" || name == "SENSEX") {
                             updateStatusBar(that)
                         }
                     });
@@ -401,6 +401,8 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+     html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;left: .2rem;top: .2rem;" data-name="' + name + '">PCR</span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;">'
@@ -412,6 +414,8 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
+    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;left: 2.4rem;top: .2rem;"  data-name="' + symbol + '">PREMIUM</span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">FUTURES</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
