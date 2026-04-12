@@ -740,7 +740,7 @@ function setFutureDetails(name, data) {
 
     if (name != "CRUDEOIL") {
         let scriptData = generateTrend(name)
-        let premium = parseFloat(scriptData['ltp']) - parseFloat(data['quote']['close']);
+        let premium = parseFloat(parseFloat(data['quote']['close']) - parseFloat(scriptData['ltp']));
         let html = '';
         if (premium > 0) {
             html += '<div class="badge bg-success">+' + premium.toFixed(0) + '</div>';
