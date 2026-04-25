@@ -427,7 +427,11 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
     html += '<div id="' + tempName + '-futures" ></div>'
+    html += '<div title="VWAP Trend" id="' + tempName + '-futures-vwap" ></div>'
+    html += '<div title="Future trend" id="' + tempName + '-futures-trend" ></div>'
     html += '</div>'
+
+
     html += '</div>'
     html += '</div>'
 

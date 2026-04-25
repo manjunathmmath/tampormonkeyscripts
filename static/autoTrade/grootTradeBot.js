@@ -773,6 +773,8 @@ function setFutureDetails(name, data) {
 
         jQ("#futures-chart-" + tempName).html(html);
     }
+    jQ("#" + tempName + "-futures-vwap").html(data['vwap']);
+    jQ("#" + tempName + "-futures-trend").html(data['trend']);
 }
 
 function showAdvanceDecline() {
@@ -949,7 +951,10 @@ function showComponentFutures(name, column) {
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
     html += '<div id="' + tempName + '-futures"></div>'
+    html += '<div title="VWAP Trend" id="' + tempName + '-futures-vwap"></div>'
+    html += '<div title="Future trend" id="' + tempName + '-futures-trend"></div>'
     html += '</div>'
+
     html += '</div>'
     html += '</div>'
     return html;
@@ -1578,7 +1583,7 @@ async function showFutureDetails(name) {
         }
     })
     let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, 'day');
 
 
     let data = []
@@ -1617,6 +1622,10 @@ async function showFutureDetails(name) {
     resp['quote'] = data[data.length - 1]
     resp['instrument_token'] = futures['instrument_token']
     resp['tradingsymbol'] = futures['tradingsymbol']
+
+    resp['vwap'] = getVwapTrend(data[data.length - 1], prevData);
+    resp['trend'] = getFutureDirection(data[data.length - 1], prevData, name);
+
     return resp;
 }
 
@@ -2049,6 +2058,125 @@ function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize) {
     data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
 
     return data;
+}
+
+function getVwapTrend(quote, prevQuote) {
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+    var vwap = vwapPrice ? vwapPrice : 0;
+    var correctedVwap = vwap;
+    correctedVwap = correctedVwap;
+
+    var vvapTextOne = ''
+    var vvapTextTwo = ''
+    var vvapTextThree = ''
+    var vvapTextFour = ''
+    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+    var upTriangle = '<i class="bi bi-caret-up"></i>'
+    if (correctedVwap <= quote.close) {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-success">BUY</span>'
+        vvapTextThree += '<span class="badge bg-success">' + upTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-success">' + (parseFloat(quote.close) - parseFloat(vwap)).toFixed(2) + '</span>'
+    } else {
+        vvapTextOne += '<span class="badge bg-primary">' + vwap + '</span>'
+        vvapTextTwo += '<span class="badge bg-danger">SELL</span>'
+        vvapTextThree += '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        vvapTextFour += '<span class="badge bg-danger">' + (parseFloat(quote.close) - parseFloat(vwap)).toFixed(2) + '</span>'
+    }
+    return vvapTextOne + " " + vvapTextTwo + " " + vvapTextThree + " " + vvapTextFour;
+}
+
+function getFutureDirection(quote, prevQuote, symbol) {
+    var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
+    var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
+    var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
+    var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
+    var totalVolumePrice = cVolumePrice + pVolumePrice
+    var totalVolume = parseInt(quote.volume) + parseInt(prevQuote.volume)
+    var vwapPrice = (totalVolumePrice / totalVolume).toFixed(2)
+    var vwap = vwapPrice ? vwapPrice : 0;
+    var correctedVwap = vwap;
+    if (symbol == "BANKNIFTY") {
+        correctedVwap = correctedVwap;
+    }
+    var booleanValue = false;
+    if (correctedVwap <= quote.close) {
+        booleanValue = true;
+    } else {
+        booleanValue = false;
+    }
+    var buyResult = Math.abs(quote.open - quote.low);
+    var sellResult = Math.abs(quote.open - quote.high);
+    var openPrice = quote.open;
+    var highPrice = quote.high;
+    var lowPrice = quote.low;
+    var lastPrice = quote.close;
+    var prevClose = prevQuote.close
+
+    var bottomTriangle = '<i class="bi bi-caret-down"></i>'
+    var upTriangle = '<i class="bi bi-caret-up"></i>'
+    var futureTrend = ''
+    var futureDirection = ''
+    var diffNiftyOpenPrevOpen = Math.abs(openPrice - prevClose);
+    var diffNiftyOpenPrevOpenResult = false;
+    if (diffNiftyOpenPrevOpen >= 1 && diffNiftyOpenPrevOpen <= 11) {
+        diffNiftyOpenPrevOpenResult = true
+    }
+    if (symbol == "BANKNIFTY") {
+        if (buyResult >= 0 && buyResult <= 30) {
+            var trend = "Strong BUY";
+            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+        } else if (sellResult >= 0 && sellResult <= 30) {
+            var trend = "Strong SELL";
+            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        } else if (openPrice > prevClose && lastPrice >= openPrice
+            && booleanValue == true) {
+            var trend = "BUY";
+            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+        } else if (booleanValue == true && lastPrice > openPrice) {
+            var trend = "BUY On Decline";
+            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+        } else {
+            var trend = "SELL";
+            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        }
+    } else {
+        if (buyResult >= 0 && buyResult <= 11 && booleanValue == true) {
+            var trend = "Strong BUY";
+            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+        } else if (sellResult >= 0 && sellResult <= 9 && booleanValue == false) {
+            var trend = "Strong SELL";
+            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        } else if (openPrice > prevClose && lastPrice > openPrice
+            && booleanValue == true) {
+            var trend = "BUY";
+            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+        } else if (diffNiftyOpenPrevOpenResult == true
+            && booleanValue == true && lastPrice > openPrice) {
+            var trend = "BUY On Decline";
+            futureTrend = '<span class="badge bg-success">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-success">' + upTriangle + '</span>'
+        } else {
+            var trend = "SELL";
+            futureTrend = '<span class="badge bg-danger">' + trend + '</span>'
+            futureDirection = '<span class="badge bg-danger">' + bottomTriangle + '</span>'
+        }
+    }
+    return futureTrend + " " + futureDirection
 }
 
 let scriptsVolumeMap = {}

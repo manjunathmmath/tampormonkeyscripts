@@ -170,7 +170,7 @@ async function showFutureDetailsMCX(name) {
         }
     })
     let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, 'day');
 
 
     let data = []
@@ -203,6 +203,8 @@ async function showFutureDetailsMCX(name) {
     let resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
     resp['ltp'] = data[data.length - 1]['close']
     resp['open'] = data[0]['close']
+    resp['vwap'] = getVwapTrend(data[data.length - 1], prevData);
+    resp['trend'] = getFutureDirection(data[data.length - 1], prevData, name);
     return resp;
 }
 
