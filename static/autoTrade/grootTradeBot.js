@@ -93,6 +93,18 @@ jQ(document).on("click", "#data-load", function () {
     html += '<a target="_blank" href="https://tradingeconomics.com/stocks"  type="button">World</a>'
     html += '</div>'
 
+    html += '<div class="col-md-12">'
+    html += '<a target="_blank" href="https://in.investing.com/indices/cboe-crude-oil-volatility-historical-data"  type="button">OVX</a>'
+    html += '</div>'
+
+    html += '<div class="col-md-12">'
+    html += '<a target="_blank" href="https://www.investing.com/indices/cboe-gold-volatitity"  type="button">GVZ</a>'
+    html += '</div>'
+
+    html += '<div class="col-md-12">'
+    html += '<a target="_blank" href="https://in.investing.com/indices/volatility-s-p-500"  type="button">VIX</a>'
+    html += '</div>'
+
     /*
     html += '<div class="col-md-12">'
     html += '<a id="show-oi-viewer">Analyzer</a>'
@@ -742,6 +754,7 @@ function setFutureDetails(name, data) {
         let scriptData = generateTrend(name)
         let premium = parseFloat(parseFloat(data['quote']['close']) - parseFloat(scriptData['ltp']));
         let html = '';
+
         if (premium > 0) {
             html += '<div class="badge bg-success">+' + premium.toFixed(0) + '</div>';
         } else if (premium < 0) {
@@ -749,7 +762,16 @@ function setFutureDetails(name, data) {
         } else {
             html += '<div class="badge bg-secondary">' + premium.toFixed(0) + '</div>';
         }
+
         jQ("#" + tempName + "-futures-premium").html(html);
+
+        html = ''
+
+        html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NFO-FUT' + '/' + data['tradingsymbol'] + '/' + data['instrument_token'] + '"> '
+        html += 'FUTURES';
+        html += '</a>'
+
+        jQ("#futures-chart-" + tempName).html(html);
     }
 }
 
@@ -923,7 +945,7 @@ function showComponentFutures(name, column) {
     html += '<span style="position: absolute;left: .2rem;top: .2rem;"  data-name="' + name + '" class="badge bg-secondary refresh-futures"><i class="bi bi-arrow-clockwise"></i></span>'
     html += '<span id="' + tempName + '-futures-premium" style="position: absolute;left: 2.4rem;top: .2rem;"  data-name="' + name + '">PREMIUM</span>'
 
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUTURES</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;" id="futures-chart-' + tempName + '">FUTURES</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
     html += '<div id="' + tempName + '-futures"></div>'
@@ -1593,6 +1615,8 @@ async function showFutureDetails(name) {
         resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
     }
     resp['quote'] = data[data.length - 1]
+    resp['instrument_token'] = futures['instrument_token']
+    resp['tradingsymbol'] = futures['tradingsymbol']
     return resp;
 }
 

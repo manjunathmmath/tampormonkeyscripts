@@ -212,7 +212,7 @@ async function updateStrorageLtpPrice(instance) {
 }
 
 function updateStatusBar(that) {
-    jQ("#status-bar-container").html('')
+
     let name = that.find(".symbol").find(".name").html();
     let price = that.find(".price").find(".last-price").html();
     let perc = that.find(".price-change").find(".change-absolute").html();
@@ -344,10 +344,10 @@ async function showDetailsOnChartPage(exhange, symbol, token) {
     rowData['exchange'] = exhange
     rowData['TRADINGSYMBOL'] = symbol
     rowData['token'] = token
-    if (exhange == "NSE") {
+    if (exhange == "NSE" || exhange == "BSE" || exhange == "INDICES") {
         commonShowInidividuslStockPopupWindow(symbol)
-        let enableAutoRefresh = jQ("#enable-auto-refresh-individual").is(":checked");
         setTimeout(function () {
+            let enableAutoRefresh = jQ("#enable-auto-refresh-individual").is(":checked");
             if (enableAutoRefresh) {
                 location.reload();
             }
@@ -408,7 +408,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;left: .2rem;top: .2rem;" data-name="' + name + '">PCR</span>'
+    html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;left: .2rem;top: .2rem;" data-name="' + symbol + '">PCR</span>'
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
     html += '</div>'
@@ -421,9 +421,9 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;left: 2.4rem;top: .2rem;"  data-name="' + symbol + '">PREMIUM</span>'
+    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;top: .2rem;"  data-name="' + symbol + '">PREMIUM</span>'
 
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">FUTURES</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large" id="futures-chart-' + tempName + '">FUTURES</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
     html += '<div id="' + tempName + '-futures" ></div>'

@@ -10,20 +10,20 @@ let mcxFutreStrikeDiff = {
 let commoditiesFutureInstrumentsList = [
 	{
 		"name" : "CRUDEOIL",
-		"instrument_token" : "124544519",
-		"expiry" : "20-04-2026",
+		"instrument_token" : "125002247",
+		"expiry" : "18-05-2026",
 		"lot_size" : "1",
 		"instrument_type" : "FUT",
 		"strike" : "0",
-		"tradingsymbol" : "CRUDEOIL26APRFUT"
+		"tradingsymbol" : "CRUDEOIL26MAYFUT"
 	},
 	{
 		"name" : "CRUDEOILM",
-		"instrument_token" : "124544775",
-		"expiry" : "20-04-2026",
+		"instrument_token" : "125002503",
+		"expiry" : "18-05-2026",
 		"lot_size" : "1",
 		"instrument_type" : "FUT",
 		"strike" : "0",
-		"tradingsymbol" : "CRUDEOILM26APRFUT"
+		"tradingsymbol" : "CRUDEOILM26MAYFUT"
 	}
 ]
