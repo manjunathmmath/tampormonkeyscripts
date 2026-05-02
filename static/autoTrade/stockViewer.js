@@ -287,6 +287,8 @@ function setFutureDetailsStockViewer(name, data) {
             html += '<div class="badge bg-secondary">' + premium.toFixed(0) + '</div>';
         }
         jQ("#" + tempName + "-futures-premium-stock-viewer").html(html);
+        jQ("#" + tempName + "-futures-vwap-stock-viewer").html(data['vwap']);
+        jQ("#" + tempName + "-futures-trend-stock-viewer").html(data['trend']);
     }
 }
 
@@ -476,6 +478,8 @@ function showComponentFuturesStockViewer(name) {
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
     html += '<div id="' + tempName + '-futures-stock-viewer" ></div>'
+    html += '<div title="VWAP Trend" id="' + tempName + '-futures-vwap-stock-viewer"></div>'
+    html += '<div title="Future trend" id="' + tempName + '-futures-trend-stock-viewer"></div>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
