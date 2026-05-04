@@ -12,76 +12,76 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_setClipboard
 // @grant        GM_getClipboard
-// @resource     BOOTSTRAP_CSS https://github.com/autoTrade/dist/css/bootstrap.css
-// @resource     DATATABLE_CSS https://github.com/autoTrade/global/vendor/datatables/datatables.min.css
-// @resource     BOOTSTRAP_ICON_CSS https://github.com/autoTrade/dist/font/bootstrap-icons.css
-// @resource     FIXED_COLUMN_CSS https://github.com/autoTrade/global/vendor/datatables/fixedColumns.dataTables.min.css
-// @resource     C3_CSS https://github.com/autoTrade/global/vendor/c3/c3.css
+// @resource     BOOTSTRAP_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/dist/css/bootstrap.css
+// @resource     DATATABLE_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/datatables/datatables.min.css
+// @resource     BOOTSTRAP_ICON_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/dist/font/bootstrap-icons.css
+// @resource     FIXED_COLUMN_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/datatables/fixedColumns.dataTables.min.css
+// @resource     C3_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/c3/c3.css
 
-// @resource     POPUP_WINDOW_CSS https://github.com/autoTrade/common/popupwindow/popupwindow.css
-// @require      https://github.com/autoTrade/global/vendor/jquery/jquery.js
-// @require      https://github.com/autoTrade/dist/js/bootstrap.js
-// @require      https://github.com/autoTrade/common/toastify-js.js
-// @require      https://github.com/autoTrade/common/popupwindow/popupwindow.js
+// @resource     POPUP_WINDOW_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/popupwindow/popupwindow.css
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/jquery/jquery.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/dist/js/bootstrap.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/toastify-js.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/popupwindow/popupwindow.js
 
-// @require      https://github.com/autoTrade/global/vendor/datatables/jquery.dataTables.min.js
-// @require      https://github.com/autoTrade/global/vendor/datatables/dataTables.fixedColumns.min.js
-// @require      https://github.com/autoTrade/global/vendor/datatables/fixedColumns.dataTables.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/datatables/jquery.dataTables.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/datatables/dataTables.fixedColumns.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/datatables/fixedColumns.dataTables.js
 
-// @require      https://github.com/autoTrade/global/vendor/datatables/dataTables.buttons.min.js
-
-
-// @require      https://github.com/autoTrade/global/vendor/buttons/buttons.html5.min.js
-// @require      https://github.com/autoTrade/global/vendor/buttons/buttons.print.min.js
-// @require      https://github.com/autoTrade//global/vendor/buttons/jszip.min.js
-
-// @require      https://github.com/autoTrade/global/vendor/fusioncharts/fusioncharts.js
-// @require      https://github.com/autoTrade/global/vendor/fusioncharts/fusioncharts.charts.js
-// @require      https://github.com/autoTrade/global/vendor/fusioncharts/fusioncharts.powercharts.js
-// @require      https://github.com/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.fusion.js
-// @require      https://github.com/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.candy.js
-
-// @require      https://github.com/autoTrade/global/vendor/fusioncharts/fusioncharts.jqueryplugin.min.js
-// @require      https://github.com/autoTrade/global/vendor/c3/d3.min.js
-// @require      https://github.com/autoTrade/global/vendor/c3/c3.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/datatables/dataTables.buttons.min.js
 
 
-// @require      https://github.com/autoTrade/common/monkeyconfig.js
-// @require      https://github.com/autoTrade/common/axios.min.js
-// @require      https://github.com/autoTrade/common/qs-lite.min.js
-// @require      https://github.com/autoTrade/common/moment.min.js
-// @require      https://github.com/autoTrade/common/popper.min.js
-// @require      https://github.com/autoTrade/common/tippy-bundle.umd.min.js
-// @require      https://github.com/autoTrade/common/sweetalert2@11.js
-// @require      https://github.com/autoTrade/common/toastify-js.js
-// @resource     TOASTIFY_CSS https://github.com/autoTrade/common/toastify.min.css
-// @resource     SACKBAR_CSS https://github.com/autoTrade/common/sackbar/js-snackbar.min.css
-// @require      https://github.com/autoTrade/common/sackbar/js-snackbar.min.js
-// @require      https://github.com/autoTrade/common/moment.min.js
-// @resource     COMMON_CSS https://github.com/autoTrade/common.css
-// @require      https://github.com/autoTrade/common/common.js
-// @require      https://github.com/autoTrade/common/alertSound.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/buttons/buttons.html5.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/buttons/buttons.print.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade//global/vendor/buttons/jszip.min.js
+
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/fusioncharts/fusioncharts.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/fusioncharts/fusioncharts.charts.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/fusioncharts/fusioncharts.powercharts.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.fusion.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/fusioncharts/themes/fusioncharts.theme.candy.js
+
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/fusioncharts/fusioncharts.jqueryplugin.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/c3/d3.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/global/vendor/c3/c3.min.js
 
 
-// @require      https://github.com/autoTrade/constants.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/monkeyconfig.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/axios.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/qs-lite.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/moment.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/popper.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/tippy-bundle.umd.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/sweetalert2@11.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/toastify-js.js
+// @resource     TOASTIFY_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/toastify.min.css
+// @resource     SACKBAR_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/sackbar/js-snackbar.min.css
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/sackbar/js-snackbar.min.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/moment.min.js
+// @resource     COMMON_CSS https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common.css
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/common.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/common/alertSound.js
 
-// @require      https://github.com/autoTrade/commoditiesOptionStrikes.js
-// @require      https://github.com/autoTrade/constants-commodities.js
-// @require      https://github.com/autoTrade/commodities.js
 
-// @require      https://github.com/autoTrade/bseOptionStrikes.js
-// @require      https://github.com/autoTrade/optionStrike.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/constants.js
 
-// @require      https://github.com/autoTrade/config.js
-// @require      https://github.com/autoTrade/monkeyStyle.js
-// @require      https://github.com/autoTrade/utils.js
-// @require      https://github.com/autoTrade/script.js
-// @require      https://github.com/autoTrade/oiAnalyzer.js
-// @require      https://github.com/autoTrade/oiViewer.js
-// @require      https://github.com/autoTrade/stockViewer.js
-// @require      https://github.com/autoTrade/grootTradeBot.js
-// @downloadURL  https://github.com/autoTrade/autotrade.user.js
-// @updateURL    https://github.com/autoTrade/autotrade.meta.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/commoditiesOptionStrikes.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/constants-commodities.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/commodities.js
+
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/bseOptionStrikes.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/optionStrike.js
+
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/config.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/monkeyStyle.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/utils.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/script.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/oiAnalyzer.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/oiViewer.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/stockViewer.js
+// @require      https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/grootTradeBot.js
+// @downloadURL  https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/autotrade.user.js
+// @updateURL    https://github.com/manjunathmmath/tampormonkeyscripts/tree/main/static/autoTrade/autotrade.meta.js
 // ==/UserScript==
 
 // This is free and unencumbered software released into the public domain.
