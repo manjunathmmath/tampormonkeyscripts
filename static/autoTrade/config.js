@@ -40,11 +40,11 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: false
         },
-         use_ltp_for_strike: {
+        use_ltp_for_strike: {
             type: 'checkbox',
             default: true
         },
-         OVX: {
+        OVX: {
             type: 'text',
             default: 68.90 //https://in.investing.com/indices/cboe-crude-oil-volatility-historical-data
         },
@@ -60,13 +60,33 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: 21.44 //https://in.investing.com/indices/volatility-s-p-500
         },
-    }
+        api_key: {
+            'label': 'API Key',
+            'type': 'text',
+            'default': 'yxwoymcn7nnv91l6',
+        },
+        api_secret: {
+            'label': 'API Secret',
+            'type': 'text',
+            'default': 'hna7avvcp0as89u4oo5vtioryv6syfwo',
+        },
+        api_access_token: {
+            'label': 'Access Token',
+            'type': 'text',
+            'default': '',
+        },
+    },
+  
 });
 
 const VERSION = "v1.0";
 const BASE_URL = "https://kite.zerodha.com";
 const PREVIOUS_DAY_DATE = g_config.get('previous_day_date');
 const CURRENT_DAY = g_config.get('current_day_date');
+
+const CURRENT_DATE_FROM_DATE = CURRENT_DAY + " 09:15:00";
+const CURRENT_DATE_TO_DATE = CURRENT_DAY + " 11:05:00";
+
 let date = new Date().toJSON().slice(0, 10);
 const MARGIN = g_config.get('margin');
 let weightIndex = []

@@ -408,12 +408,14 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" >'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;left: .2rem;top: .2rem;" data-name="' + symbol + '">PCR</span>'
+    html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;right: .2rem;top: .2rem;" data-name="' + symbol + '">PCR</span>'
+    html += '<span title="OI Score" id="' + tempName + '-oi-score" style="position: absolute;left: 2rem;top: .1rem;" data-name="' + symbol + '">SCORE</span>'
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;">'
+    html += '<div class="col-md-12" style="height:13rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-oi-obv" ></div>'
+    html += '<div id="' + tempName + '-component-oi-list-table"></div>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
@@ -453,4 +455,39 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     showOIOBVBarChart(symbol);
     let res = await showFutureDetails(symbol);
     setFutureDetails(symbol, res);
+}
+
+
+window.addEventListener('load', function () {
+    getSetAccessToken()
+}, false);
+
+
+
+async function getSetAccessToken(){
+    await callSleepForAWhile(2000)
+    if (window.location.href.includes('request_token')) {
+        var q = qs.parse(window.location.href);
+        if (q.status == 'success') {
+            jQ.post('https://api.kite.trade/session/token',
+                { 'api_key': g_config.get('api_key'), 'request_token': q.request_token, 'checksum': sha256(g_config.get('api_key') + q.request_token + g_config.get('api_secret')) },
+                function (data, status) {
+                    callSackBarInfo(`AT status ${status}`);
+                    console.log(data);
+                    g_config.set('api_access_token', data.data.access_token);
+                    redirectToDashboard()
+                })
+                .fail(function (xhr, status, error) {
+                    var resp = JSON.parse(xhr.responseText);
+                    callSackBarInfo(`AT Status ${status} :: ${resp.message}`);
+                });
+        } else {
+            callSackBarInfo('Unable to get Request Token');
+        }
+    }
+}
+
+async function redirectToDashboard() {
+     await callSleepForAWhile(2000)
+    window.location.href = "https://kite.zerodha.com/dashboard";
 }

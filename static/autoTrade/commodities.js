@@ -20,10 +20,10 @@ async function showTopChartMCX(name) {
             strikeDiff = "100,100"
         }
         strikeDiff = strikeDiff.split(",");
-        let strikeOne = parseInt(strikeDiff[0])
-        let strikeTwo = parseInt(strikeDiff[1])
+        let strikeOne = parseFloat(strikeDiff[0])
+        let strikeTwo = parseFloat(strikeDiff[1])
 
-        let open = data.data.candles[0][4]
+        let open = data.data.candles[0][1]
         let prevClose = prevData.data.candles[0][4]
 
         let ustrikeOne = (parseFloat(open) + strikeOne);
@@ -56,6 +56,10 @@ async function showTopChartMCX(name) {
 
         if (name == "NATURALGAS" || name == "NATGASMINI") {
             vix = VIX
+        }
+
+         if (name == "USDINR") {
+            vix = "4.85"
         }
 
         ovxChg = parseFloat(vix) / Math.sqrt(365 - 104 - 15)

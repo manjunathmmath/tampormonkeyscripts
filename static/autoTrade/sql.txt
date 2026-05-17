@@ -48,6 +48,25 @@ where
     order by name;
 
 
+select 
+name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
+from 
+    kite_instruments 
+where 
+    segment in('CDS-FUT') and name='USDINR'
+    and  expiry like'%-05-2026%' 
+    order by name;
+
+    select 
+name,instrument_token,expiry,lot_size,instrument_type,strike,tradingsymbol 
+from 
+    kite_instruments 
+where 
+    segment in('CDS-OPT') and name='USDINR' and expiry='29-05-2026'
+    and  expiry like'%-05-2026%' 
+    order by name;
+
+
 
 TRUNCATE TABLE kite_instruments;
 
@@ -77,7 +96,7 @@ UPDATE kite_instruments SET name = 'HINDALCO  INDUSTRIES' WHERE name='HINDALCO  
 UPDATE kite_instruments SET name = 'TVS MOTOR COMPANY' WHERE name='TVS MOTOR COMPANY ';
 
 
-SELECT symbol FROM trade_db_windows.nse_stock_strike_intervals group by symbol;
+SELECT symbol FROM trade_db_windows.nse_stock_strike_intervals group by symbol order by symbol;
 
 select symbol,group_concat(value ORDER BY value separator ',,') as myList  from (
 select symbol,min(CONVERT(step_value,double)) as 'value' from nse_stock_strike_intervals where month_type='M1' group by symbol 

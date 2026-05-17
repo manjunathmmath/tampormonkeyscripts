@@ -126,6 +126,47 @@ async function showStockAnalyzer(type) {
 
 }
 
+function updateScoresOfTrendStockViewer(name, score) {
+    let scoreHtml = ''
+    if (score > 0) {
+        scoreHtml += '<span class="badge bg-success"><i class="bi bi-speedometer"></i>+ ' + score + '</span>'
+    } else {
+        scoreHtml += '<span class="badge bg-danger"><i class="bi bi-speedometer"></i> ' + score + '</span>'
+    }
+    jQ("#" + name.replaceAll(" ", "-") + "-oi-score-stock-viewer").html(scoreHtml)
+}
+
+function updateScoresOfOIStockViewer(name, item) {
+    let SCORE = 0
+    if (item['CHG_OI_PE'] > item['CHG_OI_CE']) {
+        SCORE++
+    } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > item['PE_OBV'][item['PE_OBV'].length - 1]['obv']) {
+        //SCORE++
+    } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] < 0) {
+        //SCORE++
+    }
+
+    if (item['OI_PE'] > item['OI_CE']) {
+        SCORE++
+    }
+
+    if (item['OI_CE'] > item['OI_PE']) {
+        SCORE--
+    }
+
+    if (item['CHG_OI_CE'] > item['CHG_OI_PE']) {
+        SCORE--
+    } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] > item['CE_OBV'][item['CE_OBV'].length - 1]['obv']) {
+        //SCORE--
+    } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > 0) {
+        //SCORE--
+    }
+
+    return SCORE;
+
+}
+
+
 function showOIOBVBarChartStockViewer(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -179,6 +220,7 @@ function showOIOBVBarChartStockViewer(name) {
 
     jQ("#" + tempName + "-pcr-probability-stock-viewer").html(pcrHtml + " | " + chPcrHtml)
 
+    let oiScore = 0
     jQ.each(data, function (index, item) {
         x.push(item['STRIKE'])
         oiCE.push(item['OI_CE'])
@@ -191,7 +233,10 @@ function showOIOBVBarChartStockViewer(name) {
         oiPESUM.push(sumPE.toFixed(1))
         oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
         oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
-    })
+        oiScore += updateScoresOfOIStockViewer(name, item)
+    });
+
+    updateScoresOfTrendStockViewer(name, oiScore)
 
     columns.push(x)
     columns.push(oiCECH)
@@ -268,6 +313,174 @@ function showOIOBVBarChartStockViewer(name) {
             show: false // Hide the legend      
         }
     });
+    showComponentOITableStockViewer(name);
+}
+
+
+function showComponentOITableStockViewer(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let strikes = stock[0]['DATA']['tableData']
+
+    let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
+
+
+    let html = ''
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table  class="table display nowrap"  style="width: 100%;font-size:xx-small;">'
+
+    html += '<thead>'
+    html += '<tr>'
+
+    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class atm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '<tr>'
+
+    if (strikes[0]) {
+        html += '<td class="number-align" >' + strikes[0]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[0]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[0]['PE_OBV'][strikes[0]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[0]['CHG_OI_PE'] + '</td> '
+
+    }
+    if (strikes[1]) {
+        html += '<td class="number-align" >' + strikes[1]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[1]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[1]['PE_OBV'][strikes[1]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[1]['CHG_OI_PE'] + '</td> '
+    }
+
+    if (strikes[2]) {
+        html += '<td class="number-align" >' + strikes[2]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[2]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[2]['PE_OBV'][strikes[2]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[2]['CHG_OI_PE'] + '</td> '
+    }
+
+    if (strikes[3]) {
+        html += '<td class="number-align" >' + strikes[3]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[3]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[3]['PE_OBV'][strikes[3]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[3]['CHG_OI_PE'] + '</td> '
+    }
+
+
+    if (strikes[4]) {
+        html += '<td class="number-align" >' + strikes[4]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[4]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[4]['PE_OBV'][strikes[4]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[4]['CHG_OI_PE'] + '</td> '
+    }
+
+    html += '</tr>'
+
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
+    jQ("#" + tempName + "-component-oi-list-table-stock-viewer").html(html);
 }
 
 function setFutureDetailsStockViewer(name, data) {
@@ -494,10 +707,13 @@ function showComponentOIStockViewer(name) {
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<span id="' + tempName + '-pcr-probability-stock-viewer" style="position: absolute;right: .2rem;top: .2rem;" data-name="' + name + '">PCR</span>'
+    html += '<span title="OI Score" id="' + tempName + '-oi-score-stock-viewer" style="position: absolute;left: 2rem;top: .1rem;" data-name="' + name + '">SCORE</span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;">'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-oi-obv-stock-viewer"></div>'
+    html += '<div id="' + tempName + '-component-oi-list-table-stock-viewer" ></div>'
     html += '</div>'
     html += '</div>'
     html += '</div>'

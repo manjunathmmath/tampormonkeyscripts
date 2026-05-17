@@ -653,3 +653,25 @@ jQ(document).on("click", ".track-next-day", function (e) {
     trackScripts.push(name)
     localStorage.setItem("TRACK_SCRIPTS", JSON.stringify(trackScripts));
 });
+
+function getQuotesUsingPromise(instruments ) {
+    jQ.ajaxSetup({
+        headers: {
+            'Authorization': `token ${g_config.get('api_key')}:${g_config.get('api_access_token')}`
+        }
+    });
+    return new Promise((resolve, reject) => {
+        jQ.ajax({
+            url: `https://api.kite.trade/quote?i=${instruments.join('&i=')}`,
+            type: 'GET',
+            async: false,
+            cache: false,
+            success: function (data) {
+                resolve(data);
+            },
+            error: function (request, status, error) {
+                resolve([]);
+            }
+        });
+    })
+}

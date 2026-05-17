@@ -45,7 +45,7 @@ async function showGrootTradeBot() {
 
     let statusHtml = ''
     statusHtml += '<div class="row" position:relative;" >'
-    statusHtml += '<div class="col-md-9">'
+    statusHtml += '<div class="col-md-8">'
     statusHtml += '<div class="row" id="status-bar-container">'
     statusHtml += '</div>'
     statusHtml += '</div>'
@@ -55,12 +55,18 @@ async function showGrootTradeBot() {
     statusHtml += '<div class="col-md-1" style="text-align:right;">'
     statusHtml += '<a id="show-stock-viewer">Stocks</a>'
     statusHtml += '</div>'
+
+    statusHtml += '<div class="col-md-1" style="text-align:right;">'
+    statusHtml += '<a id="show-market-quote-analyzer">Quotes Analyzer</a>'
+    statusHtml += '</div>'
+
     statusHtml += '<div class="col-md-1" style="text-align:right;">'
     statusHtml += '<span id="refresh-timer-one">00:00</span>'
     statusHtml += '</div>'
     statusHtml += '</div>'
 
     jQ("." + divId).find(".popupwindow_statusbar_content").html(statusHtml)
+    showCompoenentPlaceHolders()
 }
 
 jQ(document).on("click", "#data-load", function () {
@@ -130,6 +136,11 @@ jQ(document).on("click", "#data-load", function () {
     });
 });
 
+
+GM_registerMenuCommand("Create AT ", function () {
+    window.open("https://kite.zerodha.com/connect/login?v=3&api_key=" + g_config.get('api_key'), "_self");
+}, "r");
+
 jQ(document).on('click', '#nine-fifteen-scan', function (e) {
     scanNineFifteenCandle()
 });
@@ -178,6 +189,73 @@ async function scanNineFifteenCandle() {
     }
 }
 
+function showCompoenentPlaceHolders() {
+    let html = ''
+
+    html += '<div class="row" style="position:relative;">'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('NIFTY 50', 1);
+    html += showComponent('NIFTY BANK', 2);
+    html += showComponentFutures('NIFTY 50', 6);
+    html += showComponentFutures('NIFTY BANK', 6);
+    html += showComponentOI('NIFTY 50');
+    html += showComponentOI('NIFTY BANK');
+    html += showComponent915Close('NIFTY 50', 6);
+    html += showComponent915Close('NIFTY BANK', 6);
+    html += showComponenAdvanceDeclineTrend('NIFTY 50', 6)
+    html += showComponenAdvanceDeclineTrend('NIFTY BANK', 6)
+    html += showComponenAdvanceDeclineFutureTrend('NIFTY 50', 6)
+    html += showComponenAdvanceDeclineFutureTrend('NIFTY BANK', 6)
+    html += '</div>'
+    html += '</div>'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('GIFT NIFTY', 3);
+    html += showComponent('SENSEX', 4);
+    html += showComponent915Close('ALL', 12);
+    html += showTrendScoreBoard();
+    html += showAdvanceDecline();
+    html += showAdvanceDeclineFutures();
+    html += showStockComponent();
+    html += '</div>'
+    html += '</div>'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('RELIANCE', 5);
+    html += showComponent('HDFCBANK', 6);
+    html += showComponentFutures('RELIANCE', 6);
+    html += showComponentFutures('HDFCBANK', 6);
+    html += showComponentOI('RELIANCE');
+    html += showComponentOI('HDFCBANK');
+
+    html += showComponent('ICICIBANK', 1);
+    html += showComponent('USDINR', 1);
+    html += showComponentFutures('ICICIBANK', 6);
+    html += showComponentFutures('USDINR', 6);
+    html += showComponentOI('ICICIBANK');
+    html += showComponentOI('USDINR');
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="row" style="position:relative;">'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('CRUDEOILM', 1);
+    html += '<div class="col-md-4">'
+    html += '</div>'
+    html += showComponentFutures('CRUDEOILM', 6);
+    html += '<div class="col-md-4">'
+    html += '</div>'
+    html += showComponentOI('CRUDEOILM');
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
+    jQ("#main-trade-bot-container").html(html);
+}
+
 async function commonShowPopupWindow() {
     resetCount()
     jQ("#refresh-loader").removeClass("hide");
@@ -222,14 +300,29 @@ async function commonShowPopupWindow() {
     html += showComponentOI('HDFCBANK');
 
     html += showComponent('ICICIBANK', 1);
-    html += showComponent('CRUDEOIL', 1);
+    html += showComponent('USDINR', 1);
     html += showComponentFutures('ICICIBANK', 6);
-    html += showComponentFutures('CRUDEOIL', 6);
+    html += showComponentFutures('USDINR', 6);
     html += showComponentOI('ICICIBANK');
-    html += showComponentOI('CRUDEOIL');
+    html += showComponentOI('USDINR');
     html += '</div>'
     html += '</div>'
     html += '</div>'
+
+    html += '<div class="row" style="position:relative;">'
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('CRUDEOILM', 1);
+    html += '<div class="col-md-4">'
+    html += '</div>'
+    html += showComponentFutures('CRUDEOILM', 6);
+    html += '<div class="col-md-4">'
+    html += '</div>'
+    html += showComponentOI('CRUDEOILM');
+    html += '</div>'
+    html += '</div>'
+    html += '</div>'
+
 
     jQ("#main-trade-bot-container").html(html);
 
@@ -352,16 +445,31 @@ async function commonShowPopupWindow() {
     }
 
     try {
-        await showTopChartMCX('CRUDEOIL');
+        await showTopChartMCX('CRUDEOILM');
     } catch (e) {
         console.log(e)
     }
 
     try {
-        res = await showFutureDetailsMCX('CRUDEOIL');
-        setFutureDetails('CRUDEOIL', res);
-        await showPrictionProbabiltyMCX('CRUDEOIL', res)
-        showOIOBVBarChart('CRUDEOIL');
+        res = await showFutureDetailsMCX('CRUDEOILM');
+        setFutureDetails('CRUDEOILM', res);
+        await showPrictionProbabiltyMCX('CRUDEOILM', res)
+        showOIOBVBarChart('CRUDEOILM');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        await showTopChartMCX('USDINR');
+    } catch (e) {
+        console.log(e)
+    }
+
+    try {
+        res = await showFutureDetailsMCX('USDINR');
+        setFutureDetails('USDINR', res);
+        await showPrictionProbabiltyMCX('USDINR', res)
+        showOIOBVBarChart('USDINR');
     } catch (e) {
         console.log(e)
     }
@@ -568,8 +676,8 @@ function setScore() {
             type: 'gauge',
         },
         gauge: {
-            min: -20, // Set minimum to a negative number
-            max: 20,  // Set maximum
+            min: -30, // Set minimum to a negative number
+            max: 30,  // Set maximum
             label: {
                 format: function (value, ratio) {
                     return value; // Display the actual value
@@ -750,7 +858,7 @@ function setFutureDetails(name, data) {
     tempName = tempName.replaceAll("&", "-")
     jQ("#" + tempName + "-futures").html(data['PLUS'] + '<br/>' + data['MINUS']);
 
-    if (name != "CRUDEOIL") {
+    if (name != "USDINR" && name != "CRUDEOILM") {
         let scriptData = generateTrend(name)
         let premium = parseFloat(parseFloat(data['quote']['close']) - parseFloat(scriptData['ltp']));
         let html = '';
@@ -910,7 +1018,7 @@ function showComponenAdvanceDeclineTrend(name, column) {
     html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">INDEX ' + '[<span id="' + tempName + '-advance-decline-adr">ADR</span>]</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">I ' + '[<span id="' + tempName + '-advance-decline-adr">ADR</span>]</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-advance-decline" ></div>'
@@ -927,7 +1035,7 @@ function showComponenAdvanceDeclineFutureTrend(name, column) {
     html += '<div class="col-md-' + column + '" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUT ' + '[<span id="' + tempName + '-advance-decline-adr-future">ADR</span>]</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">F ' + '[<span id="' + tempName + '-advance-decline-adr-future">ADR</span>]</h4>'
     html += '</div>'
     html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-advance-decline-future" ></div>'
@@ -969,14 +1077,184 @@ function showComponentOI(name) {
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-name="' + name + '" class="badge bg-secondary refresh-oi-obv"><i class="bi bi-arrow-clockwise"></i></span>'
     html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;right: .2rem;top: .2rem;" data-name="' + name + '">PCR</span>'
+    html += '<span title="OI Score" id="' + tempName + '-oi-score" style="position: absolute;left: 2rem;top: .1rem;" data-name="' + name + '">SCORE</span>'
+
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;">'
+    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-oi-obv" ></div>'
+
+    html += '<div id="' + tempName + '-component-oi-list-table" ></div>'
     html += '</div>'
     html += '</div>'
     html += '</div>'
     return html;
+}
+
+function showComponentOITable(name) {
+    let tempName = name.replaceAll(" ", "-")
+    tempName = tempName.replaceAll("&", "-")
+
+    let strikes = stock[0]['DATA']['tableData']
+
+    let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
+
+
+    let html = ''
+
+    html += '<div class="row">'
+    html += '<div class="col-md-12">'
+    html += '<table  class="table display nowrap"  style="width: 100%;font-size:xx-small;">'
+
+    html += '<thead>'
+    html += '<tr>'
+
+    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class atm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
+    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
+    html += '</tr>'
+    html += '<tr>'
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '<th class="number-align" >CE</th>'
+    html += '<th class="number-align" >CE OBV</th>'
+    html += '<th class="text-align">S</th>'
+    html += '<th class="number-align" >PE OBV</th>'
+    html += '<th class="number-align">PE</th> '
+
+    html += '</tr>'
+    html += '</thead>'
+    html += '<tbody>'
+    html += '<tr>'
+
+    if (strikes[0]) {
+        html += '<td class="number-align" >' + strikes[0]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[0]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[0]['PE_OBV'][strikes[0]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[0]['CHG_OI_PE'] + '</td> '
+
+    }
+    if (strikes[1]) {
+        html += '<td class="number-align" >' + strikes[1]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[1]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[1]['PE_OBV'][strikes[1]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[1]['CHG_OI_PE'] + '</td> '
+    }
+
+    if (strikes[2]) {
+        html += '<td class="number-align" >' + strikes[2]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[2]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[2]['PE_OBV'][strikes[2]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[2]['CHG_OI_PE'] + '</td> '
+    }
+
+    if (strikes[3]) {
+        html += '<td class="number-align" >' + strikes[3]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[3]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[3]['PE_OBV'][strikes[3]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[3]['CHG_OI_PE'] + '</td> '
+    }
+
+
+    if (strikes[4]) {
+        html += '<td class="number-align" >' + strikes[4]['CHG_OI_CE'] + '</td>'
+        html += '<td class="number-align" >' + strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv'] + '</td>'
+
+        oiHtml = ''
+        oiHtml += '<div style="display:flex;">'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+        oiHtml += 'CE'
+        oiHtml += '</a>'
+        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+        oiHtml += 'PE'
+        oiHtml += '</a>'
+        oiHtml += '</div>'
+
+        html += '<td class="text-align">' + strikes[4]['STRIKE'] + oiHtml + '</td>'
+        html += '<td class="number-align" >' + strikes[4]['PE_OBV'][strikes[4]['PE_OBV'].length - 1]['obv'] + '</td>'
+        html += '<td class="number-align">' + strikes[4]['CHG_OI_PE'] + '</td> '
+    }
+
+    html += '</tr>'
+
+    html += '</tbody>'
+    html += '</table>'
+    html += '</div>'
+    html += '</div>'
+    jQ("#" + tempName + "-component-oi-list-table").html(html);
 }
 
 function showComponent(name, index) {
@@ -1045,7 +1323,7 @@ jQ(document).on("click", ".refresh-chart", function () {
 async function commonRefershChart(name, that) {
     try {
         that.attr("disabled", true);
-        if (name != 'CRUDEOIL') {
+        if (name != 'USDINR' && name != 'CRUDEOILM') {
             await showTopChart(name);
         } else {
             await showTopChartMCX(name);
@@ -1067,7 +1345,7 @@ async function commonRefershFutures(name, that) {
     try {
         that.attr("disabled", true);
         let res = {}
-        if (name != 'CRUDEOIL') {
+        if (name != 'USDINR' && name != 'CRUDEOILM') {
             res = await showFutureDetails(name);
             setFutureDetails(name, res);
         } else {
@@ -1091,7 +1369,7 @@ async function commonRefershOIOBV(name, that) {
     try {
         that.attr("disabled", true);
         let res = {}
-        if (name != 'CRUDEOIL') {
+        if (name != 'USDINR' && name != 'CRUDEOILM') {
             await showPrictionProbabilty(name)
             showOIOBVBarChart(name);
         } else {
@@ -1301,9 +1579,9 @@ function updateScoresOfOI(name, item) {
     if (item['CHG_OI_PE'] > item['CHG_OI_CE']) {
         SCORE++
     } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > item['PE_OBV'][item['PE_OBV'].length - 1]['obv']) {
-        SCORE++
+        //SCORE++
     } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] < 0) {
-        SCORE++
+        //SCORE++
     }
 
     if (item['OI_PE'] > item['OI_CE']) {
@@ -1317,9 +1595,9 @@ function updateScoresOfOI(name, item) {
     if (item['CHG_OI_CE'] > item['CHG_OI_PE']) {
         SCORE--
     } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] > item['CE_OBV'][item['CE_OBV'].length - 1]['obv']) {
-        SCORE--
+        //SCORE--
     } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > 0) {
-        SCORE--
+        //SCORE--
     }
 
     if (name == "NIFTY 50") {
@@ -1331,6 +1609,19 @@ function updateScoresOfOI(name, item) {
     } else if (name == "HDFCBANK") {
         HDFCBANK_OI_OBV_SCORE += SCORE
     }
+
+    return SCORE;
+
+}
+
+function updateScoresOfTrend(name, score) {
+    let scoreHtml = ''
+    if (score > 0) {
+        scoreHtml += '<span class="badge bg-success"><i class="bi bi-speedometer"></i>+ ' + score + '</span>'
+    } else {
+        scoreHtml += '<span class="badge bg-danger"><i class="bi bi-speedometer"></i> ' + score + '</span>'
+    }
+    jQ("#" + name.replaceAll(" ", "-") + "-oi-score").html(scoreHtml)
 }
 
 function show915Trend(name) {
@@ -1473,6 +1764,7 @@ function showOIOBVBarChart(name) {
 
     jQ("#" + tempName + "-pcr-probability").html(pcrHtml + " | " + chPcrHtml)
 
+    let oiScore = 0
     jQ.each(data, function (index, item) {
         x.push(item['STRIKE'])
         oiCE.push(item['OI_CE'])
@@ -1485,7 +1777,10 @@ function showOIOBVBarChart(name) {
         oiPESUM.push(sumPE.toFixed(1))
         oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
         oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
-    })
+        oiScore += updateScoresOfOI(name, item)
+    });
+
+    updateScoresOfTrend(name, oiScore)
 
     columns.push(x)
     columns.push(oiCECH)
@@ -1496,7 +1791,6 @@ function showOIOBVBarChart(name) {
     columns.push(oiPEOBV)
     columns.push(oiCESUM)
     columns.push(oiPESUM)
-
 
 
     var chart = c3.generate({
@@ -1562,6 +1856,7 @@ function showOIOBVBarChart(name) {
             show: false // Hide the legend      
         }
     });
+    showComponentOITable(name)
 }
 
 async function showFutureDetails(name) {
