@@ -65,6 +65,7 @@ async function generateQuickQuoteScannerStockList() {
     });
 
     let quotes = await getQuotesUsingPromise(instruments);
+    quotes = quotes.data
     jQ.each(FO_LIST, function (index, item) {
         let name = item
         let trends = scriptData[name]['trends']
@@ -76,9 +77,10 @@ async function generateQuickQuoteScannerStockList() {
         obj['VOLUME'] = 0
         if (quotes) {
             let quote = quotes['NSE:' + name]
+            console.log(name, quote)
             if (quote) {
-                obj['TOTAL_SELL'] = quote.totalSellQuantity
-                obj['TOTAL_BUY'] = quote.totalBuyQuantity
+                obj['TOTAL_SELL'] = quote.sell_quantity
+                obj['TOTAL_BUY'] = quote.buy_quantity
                 obj['VOLUME'] = quote.volume
             }
         }

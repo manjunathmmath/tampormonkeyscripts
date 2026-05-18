@@ -473,7 +473,7 @@ async function getSetAccessToken(){
                 { 'api_key': g_config.get('api_key'), 'request_token': q.request_token, 'checksum': sha256(g_config.get('api_key') + q.request_token + g_config.get('api_secret')) },
                 function (data, status) {
                     callSackBarInfo(`AT status ${status}`);
-                    console.log(data);
+                    alert(data.data.access_token)
                     g_config.set('api_access_token', data.data.access_token);
                     redirectToDashboard()
                 })

@@ -1,4 +1,5 @@
 let stock = []
+let OI_DIVISOR = 100000
 async function showPrictionProbabilty(name) {
     stock = []
     let scriptData = generateTrend(name)
@@ -66,14 +67,14 @@ function calculateOBVFiveMinutesInterval(prevData, currData) {
         prevLastCandle = item
         let obj = {};
         obj['date'] = item[0];
-        obj['obv'] = parseFloat(OBV / 100000).toFixed(1);
+        obj['obv'] = parseFloat(OBV / OI_DIVISOR).toFixed(1);
         obvList.push(obj)
     })
     return obvList;
 }
 
 async function showTrendingOI(instrument) {
-
+    OI_DIVISOR = 100000
     let strikToShow = 2
     let strikeData = []
     let selectedStrike = []
@@ -194,6 +195,7 @@ async function showTrendingOI(instrument) {
 
 }
 
+
 async function showOITrendingDetails(strikeData, selectedStrike) {
     let strikeMap = {}
     for (let i = 0; i < strikeData.length; i++) {
@@ -276,11 +278,11 @@ async function showOITrendingDetails(strikeData, selectedStrike) {
             let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
 
             let obj = {}
-            obj['OI_CE'] = parseFloat(OI_CE / 100000).toFixed(1)
-            obj['CHG_OI_CE'] = parseFloat((OI_CE - PREV_OI_CE) / 100000).toFixed(1)
+            obj['OI_CE'] = parseFloat(OI_CE / OI_DIVISOR).toFixed(1)
+            obj['CHG_OI_CE'] = parseFloat((OI_CE - PREV_OI_CE) / OI_DIVISOR).toFixed(1)
             obj['STRIKE'] = index
-            obj['OI_PE'] = parseFloat(OI_PE / 100000).toFixed(1)
-            obj['CHG_OI_PE'] = parseFloat((OI_PE - PREV_OI_PE) / 100000).toFixed(1)
+            obj['OI_PE'] = parseFloat(OI_PE / OI_DIVISOR).toFixed(1)
+            obj['CHG_OI_PE'] = parseFloat((OI_PE - PREV_OI_PE) / OI_DIVISOR).toFixed(1)
             obj['ATM_STRIKE'] = item.ATM_STRIKE
             obj['CE'] = item.CE
             obj['PE'] = item.PE

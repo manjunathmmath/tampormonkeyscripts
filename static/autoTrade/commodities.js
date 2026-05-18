@@ -213,6 +213,7 @@ async function showFutureDetailsMCX(name) {
 }
 
 async function showTrendingOIMCX(instrument) {
+    OI_DIVISOR = 1000;
     let name = stock[0]['TRADINGSYMBOL']
     let ltp = stock[0]['LTP']
     let open = stock[0]['OPEN']

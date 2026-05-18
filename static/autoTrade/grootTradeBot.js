@@ -676,8 +676,8 @@ function setScore() {
             type: 'gauge',
         },
         gauge: {
-            min: -30, // Set minimum to a negative number
-            max: 30,  // Set maximum
+            min: -40, // Set minimum to a negative number
+            max: 40,  // Set maximum
             label: {
                 format: function (value, ratio) {
                     return value; // Display the actual value
@@ -1579,9 +1579,9 @@ function updateScoresOfOI(name, item) {
     if (item['CHG_OI_PE'] > item['CHG_OI_CE']) {
         SCORE++
     } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > item['PE_OBV'][item['PE_OBV'].length - 1]['obv']) {
-        //SCORE++
+        SCORE++
     } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] < 0) {
-        //SCORE++
+        SCORE++
     }
 
     if (item['OI_PE'] > item['OI_CE']) {
@@ -1595,9 +1595,9 @@ function updateScoresOfOI(name, item) {
     if (item['CHG_OI_CE'] > item['CHG_OI_PE']) {
         SCORE--
     } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] > item['CE_OBV'][item['CE_OBV'].length - 1]['obv']) {
-        //SCORE--
+        SCORE--
     } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > 0) {
-        //SCORE--
+        SCORE--
     }
 
     if (name == "NIFTY 50") {
@@ -1610,6 +1610,7 @@ function updateScoresOfOI(name, item) {
         HDFCBANK_OI_OBV_SCORE += SCORE
     }
 
+    console.log("Score for " + name + " is " + SCORE + "STRIKE: " + item['STRIKE'])
     return SCORE;
 
 }
