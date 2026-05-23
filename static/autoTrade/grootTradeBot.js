@@ -189,142 +189,145 @@ async function scanNineFifteenCandle() {
     }
 }
 
-function showCompoenentPlaceHolders() {
+function commonMarkupPlaceHolder() {
+
     let html = ''
 
-    html += '<div class="row" style="position:relative;">'
-    html += '<div class="col-md-4">'
+    html += '<div class="row flex-nowrap overflow-auto" style="position:relative;">'
+
+    html += '<div class="col-md-2">'
     html += '<div class="row" style="position:relative;">'
     html += showComponent('NIFTY 50', 1);
-    html += showComponent('NIFTY BANK', 2);
-    html += showComponentFutures('NIFTY 50', 6);
-    html += showComponentFutures('NIFTY BANK', 6);
+    html += showComponentFutures('NIFTY 50', 12);
     html += showComponentOI('NIFTY 50');
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('NIFTY BANK', 1);
+    html += showComponentFutures('NIFTY BANK', 12);
     html += showComponentOI('NIFTY BANK');
-    html += showComponent915Close('NIFTY 50', 6);
-    html += showComponent915Close('NIFTY BANK', 6);
-    html += showComponenAdvanceDeclineTrend('NIFTY 50', 6)
-    html += showComponenAdvanceDeclineTrend('NIFTY BANK', 6)
-    html += showComponenAdvanceDeclineFutureTrend('NIFTY 50', 6)
-    html += showComponenAdvanceDeclineFutureTrend('NIFTY BANK', 6)
-    html += '</div>'
-    html += '</div>'
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('GIFT NIFTY', 3);
-    html += showComponent('SENSEX', 4);
-    html += showComponent915Close('ALL', 12);
-    html += showTrendScoreBoard();
-    html += showAdvanceDecline();
-    html += showAdvanceDeclineFutures();
-    html += showStockComponent();
-    html += '</div>'
-    html += '</div>'
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('RELIANCE', 5);
-    html += showComponent('HDFCBANK', 6);
-    html += showComponentFutures('RELIANCE', 6);
-    html += showComponentFutures('HDFCBANK', 6);
-    html += showComponentOI('RELIANCE');
-    html += showComponentOI('HDFCBANK');
-
-    html += showComponent('ICICIBANK', 1);
-    html += showComponent('USDINR', 1);
-    html += showComponentFutures('ICICIBANK', 6);
-    html += showComponentFutures('USDINR', 6);
-    html += showComponentOI('ICICIBANK');
-    html += showComponentOI('USDINR');
-    html += '</div>'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="row" style="position:relative;">'
-    html += '<div class="col-md-4">'
+
+    html += '<div class="col-md-2">'
     html += '<div class="row" style="position:relative;">'
     html += showComponent('CRUDEOILM', 1);
-    html += '<div class="col-md-4">'
-    html += '</div>'
-    html += showComponentFutures('CRUDEOILM', 6);
-    html += '<div class="col-md-4">'
-    html += '</div>'
+    html += showComponentFutures('CRUDEOILM', 12);
     html += showComponentOI('CRUDEOILM');
     html += '</div>'
     html += '</div>'
+
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('RELIANCE', 1);
+    html += showComponentFutures('RELIANCE', 12);
+    html += showComponentOI('RELIANCE');
+    html += '</div>'
     html += '</div>'
 
-    jQ("#main-trade-bot-container").html(html);
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('HDFCBANK', 1);
+    html += showComponentFutures('HDFCBANK', 12);
+    html += showComponentOI('HDFCBANK');
+    html += '</div>'
+    html += '</div>'
+
+
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('ICICIBANK', 1);
+    html += showComponentFutures('ICICIBANK', 12);
+    html += showComponentOI('ICICIBANK');
+    html += '</div>'
+    html += '</div>'
+
+
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent('USDINR', 1);
+    html += showComponentFutures('USDINR', 12);
+    html += showComponentOI('USDINR');
+    html += '</div>'
+    html += '</div>'
+
+
+
+    html += '</div>'
+
+
+    html += '<div class="row flex-nowrap overflow-auto" style="position:relative;">'
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent915Close('NIFTY 50', 12);
+    html += showComponenAdvanceDeclineTrend('NIFTY 50', 12)
+    html += showComponenAdvanceDeclineFutureTrend('NIFTY 50', 12)
+    html += '</div>'
+    html += '</div>'
+
+    html += '<div class="col-md-2">'
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent915Close('NIFTY BANK', 12);
+    html += showComponenAdvanceDeclineTrend('NIFTY BANK', 12)
+    html += showComponenAdvanceDeclineFutureTrend('NIFTY BANK', 12)
+    html += '</div>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-4">'
+
+    html += '<div class="row" style="position:relative;">'
+
+    html += '<div class="col-md-6">'
+    html += showComponent('GIFT NIFTY', 3);
+    html += '</div>'
+
+    html += '<div class="col-md-6">'
+    html += showComponent('SENSEX', 3);
+    html += '</div>'
+
+    html += '</div>'
+
+    html += '<div class="row" style="position:relative;">'
+    html += showComponent915Close('ALL', 12);
+    html += showStockComponent();
+    html += '</div>'
+    html += '</div>'
+
+
+    html += '<div class="col-md-4">'
+    html += '<div class="row" style="position:relative;">'
+    html += showTrendScoreBoard();
+    html += showAdvanceDecline();
+    html += showAdvanceDeclineFutures();
+
+    html += '</div>'
+    html += '</div>'
+
+
+    html += '</div>'
+
+    return html;
+
+}
+
+function showCompoenentPlaceHolders() {
+    jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
 }
 
 async function commonShowPopupWindow() {
     resetCount()
     jQ("#refresh-loader").removeClass("hide");
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
-    let html = ''
-
-    html += '<div class="row" style="position:relative;">'
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('NIFTY 50', 1);
-    html += showComponent('NIFTY BANK', 2);
-    html += showComponentFutures('NIFTY 50', 6);
-    html += showComponentFutures('NIFTY BANK', 6);
-    html += showComponentOI('NIFTY 50');
-    html += showComponentOI('NIFTY BANK');
-    html += showComponent915Close('NIFTY 50', 6);
-    html += showComponent915Close('NIFTY BANK', 6);
-    html += showComponenAdvanceDeclineTrend('NIFTY 50', 6)
-    html += showComponenAdvanceDeclineTrend('NIFTY BANK', 6)
-    html += showComponenAdvanceDeclineFutureTrend('NIFTY 50', 6)
-    html += showComponenAdvanceDeclineFutureTrend('NIFTY BANK', 6)
-    html += '</div>'
-    html += '</div>'
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('GIFT NIFTY', 3);
-    html += showComponent('SENSEX', 4);
-    html += showComponent915Close('ALL', 12);
-    html += showTrendScoreBoard();
-    html += showAdvanceDecline();
-    html += showAdvanceDeclineFutures();
-    html += showStockComponent();
-    html += '</div>'
-    html += '</div>'
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('RELIANCE', 5);
-    html += showComponent('HDFCBANK', 6);
-    html += showComponentFutures('RELIANCE', 6);
-    html += showComponentFutures('HDFCBANK', 6);
-    html += showComponentOI('RELIANCE');
-    html += showComponentOI('HDFCBANK');
-
-    html += showComponent('ICICIBANK', 1);
-    html += showComponent('USDINR', 1);
-    html += showComponentFutures('ICICIBANK', 6);
-    html += showComponentFutures('USDINR', 6);
-    html += showComponentOI('ICICIBANK');
-    html += showComponentOI('USDINR');
-    html += '</div>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '<div class="row" style="position:relative;">'
-    html += '<div class="col-md-4">'
-    html += '<div class="row" style="position:relative;">'
-    html += showComponent('CRUDEOILM', 1);
-    html += '<div class="col-md-4">'
-    html += '</div>'
-    html += showComponentFutures('CRUDEOILM', 6);
-    html += '<div class="col-md-4">'
-    html += '</div>'
-    html += showComponentOI('CRUDEOILM');
-    html += '</div>'
-    html += '</div>'
-    html += '</div>'
-
-
-    jQ("#main-trade-bot-container").html(html);
+    jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
 
     await callSleepForAWhile(1000)
 
@@ -1053,7 +1056,7 @@ function showComponentFutures(name, column) {
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<span style="position: absolute;left: .2rem;top: .2rem;"  data-name="' + name + '" class="badge bg-secondary refresh-futures"><i class="bi bi-arrow-clockwise"></i></span>'
-    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;left: 2.4rem;top: .2rem;"  data-name="' + name + '">PREMIUM</span>'
+    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;left: 2rem;top: .2rem;"  data-name="' + name + '">PREMIUM</span>'
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;" id="futures-chart-' + tempName + '">FUTURES</h4>'
     html += '</div>'
@@ -1072,7 +1075,7 @@ function showComponentOI(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let html = ''
-    html += '<div class="col-md-6" style="border:1px solid #c3c3c3;">'
+    html += '<div class="col-md-12" style="border:1px solid #c3c3c3;">'
     html += '<div class="row" style="">'
     html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-name="' + name + '" class="badge bg-secondary refresh-oi-obv"><i class="bi bi-arrow-clockwise"></i></span>'
@@ -1081,8 +1084,10 @@ function showComponentOI(name) {
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
-    html += '<div id="' + tempName + '-oi-obv" ></div>'
+    html += '<div class="col-md-12" style="height:20rem;position:relative;overflow-y:auto;">'
+    html += '<div id="' + tempName + '-oi" ></div>'
+
+    html += '<div id="' + tempName + '-obv" ></div>'
 
     html += '<div id="' + tempName + '-component-oi-list-table" ></div>'
     html += '</div>'
@@ -1273,10 +1278,11 @@ function showComponent(name, index) {
     }
 
     let html = ''
-    html += '<div class="col-md-6" style="border:1px solid #c3c3c3;background-color:' + componentColor + ';">'
+    html += '<div class="col-md-12" style="border:1px solid #c3c3c3;background-color:' + componentColor + ';">'
 
     html += '<div class="row" style="position:relative;background-color: ' + (componentColorHeader[name] == undefined ? "#ffbcb0" : componentColorHeader[name]) + '">'
     html += '<div class="col-md-12">'
+
 
     let bgClass = '';
     if (breakOutNineFifteen[name]) {
@@ -1300,7 +1306,7 @@ function showComponent(name, index) {
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary refresh-chart"><i class="bi bi-arrow-clockwise"></i></span>'
 
     html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + link + '</h4>'
+    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + link + ' [<span id="' + tempName + '-ltp"></span>]</h4>'
     html += '</div>'
     html += '</div>'
 
@@ -1569,9 +1575,13 @@ async function showTopChart(name) {
                 show: false // Hide the legend      
             }
         });
+        let ltp = data.data.candles[data.data.candles.length - 1][4]
+        jQ("#" + tempName + "-ltp").html(parseFloat(ltp))
     } catch (error) {
         console.error("Error in showTopChart for " + name, error);
     }
+
+
 }
 
 function updateScoresOfOI(name, item) {
@@ -1716,7 +1726,8 @@ function showOIOBVBarChart(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
-    let columns = [];
+    let columnsOi = [];
+    let columnsObv = [];
 
     let x = ['x']
 
@@ -1783,66 +1794,37 @@ function showOIOBVBarChart(name) {
 
     updateScoresOfTrend(name, oiScore)
 
-    columns.push(x)
-    columns.push(oiCECH)
-    columns.push(oiPECH)
-    columns.push(oiCE)
-    columns.push(oiPE)
-    columns.push(oiCEOBV)
-    columns.push(oiPEOBV)
-    columns.push(oiCESUM)
-    columns.push(oiPESUM)
+    columnsOi.push(x)
+    columnsOi.push(oiCECH)
+    columnsOi.push(oiPECH)
+    //columns.push(oiCE)
+    //columns.push(oiPE)
+
+    columnsObv.push(x)
+    columnsObv.push(oiCEOBV)
+    columnsObv.push(oiPEOBV)
+    //columns.push(oiCESUM)
+    //columns.push(oiPESUM)
 
 
     var chart = c3.generate({
-        bindto: "#" + tempName + "-oi-obv",
+        bindto: "#" + tempName + "-oi",
         size: {
             height: 150
         },
         data: {
             x: 'x',
-            columns: columns,
+            columns: columnsOi,
             type: 'bar',
             colors: {
-                'CE OI': '#FF0000',
-                'PE OI': '#11ff00',
                 'CH CE OI': '#FF0000',
                 'CH PE OI': '#11ff00',
-                'SUM CE OI': '#FF0000',
-                'SUM PE OI': '#11ff00',
-                'CE OBV': '#d400ff',
-                'PE OBV': '#0059ff'
-
             },
-            /*color: function (color, d) {
-                if (d.value !== undefined) {
-                    if (d.id === 'CE OI' && d.value > 0) {
-                        return '#bc2709'; //Calls are being sold and the price is expected to go down, so red color
-                    } else if (d.id === 'CE OI' && d.value < 0) {
-                        return '#bc2709'; // Call writing is happening and the price is expected to go up, so green color
-                    } else if (d.id === 'PE OI' && d.value > 0) {
-                        return '#5ccf76'; //Put writing is happening and the price is expected to go up, so green color
-                    } else if (d.id === 'PE OI' && d.value < 0) {
-                        return '#5ccf76'; // Put buying closing the  positions
-                    } else if (d.id === 'CE OI OBV' && d.value > 0) {
-                        return '#5ccf76'; // Call are bein bought
-                    } else if (d.id === 'CE OI OBV' && d.value < 0) {
-                        return '#bc2709'; // Call writing is happening
-                    } else if (d.id === 'PE OI OBV' && d.value > 0) {
-                        return '#bc2709'; // Puts arebeing bought   
-                    } else if (d.id === 'PE OI OBV' && d.value < 0) {
-                        return '#5ccf76'; // Put writing is happening
-                    }
-                }
-                // For legend items or other cases, return the default color
-                return color;
-            },*/
-
         },
 
         bar: {
             width: {
-                ratio: 0.5
+                ratio: 0.3
             }
         },
         axis: {
@@ -1857,6 +1839,41 @@ function showOIOBVBarChart(name) {
             show: false // Hide the legend      
         }
     });
+
+
+    var chart = c3.generate({
+        bindto: "#" + tempName + "-obv",
+        size: {
+            height: 150
+        },
+        data: {
+            x: 'x',
+            columns: columnsObv,
+            type: 'bar',
+            colors: {
+                'CE OBV': '#FF0000',
+                'PE OBV': '#11ff00',
+            },
+        },
+
+        bar: {
+            width: {
+                ratio: 0.3
+            }
+        },
+        axis: {
+            x: {
+                show: true,
+            },
+            y: {
+                show: false,
+            },
+        },
+        legend: {
+            show: false // Hide the legend      
+        }
+    });
+
     showComponentOITable(name)
 }
 

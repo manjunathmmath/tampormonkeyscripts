@@ -58,7 +58,7 @@ async function showTopChartMCX(name) {
             vix = VIX
         }
 
-         if (name == "USDINR") {
+        if (name == "USDINR") {
             vix = "4.85"
         }
 
@@ -158,9 +158,13 @@ async function showTopChartMCX(name) {
                 show: false // Hide the legend      
             }
         });
+        let ltp = data.data.candles[data.data.candles.length - 1][4]
+        jQ("#" + tempName + "-ltp").html(parseFloat(ltp))
     } catch (error) {
         console.error("Error in showTopChart for " + name, error);
     }
+
+
 }
 
 async function showFutureDetailsMCX(name) {
@@ -257,7 +261,7 @@ async function showTrendingOIMCX(instrument) {
             }
         }
     });
-   
+
 
     selectedStrike.sort(function (a, b) { return parseFloat(a.strike) - parseFloat(b.strike) })
     let upperStrikes = []
