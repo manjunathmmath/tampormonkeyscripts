@@ -398,7 +398,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '</div>'
 
     html += '<div class="row">'
-    html += '<div class="col-md-12" style="height:13rem;position:relative;background-color:#000000;">'
+    html += '<div class="col-md-12" style="height:19rem;position:relative;background-color:#000000;">'
     html += '<div id="' + tempName + '-chart" ></div>'
     html += '</div>'
     html += '</div>'
@@ -413,8 +413,9 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:13rem;position:relative;overflow-y:auto;">'
-    html += '<div id="' + tempName + '-oi-obv" ></div>'
+    html += '<div class="col-md-12" style="height:19rem;position:relative;overflow-y:auto;">'
+    html += '<div id="' + tempName + '-oi" ></div>'
+    html += '<div id="' + tempName + '-obv" ></div>'
     html += '<div id="' + tempName + '-component-oi-list-table"></div>'
     html += '</div>'
     html += '</div>'
@@ -427,7 +428,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large" id="futures-chart-' + tempName + '">FUTURES</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
+    html += '<div class="col-md-12" style="height:19rem;position:relative;text-align:center;">'
     html += '<div id="' + tempName + '-futures" ></div>'
     html += '<div title="VWAP Trend" id="' + tempName + '-futures-vwap" ></div>'
     html += '<div title="Future trend" id="' + tempName + '-futures-trend" ></div>'
@@ -447,7 +448,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     title += 'Groot Trade Bot'
     title += '</div>'
     title += '</div>'
-    showPopUpWindow('groot-trade-bot-stock', html, "Groot [Trade Bot]", 950, 330);
+    showPopUpWindow('groot-trade-bot-stock', html, "Groot [Trade Bot]", 950, 390);
     let divId = "popup-custom-style-groot-trade-bot-stock";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     await showTopChart(symbol);

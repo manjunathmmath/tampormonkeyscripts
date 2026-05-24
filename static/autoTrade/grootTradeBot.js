@@ -1084,7 +1084,7 @@ function showComponentOI(name) {
 
     html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:20rem;position:relative;overflow-y:auto;">'
+    html += '<div class="col-md-12" style="height:19.5rem;position:relative;overflow-y:auto;">'
     html += '<div id="' + tempName + '-oi" ></div>'
 
     html += '<div id="' + tempName + '-obv" ></div>'
