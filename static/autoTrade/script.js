@@ -177,6 +177,12 @@ async function scanPreMarketpPrice() {
                             name = "M&MFIN"
                         }
 
+                        if (name == "GVT&amp;D") {
+                            name = "GVT&D"
+                        }
+
+                        
+
                         let obj = {}
                         obj['name'] = name
                         obj['price'] = parseFloat(price.trim()).toFixed(2)
@@ -259,6 +265,11 @@ async function scanLtpPrice() {
                         if (name == "M&amp;MFIN") {
                             name = "M&MFIN"
                         }
+
+                        if (name == "GVT&amp;D") {
+                            name = "GVT&D"
+                        }
+
                         obj['name'] = name.trim()
                         obj['ltp'] = parseFloat(price.trim()).toFixed(2);
                         storageLtpObj[name] = obj
