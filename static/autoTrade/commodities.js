@@ -12,8 +12,8 @@ async function showTopChartMCX(name) {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
-        let data = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+        let data = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_CURRENT_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
 
         let strikeDiff = mcxFutreStrikeDiff[name];
         if (!strikeDiff) {
@@ -177,8 +177,8 @@ async function showFutureDetailsMCX(name) {
             futures = item;
         }
     })
-    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, 'day');
+    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_CURRENT_DAY, MCX_CURRENT_DAY, 'day');
 
 
     let data = []
@@ -222,7 +222,7 @@ async function showTrendingOIMCX(instrument) {
     let ltp = stock[0]['LTP']
     let open = stock[0]['OPEN']
 
-    let strikToShow = 3
+    let strikToShow = 4
     let strikeData = []
     let selectedStrike = []
     let currentPrice = open
@@ -232,16 +232,16 @@ async function showTrendingOIMCX(instrument) {
 
     if (instrument == "NIFTY 50") {
         instrument = "NIFTY"
-        strikToShow = 3
+        strikToShow = 4
     } else if (instrument == "NIFTY BANK") {
         instrument = "BANKNIFTY"
-        strikToShow = 3
+        strikToShow = 4
     } else if (instrument == "NIFTY FIN SERVICE") {
         instrument = "FINNIFTY"
-        strikToShow = 3
+        strikToShow = 4
     } else if (instrument == "NIFTY MID SELECT") {
         instrument = "MIDCPNIFTY"
-        strikToShow = 3
+        strikToShow = 4
     }
 
     let atmStrike = 0;
@@ -340,6 +340,130 @@ async function showTrendingOIMCX(instrument) {
     let tableData = await showOITrendingDetails(strikeData, selectedStrike)
     return tableData
 }
+
+
+
+async function showMCXOITrendingDetails(strikeData, selectedStrike) {
+    let strikeMap = {}
+    for (let i = 0; i < strikeData.length; i++) {
+        try {
+            let CE = ''
+            let PE = ''
+            if (strikeData[i]['STRIKE'] != 0) {
+                for (let j = 0; j < selectedStrike.length; j++) {
+                    if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
+                        && selectedStrike[j].instrument_type == 'CE') {
+                        CE = selectedStrike[j]
+                    }
+
+                    if (parseFloat(strikeData[i]['STRIKE']) == parseFloat(selectedStrike[j].strike)
+                        && selectedStrike[j].instrument_type == 'PE') {
+                        PE = selectedStrike[j]
+                    }
+                }
+
+                let HISTORICAL_DATA_INTERVAL_OVERRIDE = jQ("#api-data-interval option:selected").val()
+                if (!HISTORICAL_DATA_INTERVAL_OVERRIDE) {
+                    HISTORICAL_DATA_INTERVAL_OVERRIDE = '5minute'
+                }
+
+                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, MCX_PREVIOUS_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+
+                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, MCX_PREVIOUS_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+
+
+
+                strikeMap[strikeData[i]['STRIKE']] = {}
+                strikeMap[strikeData[i]['STRIKE']]['prevDataCE'] = prevDataCE
+                strikeMap[strikeData[i]['STRIKE']]['currDataCE'] = currDataCE
+                strikeMap[strikeData[i]['STRIKE']]['prevDataPE'] = prevDataPE
+                strikeMap[strikeData[i]['STRIKE']]['currDataPE'] = currDataPE
+                strikeMap[strikeData[i]['STRIKE']]['INDEX'] = i
+                strikeMap[strikeData[i]['STRIKE']]['ATM_STRIKE'] = strikeData[i]['ATM_STRIKE']
+
+                strikeMap[strikeData[i]['STRIKE']]['CE'] = CE
+                strikeMap[strikeData[i]['STRIKE']]['PE'] = PE
+            }
+        } catch (err) {
+            console.log("Error while fetching strike : " + strikeData[i]['STRIKE'])
+        }
+    }
+
+    let tableData = []
+
+    let totalCEOI = 0;
+    let totalPEOI = 0;
+
+    let chCEOI = 0;
+    let chPEOI = 0;
+
+    jQ.each(strikeMap, function (index, item) {
+        try {
+            let currDataCE = item['currDataCE']['data']['candles']
+            let currDataPE = item['currDataPE']['data']['candles']
+
+            let prevDataCE = item['prevDataCE']['data']['candles']
+            let prevDataPE = item['prevDataPE']['data']['candles']
+
+            if (currDataCE.length == 0) {
+                currDataCE = prevDataCE
+            }
+
+            if (currDataPE.length == 0) {
+                currDataPE = prevDataPE
+            }
+
+            let OI_CE = currDataCE[currDataCE.length - 1][6]
+            let OI_PE = currDataPE[currDataPE.length - 1][6]
+
+            totalCEOI = totalCEOI + OI_CE
+            totalPEOI = totalPEOI + OI_PE
+
+            let PREV_OI_CE = prevDataCE[prevDataCE.length - 1][6]
+            let PREV_OI_PE = prevDataPE[prevDataPE.length - 1][6]
+
+            let obj = {}
+            obj['OI_CE'] = parseFloat(OI_CE / OI_DIVISOR).toFixed(1)
+            obj['CHG_OI_CE'] = parseFloat((OI_CE - PREV_OI_CE) / OI_DIVISOR).toFixed(1)
+            obj['STRIKE'] = index
+            obj['OI_PE'] = parseFloat(OI_PE / OI_DIVISOR).toFixed(1)
+            obj['CHG_OI_PE'] = parseFloat((OI_PE - PREV_OI_PE) / OI_DIVISOR).toFixed(1)
+            obj['ATM_STRIKE'] = item.ATM_STRIKE
+            obj['CE'] = item.CE
+            obj['PE'] = item.PE
+
+            chCEOI = chCEOI + (OI_CE - PREV_OI_CE)
+            chPEOI = chPEOI + (OI_PE - PREV_OI_PE)
+
+            obj['currDataCE'] = currDataCE
+            obj['currDataPE'] = currDataPE
+
+            obj['prevDataCE'] = prevDataCE
+            obj['prevDataPE'] = prevDataPE
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+
+            tableData.push(obj)
+        } catch (err) {
+            console.log("Error while fetching strike : " + index)
+        }
+
+    });
+
+    let pcr = parseFloat(totalPEOI / totalCEOI).toFixed(2);
+    let chPcr = parseFloat(chPEOI / chCEOI).toFixed(2);
+
+
+    tableData.sort(function (a, b) { return parseFloat(a.STRIKE) - parseFloat(b.STRIKE) })
+    let map = {}
+    map['tableData'] = tableData
+    map['pcr'] = pcr
+    map['chPcr'] = chPcr
+    return map
+}
+
 
 async function showPrictionProbabiltyMCX(name, intr) {
     stock = []

@@ -44,6 +44,14 @@ const g_config = new MonkeyConfig({
             type: 'checkbox',
             default: true
         },
+        mcx_previous_day_date: {
+            type: 'text',
+            default: moment().subtract(1, "days").format("YYYY-MM-DD")
+        },
+        mcx_current_day_date: {
+            type: 'text',
+            default: moment().format("YYYY-MM-DD")
+        },
         OVX: {
             type: 'text',
             default: 68.90 //https://in.investing.com/indices/cboe-crude-oil-volatility-historical-data
@@ -81,7 +89,7 @@ const g_config = new MonkeyConfig({
 
 const VERSION = "v1.0";
 const BASE_URL = "https://kite.zerodha.com";
-const PREVIOUS_DAY_DATE = g_config.get('previous_day_date');
+const PREVIOUS_DAY = g_config.get('previous_day_date');
 const CURRENT_DAY = g_config.get('current_day_date');
 
 const CURRENT_DATE_FROM_DATE = CURRENT_DAY + " 09:15:00";
@@ -98,6 +106,9 @@ const ENABLE_SOUND = g_config.get('enable_sound');
 const SENSEX_EXPIRY_DATE = g_config.get('sensex_expiry_date');
 const USE_LTP_FOR_STRIKE = g_config.get('use_ltp_for_strike');
 let OPTION_STRIKE_LIST = NSE_LIST.concat(BSE_LIST)
+
+const MCX_PREVIOUS_DAY = g_config.get('mcx_previous_day_date');
+const MCX_CURRENT_DAY = g_config.get('mcx_current_day_date');
 const OVX = g_config.get('OVX'); //CRUDE vix
 const VXSLV = g_config.get("VXSLV") //SILVER VIX
 const GVZ = g_config.get("GVZ") //GOLD VIX

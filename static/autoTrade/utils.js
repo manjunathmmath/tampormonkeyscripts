@@ -306,7 +306,7 @@ function savePreviousStockQuote(script, token) {
     tempName = tempName.replaceAll("&", "-")
     return new Promise((resolve, reject) => {
         if (!localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE")) {
-            jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, HISTORICAL_DATA_INTERVAL)).done(function (res) {
+            jQ.when(getHistoricalData(token, PREVIOUS_DAY, PREVIOUS_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
                 localStorage.setItem(tempName + "_PREVIOUS_DAY_QUOTE", JSON.stringify(res));
                 resolve();
             })
@@ -518,7 +518,7 @@ function calculateVixRange(type, prevQuoteData, prevVixData) {
 function saveVixQuote() {
     return new Promise((resolve, reject) => {
         if (!localStorage.getItem("VIX_QUOTE")) {
-            jQ.when(getHistoricalData(264969, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (res) {
+            jQ.when(getHistoricalData(264969, PREVIOUS_DAY, PREVIOUS_DAY, 'day')).done(function (res) {
                 localStorage.setItem("VIX_QUOTE", JSON.stringify(res));
                 resolve();
             })

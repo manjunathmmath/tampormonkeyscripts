@@ -74,7 +74,7 @@ jQ(document).on("click", "#data-load", function () {
 
     html += '<div class="row">'
     html += '<div class="col-md-12">'
-    html += 'Previous Day : <span title="Previous Day Date" class="badge bg-primary me-1">' + PREVIOUS_DAY_DATE + '</span>'
+    html += 'Previous Day : <span title="Previous Day Date" class="badge bg-primary me-1">' + PREVIOUS_DAY + '</span>'
     html += '</div>'
     html += '<div class="col-md-12">'
     html += 'Current Day : <span title="Current Day Date" class="badge bg-primary me-1">' + CURRENT_DAY + '</span>'
@@ -1895,7 +1895,7 @@ async function showFutureDetails(name) {
             futures = item;
         }
     })
-    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY, PREVIOUS_DAY, 'day');
     let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, 'day');
 
 
@@ -2922,7 +2922,7 @@ async function showFuturesTrend() {
         })
         try {
 
-            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
+            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY, PREVIOUS_DAY, 'day');
             let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
             let prevData = []
             jQ.each(pres.data.candles, function (index, item) {

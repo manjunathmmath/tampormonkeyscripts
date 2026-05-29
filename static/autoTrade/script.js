@@ -3,8 +3,8 @@ async function autoRefreshEachTabs(instance, isManual) {
     clearInterval(timerInstance)
 
     let currentTime = moment().format("HH:mm")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
-    let endTime = moment(PREVIOUS_DAY_DATE + " 16:30:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let endTime = moment(PREVIOUS_DAY + " 16:30:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
     let allow = true;
 
     if (!(currentTime >= checkTime)) {
@@ -98,7 +98,7 @@ jQ(document).on("click", "#load-price", function (e) {
 async function loadOpenPrice() {
     await saveVixQuote();
     let currentTime = moment().format("HH:mm")
-    let checkTime = moment(PREVIOUS_DAY_DATE + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
+    let checkTime = moment(PREVIOUS_DAY + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     if (currentTime < checkTime) {
         await loadPreMarketOpenPrice()
@@ -117,7 +117,7 @@ async function loadOpenPrice() {
                 let name = instru[i]['TRADINGSYMBOL']
                 let tempName = name.replaceAll(" ", "-")
                 tempName = tempName.replaceAll("&", "-")
-                let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY_DATE, CURRENT_DAY, 'day');
+                let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY, CURRENT_DAY, 'day');
                 let previous = data.data.candles[0]
                 let current = data.data.candles[1]
                 let obj = {}

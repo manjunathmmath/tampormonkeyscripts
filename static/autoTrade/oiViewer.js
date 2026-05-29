@@ -1014,23 +1014,23 @@ async function callAnalyseTrend() {
 
 async function showTrendingOIViewer(instrument) {
 
-    let strikToShow = 2
+    let strikToShow = 3
     let strikeData = []
     let selectedStrike = []
     let res = generateTrend(instrument)
     let currentPrice = res['ltp']
     if (instrument == "NIFTY 50") {
         instrument = "NIFTY"
-        strikToShow = 3
+        strikToShow = 4
     } else if (instrument == "NIFTY BANK") {
         instrument = "BANKNIFTY"
-        strikToShow = 3
+        strikToShow = 4
     } else if (instrument == "NIFTY FIN SERVICE") {
         instrument = "FINNIFTY"
-        strikToShow = 3
+        strikToShow = 4
     } else if (instrument == "NIFTY MID SELECT") {
         instrument = "MIDCPNIFTY"
-        strikToShow = 3
+        strikToShow = 4
     }
 
     let atmStrike = 0;
@@ -1154,11 +1154,11 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
                     HISTORICAL_DATA_INTERVAL_OVERRIDE = '5minute'
                 }
 
-                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY_DATE, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
-                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day');
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY_DATE, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
 
 

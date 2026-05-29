@@ -156,7 +156,7 @@ jQ(document).on("click", ".create-future-alerts", function () {
     let name = jQ(this).attr("data-name");
     let tradingsymbol = jQ(this).attr("data-tradingsymbol");
 
-    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (prev) {
+    jQ.when(getHistoricalData(token, PREVIOUS_DAY, PREVIOUS_DAY, 'day')).done(function (prev) {
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (quote) {
             let first = quote.data['candles'][0];
             let prevData = prev.data['candles'][0];
@@ -227,7 +227,7 @@ function showOnlyChartAndTable(token, name, lotSize) {
     let chartId = 'future-chart-' + token
     let html = ''
 
-    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
+    jQ.when(getHistoricalData(token, PREVIOUS_DAY, PREVIOUS_DAY, 'day')).done(function (pres) {
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
@@ -335,7 +335,7 @@ jQ(document).on("click", ".show-future-chart", function () {
     let lotSize = parseInt(jQ(this).attr("data-lot-size"));
     let chartId = 'future-chart-' + token
     let html = ''
-    jQ.when(getHistoricalData(token, PREVIOUS_DAY_DATE, PREVIOUS_DAY_DATE, 'day')).done(function (pres) {
+    jQ.when(getHistoricalData(token, PREVIOUS_DAY, PREVIOUS_DAY, 'day')).done(function (pres) {
         jQ.when(getHistoricalData(token, CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL)).done(function (cres) {
             let tempName = name.replaceAll(" ", "-")
             tempName = tempName.replaceAll("&", "-")
