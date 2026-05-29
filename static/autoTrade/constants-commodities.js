@@ -29,11 +29,11 @@ let commoditiesFutureInstrumentsList = [
 	},
 	{
 		"name" : "USDINR",
-		"instrument_token" : "825603",
-		"expiry" : "26-05-2026",
+		"instrument_token" : "1689859",
+		"expiry" : "25-06-2026",
 		"lot_size" : "1",
 		"instrument_type" : "FUT",
 		"strike" : "0",
-		"tradingsymbol" : "USDINR26MAYFUT"
+		"tradingsymbol" : "USDINR26JUNFUT"
 	}
 ]

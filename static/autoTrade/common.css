@@ -616,3 +616,17 @@ td.details-control {
 .popupwindow_statusbar,.popupwindow,.popupwindow_titlebar{
   background-color: #fff !important;
 }
+
+.blink-soft {
+  animation: blinker 1.5s linear infinite;
+}
+
+@keyframes blinker {
+  50% {
+    opacity: 0;
+  }
+}
+
+.metrics{
+  margin-right: .2rem;
+}

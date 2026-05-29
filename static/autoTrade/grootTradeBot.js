@@ -15,8 +15,13 @@ async function showGrootTradeBot() {
 
     let title = ''
     title += '<div class="row" position:relative;">'
+    title += '<div class="col-md-1">'
+    title += 'Groot'
+    title += '</div>'
     title += '<div class="col-md-2">'
-    title += 'Groot Trade Bot'
+    title += '<span  title="Trend Score" class="blink-soft metrics" id="score-board-number">Score</span>'
+    title += '<span  title="Nifty ADR" class="blink-soft metrics" id="n-adr">N:ADR</span>'
+    title += '<span  title="Bank Nifty ADR" class="blink-soft metrics" id="bn-adr">BN:ADR</span>'
     title += '</div>'
     title += '<div class="col-md-1">'
     title += '<a  id="start-auto-refresh">Refresh</a>'
@@ -320,7 +325,7 @@ function commonMarkupPlaceHolder() {
 }
 
 function showCompoenentPlaceHolders() {
-    jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
+    jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder()); 
 }
 
 async function commonShowPopupWindow() {
@@ -694,6 +699,19 @@ function setScore() {
             }
         }
     });
+
+    let pattern = ['#FF0000', '#F97600', '#F6C600', '#60B044']
+
+
+    if(SCORE < 0 && SCORE < 1){
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[0]+';">' + SCORE + '</span>');
+    }else if(SCORE >= 1 && SCORE < 5){
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[1]+';">' + SCORE + '</span>');
+    }else if(SCORE >= 5 && SCORE < 8){
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[2]+';">' + SCORE + '</span>');
+    }else{
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[3]+';">' + SCORE + '</span>');
+    }
 
     let output = getTradeSignal(breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'], breakOutNineFifteen['SENSEX']['CLOSE_9_15'], breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']);
 
@@ -2723,6 +2741,7 @@ async function showAdvacenDeclineScanner() {
 
 
     jQ("#NIFTY-BANK-advance-decline-adr").html("ADR:" + ((allBankAdvances / allBankDeclines).toFixed(2)) + "|A:" + allBankAdvances + "|D: " + allBankDeclines);
+    jQ('#bn-adr').html(((allBankAdvances / allBankDeclines).toFixed(2)));
     c3.generate({
         bindto: "#" + "NIFTY-BANK-advance-decline",
         size: {
@@ -2765,6 +2784,8 @@ async function showAdvacenDeclineScanner() {
     });
 
     jQ("#NIFTY-50-advance-decline-adr").html("ADR:" + ((allNiftyAdvances / allNiftyDeclines).toFixed(2)) + " |A:" + allNiftyAdvances + " |D:" + allNiftyDeclines);
+
+    jQ("#n-adr").html(((allNiftyAdvances / allNiftyDeclines).toFixed(2)));
 
     c3.generate({
         bindto: "#" + "NIFTY-50-advance-decline",
