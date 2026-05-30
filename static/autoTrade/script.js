@@ -104,7 +104,7 @@ async function loadOpenPrice() {
         await loadPreMarketOpenPrice()
     } else {
         let instru = []
-        jQ.each(instrumentTokens, function (index, item) {
+        jQ.each(INSTRUMENT_TOKENS, function (index, item) {
             let obj = {}
             obj['TRADINGSYMBOL'] = index
             obj['TOKEN'] = item

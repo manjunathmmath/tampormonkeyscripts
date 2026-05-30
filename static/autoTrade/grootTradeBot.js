@@ -1,5 +1,11 @@
 let globalFuturesTrend = {}
 let stockTable = null;
+let componentColorHeader = {
+	'NIFTY 50': '#e7cc00',
+	'GIFT NIFTY': '#77e700',
+	'NIFTY BANK': '#68e398',
+	'SENSEX': '#ffbcb0',
+}
 jQ(document).on("click", "#show-groot-trade-bot", function (e) {
     e.preventDefault();
     showGrootTradeBot();
@@ -157,7 +163,7 @@ async function scanNineFifteenCandle() {
         breakOutNineFifteen = {}
         let instru = [];
         let checkInstr = []
-        jQ.each(instrumentTokens, function (index, item) {
+        jQ.each(INSTRUMENT_TOKENS, function (index, item) {
             if (jQ.inArray(index, checkInstr) === -1) {
                 instru.push(index)
                 checkInstr.push(index)
@@ -169,7 +175,7 @@ async function scanNineFifteenCandle() {
             let name = instru[i];
             jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
             try {
-                let historical = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, '5minute');
+                let historical = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], CURRENT_DAY, CURRENT_DAY, '5minute');
                 let firstCandleClose = historical.data.candles[0][4]
                 let asoPrice = 0;
                 let bsoPrice = 0;
@@ -1318,7 +1324,7 @@ function showComponent(name, index) {
         breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
     }
 
-    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
+    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + name + '/' + INSTRUMENT_TOKENS[name] + '">' + name + '</a>'
 
     html += '<span style="position: absolute;left: 2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
     html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary refresh-chart"><i class="bi bi-arrow-clockwise"></i></span>'
@@ -1485,8 +1491,8 @@ async function showTopChart(name) {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
-        let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        await savePreviousStockQuote(tempName, instrumentTokens[name])
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        await savePreviousStockQuote(tempName, INSTRUMENT_TOKENS[name])
         let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
         let scriptData = generateTrend(name)
         let open = scriptData['open']
@@ -1730,7 +1736,7 @@ function show915Trend(name) {
     html += '<tbody>'
     jQ.each(stockList, function (index, item) {
         html += '<tr>'
-        let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + instrumentTokens[item['NAME']] + '">' + item['NAME'] + '</a>'
+        let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + item['NAME'] + '/' + INSTRUMENT_TOKENS[item['NAME']] + '">' + item['NAME'] + '</a>'
         html += '<td>'
         html += link;
         html += '</td>'
@@ -1899,7 +1905,7 @@ async function showFutureDetails(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let futures;
-    jQ.each(futureInstrumentsList, function (index, item) {
+    jQ.each(FUTURE_INTRUMENT_LIST, function (index, item) {
         let instName = name
         if (instName == "NIFTY 50") {
             instName = 'NIFTY'
@@ -2554,7 +2560,7 @@ async function showAdvacenDeclineScanner() {
         let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
         jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
 
-        let data = await getHistoricalDataUsingPromise(instrumentTokens[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
         let volume = 0;
         jQ.each(data.data.candles, function (index, item) {
             let time = moment(item[0]).format("HH:mm");
@@ -2927,7 +2933,7 @@ async function showFuturesTrend() {
     for (let i = 0; i < allList.length; i++) {
         let name = allList[i];
         jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + allList.length);
-        jQ.each(futureInstrumentsList, function (index, item) {
+        jQ.each(FUTURE_INTRUMENT_LIST, function (index, item) {
             let instName = name
             if (instName == "NIFTY 50") {
                 instName = 'NIFTY'
@@ -3626,7 +3632,7 @@ function showStockList(list) {
     if (!scriptData) {
         return false;
     }
-    jQ.each(instrumentTokens, function (index, item) {
+    jQ.each(INSTRUMENT_TOKENS, function (index, item) {
         if (jQ.inArray(index, checkInstr) === -1) {
             instru.push(index)
             checkInstr.push(index)
@@ -3743,7 +3749,7 @@ function generateStockTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
                     html += data;
                     html += '</a>'
 
@@ -3789,7 +3795,7 @@ jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e)
     let type = jQ(this).attr("data-trend");
     let list = [];
     let scriptData = generateTrends()
-    jQ.each(instrumentTokens, function (index, item) {
+    jQ.each(INSTRUMENT_TOKENS, function (index, item) {
         let name = index
         let trends = scriptData[name]['trends']
         if (type == "aso") {

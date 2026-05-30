@@ -2,7 +2,7 @@ async function showTopChartMCX(name) {
     try {
 
         let futures;
-        jQ.each(commoditiesFutureInstrumentsList, function (index, item) {
+        jQ.each(COMMODITIES_FUTURE_INSTRUMENT_LIST, function (index, item) {
             let instName = name
             if (item.name == instName) {
                 futures = item;
@@ -15,7 +15,7 @@ async function showTopChartMCX(name) {
         let data = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_CURRENT_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
         let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
 
-        let strikeDiff = mcxFutreStrikeDiff[name];
+        let strikeDiff = MCX_FUTURE_STRIKE_DIFF[name];
         if (!strikeDiff) {
             strikeDiff = "100,100"
         }
@@ -171,7 +171,7 @@ async function showFutureDetailsMCX(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let futures;
-    jQ.each(commoditiesFutureInstrumentsList, function (index, item) {
+    jQ.each(COMMODITIES_FUTURE_INSTRUMENT_LIST, function (index, item) {
         let instName = name
         if (item.name == instName) {
             futures = item;

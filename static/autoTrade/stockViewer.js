@@ -11,7 +11,7 @@ function showStockViewer() {
     let bsoCount = 0;
     let allCount = 0;
     let scriptData = generateTrends()
-    jQ.each(instrumentTokens, function (index, item) {
+    jQ.each(INSTRUMENT_TOKENS, function (index, item) {
         let name = index
         let trends = scriptData[name]['trends']
         if (jQ.inArray("ASO", trends) != -1) {
@@ -59,7 +59,7 @@ async function showStockAnalyzer(type) {
 
     let list = [];
     let scriptData = generateTrends()
-    jQ.each(instrumentTokens, function (index, item) {
+    jQ.each(INSTRUMENT_TOKENS, function (index, item) {
         let name = index
         let trends = scriptData[name]['trends']
         if (type == "aso") {
@@ -510,8 +510,8 @@ async function showTopChartStockViewer(name) {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
-        let data = await getHistoricalDataUsingPromise(instrumentTokens[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        await savePreviousStockQuote(tempName, instrumentTokens[name])
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        await savePreviousStockQuote(tempName, INSTRUMENT_TOKENS[name])
         let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
         let scriptData = generateTrend(name)
         let open = scriptData['open']
@@ -660,7 +660,7 @@ function showComponentStockViewer(name, index) {
         breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
     }
 
-    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + name + '/' + instrumentTokens[name] + '">' + name + '</a>'
+    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + name + '/' + INSTRUMENT_TOKENS[name] + '">' + name + '</a>'
 
     html += '<span style="position: absolute;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
     html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'

@@ -1,4 +1,4 @@
-let mcxFutreStrikeDiff = {
+let MCX_FUTURE_STRIKE_DIFF = {
 	'CRUDEOIL': '50,50',
 	'CRUDEOILM': '50,50',
 	'GOLDM': '500,500',
@@ -8,7 +8,7 @@ let mcxFutreStrikeDiff = {
 	'USDINR': '0.25,0.25',
 }
 
-let commoditiesFutureInstrumentsList = [
+let COMMODITIES_FUTURE_INSTRUMENT_LIST = [
 	{
 		"name" : "CRUDEOIL",
 		"instrument_token" : "127768327",

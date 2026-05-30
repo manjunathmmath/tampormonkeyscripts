@@ -565,7 +565,7 @@ function generateBsoScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -687,7 +687,7 @@ function generateAsoScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -815,7 +815,7 @@ function generateNiftyBsoScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -937,7 +937,7 @@ function generateNiftyAsoScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -1065,7 +1065,7 @@ function generateBankBsoScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -1187,7 +1187,7 @@ function generateBankAsoScannerDataTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/chart/ext/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
@@ -1306,7 +1306,7 @@ async function analyzeOpenBurst(type) {
     }
 
     for (let i = 0; i < stocks.length; i++) {
-        let data = await getHistoricalDataUsingPromise(instrumentTokens[stocks[i]['TRADINGSYMBOL']], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[stocks[i]['TRADINGSYMBOL']], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
         let quote = []
         jQ.each(data.data.candles, function (index, item) {
             let map = {}

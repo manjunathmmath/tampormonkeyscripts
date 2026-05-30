@@ -8376,6 +8376,4 @@ let USD_INR_OPTIONS = [
 ]
 
 
-
-
 MCX_OPTION_LIST.push(...USD_INR_OPTIONS);

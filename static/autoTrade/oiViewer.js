@@ -157,7 +157,7 @@ async function showOiAnalyzer() {
     let checkInstr = []
     let orderRow = 1;
     let scriptData = generateTrends()
-    jQ.each(instrumentTokens, function (index, item) {
+    jQ.each(INSTRUMENT_TOKENS, function (index, item) {
         if (jQ.inArray(index, checkInstr) === -1) {
             instru.push(index)
             checkInstr.push(index)
@@ -292,7 +292,7 @@ function generateTrendingStockTable(data) {
                 "data": "TRADINGSYMBOL",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {

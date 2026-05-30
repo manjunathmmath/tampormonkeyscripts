@@ -1,4 +1,4 @@
-let NSE_LIST =[
+let NSE_OPTION_STRIKE_LIST =[
 	{
 		"name" : "360ONE",
 		"instrument_token" : "16688898",

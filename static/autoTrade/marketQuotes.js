@@ -123,7 +123,7 @@ function generateQuickQuoteScannerTable(data) {
                 "data": "INSTRUMENT",
                 render: function (data, type, row, meta) {
                     let html = ''
-                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + instrumentTokens[data] + '"> '
+                    html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + data + '/' + INSTRUMENT_TOKENS[data] + '"> '
                     html += data;
                     html += '</a>'
 

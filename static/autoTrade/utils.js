@@ -76,7 +76,7 @@ function generateTrends() {
         let vixQuote = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
         let instru = []
         let data = {}
-        jQ.each(instrumentTokens, function (index, item) {
+        jQ.each(INSTRUMENT_TOKENS, function (index, item) {
             let obj = {}
             obj['TRADINGSYMBOL'] = index
             obj['TOKEN'] = item
@@ -399,8 +399,8 @@ function getHistoricalData(code, fromDate, toDate, interval) {
 }
 function getStrikeDiff(instrument) {
     let strikeDiff = 100;
-    if (nseStrikeDiff[instrument]) {
-        strikeDiff = nseStrikeDiff[instrument]
+    if (NSE_STRIKE_DIFF[instrument]) {
+        strikeDiff = NSE_STRIKE_DIFF[instrument]
         strikeDiff = strikeDiff.replace(/ /g, '')
     }
     return strikeDiff;
