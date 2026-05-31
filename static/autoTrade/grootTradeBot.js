@@ -1,10 +1,10 @@
 let globalFuturesTrend = {}
 let stockTable = null;
 let componentColorHeader = {
-	'NIFTY 50': '#e7cc00',
-	'GIFT NIFTY': '#77e700',
-	'NIFTY BANK': '#68e398',
-	'SENSEX': '#ffbcb0',
+    'NIFTY 50': '#e7cc00',
+    'GIFT NIFTY': '#77e700',
+    'NIFTY BANK': '#68e398',
+    'SENSEX': '#ffbcb0',
 }
 jQ(document).on("click", "#show-groot-trade-bot", function (e) {
     e.preventDefault();
@@ -331,7 +331,7 @@ function commonMarkupPlaceHolder() {
 }
 
 function showCompoenentPlaceHolders() {
-    jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder()); 
+    jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
 }
 
 async function commonShowPopupWindow() {
@@ -709,14 +709,14 @@ function setScore() {
     let pattern = ['#FF0000', '#F97600', '#F6C600', '#60B044']
 
 
-    if(SCORE < 0 && SCORE < 1){
-        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[0]+';">' + SCORE + '</span>');
-    }else if(SCORE >= 1 && SCORE < 5){
-        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[1]+';">' + SCORE + '</span>');
-    }else if(SCORE >= 5 && SCORE < 8){
-        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[2]+';">' + SCORE + '</span>');
-    }else{
-        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: '+pattern[3]+';">' + SCORE + '</span>');
+    if (SCORE < 0 && SCORE < 1) {
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: ' + pattern[0] + ';">' + SCORE + '</span>');
+    } else if (SCORE >= 1 && SCORE < 5) {
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: ' + pattern[1] + ';">' + SCORE + '</span>');
+    } else if (SCORE >= 5 && SCORE < 8) {
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: ' + pattern[2] + ';">' + SCORE + '</span>');
+    } else {
+        jQ("#score-board-number").html('<span style="padding: 1rem; background-color: ' + pattern[3] + ';">' + SCORE + '</span>');
     }
 
     let output = getTradeSignal(breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'], breakOutNineFifteen['SENSEX']['CLOSE_9_15'], breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']);
@@ -2556,96 +2556,102 @@ async function showAdvacenDeclineScanner() {
     let x = ['x'];
 
     for (let i = 0; i < FO_LIST.length; i++) {
-        let asoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['ustrikeOne']);
-        let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
-        jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
+        console.log("Processing " + FO_LIST[i]);
+        try {
+            let asoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['ustrikeOne']);
+            let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
+            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
 
-        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
-        let volume = 0;
-        jQ.each(data.data.candles, function (index, item) {
-            let time = moment(item[0]).format("HH:mm");
-            if (i == 0) {
-                let map = {}
-                map.label = time;
-                categoryList.push(map)
-                x.push(moment(item[0]).format("YYYY-MM-DD HH:mm:ss"))
+            let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
+            let volume = 0;
+            jQ.each(data.data.candles, function (index, item) {
+                let time = moment(item[0]).format("HH:mm");
+                if (i == 0) {
+                    let map = {}
+                    map.label = time;
+                    categoryList.push(map)
+                    x.push(moment(item[0]).format("YYYY-MM-DD HH:mm:ss"))
 
-                advanceMap[time] = {}
-                advanceMap[time]['SYMBOL'] = []
-                advanceMap[time]['COUNT'] = 0
+                    advanceMap[time] = {}
+                    advanceMap[time]['SYMBOL'] = []
+                    advanceMap[time]['COUNT'] = 0
 
-                declineMap[time] = {}
-                declineMap[time]['SYMBOL'] = []
-                declineMap[time]['COUNT'] = 0
+                    declineMap[time] = {}
+                    declineMap[time]['SYMBOL'] = []
+                    declineMap[time]['COUNT'] = 0
 
-                advanceMapNifty[time] = {}
-                advanceMapNifty[time]['SYMBOL'] = []
-                advanceMapNifty[time]['COUNT'] = 0
+                    advanceMapNifty[time] = {}
+                    advanceMapNifty[time]['SYMBOL'] = []
+                    advanceMapNifty[time]['COUNT'] = 0
 
-                declineMapNifty[time] = {}
-                declineMapNifty[time]['SYMBOL'] = []
-                declineMapNifty[time]['COUNT'] = 0
+                    declineMapNifty[time] = {}
+                    declineMapNifty[time]['SYMBOL'] = []
+                    declineMapNifty[time]['COUNT'] = 0
 
-                advanceMapBank[time] = {}
-                advanceMapBank[time]['SYMBOL'] = []
-                advanceMapBank[time]['COUNT'] = 0
+                    advanceMapBank[time] = {}
+                    advanceMapBank[time]['SYMBOL'] = []
+                    advanceMapBank[time]['COUNT'] = 0
 
-                declineMapBank[time] = {}
-                declineMapBank[time]['SYMBOL'] = []
-                declineMapBank[time]['COUNT'] = 0
-            }
+                    declineMapBank[time] = {}
+                    declineMapBank[time]['SYMBOL'] = []
+                    declineMapBank[time]['COUNT'] = 0
+                }
 
-            volume += item[5];
-            all = all + FO_LIST.length;
-            allNifty = allNifty + NIFTY_50_LIST.length;
-            allBank = allBank + NIFTY_BANK_LIST.length;
-        });
+                volume += item[5];
+                all = all + FO_LIST.length;
+                allNifty = allNifty + NIFTY_50_LIST.length;
+                allBank = allBank + NIFTY_BANK_LIST.length;
+            });
 
-        scriptsVolumeMap[FO_LIST[i]] = volume;
+            scriptsVolumeMap[FO_LIST[i]] = volume;
 
+            jQ.each(data.data.candles, function (index, item) {
+                let time = moment(item[0]).format("HH:mm");
+                if (advanceMap[time]) {
+                    if (item[4] > asoPrice) {
+                        advanceMap[time]['SYMBOL'].push(FO_LIST[i])
+                        advanceMap[time]['COUNT'] = advanceMap[time]['COUNT'] + 1
+                        allAdvances++;
 
-        jQ.each(data.data.candles, function (index, item) {
-            let time = moment(item[0]).format("HH:mm");
-            if (advanceMap[time]) {
-                if (item[4] > asoPrice) {
-                    advanceMap[time]['SYMBOL'].push(FO_LIST[i])
-                    advanceMap[time]['COUNT'] = advanceMap[time]['COUNT'] + 1
-                    allAdvances++;
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            advanceMapNifty[time]['SYMBOL'].push(FO_LIST[i])
+                            advanceMapNifty[time]['COUNT'] = advanceMapNifty[time]['COUNT'] + 1
+                            allNiftyAdvances++;
+                        }
 
-                    if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
-                        advanceMapNifty[time]['SYMBOL'].push(FO_LIST[i])
-                        advanceMapNifty[time]['COUNT'] = advanceMapNifty[time]['COUNT'] + 1
-                        allNiftyAdvances++;
-                    }
-
-                    if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
-                        advanceMapBank[time]['SYMBOL'].push(FO_LIST[i])
-                        advanceMapBank[time]['COUNT'] = advanceMapBank[time]['COUNT'] + 1
-                        allBankAdvances++;
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            advanceMapBank[time]['SYMBOL'].push(FO_LIST[i])
+                            advanceMapBank[time]['COUNT'] = advanceMapBank[time]['COUNT'] + 1
+                            allBankAdvances++;
+                        }
                     }
                 }
-            }
 
-            if (declineMap[time]) {
-                if (item[4] < bsoPrice) {
-                    declineMap[time]['SYMBOL'].push(FO_LIST[i])
-                    declineMap[time]['COUNT'] = declineMap[time]['COUNT'] + 1
-                    allDeclines++;
+                if (declineMap[time]) {
+                    if (item[4] < bsoPrice) {
+                        declineMap[time]['SYMBOL'].push(FO_LIST[i])
+                        declineMap[time]['COUNT'] = declineMap[time]['COUNT'] + 1
+                        allDeclines++;
 
-                    if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
-                        declineMapNifty[time]['SYMBOL'].push(FO_LIST[i])
-                        declineMapNifty[time]['COUNT'] = declineMapNifty[time]['COUNT'] + 1
-                        allNiftyDeclines++
-                    }
+                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
+                            declineMapNifty[time]['SYMBOL'].push(FO_LIST[i])
+                            declineMapNifty[time]['COUNT'] = declineMapNifty[time]['COUNT'] + 1
+                            allNiftyDeclines++
+                        }
 
-                    if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
-                        declineMapBank[time]['SYMBOL'].push(FO_LIST[i])
-                        declineMapBank[time]['COUNT'] = declineMapBank[time]['COUNT'] + 1
-                        allBankDeclines++
+                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
+                            declineMapBank[time]['SYMBOL'].push(FO_LIST[i])
+                            declineMapBank[time]['COUNT'] = declineMapBank[time]['COUNT'] + 1
+                            allBankDeclines++
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (e) {
+            console.log("Error in processing " + FO_LIST[i])
+        }
+
+
     };
 
     jQ.each(advanceMap, function (aindex, aitem) {
