@@ -1885,6 +1885,10 @@ function showOIOBVBarChart(name) {
         axis: {
             x: {
                 show: true,
+                tick: {
+                    rotate: 45, // Angle of rotation in degrees
+                    multiline: false // Keeps labels on a single line
+                },
             },
             y: {
                 show: false,
@@ -1919,6 +1923,10 @@ function showOIOBVBarChart(name) {
         axis: {
             x: {
                 show: true,
+                   tick: {
+                    rotate: 45, // Angle of rotation in degrees
+                    multiline: false // Keeps labels on a single line
+                },
             },
             y: {
                 show: false,

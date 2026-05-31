@@ -33,6 +33,7 @@ jQ(document).on("click", "#start-auto-refresh", function (e) {
     e.preventDefault();
     var that = jQ(this);
     that.attr("disabled", true);
+    jQ("#status-bar-container").append('')
     commonRefresh(that, true)
 });
 
