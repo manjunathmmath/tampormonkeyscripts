@@ -25,9 +25,9 @@ async function showGrootTradeBot() {
     title += 'Groot'
     title += '</div>'
     title += '<div class="col-md-2">'
-    title += '<span  title="Trend Score" class=" metrics" id="score-board-number">Score</span>'
-    title += '<span  title="Nifty ADR" class=" metrics" id="n-adr">N:ADR</span>'
-    title += '<span  title="Bank Nifty ADR" class=" metrics" id="bn-adr">BN:ADR</span>'
+    title += '<span  title="Trend Score" class="metrics" id="score-board-number">Score</span>'
+    title += '<span  title="Nifty ADR" class="metrics badge bg-info" id="n-adr">N:ADR</span>'
+    title += '<span  title="Bank Nifty ADR" class="metrics badge bg-info" id="bn-adr">BN:ADR</span>'
     title += '</div>'
     title += '<div class="col-md-1">'
     title += '<a  id="start-auto-refresh">Refresh</a>'
@@ -741,13 +741,13 @@ function setScore() {
 
 
     if (SCORE < 0 && SCORE < 1) {
-        jQ("#score-board-number").html('<span class="badge" style="padding: 1rem; background-color: ' + pattern[0] + ';">' + SCORE + '</span>');
+        jQ("#score-board-number").html('<span class="badge" style="background-color: ' + pattern[0] + ';">' + SCORE + '</span>');
     } else if (SCORE >= 1 && SCORE < 5) {
-        jQ("#score-board-number").html('<span class="badge" style="padding: 1rem; background-color: ' + pattern[1] + ';">' + SCORE + '</span>');
+        jQ("#score-board-number").html('<span class="badge" style="background-color: ' + pattern[1] + ';">' + SCORE + '</span>');
     } else if (SCORE >= 5 && SCORE < 8) {
-        jQ("#score-board-number").html('<span class="badge" style="padding: 1rem; background-color: ' + pattern[2] + ';">' + SCORE + '</span>');
+        jQ("#score-board-number").html('<span class="badge" style="background-color: ' + pattern[2] + ';">' + SCORE + '</span>');
     } else {
-        jQ("#score-board-number").html('<span class="badge" style="padding: 1rem; background-color: ' + pattern[3] + ';">' + SCORE + '</span>');
+        jQ("#score-board-number").html('<span class="badge" style="background-color: ' + pattern[3] + ';">' + SCORE + '</span>');
     }
 
     let output = getTradeSignal(breakOutNineFifteen['NIFTY 50']['CLOSE_9_15'], breakOutNineFifteen['SENSEX']['CLOSE_9_15'], breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']);
