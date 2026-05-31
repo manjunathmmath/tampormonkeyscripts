@@ -185,7 +185,8 @@ span.bullsVersesBears {
 }
 
 #main-trade-bot-container img,
-#individual-stock-popup-window img,#oi-viewer-scanner-content img {
+#individual-stock-popup-window img,
+#oi-viewer-scanner-content img {
   max-width: 25px !important;
   max-height: 25px !important;
 }
@@ -579,7 +580,7 @@ td.details-control {
   stroke: #fff !important;
 }
 
-#trend-scoreboard-outcome{
+#trend-scoreboard-outcome {
   font-size: 1rem;
   font-weight: bold;
   display: flex;
@@ -588,7 +589,7 @@ td.details-control {
 
 }
 
-.popupwindow_container *{
+.popupwindow_container * {
   font-family: unset !important;
 }
 
@@ -609,11 +610,17 @@ td.details-control {
 }
 
 
-.refresh-chart,.refresh-advance-decline-futures,.refresh-advance-decline,.refresh-oi-obv,.refresh-futures{
+.refresh-chart,
+.refresh-advance-decline-futures,
+.refresh-advance-decline,
+.refresh-oi-obv,
+.refresh-futures {
   cursor: pointer;
 }
 
-.popupwindow_statusbar,.popupwindow,.popupwindow_titlebar{
+.popupwindow_statusbar,
+.popupwindow,
+.popupwindow_titlebar {
   background-color: #fff !important;
 }
 
@@ -627,6 +634,12 @@ td.details-control {
   }
 }
 
-.metrics{
+.metrics {
   margin-right: .2rem;
+}
+
+.checks-before-trades {
+  vertical-align: middle;
+  margin: 0 .5rem;
+
 }
