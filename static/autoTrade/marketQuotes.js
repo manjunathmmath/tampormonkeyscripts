@@ -30,18 +30,12 @@ async function showMarketQuoteAnalyzer() {
 
 
     let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'Quick Quote Analyzer'
+    title += '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+    title += '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-bar-chart-line"></i> QUICK QUOTE ANALYZER</span>'
+    title += '<span id="quick-refresh-timer-one" style="font-size:0.65rem;font-variant-numeric:tabular-nums;">00:00</span>'
+    title += '<span id="quick-last-refresh-time" style="font-size:0.65rem;color:var(--gtb-muted,#7d8590);">Last @ 00:00:00</span>'
+    title += popupWinControls("popup-custom-style-quick-quote-analyzer")
     title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span style="margin-left:.5rem;" id="quick-refresh-timer-one">00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-3 pop-title-extra">'
-    title += '<span id="quick-last-refresh-time">Last @ 00:00:00</span>'
-    title += '</div>'
-    title += '</div>'
-
 
     showPopUpWindow('quick-quote-analyzer', html, "Quick Quote Analyzer", 950, 550);
     var divId = "popup-custom-style-quick-quote-analyzer";
@@ -127,7 +121,7 @@ function generateQuickQuoteScannerTable(data) {
                     html += data;
                     html += '</a>'
 
-                    html += '<span class="badge bg-info" style="float:right;">'
+                    html += '<span class="sv-badge sv-badge-blue" style="float:right;">'
                     html += '<a title="Sensibull Strategy Builder" target="_blank" href="https://web.sensibull.com/option-strategy-builder?instrument_symbol=' + data + '"> '
                     html += 'SB';
                     html += '</a>'

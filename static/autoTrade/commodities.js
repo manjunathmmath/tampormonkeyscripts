@@ -112,59 +112,30 @@ async function showTopChartMCX(name) {
         lines.push({ position: 'start', value: parseFloat(strikeMap.bstrikeTwo), text: 'BST: ' + strikeMap.bstrikeTwo, class: 'bstrike-two-line-class' });
 
 
-        let chartId = tempName;
-        var chart = c3.generate({
-            bindto: "#" + chartId + "-chart",
-            size: {
-                height: 150
-            },
-            data: {
-                x: 'x',
-                xFormat: '%Y-%m-%d %H:%M:%S',
-                columns: columns,
-                type: 'spline'
-            },
-            point: {
-                show: false
-            },
+        // Build reference lines for candlestick chart
+        let refLines = [
+            { key: 'OPEN', value: parseFloat(open),               text: 'OPEN ' + parseFloat(open).toFixed(2) },
+            { key: 'VIXL', value: parseFloat(strikeMap.vixDDLower), text: 'VIXL ' + strikeMap.vixDDLower },
+            { key: 'VIXU', value: parseFloat(strikeMap.vixDDUpper), text: 'VIXU ' + strikeMap.vixDDUpper },
+            { key: 'AST',  value: parseFloat(strikeMap.ustrikeTwo), text: 'AST '  + strikeMap.ustrikeTwo },
+            { key: 'ASO',  value: parseFloat(strikeMap.ustrikeOne), text: 'ASO '  + strikeMap.ustrikeOne },
+            { key: 'BSO',  value: parseFloat(strikeMap.bstrikeOne), text: 'BSO '  + strikeMap.bstrikeOne },
+            { key: 'BST',  value: parseFloat(strikeMap.bstrikeTwo), text: 'BST '  + strikeMap.bstrikeTwo },
+        ];
 
-            grid: {
-                x: {
-                    lines: []
-                },
-                y: {
-                    lines: lines
-                }
-            },
+        // Use LightweightCharts candlestick (defined in grootTradeBot.js)
+        if (typeof _renderLWChart === 'function') {
+            _renderLWChart(tempName + '-chart', data.data.candles, refLines, 150);
+        }
 
-            axis: {
-                x: {
-                    type: 'timeseries',
-                    tick: {
-                        // Display format for the x-axis ticks
-                        format: '%H:%M',
-                        rotate: 60 // Optional: rotate labels for better readability with long formats
-                    },
-                    show: false,
-                },
-                y: {
-                    show: false,
-                    min: parseFloat(min),
-                    max: parseFloat(max),
-                },
-
-            },
-            legend: {
-                show: false // Hide the legend      
-            }
-        });
-        let ltp = data.data.candles[data.data.candles.length - 1][4]
-        jQ("#" + tempName + "-ltp").html(parseFloat(ltp))
+        let ltp = data.data.candles[data.data.candles.length - 1][4];
+        jQ('#' + tempName + '-ltp').html(parseFloat(ltp).toLocaleString('en-IN'));
+        if (typeof _buildATRBadges === 'function') {
+            _buildATRBadges(ltp, name, data.data.candles);
+        }
     } catch (error) {
-        console.error("Error in showTopChart for " + name, error);
+        console.error('Error in showTopChartMCX for ' + name, error);
     }
-
-
 }
 
 async function showFutureDetailsMCX(name) {
@@ -216,13 +187,13 @@ async function showFutureDetailsMCX(name) {
     return resp;
 }
 
-async function showTrendingOIMCX(instrument) {
+async function showTrendingOIMCX(instrument, strikToShowOverride) {
     OI_DIVISOR = 1000;
     let name = stock[0]['TRADINGSYMBOL']
     let ltp = stock[0]['LTP']
     let open = stock[0]['OPEN']
 
-    let strikToShow = 4
+    let strikToShow = (strikToShowOverride !== undefined) ? strikToShowOverride : 4
     let strikeData = []
     let selectedStrike = []
     let currentPrice = open

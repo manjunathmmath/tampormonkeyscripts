@@ -47,6 +47,8 @@
 // @require      http://localhost:3000/autoTrade/global/vendor/fusioncharts/fusioncharts.jqueryplugin.min.js
 // @require      http://localhost:3000/autoTrade/global/vendor/c3/d3.min.js
 // @require      http://localhost:3000/autoTrade/global/vendor/c3/c3.min.js
+// @require      http://localhost:3000/autoTrade/global/vendor/tradingview/lightweight-charts.js
+// @require      http://localhost:3000/autoTrade/global/vendor/apexcharts/apexcharts.min.js
 
 
 // @require      http://localhost:3000/autoTrade/common/monkeyconfig.js

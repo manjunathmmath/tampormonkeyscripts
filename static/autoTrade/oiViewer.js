@@ -48,93 +48,51 @@ function showOiViewer() {
 
     let html = ''
 
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<table  class="table display nowrap" id="trending-stock-list-table" style="width: 100%;display: none;">'
-
+    html += '<div class="oiv-table-wrap">'
+    html += '<table class="display nowrap oiv-table" id="trending-stock-list-table" style="width:100%;display:none;">'
     html += '<thead>'
-    html += '<tr>'
 
-    html += '<th rowspan="2">SYMBOL</th>'
-    html += '<th rowspan="2">TREND</th>'
-    html += '<th rowspan="2">LTP</th>'
-    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class atm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
+    // Row 1 — strike group headers
+    html += '<tr>'
+    html += '<th rowspan="2" class="oiv-th-pin">SYMBOL</th>'
+    html += '<th rowspan="2" class="oiv-th-pin">TREND</th>'
+    html += '<th rowspan="2" class="oiv-th-pin">LTP</th>'
+    html += '<th colspan="5" class="strike-colspan-class oiv-grp-bst2">BST-2</th>'
+    html += '<th colspan="5" class="strike-colspan-class oiv-grp-bso">BSO</th>'
+    html += '<th colspan="5" class="strike-colspan-class oiv-grp-atm">ATM</th>'
+    html += '<th colspan="5" class="strike-colspan-class oiv-grp-aso">ASO</th>'
+    html += '<th colspan="5" class="strike-colspan-class oiv-grp-ast2">AST-2</th>'
+    html += '<th rowspan="2" class="oiv-th-pcr">PCR</th>'
     html += '</tr>'
-    html += '<tr>'
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
 
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-    html += '<th>PCR</th> '
-
+    // Row 2 — sub-column headers (repeated 5×)
+    let sub = ['CE', 'CE OBV', 'STRIKE', 'PE OBV', 'PE']
+    for (let g = 0; g < 5; g++) {
+        sub.forEach(function(s) { html += '<th class="oiv-sub-th">' + s + '</th>' })
+    }
     html += '</tr>'
     html += '</thead>'
-    html += '<tbody>'
-    html += '</tbody>'
+    html += '<tbody></tbody>'
     html += '</table>'
-    html += '</div>'
     html += '</div>'
 
 
     let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'OI VIEWER'
-    title += '</div>'
-    title += '<div class="col-md-1">'
-    title += '<select id="api-data-interval" class="form-control form-control-sm">'
+    title += '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+    title += '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-eye-fill"></i> OI VIEWER</span>'
+    title += '<select id="api-data-interval" class="form-control form-control-sm" style="width:90px;">'
     title += '<option value="5minute" selected>5minute</option>'
     title += '<option value="minute">minute</option>'
     title += '</select>'
-    title += '</div>'
-    title += '<div class="col-md-1">'
-    title += '<select id="refresh-interval-oi-viewer" class="form-control form-control-sm">'
-    title += '<option value="1">1</option>'
-    title += '<option value="5" selected>5</option>'
+    title += '<select id="refresh-interval-oi-viewer" class="form-control form-control-sm" style="width:60px;">'
+    title += '<option value="1">1m</option>'
+    title += '<option value="5" selected>5m</option>'
     title += '</select>'
-    title += '</div>'
-    title += '<div class="col-md-1">'
-    title += '<input type="checkbox" id="enable-oi-refresh">'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<a  id="start-auto-refresh-oi-viewer">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span style="margin-left:.5rem;" id="oi-viewer-scanner-refresh-timer-one">00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span id="processing-oi-viewer"></span>'
-    title += '</div>'
+    title += '<input type="checkbox" id="enable-oi-refresh" title="Enable auto-refresh" style="cursor:pointer;">'
+    title += '<a id="start-auto-refresh-oi-viewer" class="gtb-ds-btn gtb-ds-btn-primary" style="font-size:0.65rem;padding:2px 8px;">Refresh <i class="bi bi-arrow-counterclockwise"></i></a>'
+    title += '<span id="oi-viewer-scanner-refresh-timer-one" style="font-size:0.65rem;font-variant-numeric:tabular-nums;">00:00</span>'
+    title += '<span id="processing-oi-viewer" style="font-size:0.65rem;color:var(--gtb-amber,#fbbf24);"></span>'
+    title += popupWinControls("popup-custom-style-oi-viewer-scanner")
     title += '</div>'
 
     showPopUpWindow('oi-viewer-scanner', html, "OI VIEWER", 950, 550);
@@ -282,10 +240,7 @@ function generateTrendingStockTable(data) {
             }
         ],
 
-        dom: 'Bfrtip',
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
-        ],
+        dom: '<"oiv-dt-toolbar"f>rtip',
         "columns": [
 
             {
@@ -296,21 +251,35 @@ function generateTrendingStockTable(data) {
 
                     let trades = JSON.parse(localStorage.getItem("TRADES"));
                     if (jQ.inArray(data, trades) !== -1) {
-                        html += '<span class=" bg-warning-color" title="Already traded">' + data + '</span>'
+                        html += '<span class=" oi-amber" title="Already traded">' + data + '</span>'
                     } else {
                         html += data;
                     }
                     html += '</a>'
                     let symbol = row['TRADINGSYMBOL']
 
-                    html += '<span title="Track for next day" style="font-size:xx-small;position:absolute;right:4rem;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="bg-info-color track-next-day">'
+                    html += '<span title="Track for next day" style="font-size:0.57rem;margin-left:4px;" data-price="' + row['LTP'] + '" data-index="' + 0 + '" data-trend="' + row['TREND'] + '" data-name="' + symbol + '" class="sv-badge sv-badge-blue track-next-day">'
                     html += 'T'
                     html += '</span>'
 
                     return html;
                 }
             },
-            { "data": "TREND" },
+            {
+                "data": "TREND",
+                render: function (data, type, row, meta) {
+                    if (type !== 'display') return Array.isArray(data) ? data.join(' ') : (data || '');
+                    let trends = Array.isArray(data) ? data : (data ? String(data).split(',') : []);
+                    let badges = trends.map(function(t) {
+                        t = t.trim();
+                        let cls = (t === 'ASO' || t === 'AST') ? 'oi-trend-bull'
+                                : (t === 'BSO' || t === 'BST') ? 'oi-trend-bear'
+                                : 'oi-trend-neutral';
+                        return '<span class="oiv-trend-badge ' + cls + '">' + t + '</span>';
+                    });
+                    return '<div class="oiv-trend-cell">' + badges.join('') + '</div>';
+                }
+            },
             {
                 "data": "LTP",
                 render: function (data, type, row, meta) {
@@ -332,7 +301,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
-                            className = " bg-danger-color"
+                            className = " oi-bear"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -345,7 +314,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_LOWER_ONE_CE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_PE_OBV'])) {
-                        className = " bg-success-color"
+                        className = " oi-bull"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_CE_OBV'] + '</span>'
 
@@ -375,7 +344,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_CE_OBV'])) {
-                        className = " bg-danger-color"
+                        className = " oi-bear"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_PE_OBV'] + '</span>'
 
@@ -389,7 +358,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_ONE_CE'])) {
-                            className = " bg-success-color"
+                            className = " oi-bull"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -406,7 +375,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
-                            className = " bg-danger-color"
+                            className = " oi-bear"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -421,7 +390,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_LOWER_TWO_CE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_PE_OBV'])) {
-                        className = " bg-success-color"
+                        className = " oi-bull"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_CE_OBV'] + '</span>'
 
@@ -450,7 +419,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_CE_OBV'])) {
-                        className = " bg-danger-color"
+                        className = " oi-bear"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_PE_OBV'] + '</span>'
 
@@ -464,7 +433,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_TWO_CE'])) {
-                            className = " bg-success-color"
+                            className = " oi-bull"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -480,7 +449,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_ATM_PE'])) {
-                            className = " bg-danger-color"
+                            className = " oi-bear"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -493,7 +462,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_ATM_CE_OBV']) > parseFloat(row['STRIKE_ATM_PE_OBV'])) {
-                        className = " bg-success-color"
+                        className = " oi-bull"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_CE_OBV'] + '</span>'
 
@@ -522,7 +491,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_ATM_PE_OBV']) > parseFloat(row['STRIKE_ATM_CE_OBV'])) {
-                        className = " bg-danger-color"
+                        className = " oi-bear"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_PE_OBV'] + '</span>'
 
@@ -537,7 +506,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_ATM_CE'])) {
-                            className = " bg-success-color"
+                            className = " oi-bull"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -552,7 +521,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
-                            className = " bg-danger-color"
+                            className = " oi-bear"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -566,7 +535,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_UPPER_ONE_CE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_PE_OBV'])) {
-                        className = " bg-success-color"
+                        className = " oi-bull"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_CE_OBV'] + '</span>'
 
@@ -596,7 +565,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_CE_OBV'])) {
-                        className = " bg-danger-color"
+                        className = " oi-bear"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_PE_OBV'] + '</span>'
 
@@ -611,7 +580,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_ONE_CE'])) {
-                            className = " bg-success-color"
+                            className = " oi-bull"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -626,7 +595,7 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
-                            className = " bg-danger-color"
+                            className = " oi-bear"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
@@ -641,7 +610,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_UPPER_TWO_CE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_PE_OBV'])) {
-                        className = " bg-success-color"
+                        className = " oi-bull"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_CE_OBV'] + '</span>'
 
@@ -669,7 +638,7 @@ function generateTrendingStockTable(data) {
                     let html = ''
                     let className = ""
                     if (parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
-                        className = " bg-danger-color"
+                        className = " oi-bear"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE_OBV'] + '</span>'
                     return html
@@ -682,14 +651,14 @@ function generateTrendingStockTable(data) {
                     let className = ""
                     if (data) {
                         if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_TWO_CE'])) {
-                            className = " bg-success-color"
+                            className = " oi-bull"
                         }
                         html += '<span class="number-align ' + className + '">' + data + '</span>'
                     }
 
                     className = ""
                     if (parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
-                        className = " bg-danger-color"
+                        className = " oi-bear"
                     }
                     html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE_OBV'] + '</span>'
                     return html
@@ -732,20 +701,20 @@ function showOITrendCount() {
         allCount++;
     });
 
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all" class="dt-button trend-filter bg-info" type="button"><span>ALL(' + allCount + ')</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso" class="dt-button trend-filter bg-danger" type="button"><span>BSO (' + bsoCount + ')</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso" class="dt-button trend-filter bg-success" type="button"><span>ASO(' + asoCount + ')</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button style="margin-right: .2rem;" data-trend="n50" class="dt-button trend-filter  bg-info" type="button"><span>N50</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank" class="dt-button trend-filter  bg-info" type="button"><span>BN</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter  bg-info" type="button"><span>TRENDING</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master" class="dt-button trend-filter  bg-info" type="button"><span>MASTER</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid" class="dt-button trend-filter  bg-info" type="button"><span>VALID</span></button>');
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter  bg-info" type="button"><span>BREAKOUT[9:15]</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="index" class="dt-button trend-filter  bg-info" type="button"><span>INDEX</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="track" class="dt-button trend-filter  bg-info" type="button"><span>TRACK</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI" style="margin-right: .2rem;" class="dt-button analyse-instrument bg-info" type="button"><span>ANALYZE OI</span></button>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="processing-trend"></span>')
-    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span style="margin-right: .2rem;" id="last-refresh-trend"></span>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="all"      class="dt-button trend-filter" type="button"><span>ALL (' + allCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bso"      class="dt-button trend-filter dt-btn-bear" type="button"><span>BSO (' + bsoCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="aso"      class="dt-button trend-filter dt-btn-bull" type="button"><span>ASO (' + asoCount + ')</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="n50"      class="dt-button trend-filter" type="button"><span>N50</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="bank"     class="dt-button trend-filter" type="button"><span>BN</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="trending" class="dt-button trend-filter" type="button"><span>TRENDING</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="master"   class="dt-button trend-filter" type="button"><span>MASTER</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="valid"    class="dt-button trend-filter" type="button"><span>VALID</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="breakout" class="dt-button trend-filter" type="button"><span>BREAKOUT</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="index"    class="dt-button trend-filter" type="button"><span>INDEX</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-trend="track"    class="dt-button trend-filter" type="button"><span>TRACK</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<button data-type="OI"        class="dt-button analyse-instrument dt-btn-amber" type="button"><span>▶ ANALYZE OI</span></button>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span class="dt-status-text" id="processing-trend"></span>')
+    jQ("#trending-stock-list-table_wrapper .dt-buttons").append('<span class="dt-status-text" id="last-refresh-trend"></span>')
 }
 
 
@@ -847,33 +816,15 @@ async function callAnalyseTrend() {
                 let pcrHtml = ''
                 let chPcrHtml = ''
 
-                if(parseFloat(oiData['pcr'].trim()) > 1.3){
-                    pcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['pcr'] + '</span>'
-                }else if (parseFloat(oiData['pcr'].trim()) > 0.7 && parseFloat(oiData['pcr'].trim()) < 1.0) {
-                    pcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-neutral">' + oiData['pcr'] + '</span>'
-                }else if(parseFloat(oiData['pcr'].trim()) < 0.5){
-                    pcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['pcr'] + '</span>'
-                }else if (parseFloat(oiData['pcr'].trim()) > 1.0 && parseFloat(oiData['pcr'].trim()) < 1.3 ) {
-                    pcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['pcr'] + '</span>'
-                }else if(parseFloat(oiData['pcr'].trim()) < 0.7){
-                    pcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['pcr'] + '</span>'
+                function pcrBadge(val, label) {
+                    let v = parseFloat(val);
+                    let cls = v > 1.3 ? 'sv-badge-green' : v > 1.0 ? 'sv-badge-amber' : v > 0.7 ? 'sv-badge-muted' : 'sv-badge-red';
+                    let tip = v > 1.3 ? 'Very Bullish' : v > 1.0 ? 'Mod.Bullish' : v > 0.7 ? 'Neutral' : 'Bearish';
+                    return '<span title="' + tip + '" class="sv-badge ' + cls + '">' + label + ':' + val + '</span>';
                 }
-
-                
-                if(parseFloat(oiData['chPcr'].trim()) > 1.3){
-                    chPcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['chPcr'] + '</span>'
-                }else if (parseFloat(oiData['chPcr'].trim()) > 0.7 && parseFloat(oiData['chPcr'].trim()) < 1.0) {
-                    chPcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-neutral">' + oiData['chPcr'] + '</span>'
-                }else if(parseFloat(oiData['chPcr'].trim()) < 0.5){
-                    chPcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
-                }else if (parseFloat(oiData['chPcr'].trim()) > 1.0 && parseFloat(oiData['chPcr'].trim()) < 1.3 ) {
-                    chPcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['chPcr'] + '</span>'
-                }else if(parseFloat(oiData['chPcr'].trim()) < 0.7){
-                    chPcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
-                }
-
-
-                trendingStocks[rowId]['PCR'] = pcrHtml + ' : ' + chPcrHtml
+                pcrHtml = pcrBadge(oiData['pcr'], 'P');
+                chPcrHtml = pcrBadge(oiData['chPcr'], 'Δ');
+                trendingStocks[rowId]['PCR'] = pcrHtml + chPcrHtml
 
                 let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
 
@@ -882,14 +833,14 @@ async function callAnalyseTrend() {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE_OBV'] = strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:0.58rem;">'
                     oiHtml += 'PE'
                     oiHtml += '</a>'
                     if (trendingStocks[rowId]['LTP'] < strikes[0]['STRIKE']) {
-                        oiHtml += '<a data-price="' + strikes[0]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                        oiHtml += '<a data-price="' + strikes[0]['STRIKE'] + '" data-name="' + name + '" class="sv-badge sv-badge-muted create-alerts" style="font-size:0.57rem;margin-left:.1rem;">A</a>'
                     }
                     oiHtml += '</div>'
 
@@ -904,14 +855,14 @@ async function callAnalyseTrend() {
                     trendingStocks[rowId]['STRIKE_LOWER_TWO_CE_OBV'] = strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:0.58rem;">'
                     oiHtml += 'PE'
                     oiHtml += '</a>'
                     if (trendingStocks[rowId]['LTP'] < strikes[1]['STRIKE']) {
-                        oiHtml += '<a data-price="' + strikes[1]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                        oiHtml += '<a data-price="' + strikes[1]['STRIKE'] + '" data-name="' + name + '" class="sv-badge sv-badge-muted create-alerts" style="font-size:0.57rem;margin-left:.1rem;">A</a>'
                     }
 
                     oiHtml += '</div>'
@@ -926,14 +877,14 @@ async function callAnalyseTrend() {
                     trendingStocks[rowId]['STRIKE_ATM_CE_OBV'] = strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:0.58rem;">'
                     oiHtml += 'PE'
                     oiHtml += '</a>'
                     if (trendingStocks[rowId]['LTP'] < strikes[2]['STRIKE']) {
-                        oiHtml += '<a data-price="' + strikes[2]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                        oiHtml += '<a data-price="' + strikes[2]['STRIKE'] + '" data-name="' + name + '" class="sv-badge sv-badge-muted create-alerts" style="font-size:0.57rem;margin-left:.1rem;">A</a>'
                     }
 
                     oiHtml += '</div>'
@@ -948,14 +899,14 @@ async function callAnalyseTrend() {
                     trendingStocks[rowId]['STRIKE_UPPER_ONE_CE_OBV'] = strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:0.58rem;">'
                     oiHtml += 'PE'
                     oiHtml += '</a>'
                     if (trendingStocks[rowId]['LTP'] < strikes[3]['STRIKE']) {
-                        oiHtml += '<a data-price="' + strikes[3]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                        oiHtml += '<a data-price="' + strikes[3]['STRIKE'] + '" data-name="' + name + '" class="sv-badge sv-badge-muted create-alerts" style="font-size:0.57rem;margin-left:.1rem;">A</a>'
                     }
 
                     oiHtml += '</div>'
@@ -971,15 +922,15 @@ async function callAnalyseTrend() {
                     trendingStocks[rowId]['STRIKE_UPPER_TWO_CE_OBV'] = strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv']
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
                     oiHtml += 'CE'
                     oiHtml += '</a>'
-                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
+                    oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:0.58rem;">'
                     oiHtml += 'PE'
                     oiHtml += '</a>'
 
                     if (trendingStocks[rowId]['LTP'] < strikes[4]['STRIKE']) {
-                        oiHtml += '<a data-price="' + strikes[4]['STRIKE'] + '" data-name="' + name + '" class=" bg-secondary-color create-alerts" style="font-size:xx-small;margin-left:.1rem;">A</a>'
+                        oiHtml += '<a data-price="' + strikes[4]['STRIKE'] + '" data-name="' + name + '" class="sv-badge sv-badge-muted create-alerts" style="font-size:0.57rem;margin-left:.1rem;">A</a>'
                     }
 
                     oiHtml += '</div>'

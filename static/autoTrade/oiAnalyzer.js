@@ -73,9 +73,9 @@ function calculateOBVFiveMinutesInterval(prevData, currData) {
     return obvList;
 }
 
-async function showTrendingOI(instrument) {
+async function showTrendingOI(instrument, strikToShowOverride) {
     OI_DIVISOR = 100000
-    let strikToShow = 3
+    let strikToShow = (strikToShowOverride !== undefined) ? strikToShowOverride : 3
     let strikeData = []
     let selectedStrike = []
     let res = generateTrend(instrument)

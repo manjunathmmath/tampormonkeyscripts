@@ -3,6 +3,16 @@ jQ(document).on("click", "#show-stock-viewer", function (e) {
     showStockViewer();
 });
 
+jQ(document).on("click", ".refresh-oi-stock-viewer", async function (e) {
+    let name = jQ(this).attr("data-name");
+    if (!name) return;
+    let oiData = await showTrendingOI(name);
+    if (stock[0]) {
+        stock[0]['DATA'] = oiData;
+        showOIOBVBarChartStockViewer(name);
+    }
+});
+
 
 function showStockViewer() {
 
@@ -25,12 +35,12 @@ function showStockViewer() {
 
 
     html += '<div class="row" id="oi-viewer-scanner-content-buttons">'
-    html += '<button data-trend="all" class="dt-button stock-trend-filter  bg-secondary extra-buttons col-md-1" type="button"><span>ALL (' + allCount + ')</span></button>'
-    html += '<button data-trend="aso" class="dt-button stock-trend-filter  bg-secondary extra-buttons col-md-1" type="button"><span>ASO(' + asoCount + ')</span></button>'
-    html += '<button data-trend="bso" class="dt-button stock-trend-filter  bg-secondary extra-buttons col-md-1" type="button"><span>BSO (' + bsoCount + ')</span></button>'
-    html += '<button data-trend="n50" class="dt-button stock-trend-filter  bg-secondary extra-buttons col-md-1" type="button"><span>N50</span></button>'
-    html += '<button data-trend="bank" class="dt-button stock-trend-filter  bg-secondary extra-buttons col-md-1" type="button"><span>BN</span></button>'
-    html += '<button data-trend="weight" class="dt-button stock-trend-filter  bg-secondary extra-buttons col-md-1" type="button"><span>WEIGHTED</span></button>'
+    html += '<button data-trend="all" class="dt-button stock-trend-filter extra-buttons" type="button"><span>ALL (' + allCount + ')</span></button>'
+    html += '<button data-trend="aso" class="dt-button stock-trend-filter extra-buttons" type="button"><span style="color:var(--gtb-green);">ASO (' + asoCount + ')</span></button>'
+    html += '<button data-trend="bso" class="dt-button stock-trend-filter extra-buttons" type="button"><span style="color:var(--gtb-red);">BSO (' + bsoCount + ')</span></button>'
+    html += '<button data-trend="n50" class="dt-button stock-trend-filter extra-buttons" type="button"><span>N50</span></button>'
+    html += '<button data-trend="bank" class="dt-button stock-trend-filter extra-buttons" type="button"><span>BN</span></button>'
+    html += '<button data-trend="weight" class="dt-button stock-trend-filter extra-buttons" type="button"><span>WEIGHTED</span></button>'
     html += '</div>'
 
     html += '<div class="row" id="oi-viewer-scanner-content">'
@@ -38,10 +48,9 @@ function showStockViewer() {
 
 
     let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'STOCK VIEWER'
-    title += '</div>'
+    title += '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+    title += '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-person-lines-fill"></i> STOCK VIEWER</span>'
+    title += popupWinControls("popup-custom-style-stock-viewer-scanner")
     title += '</div>'
 
     showPopUpWindow('stock-viewer-scanner', html, "STOCK VIEWER", 950, 550);
@@ -94,7 +103,7 @@ async function showStockAnalyzer(type) {
     });
 
     for (let i = 0; i < list.length; i++) {
-        html += '<div class="row">'
+        html += '<div class="sv-stock-row">'
         html += showComponentStockViewer(list[i], i)
         html += showComponentFuturesStockViewer(list[i])
         html += showComponentOIStockViewer(list[i])
@@ -126,44 +135,20 @@ async function showStockAnalyzer(type) {
 
 }
 
-function updateScoresOfTrendStockViewer(name, score) {
-    let scoreHtml = ''
-    if (score > 0) {
-        scoreHtml += '<span class="badge bg-success"><i class="bi bi-speedometer"></i>+ ' + score + '</span>'
-    } else {
-        scoreHtml += '<span class="badge bg-danger"><i class="bi bi-speedometer"></i> ' + score + '</span>'
-    }
-    jQ("#" + name.replaceAll(" ", "-") + "-oi-score-stock-viewer").html(scoreHtml)
+function updateScoresOfTrendStockViewer(name, score, atmCeLabel, atmPeLabel) {
+    let sig = getOISignal(score, atmCeLabel, atmPeLabel);
+    let scoreCls = score > 0 ? 'sv-badge sv-badge-green' : 'sv-badge sv-badge-red';
+    let signalCls = sig.signal === 'BUY' || sig.signal === 'STRONG BUY' ? 'sv-badge sv-badge-green'
+                  : sig.signal === 'SELL' || sig.signal === 'STRONG SELL' ? 'sv-badge sv-badge-red'
+                  : 'sv-badge sv-badge-amber';
+    let scoreHtml = '<span class="' + scoreCls + '"><i class="bi bi-speedometer"></i> ' + (score > 0 ? '+' : '') + parseFloat(score).toFixed(1) + '</span>'
+    scoreHtml += '<span class="' + signalCls + '">' + sig.signal + '</span>'
+    jQ("#" + name.replaceAll(" ", "-").replaceAll("&", "-") + "-oi-score-stock-viewer").html(scoreHtml)
 }
 
-function updateScoresOfOIStockViewer(name, item) {
-    let SCORE = 0
-    if (item['CHG_OI_PE'] > item['CHG_OI_CE']) {
-        SCORE++
-    } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > item['PE_OBV'][item['PE_OBV'].length - 1]['obv']) {
-        //SCORE++
-    } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] < 0) {
-        //SCORE++
-    }
-
-    if (item['OI_PE'] > item['OI_CE']) {
-        SCORE++
-    }
-
-    if (item['OI_CE'] > item['OI_PE']) {
-        SCORE--
-    }
-
-    if (item['CHG_OI_CE'] > item['CHG_OI_PE']) {
-        SCORE--
-    } else if (item['PE_OBV'][item['PE_OBV'].length - 1]['obv'] > item['CE_OBV'][item['CE_OBV'].length - 1]['obv']) {
-        //SCORE--
-    } else if (item['CE_OBV'][item['CE_OBV'].length - 1]['obv'] > 0) {
-        //SCORE--
-    }
-
-    return SCORE;
-
+function updateScoresOfOIStockViewer(name, item, priceChange) {
+    let result = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange);
+    return result.score;
 }
 
 
@@ -171,14 +156,10 @@ function showOIOBVBarChartStockViewer(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
-    let columns = [];
-
     let x = ['x']
 
     let oiCECH = ["CH CE OI"]
     let oiPECH = ["CH PE OI"]
-    let oiCE = ["CE OI"]
-    let oiPE = ["PE OI"]
 
     let oiCESUM = ["SUM CE OI"]
     let oiPESUM = ["SUM PE OI"]
@@ -189,319 +170,217 @@ function showOIOBVBarChartStockViewer(name) {
     let data = stock[0]['DATA']['tableData']
     let oiData = stock[0]['DATA']
 
+    if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+    INSTRUMENT_SCORE_MAP[name].oiData = oiData;
+
     let pcrHtml = ''
     let chPcrHtml = ''
 
-    if (parseFloat(oiData['pcr'].trim()) > 1.3) {
-        pcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['pcr'] + '</span>'
-    } else if (parseFloat(oiData['pcr'].trim()) > 0.7 && parseFloat(oiData['pcr'].trim()) < 1.0) {
-        pcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-info">' + oiData['pcr'] + '</span>'
-    } else if (parseFloat(oiData['pcr'].trim()) < 0.5) {
-        pcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['pcr'] + '</span>'
-    } else if (parseFloat(oiData['pcr'].trim()) > 1.0 && parseFloat(oiData['pcr'].trim()) < 1.3) {
-        pcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['pcr'] + '</span>'
-    } else if (parseFloat(oiData['pcr'].trim()) < 0.7) {
-        pcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['pcr'] + '</span>'
+    function pcrBadge(val, label) {
+        let v = parseFloat(val);
+        let cls = v > 1.3 ? 'sv-badge-green' : v > 1.0 ? 'sv-badge-amber' : v > 0.7 ? 'sv-badge-muted' : 'sv-badge-red';
+        let tip = v > 1.3 ? 'Very Bullish' : v > 1.0 ? 'Moderately Bullish' : v > 0.7 ? 'Neutral' : 'Bearish';
+        return '<span title="' + tip + ' PCR" class="sv-badge ' + cls + '">' + label + ':' + val + '</span>';
     }
+    pcrHtml = pcrBadge(oiData['pcr'], 'P');
+    chPcrHtml = pcrBadge(oiData['chPcr'], 'Δ');
+    jQ("#" + tempName + "-pcr-probability-stock-viewer").html(pcrHtml + chPcrHtml)
 
-
-    if (parseFloat(oiData['chPcr'].trim()) > 1.3) {
-        chPcrHtml += '<span title="Very Bullish | Strong hands selling puts. But if extreme (>1.5), reversal possible." class="badge bg-success">' + oiData['chPcr'] + '</span>'
-    } else if (parseFloat(oiData['chPcr'].trim()) > 0.7 && parseFloat(oiData['chPcr'].trim()) < 1.0) {
-        chPcrHtml += '<span title="Neutral | Range-bound market expected. Sell options, don\'t buy." class="badge bg-info">' + oiData['chPcr'] + '</span>'
-    } else if (parseFloat(oiData['chPcr'].trim()) < 0.5) {
-        chPcrHtml += '<span title="Very Bearish | Extreme bearish positioning. But could signal bottom." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
-    } else if (parseFloat(oiData['chPcr'].trim()) > 1.0 && parseFloat(oiData['chPcr'].trim()) < 1.3) {
-        chPcrHtml += '<span title="Moderately Bullish | Healthy bullish sentiment. Good for buying dips." class="badge bg-warning">' + oiData['chPcr'] + '</span>'
-    } else if (parseFloat(oiData['chPcr'].trim()) < 0.7) {
-        chPcrHtml += '<span title=" Bearish | Call selling dominating. Downside or sideways expected." class="badge bg-danger">' + oiData['chPcr'] + '</span>'
-    }
-
-
-    jQ("#" + tempName + "-pcr-probability-stock-viewer").html(pcrHtml + " | " + chPcrHtml)
-
+    let priceChange = parseFloat(generateTrend(name).change) || 0;
     let oiScore = 0
+    let atmIndex = -1;
+    let strikeSignals = [];
+
+    let columnsOi = [];
+    let columnsObv = [];
+
     jQ.each(data, function (index, item) {
         x.push(item['STRIKE'])
-        oiCE.push(item['OI_CE'])
-        oiPE.push(item['OI_PE'])
         oiCECH.push(item['CHG_OI_CE'])
         oiPECH.push(item['CHG_OI_PE'])
         let sumCE = parseFloat(item['OI_CE']) + parseFloat(item['CHG_OI_CE'])
         let sumPE = parseFloat(item['OI_PE']) + parseFloat(item['CHG_OI_PE'])
         oiCESUM.push(sumCE.toFixed(1))
         oiPESUM.push(sumPE.toFixed(1))
-        oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
-        oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
-        oiScore += updateScoresOfOIStockViewer(name, item)
+
+        // OBV delta instead of cumulative level
+        let ceObvList = item['CE_OBV'], peObvList = item['PE_OBV'];
+        let ceObvDelta = ceObvList.length >= 2
+            ? parseFloat(ceObvList[ceObvList.length-1]['obv']) - parseFloat(ceObvList[ceObvList.length-2]['obv'])
+            : parseFloat(ceObvList[ceObvList.length-1]['obv']);
+        let peObvDelta = peObvList.length >= 2
+            ? parseFloat(peObvList[peObvList.length-1]['obv']) - parseFloat(peObvList[peObvList.length-2]['obv'])
+            : parseFloat(peObvList[peObvList.length-1]['obv']);
+        oiCEOBV.push(parseFloat(ceObvDelta).toFixed(1))
+        oiPEOBV.push(parseFloat(peObvDelta).toFixed(1))
+
+        let result = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange);
+        let strikeScore = updateScoresOfOIStockViewer(name, item, priceChange);
+        oiScore += strikeScore;
+
+        if (item['ATM_STRIKE']) atmIndex = index;
+
+        let color;
+        if      (strikeScore >= 2)  color = '#28a745';
+        else if (strikeScore <= -2) color = '#dc3545';
+        else if (strikeScore > 0)   color = '#85c785';
+        else if (strikeScore < 0)   color = '#e08080';
+        else                        color = '#6c757d';
+        strikeSignals.push({ strike: item['STRIKE'], score: strikeScore, color: color, ceLabel: result.ceLabel, peLabel: result.peLabel, isATM: !!item['ATM_STRIKE'] });
     });
 
-    updateScoresOfTrendStockViewer(name, oiScore)
+    let atmSignalSV = strikeSignals.find(function(s) { return s.isATM; });
+    updateScoresOfTrendStockViewer(name, oiScore, atmSignalSV ? atmSignalSV.ceLabel : null, atmSignalSV ? atmSignalSV.peLabel : null);
 
-    columns.push(x)
-    columns.push(oiCECH)
-    columns.push(oiPECH)
-    columns.push(oiCE)
-    columns.push(oiPE)
-    columns.push(oiCEOBV)
-    columns.push(oiPEOBV)
-    columns.push(oiCESUM)
-    columns.push(oiPESUM)
+    let atmRegions = atmIndex >= 0
+        ? [{ axis: 'x', start: atmIndex - 0.5, end: atmIndex + 0.5, class: 'atm-region' }]
+        : [];
+    let atmGridLines = atmIndex >= 0
+        ? [{ value: atmIndex, text: 'ATM', class: 'atm-grid-line', position: 'start' }]
+        : [];
 
+    columnsOi.push(x)
+    columnsOi.push(oiCECH)
+    columnsOi.push(oiPECH)
 
+    columnsObv.push(x)
+    columnsObv.push(oiCEOBV)
+    columnsObv.push(oiPEOBV)
 
-    var chart = c3.generate({
-        bindto: "#" + tempName + "-oi-obv-stock-viewer",
-        size: {
-            height: 150
-        },
-        data: {
-            x: 'x',
-            columns: columns,
-            type: 'bar',
-            colors: {
-                'CE OI': '#FF0000',
-                'PE OI': '#11ff00',
-                'CH CE OI': '#FF0000',
-                'CH PE OI': '#11ff00',
-                'SUM CE OI': '#FF0000',
-                'SUM PE OI': '#11ff00',
-                'CE OBV': '#d400ff',
-                'PE OBV': '#0059ff'
-
-            },
-            /*color: function (color, d) {
-                if (d.value !== undefined) {
-                    if (d.id === 'CE OI' && d.value > 0) {
-                        return '#bc2709'; //Calls are being sold and the price is expected to go down, so red color
-                    } else if (d.id === 'CE OI' && d.value < 0) {
-                        return '#bc2709'; // Call writing is happening and the price is expected to go up, so green color
-                    } else if (d.id === 'PE OI' && d.value > 0) {
-                        return '#5ccf76'; //Put writing is happening and the price is expected to go up, so green color
-                    } else if (d.id === 'PE OI' && d.value < 0) {
-                        return '#5ccf76'; // Put buying closing the  positions
-                    } else if (d.id === 'CE OI OBV' && d.value > 0) {
-                        return '#5ccf76'; // Call are bein bought
-                    } else if (d.id === 'CE OI OBV' && d.value < 0) {
-                        return '#bc2709'; // Call writing is happening
-                    } else if (d.id === 'PE OI OBV' && d.value > 0) {
-                        return '#bc2709'; // Puts arebeing bought   
-                    } else if (d.id === 'PE OI OBV' && d.value < 0) {
-                        return '#5ccf76'; // Put writing is happening
-                    }
-                }
-                // For legend items or other cases, return the default color
-                return color;
-            },*/
-
-        },
-
-        bar: {
-            width: {
-                ratio: 0.5
-            }
-        },
-        axis: {
-            x: {
-                show: true,
-            },
-            y: {
-                show: false,
-            },
-        },
-        legend: {
-            show: false // Hide the legend      
-        }
+    _renderBarChart(tempName + '-oi-stock-viewer', {
+        labels: x.slice(1),
+        height: 130,
+        atm: atmIndex,
+        series: [
+            { label: 'CH CE OI', color: OI_COLORS.CE_OI, values: oiCECH.slice(1) },
+            { label: 'CH PE OI', color: OI_COLORS.PE_OI, values: oiPECH.slice(1) }
+        ]
     });
+
+    _renderBarChart(tempName + '-obv-stock-viewer', {
+        labels: x.slice(1),
+        height: 130,
+        atm: atmIndex,
+        series: [
+            { label: 'CE OBV', color: OI_COLORS.CE_OBV, values: oiCEOBV.slice(1) },
+            { label: 'PE OBV', color: OI_COLORS.PE_OBV, values: oiPEOBV.slice(1) }
+        ]
+    });
+
+    // Strike signal annotation row — CE/PE interpretation per strike
+    let signalRowHtml = '<div style="display:flex;gap:2px;margin-top:4px;flex-wrap:nowrap;overflow-x:auto;">';
+    for (let i = 0; i < strikeSignals.length; i++) {
+        let s = strikeSignals[i];
+        let border = s.isATM ? '2px solid #fbbf24' : '1px solid #30363d';
+        let fontWeight = s.isATM ? 'bold' : 'normal';
+        let ceLabelColor = (s.ceLabel === 'CE WRITE' || s.ceLabel === 'CE UNWIND') ? '#f85149'
+                         : (s.ceLabel === 'CE BUY'   || s.ceLabel === 'CE COV')    ? '#3fb950' : '#7d8590';
+        let peLabelColor = (s.peLabel === 'PE WRITE' || s.peLabel === 'PE UNWIND') ? '#3fb950'
+                         : (s.peLabel === 'PE BUY'   || s.peLabel === 'PE COV')    ? '#f85149' : '#7d8590';
+        signalRowHtml += '<div style="flex:1;min-width:70px;text-align:center;border:' + border + ';border-radius:4px;padding:2px;background:' + s.color + '22;">';
+        signalRowHtml += '<div style="font-size:0.6rem;color:' + (s.isATM ? '#fbbf24' : '#e6edf3') + ';font-weight:' + fontWeight + ';">' + s.strike + (s.isATM ? ' ★' : '') + '</div>';
+        signalRowHtml += '<div style="font-size:0.62rem;color:' + ceLabelColor + ';">' + s.ceLabel + '</div>';
+        signalRowHtml += '<div style="font-size:0.62rem;color:' + peLabelColor + ';">' + s.peLabel + '</div>';
+        signalRowHtml += '<div style="font-size:0.6rem;color:#7d8590;">' + (s.score > 0 ? '+' : '') + parseFloat(s.score).toFixed(1) + '</div>';
+        signalRowHtml += '</div>';
+    }
+    signalRowHtml += '</div>';
+    jQ("#" + tempName + "-oi-signal-row-stock-viewer").html(signalRowHtml);
+
     showComponentOITableStockViewer(name);
 }
 
 
 function showComponentOITableStockViewer(name) {
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
+    let tempName = name.replaceAll(" ", "-").replaceAll("&", "-");
+    let strikes = stock[0]['DATA']['tableData'];
+    let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##";
 
-    let strikes = stock[0]['DATA']['tableData']
-
-    let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
-
-
-    let html = ''
-
-    html += '<div class="row">'
-    html += '<div class="col-md-12">'
-    html += '<table  class="table display nowrap"  style="width: 100%;font-size:xx-small;">'
-
-    html += '<thead>'
-    html += '<tr>'
-
-    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class itm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class atm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '<th colspan="5" class="strike-colspan-class otm-col-class">Strike</th>'
-    html += '</tr>'
-    html += '<tr>'
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '<th class="number-align" >CE</th>'
-    html += '<th class="number-align" >CE OBV</th>'
-    html += '<th class="text-align">S</th>'
-    html += '<th class="number-align" >PE OBV</th>'
-    html += '<th class="number-align">PE</th> '
-
-    html += '</tr>'
-    html += '</thead>'
-    html += '<tbody>'
-    html += '<tr>'
-
-    if (strikes[0]) {
-        html += '<td class="number-align" >' + strikes[0]['CHG_OI_CE'] + '</td>'
-        html += '<td class="number-align" >' + strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv'] + '</td>'
-
-        oiHtml = ''
-        oiHtml += '<div style="display:flex;">'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-        oiHtml += 'CE'
-        oiHtml += '</a>'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-        oiHtml += 'PE'
-        oiHtml += '</a>'
-        oiHtml += '</div>'
-
-        html += '<td class="text-align">' + strikes[0]['STRIKE'] + oiHtml + '</td>'
-        html += '<td class="number-align" >' + strikes[0]['PE_OBV'][strikes[0]['PE_OBV'].length - 1]['obv'] + '</td>'
-        html += '<td class="number-align">' + strikes[0]['CHG_OI_PE'] + '</td> '
-
+    // Find ATM index
+    let atmIdx = -1;
+    for (let i = 0; i < strikes.length; i++) {
+        if (strikes[i]['ATM_STRIKE']) { atmIdx = i; break; }
     }
-    if (strikes[1]) {
-        html += '<td class="number-align" >' + strikes[1]['CHG_OI_CE'] + '</td>'
-        html += '<td class="number-align" >' + strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv'] + '</td>'
+    if (atmIdx === -1) atmIdx = Math.floor(strikes.length / 2);
 
-        oiHtml = ''
-        oiHtml += '<div style="display:flex;">'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-        oiHtml += 'CE'
-        oiHtml += '</a>'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-        oiHtml += 'PE'
-        oiHtml += '</a>'
-        oiHtml += '</div>'
+    // Column group labels with ATM highlight
+    let colClasses = ['itm-col-class', 'itm-col-class', 'atm-col-class', 'otm-col-class', 'otm-col-class'];
+    let colLabels = ['ITM-2', 'ITM-1', 'ATM', 'OTM+1', 'OTM+2'];
 
-        html += '<td class="text-align">' + strikes[1]['STRIKE'] + oiHtml + '</td>'
-        html += '<td class="number-align" >' + strikes[1]['PE_OBV'][strikes[1]['PE_OBV'].length - 1]['obv'] + '</td>'
-        html += '<td class="number-align">' + strikes[1]['CHG_OI_PE'] + '</td> '
+    let html = '<div class="sv-oi-table"><table style="width:100%;">';
+    html += '<thead><tr>';
+    for (let i = 0; i < 5; i++) {
+        let cls = i === atmIdx ? 'atm-col-class oi-atm-subhdr' : colClasses[i];
+        html += '<th colspan="5" class="strike-colspan-class ' + cls + '">' + (colLabels[i] || 'Strike') + '</th>';
     }
-
-    if (strikes[2]) {
-        html += '<td class="number-align" >' + strikes[2]['CHG_OI_CE'] + '</td>'
-        html += '<td class="number-align" >' + strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv'] + '</td>'
-
-        oiHtml = ''
-        oiHtml += '<div style="display:flex;">'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-        oiHtml += 'CE'
-        oiHtml += '</a>'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-        oiHtml += 'PE'
-        oiHtml += '</a>'
-        oiHtml += '</div>'
-
-        html += '<td class="text-align">' + strikes[2]['STRIKE'] + oiHtml + '</td>'
-        html += '<td class="number-align" >' + strikes[2]['PE_OBV'][strikes[2]['PE_OBV'].length - 1]['obv'] + '</td>'
-        html += '<td class="number-align">' + strikes[2]['CHG_OI_PE'] + '</td> '
+    html += '</tr><tr>';
+    for (let i = 0; i < 5; i++) {
+        let atmCls = i === atmIdx ? ' oi-atm-subhdr' : '';
+        html += '<th class="number-align' + atmCls + '">CE ΔOI</th>';
+        html += '<th class="number-align' + atmCls + '">CE OBV</th>';
+        html += '<th class="text-align' + atmCls + '">Strike</th>';
+        html += '<th class="number-align' + atmCls + '">PE OBV</th>';
+        html += '<th class="number-align' + atmCls + '">PE ΔOI</th>';
     }
+    html += '</tr></thead><tbody><tr>';
 
-    if (strikes[3]) {
-        html += '<td class="number-align" >' + strikes[3]['CHG_OI_CE'] + '</td>'
-        html += '<td class="number-align" >' + strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv'] + '</td>'
-
-        oiHtml = ''
-        oiHtml += '<div style="display:flex;">'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-        oiHtml += 'CE'
-        oiHtml += '</a>'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-        oiHtml += 'PE'
-        oiHtml += '</a>'
-        oiHtml += '</div>'
-
-        html += '<td class="text-align">' + strikes[3]['STRIKE'] + oiHtml + '</td>'
-        html += '<td class="number-align" >' + strikes[3]['PE_OBV'][strikes[3]['PE_OBV'].length - 1]['obv'] + '</td>'
-        html += '<td class="number-align">' + strikes[3]['CHG_OI_PE'] + '</td> '
+    for (let i = 0; i < 5; i++) {
+        let s = strikes[i];
+        let isAtm = (i === atmIdx);
+        let cellCls = isAtm ? ' oi-atm-cell' : '';
+        if (s) {
+            let ceChg = parseFloat(s['CHG_OI_CE']);
+            let peChg = parseFloat(s['CHG_OI_PE']);
+            let ceObv = parseFloat(s['CE_OBV'][s['CE_OBV'].length - 1]['obv']);
+            let peObv = parseFloat(s['PE_OBV'][s['PE_OBV'].length - 1]['obv']);
+            let ceColor = ceChg > 0 ? 'color:var(--gtb-red);' : ceChg < 0 ? 'color:var(--gtb-green);' : '';
+            let peColor = peChg > 0 ? 'color:var(--gtb-green);' : peChg < 0 ? 'color:var(--gtb-red);' : '';
+            let ceLink = s.CE ? '<a href="' + link.replace('##INSTRUMENT##', s.CE.tradingsymbol).replace('##TOKEN##', s.CE.instrument_token) + '" target="_blank">CE</a>' : 'CE';
+            let peLink = s.PE ? '<a href="' + link.replace('##INSTRUMENT##', s.PE.tradingsymbol).replace('##TOKEN##', s.PE.instrument_token) + '" target="_blank">PE</a>' : 'PE';
+            html += '<td class="number-align' + cellCls + '" style="' + ceColor + '">' + (ceChg > 0 ? '+' : '') + ceChg + '</td>';
+            html += '<td class="number-align' + cellCls + '">' + ceObv + '</td>';
+            html += '<td class="text-align' + cellCls + '" style="' + (isAtm ? 'color:var(--gtb-gold);font-weight:800;' : '') + '">' + s['STRIKE'] + '<br><span style="display:flex;gap:3px;justify-content:center;">' + ceLink + peLink + '</span></td>';
+            html += '<td class="number-align' + cellCls + '">' + peObv + '</td>';
+            html += '<td class="number-align' + cellCls + '" style="' + peColor + '">' + (peChg > 0 ? '+' : '') + peChg + '</td>';
+        } else {
+            html += '<td colspan="5" class="text-align' + cellCls + '">—</td>';
+        }
     }
-
-
-    if (strikes[4]) {
-        html += '<td class="number-align" >' + strikes[4]['CHG_OI_CE'] + '</td>'
-        html += '<td class="number-align" >' + strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv'] + '</td>'
-
-        oiHtml = ''
-        oiHtml += '<div style="display:flex;">'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:xx-small;margin-right:.1rem;">'
-        oiHtml += 'CE'
-        oiHtml += '</a>'
-        oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].PE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].PE.instrument_token) + '" target="_blank" style="font-size:xx-small;">'
-        oiHtml += 'PE'
-        oiHtml += '</a>'
-        oiHtml += '</div>'
-
-        html += '<td class="text-align">' + strikes[4]['STRIKE'] + oiHtml + '</td>'
-        html += '<td class="number-align" >' + strikes[4]['PE_OBV'][strikes[4]['PE_OBV'].length - 1]['obv'] + '</td>'
-        html += '<td class="number-align">' + strikes[4]['CHG_OI_PE'] + '</td> '
-    }
-
-    html += '</tr>'
-
-    html += '</tbody>'
-    html += '</table>'
-    html += '</div>'
-    html += '</div>'
+    html += '</tr></tbody></table></div>';
     jQ("#" + tempName + "-component-oi-list-table-stock-viewer").html(html);
 }
 
 function setFutureDetailsStockViewer(name, data) {
-    let tempName = name.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-    jQ("#" + tempName + "-futures-stock-viewer").html(data['PLUS'] + '<br/>' + data['MINUS']);
+    let tempName = name.replaceAll(" ", "-").replaceAll("&", "-");
+
+    // Render bull/bear signal rows
+    let BULLISH = ['Long', 'Short Covering', 'Gambling! Buy News And Events', 'Defence,Buy On Decline', 'Bulls'];
+    let plusText = data['PLUS'] || '';
+    let minusText = data['MINUS'] || '';
+    let isBull = BULLISH.some(function(b) { return plusText.indexOf(b) !== -1; });
+    let futHtml = '';
+    if (plusText) {
+        futHtml += '<div class="sv-fut-chip ' + (isBull ? 'bull' : 'bear') + '">' + plusText + '</div>';
+    }
+    if (minusText) {
+        futHtml += '<div class="sv-fut-chip ' + (!isBull ? 'bull' : 'bear') + '">' + minusText + '</div>';
+    }
+    jQ("#" + tempName + "-futures-stock-viewer").html(futHtml);
 
     if (name != "CRUDEOIL") {
-        let scriptData = generateTrend(name)
+        let scriptData = generateTrend(name);
         let premium = parseFloat(scriptData['ltp']) - parseFloat(data['quote']['close']);
-        let html = '';
+        let premHtml = '';
         if (premium > 0) {
-            html += '<div class="badge bg-success">+' + premium.toFixed(0) + '</div>';
+            premHtml = '<span class="sv-badge sv-badge-green">+' + premium.toFixed(0) + ' prem</span>';
         } else if (premium < 0) {
-            html += '<div class="badge bg-danger">' + premium.toFixed(0) + '</div>';
+            premHtml = '<span class="sv-badge sv-badge-red">' + premium.toFixed(0) + ' dis</span>';
         } else {
-            html += '<div class="badge bg-secondary">' + premium.toFixed(0) + '</div>';
+            premHtml = '<span class="sv-badge sv-badge-muted">0 prem</span>';
         }
-        jQ("#" + tempName + "-futures-premium-stock-viewer").html(html);
-        jQ("#" + tempName + "-futures-vwap-stock-viewer").html(data['vwap']);
-        jQ("#" + tempName + "-futures-trend-stock-viewer").html(data['trend']);
+        jQ("#" + tempName + "-futures-premium-stock-viewer").html(premHtml);
+        jQ("#" + tempName + "-futures-vwap-stock-viewer").html(data['vwap'] || '—');
+        jQ("#" + tempName + "-futures-trend-stock-viewer").html(data['trend'] || '—');
     }
 }
 
@@ -627,52 +506,35 @@ function showComponentStockViewer(name, index) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
-    let componentColor = "#ffffff";
-    if (index % 2 === 0) {
-        componentColor = "#edecec";
-    }
-
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
+    if (!breakOutNineFifteen) breakOutNineFifteen = {};
 
-    if (!breakOutNineFifteen) {
-        breakOutNineFifteen = {}
+    let close915 = 'N/A';
+    let nineClass = 'sv-badge sv-badge-muted';
+    if (breakOutNineFifteen[name]) {
+        close915 = breakOutNineFifteen[name]['CLOSE_9_15'] || 'N/A';
+        if (close915 === 'ASO') nineClass = 'sv-badge sv-badge-green';
+        else if (close915 === 'BSO') nineClass = 'sv-badge sv-badge-red';
+        else if (close915 === 'B/W') nineClass = 'sv-badge sv-badge-blue';
     }
+
+    let weight = WEIGHTED_STOCKS_WEIGHT[name];
+    let weightBadge = weight != null ? '<span class="sv-badge sv-badge-muted">W ' + weight + '%</span>' : '';
+
+    let link = '<a class="sv-instr-link" target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/NSE/' + name + '/' + INSTRUMENT_TOKENS[name] + '">' + name + '</a>'
+    let infoBadge = '<span class="sv-badge sv-badge-muted sv-btn show-info" data-index="' + index + '" data-name="' + name + '" style="cursor:pointer;">i</span>';
 
     let html = ''
-    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;background-color:' + componentColor + ';">'
-
-    html += '<div class="row" style="position:relative;background-color: ' + (componentColorHeader[name] == undefined ? "#ffbcb0" : componentColorHeader[name]) + '">'
-    html += '<div class="col-md-12">'
-
-    let bgClass = '';
-    if (breakOutNineFifteen[name]) {
-        if (breakOutNineFifteen[name]['CLOSE_9_15'] == "ASO") {
-            bgClass = 'bg-success';
-        }
-        if (breakOutNineFifteen[name]['CLOSE_9_15'] == "BSO") {
-            bgClass = 'bg-danger';
-        }
-        if (breakOutNineFifteen[name]['CLOSE_9_15'] == "B/W") {
-            bgClass = 'bg-info';
-        }
-    } else {
-        breakOutNineFifteen[name] = {}
-        breakOutNineFifteen[name]['CLOSE_9_15'] = 'N/A'
-    }
-
-    let link = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NSE' + '/' + name + '/' + INSTRUMENT_TOKENS[name] + '">' + name + '</a>'
-
-    html += '<span style="position: absolute;top: .2rem;" data-index="' + index + '" data-name="' + name + '" class="badge bg-secondary show-info">i</span>'
-    html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[name]['CLOSE_9_15'] + '</span>'
-    html += '<span class="badge bg-dark" style="position:absolute;top:.2rem;left:2.2rem;">W %' + (WEIGHTED_STOCKS_WEIGHT[name] == undefined ? "" : WEIGHTED_STOCKS_WEIGHT[name]) + '</span>'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">' + link + '</h4>'
+    html += '<div class="sv-stock-col">'
+    // Header
+    html += '<div class="sv-card-header">'
+    html += '  <div class="sv-header-left">' + infoBadge + weightBadge + '</div>'
+    html += '  <div class="sv-header-title">' + link + '</div>'
+    html += '  <div class="sv-header-right"><span class="' + nineClass + '">' + close915 + '</span></div>'
     html += '</div>'
-    html += '</div>'
-
-    html += '<div class="row" style="">'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;background-color:#000000;">'
-    html += '<div id="' + tempName + '-chart-stock-viewer" ></div>'
-    html += '</div>'
+    // Chart area
+    html += '<div class="sv-chart-area">'
+    html += '  <div id="' + tempName + '-chart-stock-viewer"></div>'
     html += '</div>'
     html += '</div>'
     return html;
@@ -682,18 +544,24 @@ function showComponentFuturesStockViewer(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let html = ''
-    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
-    html += '<div class="row" style="">'
-    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-futures-premium-stock-viewer" style="position: absolute;left: 2.4rem;top: .2rem;"  data-name="' + name + '">PREMIUM</span>'
-
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">FUTURES</h4>'
+    html += '<div class="sv-stock-col">'
+    // Header
+    html += '<div class="sv-card-header">'
+    html += '  <div class="sv-header-left"><span class="sv-section-label">FUTURES</span></div>'
+    html += '  <div class="sv-header-right">'
+    html += '    <span id="' + tempName + '-futures-premium-stock-viewer"></span>'
+    html += '    <span class="hdr-actions">'
+    html += '      <button class="sv-icon-btn refresh-futures-stock-viewer" data-name="' + name + '" title="Refresh Futures"><i class="bi bi-arrow-clockwise"></i></button>'
+    html += '    </span>'
+    html += '  </div>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;text-align:center;">'
-    html += '<div id="' + tempName + '-futures-stock-viewer" ></div>'
-    html += '<div title="VWAP Trend" id="' + tempName + '-futures-vwap-stock-viewer"></div>'
-    html += '<div title="Future trend" id="' + tempName + '-futures-trend-stock-viewer"></div>'
-    html += '</div>'
+    // Body
+    html += '<div class="sv-fut-body">'
+    html += '  <div id="' + tempName + '-futures-stock-viewer" class="sv-fut-signals"></div>'
+    html += '  <div class="sv-fut-meta">'
+    html += '    <span class="sv-meta-label">VWAP</span> <span id="' + tempName + '-futures-vwap-stock-viewer" class="sv-meta-val"></span>'
+    html += '    &nbsp;<span class="sv-meta-label">TREND</span> <span id="' + tempName + '-futures-trend-stock-viewer" class="sv-meta-val"></span>'
+    html += '  </div>'
     html += '</div>'
     html += '</div>'
     return html;
@@ -703,18 +571,25 @@ function showComponentOIStockViewer(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     let html = ''
-    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
-    html += '<div class="row" style="">'
-    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-pcr-probability-stock-viewer" style="position: absolute;right: .2rem;top: .2rem;" data-name="' + name + '">PCR</span>'
-    html += '<span title="OI Score" id="' + tempName + '-oi-score-stock-viewer" style="position: absolute;left: 2rem;top: .1rem;" data-name="' + name + '">SCORE</span>'
-
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size: .8rem;font-weight: 600;">OI/OBV</h4>'
+    html += '<div class="sv-stock-col">'
+    // Header
+    html += '<div class="sv-card-header">'
+    html += '  <div class="sv-header-left"><span class="sv-section-label">OI / OBV</span></div>'
+    html += '  <div class="sv-header-right">'
+    html += '    <span id="' + tempName + '-oi-score-stock-viewer" class="sv-score-val"></span>'
+    html += '    <span id="' + tempName + '-pcr-probability-stock-viewer" class="sv-pcr-val"></span>'
+    html += '    <span class="hdr-actions">'
+    html += '      <button class="sv-icon-btn refresh-oi-stock-viewer" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>'
+    html += '      <button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>'
+    html += '    </span>'
+    html += '  </div>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:10rem;position:relative;overflow-y:auto;">'
-    html += '<div id="' + tempName + '-oi-obv-stock-viewer"></div>'
-    html += '<div id="' + tempName + '-component-oi-list-table-stock-viewer" ></div>'
-    html += '</div>'
+    // Body
+    html += '<div class="sv-oi-body">'
+    html += '  <div id="' + tempName + '-oi-stock-viewer" class="sv-mini-chart"></div>'
+    html += '  <div id="' + tempName + '-oi-signal-row-stock-viewer" class="sv-signal-row"></div>'
+    html += '  <div id="' + tempName + '-obv-stock-viewer" class="sv-mini-chart"></div>'
+    html += '  <div id="' + tempName + '-component-oi-list-table-stock-viewer" class="sv-oi-table"></div>'
     html += '</div>'
     html += '</div>'
     return html;

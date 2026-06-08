@@ -384,83 +384,81 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
         breakOutNineFifteen[symbol]['CLOSE_9_15'] = "B/W"
     }
 
+    let c915 = breakOutNineFifteen[symbol]['CLOSE_9_15'];
+    let nineClass = (c915 === 'AST' || c915 === 'ASO') ? 'sv-badge sv-badge-green'
+                  : (c915 === 'BST' || c915 === 'BSO') ? 'sv-badge sv-badge-red'
+                  : 'sv-badge sv-badge-muted';
+
     let html = ''
 
-    html += '<div class="row" style="position:relative;" id="individual-stock-popup-window">'
-    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;background-color:' + componentColor + ';">'
+    // Outer wrapper — dark flex row matching grootTradeBot card style
+    html += '<div id="individual-stock-popup-window" style="display:flex;height:100%;background:var(--gtb-bg,#0d1117);overflow:hidden;">'
 
-    html += '<div class="row" style="position:relative;background-color: ' + (componentColorHeader[symbol] == undefined ? "#ffbcb0" : componentColorHeader[symbol]) + '">'
-    html += '<div class="col-md-12">'
-
-    let bgClass = '';
-    if (breakOutNineFifteen[symbol]['CLOSE_9_15'] == "ASO") {
-        bgClass = 'bg-success';
-    }
-    if (breakOutNineFifteen[symbol]['CLOSE_9_15'] == "BSO") {
-        bgClass = 'bg-danger';
-    }
-    if (breakOutNineFifteen[symbol]['CLOSE_9_15'] == "B/W") {
-        bgClass = 'bg-info';
-    }
-
-    html += '<span style="position: absolute;left: .2rem;top: .2rem;" data-index="' + index + '" data-name="' + symbol + '" class="badge bg-secondary show-info">i</span>'
-    html += '<span class="badge ' + bgClass + '" style="position:absolute;top:.2rem;right:.2rem;">' + breakOutNineFifteen[symbol]['CLOSE_9_15'] + '</span>'
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">' + symbol + '</h4>'
+    // ── Column 1: Chart ──────────────────────────────────────────────────────
+    html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
+    html += '<div class="sv-card-header">'
+    html += '  <div class="sv-header-left">'
+    html += '    <button class="sv-icon-btn show-info" data-index="0" data-name="' + symbol + '" title="Info">i</button>'
+    html += '  </div>'
+    html += '  <div class="sv-header-title">' + symbol + '&nbsp;<span id="' + tempName + '-ltp" style="font-size:0.68rem;font-weight:900;font-variant-numeric:tabular-nums;"></span></div>'
+    html += '  <div class="sv-header-right"><span class="' + nineClass + '">' + c915 + '</span></div>'
+    html += '</div>'
+    html += '<div class="sv-chart-area" style="height:260px;background:var(--gtb-bg,#0d1117);">'
+    html += '  <div id="' + tempName + '-chart" style="height:100%;"></div>'
+    html += '</div>'
+    html += '<div class="gtb-atr-row">'
+    html += '  <div id="' + tempName + '-atr-sl"></div>'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="row">'
-    html += '<div class="col-md-12" style="height:19rem;position:relative;background-color:#000000;">'
-    html += '<div id="' + tempName + '-chart" ></div>'
+    // ── Column 2: OI / OBV ──────────────────────────────────────────────────
+    html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
+    html += '<div class="sv-card-header">'
+    html += '  <div class="sv-header-left">'
+    html += '    <button class="sv-icon-btn refresh-oi-obv" data-name="' + symbol + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>'
+    html += '  </div>'
+    html += '  <div class="sv-header-title"><i class="bi bi-bar-chart-fill"></i> OI / OBV</div>'
+    html += '  <div class="sv-header-right">'
+    html += '    <span title="OI Score" id="' + tempName + '-oi-score" style="font-size:0.58rem;"></span>'
+    html += '    <span id="' + tempName + '-pcr-probability" style="font-size:0.58rem;"></span>'
+    html += '  </div>'
     html += '</div>'
-    html += '</div>'
-    html += '</div>'
-
-
-    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
-    html += '<div class="row" >'
-    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-pcr-probability" style="position: absolute;right: .2rem;top: .2rem;" data-name="' + symbol + '">PCR</span>'
-    html += '<span title="OI Score" id="' + tempName + '-oi-score" style="position: absolute;left: 2rem;top: .1rem;" data-name="' + symbol + '">SCORE</span>'
-
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large">OI/OBV</h4>'
-    html += '</div>'
-    html += '<div class="col-md-12" style="height:19rem;position:relative;overflow-y:auto;">'
-    html += '<div id="' + tempName + '-oi" ></div>'
-    html += '<div id="' + tempName + '-obv" ></div>'
-    html += '<div id="' + tempName + '-component-oi-list-table"></div>'
-    html += '</div>'
+    html += '<div class="sv-oi-body" style="height:260px;overflow-y:auto;background:var(--gtb-bg,#0d1117);padding:4px;">'
+    html += '  <div id="' + tempName + '-oi"></div>'
+    html += '  <div id="' + tempName + '-oi-signal-row" style="padding:0 4px;"></div>'
+    html += '  <div id="' + tempName + '-obv"></div>'
+    html += '  <div id="' + tempName + '-component-oi-list-table" class="sv-oi-table"></div>'
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="col-md-4" style="border:1px solid #c3c3c3;">'
-    html += '<div class="row" >'
-    html += '<div class="col-md-12" style="position:relative;background-color:#ffbcb0;">'
-    html += '<span id="' + tempName + '-futures-premium" style="position: absolute;top: .2rem;"  data-name="' + symbol + '">PREMIUM</span>'
-
-    html += '<h4 style="text-align:center;padding:.5rem;padding-bottom:unset;font-size:large" id="futures-chart-' + tempName + '">FUTURES</h4>'
+    // ── Column 3: Futures ───────────────────────────────────────────────────
+    html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
+    html += '<div class="sv-card-header">'
+    html += '  <div class="sv-header-left"></div>'
+    html += '  <div class="sv-header-title" id="futures-chart-' + tempName + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</div>'
+    html += '  <div class="sv-header-right">'
+    html += '    <span id="' + tempName + '-futures-premium" style="font-size:0.58rem;"></span>'
+    html += '  </div>'
     html += '</div>'
-    html += '<div class="col-md-12" style="height:19rem;position:relative;text-align:center;">'
-    html += '<div id="' + tempName + '-futures" ></div>'
-    html += '<div title="VWAP Trend" id="' + tempName + '-futures-vwap" ></div>'
-    html += '<div title="Future trend" id="' + tempName + '-futures-trend" ></div>'
-    html += '</div>'
-
-
+    html += '<div class="sv-fut-body" style="height:260px;overflow-y:auto;background:var(--gtb-bg,#0d1117);padding:6px;">'
+    html += '  <div id="' + tempName + '-futures"></div>'
+    html += '  <div title="VWAP Trend" id="' + tempName + '-futures-vwap" style="margin-top:4px;"></div>'
+    html += '  <div title="Future trend" id="' + tempName + '-futures-trend" style="margin-top:4px;"></div>'
     html += '</div>'
     html += '</div>'
 
     html += '</div>'
-    let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-1">'
-    title += '<input checked title="Enable refresh-individual" type="checkbox" id="enable-auto-refresh-individual">'
+
+    // Title bar content
+    let title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+    title += '<span style="font-size:0.7rem;font-weight:800;color:#e6edf3;white-space:nowrap;">'
+    title += '<i class="bi bi-graph-up-arrow"></i> ' + symbol + ' — Individual View'
+    title += '</span>'
+    title += '<input checked title="Enable auto-refresh" type="checkbox" id="enable-auto-refresh-individual" style="cursor:pointer;vertical-align:middle;">'
+    title += popupWinControls("popup-custom-style-groot-trade-bot-stock")
     title += '</div>'
-    title += '<div class="col-md-2">'
-    title += 'Groot Trade Bot'
-    title += '</div>'
-    title += '</div>'
-    showPopUpWindow('groot-trade-bot-stock', html, "Groot [Trade Bot]", 950, 390);
+
+    showPopUpWindow('groot-trade-bot-stock', html, symbol, 1000, 320);
     let divId = "popup-custom-style-groot-trade-bot-stock";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     await showTopChart(symbol);

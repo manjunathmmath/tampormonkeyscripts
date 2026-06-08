@@ -159,18 +159,12 @@ async function showQuickScanner() {
 
 
     let title = ''
-    title += '<div class="row">'
-    title += '<div class="col-md-2">'
-    title += 'Quick Scanner'
+    title += '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+    title += '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-search"></i> QUICK SCANNER</span>'
+    title += '<span id="quick-refresh-timer-one" style="font-size:0.65rem;font-variant-numeric:tabular-nums;">00:00</span>'
+    title += '<span id="quick-last-refresh-time" style="font-size:0.65rem;color:var(--gtb-muted,#7d8590);">Last @ 00:00:00</span>'
+    title += popupWinControls("popup-custom-style-quick-scanner")
     title += '</div>'
-    title += '<div class="col-md-1 pop-title-extra">'
-    title += '<span style="margin-left:.5rem;" id="quick-refresh-timer-one">00:00</span>'
-    title += '</div>'
-    title += '<div class="col-md-3 pop-title-extra">'
-    title += '<span id="quick-last-refresh-time">Last @ 00:00:00</span>'
-    title += '</div>'
-    title += '</div>'
-
 
     showPopUpWindow('quick-scanner', html, "Quick Scanner", 950, 550);
     var divId = "popup-custom-style-quick-scanner";
