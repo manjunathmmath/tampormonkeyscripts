@@ -169,6 +169,7 @@ async function showQuickScanner() {
     showPopUpWindow('quick-scanner', html, "Quick Scanner", 950, 550);
     var divId = "popup-custom-style-quick-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    hideNativePopupButtons(divId);
 
     jQ("." + divId).on("close.popupwindow", function () {
         if (quickTimerInstance) {
@@ -1300,7 +1301,7 @@ async function analyzeOpenBurst(type) {
     }
 
     for (let i = 0; i < stocks.length; i++) {
-        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[stocks[i]['TRADINGSYMBOL']], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[stocks[i]['TRADINGSYMBOL']], _gtbCurrDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL);
         let quote = []
         jQ.each(data.data.candles, function (index, item) {
             let map = {}

@@ -1,3 +1,33 @@
+// ─── oiViewer.js ──────────────────────────────────────────────────────────────
+// Multi-instrument OI (Open Interest) viewer popup.
+//
+// PURPOSE:
+//   Provides a DataTables-based table showing OI Δ, OBV, and IV% for 5 strikes
+//   (LOWER_TWO, LOWER_ONE, ATM, UPPER_ONE, UPPER_TWO) across all FO_LIST instruments.
+//   Updated on manual click or auto-refresh timer (1-min or 5-min interval).
+//
+// COLUMNS PER STRIKE GROUP (7 columns each, 5 groups = 35 data columns):
+//   CE Δ | CE OBV | CE IV% | STRIKE | PE IV% | PE OBV | PE Δ
+//   (Previously 5 columns: CE Δ | CE OBV | STRIKE | PE OBV | PE Δ)
+//
+// DATA FLOW:
+//   1. User selects instruments in #trending-stock-list-table (DataTables)
+//   2. .analyse-instrument click → generateStockDataTable() for selected rows
+//   3. generateStockDataTable() calls showTrendingOI() per instrument
+//   4. OI data stored in trendingStocks[rowId] with STRIKE_*_CE_IV / PE_IV fields
+//   5. DataTables redraws with updated rows
+//
+// SCORE DISPLAY:
+//   scoreOIStrikeForSignal() applied to each strike → score per strike
+//   Total OI score and signal shown per row via updateScoresOfTrend()
+//
+// AUTO-REFRESH:
+//   startTimerOiViewer() runs setInterval every second.
+//   At refreshInterval=1: triggers at s==59 (every minute)
+//   At refreshInterval=5: triggers at minutes divisible by 5
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Opens the OI Viewer popup with instrument selection table + analysis panel.
 jQ(document).on("click", "#show-oi-viewer", function (e) {
     e.preventDefault();
     showOiViewer();
@@ -57,16 +87,16 @@ function showOiViewer() {
     html += '<th rowspan="2" class="oiv-th-pin">SYMBOL</th>'
     html += '<th rowspan="2" class="oiv-th-pin">TREND</th>'
     html += '<th rowspan="2" class="oiv-th-pin">LTP</th>'
-    html += '<th colspan="5" class="strike-colspan-class oiv-grp-bst2">BST-2</th>'
-    html += '<th colspan="5" class="strike-colspan-class oiv-grp-bso">BSO</th>'
-    html += '<th colspan="5" class="strike-colspan-class oiv-grp-atm">ATM</th>'
-    html += '<th colspan="5" class="strike-colspan-class oiv-grp-aso">ASO</th>'
-    html += '<th colspan="5" class="strike-colspan-class oiv-grp-ast2">AST-2</th>'
+    html += '<th colspan="7" class="strike-colspan-class oiv-grp-bst2">BST-2</th>'
+    html += '<th colspan="7" class="strike-colspan-class oiv-grp-bso">BSO</th>'
+    html += '<th colspan="7" class="strike-colspan-class oiv-grp-atm">ATM</th>'
+    html += '<th colspan="7" class="strike-colspan-class oiv-grp-aso">ASO</th>'
+    html += '<th colspan="7" class="strike-colspan-class oiv-grp-ast2">AST-2</th>'
     html += '<th rowspan="2" class="oiv-th-pcr">PCR</th>'
     html += '</tr>'
 
     // Row 2 — sub-column headers (repeated 5×)
-    let sub = ['CE', 'CE OBV', 'STRIKE', 'PE OBV', 'PE']
+    let sub = ['CE Δ', 'CE OBV', 'CE IV%', 'STRIKE', 'PE IV%', 'PE OBV', 'PE Δ']
     for (let g = 0; g < 5; g++) {
         sub.forEach(function(s) { html += '<th class="oiv-sub-th">' + s + '</th>' })
     }
@@ -98,15 +128,30 @@ function showOiViewer() {
     showPopUpWindow('oi-viewer-scanner', html, "OI VIEWER", 950, 550);
     var divId = "popup-custom-style-oi-viewer-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    hideNativePopupButtons(divId);
     generateStockDataTable();
 }
 
+// Entry point called by .analyse-instrument button click and auto-refresh timer.
+// Delegates to showOiAnalyzer() — wrapper kept for historical consistency.
 async function generateStockDataTable() {
     showOiAnalyzer();
 }
 
+// trendingStocks: array of row data objects, indexed by row number
+// allTrendingStocks: same data keyed by instrument name (for quick lookup on update)
 let trendingStocks = []
 let allTrendingStocks = []
+
+// ── OI Analyzer Main Loop ──────────────────────────────────────────────────────
+// Iterates all INSTRUMENT_TOKENS, fetches OI data per instrument via showTrendingOIViewer(),
+// and populates the trendingStocks array for DataTables rendering.
+// Each row object contains:
+//   STRIKE_ATM_CE_IV, STRIKE_ATM_PE_IV, STRIKE_UPPER_ONE_CE_IV, etc. — IV% display strings
+//   STRIKE_ATM_CE_OBV, STRIKE_ATM_PE_OBV, etc.                       — OBV display strings
+//   STRIKE_ATM, STRIKE_UPPER_ONE, etc.                                — strike prices
+//   STRIKE_ATM_CE_CHG_OI, STRIKE_ATM_PE_CHG_OI, etc.                 — OI change (in lakh)
+// After collecting all rows, calls generateTrendingStockTable() to render DataTables.
 async function showOiAnalyzer() {
     trendingStocks = []
     allTrendingStocks = []
@@ -174,32 +219,41 @@ async function showOiAnalyzer() {
 
         obj['STRIKE_LOWER_ONE_CE'] = ''
         obj['STRIKE_LOWER_ONE_CE_OBV'] = ''
+        obj['STRIKE_LOWER_ONE_CE_IV'] = ''
         obj['STRIKE_LOWER_ONE'] = ''
+        obj['STRIKE_LOWER_ONE_PE_IV'] = ''
         obj['STRIKE_LOWER_ONE_PE'] = ''
         obj['STRIKE_LOWER_ONE_PE_OBV'] = ''
 
         obj['STRIKE_LOWER_TWO_CE'] = ''
         obj['STRIKE_LOWER_TWO_CE_OBV'] = ''
+        obj['STRIKE_LOWER_TWO_CE_IV'] = ''
         obj['STRIKE_LOWER_TWO'] = ''
+        obj['STRIKE_LOWER_TWO_PE_IV'] = ''
         obj['STRIKE_LOWER_TWO_PE'] = ''
         obj['STRIKE_LOWER_TWO_PE_OBV'] = ''
 
-
         obj['STRIKE_ATM_CE'] = ''
         obj['STRIKE_ATM_CE_OBV'] = ''
+        obj['STRIKE_ATM_CE_IV'] = ''
         obj['STRIKE_ATM'] = ''
+        obj['STRIKE_ATM_PE_IV'] = ''
         obj['STRIKE_ATM_PE'] = ''
         obj['STRIKE_ATM_PE_OBV'] = ''
 
         obj['STRIKE_UPPER_ONE_CE'] = ''
         obj['STRIKE_UPPER_ONE_CE_OBV'] = ''
+        obj['STRIKE_UPPER_ONE_CE_IV'] = ''
         obj['STRIKE_UPPER_ONE'] = ''
+        obj['STRIKE_UPPER_ONE_PE_IV'] = ''
         obj['STRIKE_UPPER_ONE_PE'] = ''
         obj['STRIKE_UPPER_ONE_PE_OBV'] = ''
 
         obj['STRIKE_UPPER_TWO_CE'] = ''
         obj['STRIKE_UPPER_TWO_CE_OBV'] = ''
+        obj['STRIKE_UPPER_TWO_CE_IV'] = ''
         obj['STRIKE_UPPER_TWO'] = ''
+        obj['STRIKE_UPPER_TWO_PE_IV'] = ''
         obj['STRIKE_UPPER_TWO_PE'] = ''
         obj['STRIKE_UPPER_TWO_PE_OBV'] = ''
         obj['PCR'] = ''
@@ -216,6 +270,10 @@ async function showOiAnalyzer() {
 }
 
 let trendingScannerTable = null
+// Renders the DataTables instance for the OI Viewer.
+// 5 strike groups × 7 columns each = 35 data columns + instrument name + action column.
+// fnRowCallback: applies color coding to ATM strike column cells based on OI signal.
+// Fixed first and last columns (instrument name + action) for horizontal scrolling.
 function generateTrendingStockTable(data) {
     let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
     jQ("#trending-stock-list-table").show()
@@ -240,7 +298,10 @@ function generateTrendingStockTable(data) {
             }
         ],
 
-        dom: '<"oiv-dt-toolbar"f>rtip',
+        // B = Buttons plugin container (.dt-buttons) — required so showOITrendCount()
+        // can append the filter and ANALYZE OI buttons after the table initialises.
+        dom: 'B<"oiv-dt-toolbar"f>rtip',
+        buttons: [],
         "columns": [
 
             {
@@ -294,376 +355,82 @@ function generateTrendingStockTable(data) {
                 }
             },
 
-            {
-                "data": "STRIKE_LOWER_ONE_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_ONE_PE'])) {
-                            className = " oi-bear"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_ONE_CE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_LOWER_ONE_CE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_PE_OBV'])) {
-                        className = " oi-bull"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_CE_OBV'] + '</span>'
-
-                    return html
-                }
-            },
+            // Helper: simple IV render (plain text display)
+            // ── LOWER ONE (BSO) ─────────────────────────────────────────────
+            { "data": "STRIKE_LOWER_ONE_CE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_LOWER_ONE_PE)?' oi-bear':'') + '">' + d + '</span>' : '' } },
+            { "data": "STRIKE_LOWER_ONE_CE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_LOWER_ONE_CE_OBV)>parseFloat(r.STRIKE_LOWER_ONE_PE_OBV)?' oi-bull':'') + '">' + r.STRIKE_LOWER_ONE_CE_OBV + '</span>' } },
+            { "data": "STRIKE_LOWER_ONE_CE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_LOWER_ONE_CE_IV || '—') + '</span>' } },
             {
                 "data": "STRIKE_LOWER_ONE",
                 render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_ONE'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_LOWER_TWO'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-
-
-                    }
-                    return html
+                    if (!data) return '';
+                    let cls = (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_ONE']) && parseFloat(row['LTP']) < parseFloat(row['STRIKE_LOWER_TWO'])) ? 'bg-danger-color' : '';
+                    return '<span class="text-align ' + cls + '">' + data + '</span>'
                 }
             },
-            {
-                "data": "STRIKE_LOWER_ONE_PE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_LOWER_ONE_PE_OBV']) > parseFloat(row['STRIKE_LOWER_ONE_CE_OBV'])) {
-                        className = " oi-bear"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_ONE_PE_OBV'] + '</span>'
-
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_ONE_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_ONE_CE'])) {
-                            className = " oi-bull"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-
-
-            {
-                "data": "STRIKE_LOWER_TWO_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_TWO_PE'])) {
-                            className = " oi-bear"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_LOWER_TWO_CE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_LOWER_TWO_CE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_PE_OBV'])) {
-                        className = " oi-bull"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_CE_OBV'] + '</span>'
-
-                    return html
-                }
-            },
-
+            { "data": "STRIKE_LOWER_ONE_PE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_LOWER_ONE_PE_IV || '—') + '</span>' } },
+            { "data": "STRIKE_LOWER_ONE_PE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_LOWER_ONE_PE_OBV)>parseFloat(r.STRIKE_LOWER_ONE_CE_OBV)?' oi-bear':'') + '">' + r.STRIKE_LOWER_ONE_PE_OBV + '</span>' } },
+            { "data": "STRIKE_LOWER_ONE_PE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_LOWER_ONE_CE)?' oi-bull':'') + '">' + d + '</span>' : '' } },
+            // ── LOWER TWO (BST) ─────────────────────────────────────────────
+            { "data": "STRIKE_LOWER_TWO_CE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_LOWER_TWO_PE)?' oi-bear':'') + '">' + d + '</span>' : '' } },
+            { "data": "STRIKE_LOWER_TWO_CE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_LOWER_TWO_CE_OBV)>parseFloat(r.STRIKE_LOWER_TWO_PE_OBV)?' oi-bull':'') + '">' + r.STRIKE_LOWER_TWO_CE_OBV + '</span>' } },
+            { "data": "STRIKE_LOWER_TWO_CE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_LOWER_TWO_CE_IV || '—') + '</span>' } },
             {
                 "data": "STRIKE_LOWER_TWO",
                 render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_TWO'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_ATM'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
+                    if (!data) return '';
+                    let cls = (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_LOWER_TWO']) && parseFloat(row['LTP']) < parseFloat(row['STRIKE_ATM'])) ? 'bg-danger-color' : '';
+                    return '<span class="text-align ' + cls + '">' + data + '</span>'
                 }
             },
-            {
-                "data": "STRIKE_LOWER_TWO_PE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_LOWER_TWO_PE_OBV']) > parseFloat(row['STRIKE_LOWER_TWO_CE_OBV'])) {
-                        className = " oi-bear"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_LOWER_TWO_PE_OBV'] + '</span>'
-
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_LOWER_TWO_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_LOWER_TWO_CE'])) {
-                            className = " oi-bull"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_ATM_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_ATM_PE'])) {
-                            className = " oi-bear"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_ATM_CE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_ATM_CE_OBV']) > parseFloat(row['STRIKE_ATM_PE_OBV'])) {
-                        className = " oi-bull"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_CE_OBV'] + '</span>'
-
-                    return html
-                }
-            },
+            { "data": "STRIKE_LOWER_TWO_PE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_LOWER_TWO_PE_IV || '—') + '</span>' } },
+            { "data": "STRIKE_LOWER_TWO_PE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_LOWER_TWO_PE_OBV)>parseFloat(r.STRIKE_LOWER_TWO_CE_OBV)?' oi-bear':'') + '">' + r.STRIKE_LOWER_TWO_PE_OBV + '</span>' } },
+            { "data": "STRIKE_LOWER_TWO_PE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_LOWER_TWO_CE)?' oi-bull':'') + '">' + d + '</span>' : '' } },
+            // ── ATM ─────────────────────────────────────────────────────────
+            { "data": "STRIKE_ATM_CE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_ATM_PE)?' oi-bear':'') + '">' + d + '</span>' : '' } },
+            { "data": "STRIKE_ATM_CE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_ATM_CE_OBV)>parseFloat(r.STRIKE_ATM_PE_OBV)?' oi-bull':'') + '">' + r.STRIKE_ATM_CE_OBV + '</span>' } },
+            { "data": "STRIKE_ATM_CE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_ATM_CE_IV || '—') + '</span>' } },
             {
                 "data": "STRIKE_ATM",
                 render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_ATM'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_ONE'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
+                    if (!data) return '';
+                    let cls = (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_ATM']) && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_ONE'])) ? 'bg-danger-color' : '';
+                    return '<span class="text-align ' + cls + '">' + data + '</span>'
                 }
             },
-            {
-                "data": "STRIKE_ATM_PE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_ATM_PE_OBV']) > parseFloat(row['STRIKE_ATM_CE_OBV'])) {
-                        className = " oi-bear"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_ATM_PE_OBV'] + '</span>'
-
-
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_ATM_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_ATM_CE'])) {
-                            className = " oi-bull"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_UPPER_ONE_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_ONE_PE'])) {
-                            className = " oi-bear"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_UPPER_ONE_CE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_UPPER_ONE_CE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_PE_OBV'])) {
-                        className = " oi-bull"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_CE_OBV'] + '</span>'
-
-
-                    return html
-                }
-            },
+            { "data": "STRIKE_ATM_PE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_ATM_PE_IV || '—') + '</span>' } },
+            { "data": "STRIKE_ATM_PE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_ATM_PE_OBV)>parseFloat(r.STRIKE_ATM_CE_OBV)?' oi-bear':'') + '">' + r.STRIKE_ATM_PE_OBV + '</span>' } },
+            { "data": "STRIKE_ATM_PE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_ATM_CE)?' oi-bull':'') + '">' + d + '</span>' : '' } },
+            // ── UPPER ONE (ASO) ─────────────────────────────────────────────
+            { "data": "STRIKE_UPPER_ONE_CE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_UPPER_ONE_PE)?' oi-bear':'') + '">' + d + '</span>' : '' } },
+            { "data": "STRIKE_UPPER_ONE_CE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_UPPER_ONE_CE_OBV)>parseFloat(r.STRIKE_UPPER_ONE_PE_OBV)?' oi-bull':'') + '">' + r.STRIKE_UPPER_ONE_CE_OBV + '</span>' } },
+            { "data": "STRIKE_UPPER_ONE_CE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_UPPER_ONE_CE_IV || '—') + '</span>' } },
             {
                 "data": "STRIKE_UPPER_ONE",
                 render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_UPPER_ONE'])
-                            && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_TWO'])) {
-                            className = "bg-danger-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
+                    if (!data) return '';
+                    let cls = (parseFloat(row['LTP']) >= parseFloat(row['STRIKE_UPPER_ONE']) && parseFloat(row['LTP']) < parseFloat(row['STRIKE_UPPER_TWO'])) ? 'bg-danger-color' : '';
+                    return '<span class="text-align ' + cls + '">' + data + '</span>'
                 }
             },
-
-            {
-                "data": "STRIKE_UPPER_ONE_PE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_UPPER_ONE_PE_OBV']) > parseFloat(row['STRIKE_UPPER_ONE_CE_OBV'])) {
-                        className = " oi-bear"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_ONE_PE_OBV'] + '</span>'
-
-
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_UPPER_ONE_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_ONE_CE'])) {
-                            className = " oi-bull"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-            {
-                "data": "STRIKE_UPPER_TWO_CE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_TWO_PE'])) {
-                            className = " oi-bear"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
-                }
-            },
-
-
-            {
-                "data": "STRIKE_UPPER_TWO_CE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_UPPER_TWO_CE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_PE_OBV'])) {
-                        className = " oi-bull"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_CE_OBV'] + '</span>'
-
-                    return html
-                }
-            },
-
+            { "data": "STRIKE_UPPER_ONE_PE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_UPPER_ONE_PE_IV || '—') + '</span>' } },
+            { "data": "STRIKE_UPPER_ONE_PE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_UPPER_ONE_PE_OBV)>parseFloat(r.STRIKE_UPPER_ONE_CE_OBV)?' oi-bear':'') + '">' + r.STRIKE_UPPER_ONE_PE_OBV + '</span>' } },
+            { "data": "STRIKE_UPPER_ONE_PE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_UPPER_ONE_CE)?' oi-bull':'') + '">' + d + '</span>' : '' } },
+            // ── UPPER TWO (AST) ─────────────────────────────────────────────
+            { "data": "STRIKE_UPPER_TWO_CE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_UPPER_TWO_PE)?' oi-bear':'') + '">' + d + '</span>' : '' } },
+            { "data": "STRIKE_UPPER_TWO_CE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_UPPER_TWO_CE_OBV)>parseFloat(r.STRIKE_UPPER_TWO_PE_OBV)?' oi-bull':'') + '">' + r.STRIKE_UPPER_TWO_CE_OBV + '</span>' } },
+            { "data": "STRIKE_UPPER_TWO_CE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_UPPER_TWO_CE_IV || '—') + '</span>' } },
             {
                 "data": "STRIKE_UPPER_TWO",
                 render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(row['LTP']) > parseFloat(row['STRIKE_UPPER_TWO'])) {
-                            className = "bg-warning-color"
-                        }
-                        html += '<span class="text-align ' + className + '">' + data + '</span>'
-                    }
-                    return html
+                    if (!data) return '';
+                    let cls = parseFloat(row['LTP']) > parseFloat(row['STRIKE_UPPER_TWO']) ? 'bg-warning-color' : '';
+                    return '<span class="text-align ' + cls + '">' + data + '</span>'
                 }
             },
-            {
-                "data": "STRIKE_UPPER_TWO_PE_OBV",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
-                        className = " oi-bear"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE_OBV'] + '</span>'
-                    return html
-                }
-            },
-            {
-                "data": "STRIKE_UPPER_TWO_PE",
-                render: function (data, type, row, meta) {
-                    let html = ''
-                    let className = ""
-                    if (data) {
-                        if (parseFloat(data) > parseFloat(row['STRIKE_UPPER_TWO_CE'])) {
-                            className = " oi-bull"
-                        }
-                        html += '<span class="number-align ' + className + '">' + data + '</span>'
-                    }
-
-                    className = ""
-                    if (parseFloat(row['STRIKE_UPPER_TWO_PE_OBV']) > parseFloat(row['STRIKE_UPPER_TWO_CE_OBV'])) {
-                        className = " oi-bear"
-                    }
-                    html += '<span class="number-align ' + className + '">' + row['STRIKE_UPPER_TWO_PE_OBV'] + '</span>'
-                    return html
-                }
-            },
+            { "data": "STRIKE_UPPER_TWO_PE_IV",  render: function(d,t,r){ return '<span class="number-align oiv-iv">' + (r.STRIKE_UPPER_TWO_PE_IV || '—') + '</span>' } },
+            { "data": "STRIKE_UPPER_TWO_PE_OBV", render: function(d,t,r){ return '<span class="number-align' + (parseFloat(r.STRIKE_UPPER_TWO_PE_OBV)>parseFloat(r.STRIKE_UPPER_TWO_CE_OBV)?' oi-bear':'') + '">' + r.STRIKE_UPPER_TWO_PE_OBV + '</span>' } },
+            { "data": "STRIKE_UPPER_TWO_PE",     render: function(d,t,r){ return d ? '<span class="number-align' + (parseFloat(d)>parseFloat(r.STRIKE_UPPER_TWO_CE)?' oi-bull':'') + '">' + d + '</span>' : '' } },
             {
                 "data": "PCR",
             },
@@ -674,11 +441,12 @@ function generateTrendingStockTable(data) {
         },
         "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
             for (var i in aData) {
-                jQ('td:eq(' + 5 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 10 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 15 + ')', nRow).addClass('strike-class');
+                // 3 fixed cols (SYMBOL, TREND, LTP) + 7 cols per group → strike col at offset 6, 13, 20, 27, 34
+                jQ('td:eq(' + 6  + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 13 + ')', nRow).addClass('strike-class');
                 jQ('td:eq(' + 20 + ')', nRow).addClass('strike-class');
-                jQ('td:eq(' + 25 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 27 + ')', nRow).addClass('strike-class');
+                jQ('td:eq(' + 34 + ')', nRow).addClass('strike-class');
 
             }
         }
@@ -777,16 +545,14 @@ jQ(document).on("click", "#trending-stock-list-table_wrapper .trend-filter", fun
 
 jQ(document).on("click", "#trending-stock-list-table_wrapper .analyse-instrument", function (e) {
     e.preventDefault();
-    let isEnabled = jQ("#enable-oi-refresh").is(':checked')
-    if (!isEnabled) {
-        return false
-    }
+    // Only run if the #enable-oi-refresh checkbox is checked
+    let isEnabled = jQ("#enable-oi-refresh").is(':checked');
+    if (!isEnabled) { return false; }
     var that = jQ(this);
     that.attr("disabled", true);
     clearInterval(oiViewerTimerInstance)
     jQ("#trending-stock-list-table_wrapper #processing-trend").html("Processing.... ");
     commonAnalyzeTrend(that)
-
 });
 
 async function commonAnalyzeTrend(that) {
@@ -794,6 +560,10 @@ async function commonAnalyzeTrend(that) {
     that.attr("disabled", false)
 }
 
+// Iterates trendingStocks (built by showOiAnalyzer) and refreshes OI data for each.
+// For each instrument: fetches fresh OI via showTrendingOIViewer() → updates
+// trendingStocks[rowId] with new CE/PE OI Δ, OBV, and IV% values → calls
+// updateTrendingTable(rowId) to re-render that DataTables row without full refresh.
 async function callAnalyseTrend() {
     let count = 0;
     let scriptsCount = trendingStocks.length
@@ -828,9 +598,25 @@ async function callAnalyseTrend() {
 
                 let link = "https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-OPT/##INSTRUMENT##/##TOKEN##"
 
+                function _obvLast(obvList) {
+                    if (!obvList || !obvList.length) return 0;
+                    return parseFloat(obvList[obvList.length-1]['obv']);
+                }
+                // Returns IV display string: current IV% with ▲/▼ arrow if changed
+                function _ivDisplay(ivList) {
+                    if (!ivList || !ivList.length) return '—';
+                    let curr = null, prev = null;
+                    for (let _i = ivList.length - 1; _i >= 0 && curr === null; _i--) if (ivList[_i].iv !== null) curr = ivList[_i].iv;
+                    for (let _i = ivList.length - 2; _i >= 0 && prev === null; _i--) if (ivList[_i].iv !== null) prev = ivList[_i].iv;
+                    if (curr === null) return '—';
+                    let arrow = '';
+                    if (prev !== null) { let d = curr - prev; arrow = d > 0.3 ? '▲' : d < -0.3 ? '▼' : ''; }
+                    return curr.toFixed(1) + arrow;
+                }
+
                 if (strikes[0]) {
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_CE'] = strikes[0]['CHG_OI_CE']
-                    trendingStocks[rowId]['STRIKE_LOWER_ONE_CE_OBV'] = strikes[0]['CE_OBV'][strikes[0]['CE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_CE_OBV'] = _obvLast(strikes[0]['CE_OBV'])
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[0].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[0].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
@@ -845,14 +631,15 @@ async function callAnalyseTrend() {
                     oiHtml += '</div>'
 
                     trendingStocks[rowId]['STRIKE_LOWER_ONE'] = strikes[0]['STRIKE'] + oiHtml
-
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_CE_IV'] = _ivDisplay(strikes[0]['CE_IV'])
                     trendingStocks[rowId]['STRIKE_LOWER_ONE_PE'] = strikes[0]['CHG_OI_PE']
-                    trendingStocks[rowId]['STRIKE_LOWER_ONE_PE_OBV'] = strikes[0]['PE_OBV'][strikes[0]['PE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_PE_IV'] = _ivDisplay(strikes[0]['PE_IV'])
+                    trendingStocks[rowId]['STRIKE_LOWER_ONE_PE_OBV'] = _obvLast(strikes[0]['PE_OBV'])
                 }
 
                 if (strikes[1]) {
                     trendingStocks[rowId]['STRIKE_LOWER_TWO_CE'] = strikes[1]['CHG_OI_CE']
-                    trendingStocks[rowId]['STRIKE_LOWER_TWO_CE_OBV'] = strikes[1]['CE_OBV'][strikes[1]['CE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_CE_OBV'] = _obvLast(strikes[1]['CE_OBV'])
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[1].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[1].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
@@ -868,13 +655,15 @@ async function callAnalyseTrend() {
                     oiHtml += '</div>'
 
                     trendingStocks[rowId]['STRIKE_LOWER_TWO'] = strikes[1]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_CE_IV'] = _ivDisplay(strikes[1]['CE_IV'])
                     trendingStocks[rowId]['STRIKE_LOWER_TWO_PE'] = strikes[1]['CHG_OI_PE']
-                    trendingStocks[rowId]['STRIKE_LOWER_TWO_PE_OBV'] = strikes[1]['PE_OBV'][strikes[1]['PE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_PE_IV'] = _ivDisplay(strikes[1]['PE_IV'])
+                    trendingStocks[rowId]['STRIKE_LOWER_TWO_PE_OBV'] = _obvLast(strikes[1]['PE_OBV'])
                 }
 
                 if (strikes[2]) {
                     trendingStocks[rowId]['STRIKE_ATM_CE'] = strikes[2]['CHG_OI_CE']
-                    trendingStocks[rowId]['STRIKE_ATM_CE_OBV'] = strikes[2]['CE_OBV'][strikes[2]['CE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_ATM_CE_OBV'] = _obvLast(strikes[2]['CE_OBV'])
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[2].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[2].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
@@ -890,13 +679,15 @@ async function callAnalyseTrend() {
                     oiHtml += '</div>'
 
                     trendingStocks[rowId]['STRIKE_ATM'] = strikes[2]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_ATM_CE_IV'] = _ivDisplay(strikes[2]['CE_IV'])
                     trendingStocks[rowId]['STRIKE_ATM_PE'] = strikes[2]['CHG_OI_PE']
-                    trendingStocks[rowId]['STRIKE_ATM_PE_OBV'] = strikes[2]['PE_OBV'][strikes[2]['PE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_ATM_PE_IV'] = _ivDisplay(strikes[2]['PE_IV'])
+                    trendingStocks[rowId]['STRIKE_ATM_PE_OBV'] = _obvLast(strikes[2]['PE_OBV'])
                 }
 
                 if (strikes[3]) {
                     trendingStocks[rowId]['STRIKE_UPPER_ONE_CE'] = strikes[3]['CHG_OI_CE']
-                    trendingStocks[rowId]['STRIKE_UPPER_ONE_CE_OBV'] = strikes[3]['CE_OBV'][strikes[3]['CE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_CE_OBV'] = _obvLast(strikes[3]['CE_OBV'])
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[3].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[3].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
@@ -913,13 +704,15 @@ async function callAnalyseTrend() {
 
 
                     trendingStocks[rowId]['STRIKE_UPPER_ONE'] = strikes[3]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_CE_IV'] = _ivDisplay(strikes[3]['CE_IV'])
                     trendingStocks[rowId]['STRIKE_UPPER_ONE_PE'] = strikes[3]['CHG_OI_PE']
-                    trendingStocks[rowId]['STRIKE_UPPER_ONE_PE_OBV'] = strikes[3]['PE_OBV'][strikes[3]['PE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_PE_IV'] = _ivDisplay(strikes[3]['PE_IV'])
+                    trendingStocks[rowId]['STRIKE_UPPER_ONE_PE_OBV'] = _obvLast(strikes[3]['PE_OBV'])
                 }
 
                 if (strikes[4]) {
                     trendingStocks[rowId]['STRIKE_UPPER_TWO_CE'] = strikes[4]['CHG_OI_CE']
-                    trendingStocks[rowId]['STRIKE_UPPER_TWO_CE_OBV'] = strikes[4]['CE_OBV'][strikes[4]['CE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_CE_OBV'] = _obvLast(strikes[4]['CE_OBV'])
                     oiHtml = ''
                     oiHtml += '<div style="display:flex;">'
                     oiHtml += '<a href="' + link.replaceAll("##INSTRUMENT##", strikes[4].CE.tradingsymbol).replaceAll("##TOKEN##", strikes[4].CE.instrument_token) + '"  target="_blank" style="font-size:0.58rem;margin-right:.1rem;">'
@@ -936,8 +729,10 @@ async function callAnalyseTrend() {
                     oiHtml += '</div>'
 
                     trendingStocks[rowId]['STRIKE_UPPER_TWO'] = strikes[4]['STRIKE'] + oiHtml
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_CE_IV'] = _ivDisplay(strikes[4]['CE_IV'])
                     trendingStocks[rowId]['STRIKE_UPPER_TWO_PE'] = strikes[4]['CHG_OI_PE']
-                    trendingStocks[rowId]['STRIKE_UPPER_TWO_PE_OBV'] = strikes[4]['PE_OBV'][strikes[4]['PE_OBV'].length - 1]['obv']
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_PE_IV'] = _ivDisplay(strikes[4]['PE_IV'])
+                    trendingStocks[rowId]['STRIKE_UPPER_TWO_PE_OBV'] = _obvLast(strikes[4]['PE_OBV'])
                 }
             }
 
@@ -1076,12 +871,45 @@ async function showTrendingOIViewer(instrument) {
         }
     }
     strikeData.sort(function (a, b) { return parseFloat(a.STRIKE) - parseFloat(b.STRIKE) })
-    let tableData = await showOITrendingDetailsOiViewer(strikeData, selectedStrike)
-    return tableData
 
+    // Fetch underlying spot candles once — shared across all strikes for IV calculation
+    let spotCandles = [];
+    try {
+        let tokenName = instrument;
+        if (instrument === 'NIFTY')      tokenName = 'NIFTY 50';
+        else if (instrument === 'BANKNIFTY')  tokenName = 'NIFTY BANK';
+        else if (instrument === 'FINNIFTY')   tokenName = 'NIFTY FIN SERVICE';
+        else if (instrument === 'MIDCPNIFTY') tokenName = 'NIFTY MID SELECT';
+        let underlyingToken = INSTRUMENT_TOKENS[tokenName];
+        // Fallback for MCX commodity instruments (CRUDEOIL, CRUDEOILM, GOLD, SILVER, etc.)
+        // MCX has no cash spot — use the nearest futures contract as the underlying for IV calculation
+        let isMcx = false;
+        if (!underlyingToken && typeof COMMODITIES_FUTURE_INSTRUMENT_LIST !== 'undefined') {
+            let futEntry = COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === instrument; });
+            if (futEntry) {
+                underlyingToken = futEntry.instrument_token;
+                isMcx = true;
+            }
+        }
+        if (underlyingToken) {
+            let interval = jQ("#api-data-interval option:selected").val() || '5minute';
+            // MCX instruments use MCX trading dates; NSE instruments use CURRENT_DAY/PREVIOUS_DAY
+            let fromDay  = isMcx ? _gtbMcxPrevDay()   : _gtbPrevDay();
+            let toDay    = isMcx ? _gtbMcxCurrDayTo() : _gtbCurrDayTo();
+            let spotData = await getHistoricalDataUsingPromise(underlyingToken, fromDay, toDay, interval);
+            spotCandles = (spotData && spotData['data'] && spotData['data']['candles']) ? spotData['data']['candles'] : [];
+        }
+    } catch(e) { console.log('OIViewer IV: could not fetch spot candles', e); }
+
+    let expiryDateStr = selectedStrike.length ? selectedStrike[0].expiry : null;
+
+    let tableData = await showOITrendingDetailsOiViewer(strikeData, selectedStrike, spotCandles, expiryDateStr)
+    return tableData
 }
 
-async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
+async function showOITrendingDetailsOiViewer(strikeData, selectedStrike, spotCandles, expiryDateStr) {
+    spotCandles = spotCandles || [];
+    expiryDateStr = expiryDateStr || null;
     let strikeMap = {}
     for (let i = 0; i < strikeData.length; i++) {
         try {
@@ -1106,10 +934,10 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
                 }
 
                 let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, _gtbPrevDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
                 let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, _gtbPrevDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE);
 
 
 
@@ -1181,8 +1009,17 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
 
-            obj['CE_OBV'] = calculateOBVFiveMinutesIntervalOiViewer(prevDataCE, currDataCE)
-            obj['PE_OBV'] = calculateOBVFiveMinutesIntervalOiViewer(prevDataPE, currDataPE)
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+
+            // IV series — Black-Scholes inversion per candle (same as oiAnalyzer.js)
+            if (expiryDateStr && spotCandles.length) {
+                obj['CE_IV'] = calculateIVSeries(currDataCE, index, true,  expiryDateStr, spotCandles)
+                obj['PE_IV'] = calculateIVSeries(currDataPE, index, false, expiryDateStr, spotCandles)
+            } else {
+                obj['CE_IV'] = []
+                obj['PE_IV'] = []
+            }
 
             tableData.push(obj)
         } catch (err) {
@@ -1204,27 +1041,7 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike) {
 }
 
 
-function calculateOBVFiveMinutesIntervalOiViewer(prevData, currData) {
-    let OBV = 0;
-    let prevLastCandle = prevData[prevData.length - 1]
-    OBV = 0
-    let obvList = []
-    jQ.each(currData, function (index, item) {
-        if (item[4] > prevLastCandle[4]) {
-            OBV = OBV + item[5]
-        }
-
-        if (item[4] < prevLastCandle[4]) {
-            OBV = OBV - item[5]
-        }
-        prevLastCandle = item
-        let obj = {};
-        obj['date'] = item[0];
-        obj['obv'] = parseFloat(OBV/100000).toFixed(1);
-        obvList.push(obj)
-    })
-    return obvList;
-}
+// calculateOBVFiveMinutesInterval is defined in oiAnalyzer.js — shared logic
 
 function updateTrendingTable(rowId) {
     jQ('#trending-stock-list-table').DataTable().row(rowId).data(trendingStocks[rowId]).draw(false);

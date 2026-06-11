@@ -86,6 +86,7 @@
 
 // @require      http://localhost:3000/autoTrade/marketQuotes.js
 
+// @require      http://localhost:3000/autoTrade/help.js
 // @require      http://localhost:3000/autoTrade/grootTradeBot.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js

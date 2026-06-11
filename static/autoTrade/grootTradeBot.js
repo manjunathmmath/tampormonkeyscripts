@@ -1,3 +1,34 @@
+// ─── grootTradeBot.js ──────────────────────────────────────────────────────────
+// Main dashboard popup for the autoTrade Tampermonkey script.
+//
+// KEY RESPONSIBILITIES:
+//   1. Dashboard popup — "GROOT" button opens the main panel with score gauges,
+//      candlestick charts, futures strip, OI viewer, and advance/decline scanner.
+//   2. Score system — composite score from multiple signals:
+//        9:15 breakout score (ALL_9_15_CLOSE_SCORE, per-index scores)
+//        Advance/decline score (NIFTY_50/BANK/ALL_ADVANCE_DECLINE_SCORE)
+//        Futures trend score (NIFTY_50/BANK/ALL_FUTURES_TREND_SCORE)
+//        OI/OBV score per instrument (NIFTY_50/NIFTY_BANK/RELIANCE/HDFCBANK/ICICIBANK_OI_OBV_SCORE)
+//        Component scores (NIFTY_50_COMPONENT_SCORE, NIFTY_BANK_COMPONENT_SCORE)
+//      Gauge colors: red < 0, orange 1–4, yellow 5–7, green ≥ 8
+//   3. Strike scoring — scoreOIStrikeForSignal() uses OI Δ + IV (primary) / OBV (fallback)
+//      to classify each strike as CE WRITE / CE BUY / PE WRITE / PE BUY and compute
+//      a directional score. Strong resistance = CE WRITE + PE BUY. Strong support = CE BUY + PE WRITE.
+//   4. Component scores — computeInstrumentScore() / computeComponentScores() iterate
+//      NIFTY_50_WEIGHTED_STOCKS / NIFTY_BANK_WEIGHTED_STOCKS, score each constituent
+//      on 9:15, trend, futures, OI/OBV, and weight by constituent weight %.
+//   5. Maximize overlay — any chart, OI table, or futures panel can be expanded to
+//      fullscreen via .maximize-component-btn buttons.
+//   6. Chart rendering — _renderLWChart() wraps TradingView Lightweight Charts for
+//      all candlestick panels. _buildATRBadges() computes ATR-based stop-loss levels.
+//
+// GLOBAL STATE:
+//   globalFuturesTrend  — { instrumentName: { remark, premium, ... } } from last scan
+//   stockTable          — DataTables instance for the OI viewer table
+//   INSTRUMENT_SCORE_MAP — { name: { futures_trend, oi_obv, oiData, score: {...} } }
+//   stock[]             — array of { TRADINGSYMBOL, DATA } used by OI renderer
+// ─────────────────────────────────────────────────────────────────────────────
+
 let globalFuturesTrend = {}
 let stockTable = null;
 
@@ -20,6 +51,7 @@ jQ('body').append('<div id="groot-maximize-overlay"><div id="groot-maximize-pane
 jQ(document).on('click', '#groot-maximize-close, #groot-maximize-overlay', function(e) {
     if (e.target.id === 'groot-maximize-overlay' || e.target.id === 'groot-maximize-close' || jQ(e.target).closest('#groot-maximize-close').length) {
         jQ('#groot-maximize-overlay').removeClass('active');
+        jQ('#groot-maximize-body').html(''); // clear stale content so next open is clean
     }
 });
 jQ(document).on('click', '#groot-maximize-panel', function(e) { e.stopPropagation(); });
@@ -78,10 +110,8 @@ function renderOIOBVMaximized(name, tempName, oiData) {
         oiCECH.push(item['CHG_OI_CE']);
         oiPECH.push(item['CHG_OI_PE']);
         let ceObvList = item['CE_OBV'], peObvList = item['PE_OBV'];
-        let ceObvDelta = ceObvList.length >= 2 ? parseFloat(ceObvList[ceObvList.length-1]['obv']) - parseFloat(ceObvList[ceObvList.length-2]['obv']) : parseFloat(ceObvList[ceObvList.length-1]['obv']);
-        let peObvDelta = peObvList.length >= 2 ? parseFloat(peObvList[peObvList.length-1]['obv']) - parseFloat(peObvList[peObvList.length-2]['obv']) : parseFloat(peObvList[peObvList.length-1]['obv']);
-        oiCEOBV.push(parseFloat(ceObvDelta).toFixed(1));
-        oiPEOBV.push(parseFloat(peObvDelta).toFixed(1));
+        oiCEOBV.push(parseFloat(ceObvList[ceObvList.length-1]['obv']).toFixed(1));
+        oiPEOBV.push(parseFloat(peObvList[peObvList.length-1]['obv']).toFixed(1));
         if (item['ATM_STRIKE']) atmIndex = index;
         let result = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange);
         let s = result.score, color;
@@ -136,37 +166,62 @@ async function maximizeChart(name) {
     let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
     let isMCX = (name === 'CRUDEOILM' || name === 'USDINR');
     let body = '';
-    body += '<div id="max-' + tempName + '-chart" style="width:100%;height:520px;border-radius:8px;overflow:hidden;"></div>';
+    body += '<div id="max-' + tempName + '-chart" style="width:100%;min-width:0;height:520px;border-radius:8px;overflow:hidden;display:block;"></div>';
     body += '<div id="max-' + tempName + '-atr-sl" style="margin-top:8px;"></div>';
     showMaximizeOverlay('<i class="bi bi-candlestick"></i> ' + name + ' — Candlestick Chart', body);
+
+    // Wait for overlay CSS animation (0.18s) to finish before reading clientWidth
     setTimeout(async function() {
         try {
-            // temporarily alias the atr-sl div so _buildATRBadges writes into max panel
-            let origDivId = '#' + tempName + '-atr-sl';
-            let maxDivId  = '#max-' + tempName + '-atr-sl';
-            let origEl    = jQ(origDivId).detach();
-            jQ(maxDivId).attr('id', tempName + '-atr-sl');
+            let pane       = jQ('#gtb-pane-' + tempName);
+            let origAtrEl  = jQ('#' + tempName + '-atr-sl').detach();   // save atr row
+            let origChartEl = null;                                       // only set for MCX
+
+            // Alias the overlay's atr-sl div so _buildATRBadges writes there
+            jQ('#max-' + tempName + '-atr-sl').attr('id', tempName + '-atr-sl');
+
+            let maxChartEl;
             if (isMCX) {
-                // commodities.js showTopChartMCX always writes to #{tempName}-chart
-                // temporarily rename the max div to match, then restore
-                jQ('#max-' + tempName + '-chart').attr('id', tempName + '-chart-max-bk');
-                let origChart = jQ('#' + tempName + '-chart').detach();
-                jQ('#' + tempName + '-chart-max-bk').attr('id', tempName + '-chart');
-                await showTopChartMCX(name);
-                // resize the chart to fill the panel
-                let lwc = document.getElementById(tempName + '-chart')._lwChart;
-                if (lwc) lwc.resize(document.getElementById(tempName + '-chart').clientWidth, 520);
+                // For MCX, showTopChartMCX always writes to #{tempName}-chart.
+                // Swap IDs so the overlay div becomes the render target.
+                origChartEl = jQ('#' + tempName + '-chart').detach();   // save main panel chart div
+                jQ('#max-' + tempName + '-chart').attr('id', tempName + '-chart');
+                await showTopChartMCX(name, 520);
+                maxChartEl = document.getElementById(tempName + '-chart');
+                // Rename the overlay chart div back to max-*
                 jQ('#' + tempName + '-chart').attr('id', 'max-' + tempName + '-chart');
-                if (origChart.length) jQ('#gtb-pane-' + tempName + ' #' + tempName + '-atr-sl').before(origChart);
             } else {
                 await showTopChart(name, '#max-' + tempName + '-chart', 520);
+                maxChartEl = document.getElementById('max-' + tempName + '-chart');
             }
+
+            // Rename atr-sl back to overlay id
             jQ('#' + tempName + '-atr-sl').attr('id', 'max-' + tempName + '-atr-sl');
-            if (origEl.length) jQ(origDivId.slice(1)).before(origEl);
+
+            // ── Restore main panel ───────────────────────────────────────────
+            // For MCX: reinsert original chart div after the card header
+            if (origChartEl && origChartEl.length) {
+                pane.find('.gtb-grid-card-header').first().after(origChartEl);
+            }
+            // Reinsert original atr-sl after the (now-restored) chart area
+            if (origAtrEl.length) {
+                let chartArea = pane.find('.gtb-chart-area').first();
+                if (chartArea.length) chartArea.after(origAtrEl);
+            }
+
+            // Force overlay chart to fill the panel width
+            if (maxChartEl && maxChartEl._lwChart) {
+                requestAnimationFrame(function() {
+                    let panel = document.getElementById('groot-maximize-panel');
+                    let w = maxChartEl.clientWidth || (panel ? panel.clientWidth - 32 : 800);
+                    maxChartEl._lwChart.resize(w, 520);
+                    maxChartEl._lwChart.timeScale().fitContent();
+                });
+            }
         } catch(e) {
             jQ('#max-' + tempName + '-chart').html('<div style="color:#7d8590;padding:20px;">Chart unavailable: ' + e.message + '</div>');
         }
-    }, 80);
+    }, 220);
 }
 
 function maximizeFutures(name) {
@@ -254,6 +309,7 @@ jQ(document).on("click", "#data-load", function () {
         + popupWinControls(divId)
         + '</div>';
     jQ("." + divId).find(".popupwindow_titlebar_text").html(dsTitle);
+    hideNativePopupButtons(divId);
 });
 
 
@@ -265,6 +321,20 @@ jQ(document).on('click', '#nine-fifteen-scan', function (e) {
     scanNineFifteenCandle()
 });
 
+// ── 9:15 Candle Breakout Scanner ──────────────────────────────────────────────
+// Scans every instrument in INSTRUMENT_TOKENS and records where the FIRST 5-min
+// candle of the day (9:15–9:20) CLOSED relative to the open-day strike levels.
+//
+// Classification stored in VALID_BREAKOUT_NINE_FIFTEEN[name]['CLOSE_9_15']:
+//   AST — closed above AST (strong bullish gap/open)
+//   ASO — closed above ASO (mild bullish open)
+//   BSO — closed below BSO (mild bearish open)
+//   BST — closed below BST (strong bearish open)
+//   B/W — between strikes (neutral, wait)
+//
+// Runs ONLY if VALID_BREAKOUT_NINE_FIFTEEN is not already cached in localStorage.
+// This means it runs once per session (typically at market open after 9:15).
+// Results feed into ALL_9_15_CLOSE_SCORE and per-index 9:15 scores.
 async function scanNineFifteenCandle() {
     let scriptData = generateTrends()
     let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
@@ -282,9 +352,9 @@ async function scanNineFifteenCandle() {
 
         for (let i = 0; i < instru.length; i++) {
             let name = instru[i];
-            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
+            _gtbProgress('Charts: ' + name + ' (' + (i+1) + '/' + instru.length + ')');
             try {
-                let historical = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], CURRENT_DAY, CURRENT_DAY, '5minute');
+                let historical = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], _gtbCurrDay(), _gtbCurrDayTo(), '5minute');
                 let firstCandleClose = historical.data.candles[0][4]
                 let astPrice = parseFloat(scriptData[name]['strikeData']['ustrikeTwo']);
                 let asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
@@ -339,19 +409,75 @@ function commonMarkupPlaceHolder() {
     h += '<span class="gtb-signal-pill wait" id="gtb-signal-pill"><i class="bi bi-hourglass-split"></i> LOADING</span>';
     h += '</div>';
 
-    // Controls (moved from popup title/status bars)
+    // ── Topbar controls (decluttered) ─────────────────────────────────────────
+    var _savedHistTime = localStorage.getItem('GTB_HIST_TIME') || '';
     h += '<div class="gtb-topbar-controls">';
-    h += '<span id="last-refresh-time" class="gtb-refresh-time">—</span>';
+
+    // Primary: timer + refresh button (always visible)
     h += '<span id="refresh-loader" class="loader hide"></span>';
     h += '<span id="refresh-timer-one" class="gtb-timer-badge">00:00</span>';
-    h += '<input type="checkbox" id="enable-auto-refresh" title="Enable auto-refresh" style="cursor:pointer;">';
     h += '<a id="start-auto-refresh" class="gtb-ctrl-link" title="Refresh now"><i class="bi bi-arrow-clockwise"></i> Refresh</a>';
-    h += '<a id="data-load" class="gtb-ctrl-link" title="Data settings"><i class="bi bi-database"></i></a>';
+    // Progress pill — shows current step during refresh, hidden at rest
+    h += '<span id="gtb-progress-pill" style="display:none;align-items:center;gap:5px;'
+       + 'font-size:0.6rem;color:#c9d1d9;background:#1f2937;border:1px solid #3b82f633;'
+       + 'border-radius:10px;padding:2px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+       + '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;flex-shrink:0;'
+       + 'animation:gtb-pulse 1s ease-in-out infinite;" id="gtb-progress-dot"></span>'
+       + '<span id="gtb-progress-text">Starting…</span>'
+       + '</span>';
+
+    // Time picker (compact, always visible — core feature)
+    h += '<input type="time" id="gtb-hist-time" value="' + _savedHistTime + '" min="09:15" max="15:30" '
+       + 'style="font-size:0.6rem;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;'
+       + 'border-radius:4px;padding:2px 4px;cursor:pointer;width:76px;" title="Snapshot end time — empty = live">';
+
+    // Tool launchers as icon-only buttons
     h += '<a id="show-oi-viewer" class="gtb-ctrl-link" title="OI Analyzer"><i class="bi bi-eye"></i></a>';
     h += '<a id="show-stock-viewer" class="gtb-ctrl-link" title="Stock Viewer"><i class="bi bi-list-ul"></i></a>';
     h += '<a id="show-market-quote-analyzer" class="gtb-ctrl-link" title="Quotes"><i class="bi bi-graph-up"></i></a>';
-    h += '<span id="processing-trend" style="font-size:0.55rem;color:#7d8590;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>';
+    h += '<a id="show-help" class="gtb-ctrl-link" title="Help"><i class="bi bi-question-circle-fill"></i></a>';
+
+    // ⚙ Settings dropdown — secondary options
+    h += '<div class="gtb-settings-wrap" style="position:relative;display:inline-block;">';
+    h += '<a class="gtb-ctrl-link" id="gtb-settings-toggle" title="Settings"><i class="bi bi-gear-fill"></i></a>';
+    h += '<div id="gtb-settings-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;'
+       + 'background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 10px;z-index:9999;'
+       + 'min-width:190px;box-shadow:0 4px 16px #000a;">';
+
+    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:6px;font-weight:600;letter-spacing:.04em;">SETTINGS</div>';
+
+    // Auto-refresh
+    h += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.62rem;color:#c9d1d9;padding:3px 0;">'
+       + '<input type="checkbox" id="enable-auto-refresh" style="cursor:pointer;">'
+       + '<span>Auto-refresh</span></label>';
+
+    // Weighted only
+    h += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.62rem;color:#c9d1d9;padding:3px 0;" '
+       + 'title="Scan only weighted Nifty 50 + Bank Nifty stocks">'
+       + '<input type="checkbox" id="scan-weighted-only" style="cursor:pointer;"'
+       + (localStorage.getItem('GTB_SCAN_WEIGHTED') === '1' ? ' checked' : '') + '>'
+       + '<span>Weighted only</span></label>';
+
+    // Hide OI/FUT toggle
+    h += '<div style="margin-top:4px;padding-top:6px;border-top:1px solid #ffffff10;">';
+    h += '<a id="gtb-toggle-oi-futures" class="gtb-ctrl-link" style="font-size:0.62rem;" title="Toggle OI/Futures panels">'
+       + '<i class="bi bi-eye-slash"></i> Hide OI/FUT panels</a>';
     h += '</div>';
+
+    // Data settings
+    h += '<div style="margin-top:4px;">';
+    h += '<a id="data-load" class="gtb-ctrl-link" style="font-size:0.62rem;"><i class="bi bi-sliders"></i> Data settings</a>';
+    h += '</div>';
+
+    // Last refresh time
+    h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
+    h += '<span id="last-refresh-time" style="font-size:0.58rem;color:#7d8590;">—</span>';
+    h += '</div>';
+
+    h += '</div>'; // end settings menu
+    h += '</div>'; // end settings wrap
+
+    h += '</div>'; // end gtb-topbar-controls
 
     // Window controls
     h += '<div class="gtb-win-controls">';
@@ -375,7 +501,12 @@ function commonMarkupPlaceHolder() {
     h += '<div class="gtb-card-body gtb-widget-body" style="height:120px;">';
     h += '<div id="trend-scoreboard" style="height:110px;"></div>';
     h += '<div id="score-board-number" style="text-align:center;margin-top:-4px;"></div>';
-    h += '</div></div>';
+    h += '</div>';
+    h += '<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 6px;border-top:1px solid #ffffff10;">';
+    h += '<div id="gtb-adr-n50" style="font-size:0.6rem;color:#7d8590;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">N50 A/D —</div>';
+    h += '<div id="gtb-adr-bn"  style="font-size:0.6rem;color:#7d8590;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">BN A/D —</div>';
+    h += '</div>';
+    h += '</div>';
 
     // Signal card
     h += '<div class="gtb-card gtb-widget">';
@@ -428,6 +559,26 @@ function commonMarkupPlaceHolder() {
     h += '<div id="trend-scoreboard-table" style="height:100%;overflow-y:auto;overflow-x:auto;"></div>';
     h += '</div></div>';
 
+    // Score history table (collapsible)
+    h += '<div class="gtb-card gtb-widget">';
+    h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-score-history">';
+    h += '<span class="gtb-card-title"><i class="bi bi-clock-history"></i> SCORE HISTORY</span>';
+    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span>';
+    h += '</div>';
+    h += '<div id="gtb-score-history" class="gtb-collapse-body gtb-widget-body" style="height:220px;overflow:auto;">';
+    h += '<div id="gtb-score-history-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
+    h += '</div></div>';
+
+    // Component breakdown panel (collapsible)
+    h += '<div class="gtb-card gtb-widget">';
+    h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-component-panel">';
+    h += '<span class="gtb-card-title"><i class="bi bi-bar-chart-steps"></i> COMPONENTS</span>';
+    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span>';
+    h += '</div>';
+    h += '<div id="gtb-component-panel" class="gtb-collapse-body gtb-widget-body" style="height:300px;overflow:auto;">';
+    h += '<div id="gtb-component-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
+    h += '</div></div>';
+
     h += '</div>'; // end #gtb-left
 
     // ── CENTER: Tabbed OI Focus ───────────────────────────────────────────────
@@ -446,7 +597,14 @@ function commonMarkupPlaceHolder() {
         // Chart card
         h += '<div class="gtb-grid-card">';
         h += '<div class="gtb-grid-card-header">';
-        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> ' + name + '</span>';
+        let isMcxInstr = (name === 'CRUDEOILM' || name === 'USDINR');
+        let exchLink = isMcxInstr ? 'MCX' : 'NSE';
+        let mcxEntry = isMcxInstr ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === name; }) : null;
+        let linkToken = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
+        let linkSymbol = mcxEntry ? mcxEntry.tradingsymbol : name;
+        let kiteLink = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
+        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></span>';
+        h += '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
         h += '<span class="gtb-ltp-inline" id="' + tid + '-ltp"></span>';
         h += '<span class="hdr-actions">';
         h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
@@ -538,7 +696,14 @@ function commonMarkupPlaceHolder() {
 
         h += '<div class="gtb-grid-card">';
         h += '<div class="gtb-grid-card-header">';
-        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> ' + name + '</span>';
+        let isMcxInstr = (name === 'CRUDEOILM' || name === 'USDINR');
+        let exchLink = isMcxInstr ? 'MCX' : 'NSE';
+        let mcxEntry = isMcxInstr ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === name; }) : null;
+        let linkToken = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
+        let linkSymbol = mcxEntry ? mcxEntry.tradingsymbol : name;
+        let kiteLink = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
+        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></span>';
+        h += '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
         h += '<span class="gtb-ltp-inline" id="' + tid + '-ltp"></span>';
         h += '<span class="hdr-actions">';
         h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
@@ -598,7 +763,14 @@ function commonMarkupPlaceHolder() {
 
         h += '<div class="gtb-grid-card">';
         h += '<div class="gtb-grid-card-header">';
-        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> ' + name + '</span>';
+        let isMcxInstr = (name === 'CRUDEOILM' || name === 'USDINR');
+        let exchLink = isMcxInstr ? 'MCX' : 'NSE';
+        let mcxEntry = isMcxInstr ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === name; }) : null;
+        let linkToken = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
+        let linkSymbol = mcxEntry ? mcxEntry.tradingsymbol : name;
+        let kiteLink = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
+        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></span>';
+        h += '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
         h += '<span class="gtb-ltp-inline" id="' + tid + '-ltp"></span>';
         h += '<span class="hdr-actions">';
         h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
@@ -678,6 +850,7 @@ function commonMarkupPlaceHolder() {
         h += '<div class="gtb-instr-header">';
         h += '<span class="gtb-instr-name"><i class="bi bi-globe-asia-australia"></i> ' + name + '</span>';
         h += '<div class="gtb-instr-badges">';
+        h += '<span id="' + tid + '-915-badge" style="font-size:0.55rem;"></span>';
         h += '<span id="' + tid + '-ltp" style="font-size:0.62rem;color:#e6edf3;font-weight:800;font-variant-numeric:tabular-nums;"></span>';
         h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh chart"><i class="bi bi-arrow-clockwise"></i></button>';
         h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
@@ -722,6 +895,13 @@ function commonMarkupPlaceHolder() {
     });
     h += '</div>'; // end futures strip
 
+    // ── Refresh status bar ────────────────────────────────────────────────────
+    h += '<div id="gtb-refresh-statusbar" style="'
+       + 'font-size:0.6rem;color:#7d8590;padding:3px 10px;border-top:1px solid #ffffff10;'
+       + 'background:#0d1117;display:flex;align-items:center;gap:4px;">'
+       + '<i class="bi bi-hourglass-split" style="margin-right:3px;"></i>Waiting for refresh…'
+       + '</div>';
+
     return h;
 }
 
@@ -729,9 +909,39 @@ function showCompoenentPlaceHolders() {
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
 }
 
+// ── Main Refresh Orchestrator ──────────────────────────────────────────────────
+// Called every 5 minutes by startTimer() or manually via "Start Refresh" button.
+// Executes the full scan cycle in order:
+//   1. 9:15 breakout scores (show915Trend) for NIFTY 50, BANK, ALL
+//   2. Candlestick charts (showTopChart) for NIFTY 50, NIFTY BANK, GIFT NIFTY, SENSEX etc.
+//   3. Futures details (showFutureDetails → setFutureDetails) for all index instruments
+//   4. OI/OBV + component scores (showPrictionProbabilty, showOIOBVBarChart)
+//   5. Advance/decline scanner (showAdvacenDeclineScanner, showFuturesTrend)
+//   6. Score gauge render (renderScoreGauge) with composite score from all sub-scores
+// Resets all score globals (resetCount) at the start of each cycle.
+// Show step text in the progress pill during a refresh.
+// color: 'blue' (default), 'green' (done), 'orange' (warn)
+function _gtbProgress(text, color) {
+    var pill = jQ('#gtb-progress-pill');
+    var dot  = jQ('#gtb-progress-dot');
+    var txt  = jQ('#gtb-progress-text');
+    if (!pill.length) return;
+    var c = color === 'green' ? '#3fb950' : color === 'orange' ? '#fbbf24' : '#3b82f6';
+    dot.css({ background: c, 'border-color': c });
+    pill.css({ 'border-color': c + '55', display: 'inline-flex' });
+    txt.text(text || '');
+}
+function _gtbProgressHide() {
+    jQ('#gtb-progress-pill').hide();
+    jQ('#gtb-progress-text').text('');
+}
+
 async function commonShowPopupWindow() {
+    var _refreshStart = Date.now();
     resetCount()
     jQ("#refresh-loader").removeClass("hide");
+    jQ("#start-auto-refresh").css('opacity', '0.45').css('pointer-events', 'none');
+    _gtbProgress('Starting…');
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
 
@@ -741,6 +951,7 @@ async function commonShowPopupWindow() {
     show915Trend('NIFTY BANK');
     show915Trend('ALL');
 
+    _gtbProgress('Loading charts…');
     try {
         await showTopChart('NIFTY 50');
     } catch (e) {
@@ -777,6 +988,7 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
+    _gtbProgress('Futures data…');
     try {
         let res = await showFutureDetails('NIFTY 50');
         setFutureDetails('NIFTY 50', res);
@@ -805,6 +1017,7 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
+    _gtbProgress('OI / OBV…');
     try {
         await showPrictionProbabilty('NIFTY 50')
         showOIOBVBarChart('NIFTY 50');
@@ -889,18 +1102,21 @@ async function commonShowPopupWindow() {
         console.log(e)
     }
 
+    _gtbProgress('A/D scan…');
     try {
         await showAdvacenDeclineScanner();
     } catch (e) {
         console.log(e)
     }
 
+    _gtbProgress('Futures trend scan…');
     try {
         await showFuturesTrend();
     } catch (e) {
         console.log(e)
     }
 
+    _gtbProgress('Weighted OI scan…');
     try {
         await fetchWeightedStocksOIScore();
     } catch (e) {
@@ -912,6 +1128,21 @@ async function commonShowPopupWindow() {
     try { updateTopBarTickers(); } catch(e) {}
 
     jQ("#refresh-loader").addClass("hide");
+    jQ("#start-auto-refresh").css('opacity', '').css('pointer-events', '');
+    _gtbProgress('Done', 'green');
+    setTimeout(_gtbProgressHide, 2000);
+
+    try { renderComponentPanel(); } catch(e) { console.warn('renderComponentPanel error', e); }
+    try { renderScoreHistory(); } catch(e) { console.warn('renderScoreHistory error', e); }
+
+    var _elapsed = ((Date.now() - _refreshStart) / 1000).toFixed(1);
+    var _endTime = moment().format("HH:mm:ss");
+    jQ("#gtb-refresh-statusbar").html(
+        '<i class="bi bi-check-circle-fill" style="color:#3fb950;margin-right:4px;"></i>'
+      + 'Refresh completed at <b>' + _endTime + '</b>'
+      + ' &nbsp;·&nbsp; '
+      + '<i class="bi bi-stopwatch" style="margin-right:3px;"></i>Total time: <b>' + _elapsed + 's</b>'
+    );
 }
 
 
@@ -1162,10 +1393,10 @@ function getMarketSignal(SCORE, breakOutNineFifteen) {
         let niftyTrend = generateTrend('NIFTY 50');
         let trends = niftyTrend.trends || [];
         if (trends.indexOf('VIXU') !== -1) {
-            return { signal: 'NO TRADE', color: 'bg-warning text-dark', reason: 'NIFTY at VIXU — daily range exhausted on upside. Wait for pullback.' };
+            return { signal: 'NO TRADE', color: 'bg-warning text-dark', reason: 'NIFTY at VIXU — daily range exhausted on upside. Wait for pullback.', tradeSignal: { outcome: 'Sideways', level: 'No trade — VIX upper boundary hit' } };
         }
         if (trends.indexOf('VIXL') !== -1) {
-            return { signal: 'NO TRADE', color: 'bg-warning text-dark', reason: 'NIFTY at VIXL — daily range exhausted on downside. Wait for bounce.' };
+            return { signal: 'NO TRADE', color: 'bg-warning text-dark', reason: 'NIFTY at VIXL — daily range exhausted on downside. Wait for bounce.', tradeSignal: { outcome: 'Sideways', level: 'No trade — VIX lower boundary hit' } };
         }
     } catch(e) {}
 
@@ -1230,6 +1461,49 @@ function getMarketSignal(SCORE, breakOutNineFifteen) {
 }
 
 
+// ── Historical snapshot mode ──────────────────────────────────────────────────
+// When GTB_HIST_DATE is set, all data fetches use it instead of CURRENT_DAY.
+// GTB_HIST_TIME (HH:mm) trims candle arrays to that end time after fetch.
+// Returns selected end time from topbar picker (HH:mm), with localStorage fallback.
+function _gtbHistTime() {
+    return (jQ('#gtb-hist-time').val() || localStorage.getItem('GTB_HIST_TIME') || '').trim() || null;
+}
+
+// from is always CURRENT_DAY
+function _gtbCurrDay()    { return CURRENT_DAY; }
+// to is CURRENT_DAY, with time appended when picker has a value
+function _gtbCurrDayTo()  { var t = _gtbHistTime(); return t ? (CURRENT_DAY + ' ' + t + ':00') : CURRENT_DAY; }
+
+function _gtbPrevDay()    { return PREVIOUS_DAY; }
+
+// MCX — same pattern
+function _gtbMcxCurrDay()   { return MCX_CURRENT_DAY; }
+function _gtbMcxCurrDayTo() { var t = _gtbHistTime(); return t ? (MCX_CURRENT_DAY + ' ' + t + ':00') : MCX_CURRENT_DAY; }
+function _gtbMcxPrevDay()   { return MCX_PREVIOUS_DAY; }
+
+// Strips candles from a previous trading day (date < refDay).
+// Call this on any intraday candle array fetched with from=PREVIOUS_DAY so the
+// stray last-candle-of-previous-session doesn't pollute trend / ATR / score calcs.
+// refDay defaults to CURRENT_DAY; pass MCX_CURRENT_DAY for commodity candles.
+function _gtbStripPrevDayCandles(candles, refDay) {
+    if (!candles || !candles.length) return candles;
+    var day = refDay || CURRENT_DAY; // "YYYY-MM-DD"
+    return candles.filter(function(c) {
+        return moment(c[0]).format('YYYY-MM-DD') >= day;
+    });
+}
+
+// Trims candle array to those at or before selected time (safety net for APIs that ignore time).
+// Also strips any candles from a previous trading day.
+function _gtbTrimCandles(candles, refDay) {
+    var filtered = _gtbStripPrevDayCandles(candles, refDay);
+    var endTime = _gtbHistTime();
+    if (!endTime || !filtered || !filtered.length) return filtered;
+    return filtered.filter(function(c) {
+        return moment(c[0]).format('HH:mm') <= endTime;
+    });
+}
+
 let ALL_9_15_CLOSE_SCORE = 0;
 let NIFTY_50_9_15_CLOSE_SCORE = 0;
 let NIFTY_BANK_9_15_CLOSE_SCORE = 0;
@@ -1259,85 +1533,491 @@ let NIFTY_BANK_COMPONENT_SCORE = 0;
 // Per-instrument score cache populated during futures trend scan and setScore
 let INSTRUMENT_SCORE_MAP = {};
 
-// Scores a single OI/OBV strike row using price direction + OBV to distinguish
-// writing vs buying/covering. ATM strike is weighted 2×; all others 1×.
-// priceChange: % change of underlying (positive = price up, negative = price down).
-// Returns { score, ceLabel, peLabel } — score is numeric, labels describe what's happening.
+// Per-interval A/D snapshot saved by showAdvacenDeclineScanner — used by renderScoreHistory()
+// Format: [ { time: "HH:mm", nAdv, nDec, bnAdv, bnDec, allAdv, allDec } ]
+let GTB_AD_INTERVAL_HISTORY = [];
+
+// Candle close price per weighted constituent per interval — captured during A/D scanner.
+// Format: { "HDFCBANK": { "09:20": 1820.5, "09:25": 1825.0, ... }, ... }
+let GTB_COMPONENT_CLOSE_MAP = {};
+
+// ─── Component Breakdown Panel ───────────────────────────────────────────────
+// Shows per-stock score breakdown for all weighted Nifty 50 + Bank Nifty constituents.
+// Called after setScore() so INSTRUMENT_SCORE_MAP[name].score is populated.
+function renderComponentPanel() {
+    var el = jQ('#gtb-component-table');
+    if (!el.length) return;
+
+    var b915   = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
+    var opens  = JSON.parse(localStorage.getItem('INSTRUMENT_LIST_GLOBAL')      || '{}');
+    var ltpMap = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE')        || '{}');
+
+    function _cell(v, pos, neg) {
+        var c = v > 0 ? (pos || '#3fb950') : v < 0 ? (neg || '#f85149') : '#7d8590';
+        var s = v > 0 ? '+' + v : '' + v;
+        return '<td style="padding:2px 4px;text-align:center;color:' + c + ';font-weight:' + (v !== 0 ? '600' : '400') + ';">' + s + '</td>';
+    }
+    function _tag(label, color) {
+        return '<span style="font-size:0.5rem;padding:1px 4px;border-radius:3px;background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;">' + label + '</span>';
+    }
+    function _scoreColor(s) {
+        if (s >= 4)  return '#3fb950';
+        if (s >= 2)  return '#d2a679';
+        if (s >= 0)  return '#fbbf24';
+        return '#f85149';
+    }
+
+    function _buildSection(title, weightMap) {
+        var rows = '';
+        var totalContrib = 0;
+
+        jQ.each(weightMap, function(name, weight) {
+            var sm = INSTRUMENT_SCORE_MAP[name];
+            var sc = sm && sm.score;
+            if (!sc) return;
+
+            // 9:15 label
+            var c915raw = (b915[name] || {})['CLOSE_9_15'] || 'B/W';
+            var c915col = (c915raw === 'AST' || c915raw === 'ASO') ? '#3fb950' : (c915raw === 'BST' || c915raw === 'BSO') ? '#f85149' : '#7d8590';
+
+            // current trend label (LTP vs strike)
+            var ltpObj = ltpMap[name];
+            var openObj = opens[name];
+            var trendLabel = '—', trendCol = '#7d8590';
+            if (ltpObj && openObj) {
+                var ltp = parseFloat(ltpObj.ltp);
+                var sd = getStrikeDetails({ price: openObj.price }, name);
+                if      (ltp >= parseFloat(sd.ustrikeTwo)) { trendLabel = 'AST'; trendCol = '#3fb950'; }
+                else if (ltp >= parseFloat(sd.ustrikeOne)) { trendLabel = 'ASO'; trendCol = '#3fb950'; }
+                else if (ltp <= parseFloat(sd.bstrikeTwo)) { trendLabel = 'BST'; trendCol = '#f85149'; }
+                else if (ltp <= parseFloat(sd.bstrikeOne)) { trendLabel = 'BSO'; trendCol = '#f85149'; }
+                else                                        { trendLabel = 'B/W'; trendCol = '#7d8590'; }
+            }
+
+            // PCR
+            var pcrVal = sm.pcr != null ? parseFloat(sm.pcr).toFixed(2) : '—';
+            var pcrCol = sm.pcr > 1.2 ? '#3fb950' : sm.pcr < 0.8 ? '#f85149' : '#fbbf24';
+
+            var contrib = parseFloat((sc.total * (weight / 100)).toFixed(2));
+            totalContrib += contrib;
+            var contribCol = _scoreColor(sc.total);
+
+            rows += '<tr style="border-bottom:1px solid #ffffff08;">';
+            rows += '<td style="padding:2px 4px;white-space:nowrap;">'
+                  + '<span style="color:#c9d1d9;font-weight:500;">' + name + '</span>'
+                  + '&nbsp;<span style="color:#7d8590;font-size:0.55rem;">' + weight + '%</span>'
+                  + '</td>';
+            rows += '<td style="padding:2px 4px;text-align:center;">' + _tag(c915raw, c915col) + '</td>';
+            rows += '<td style="padding:2px 4px;text-align:center;">' + _tag(trendLabel, trendCol) + '</td>';
+            rows += _cell(sc.futures_trend);
+            rows += '<td style="padding:2px 4px;text-align:center;color:' + pcrCol + ';">' + pcrVal + '</td>';
+            rows += _cell(sc.oi_obv);
+            rows += '<td style="padding:2px 4px;text-align:center;color:' + contribCol + ';font-weight:600;">'
+                  + (contrib > 0 ? '+' : '') + contrib + '</td>';
+            rows += '</tr>';
+        });
+
+        var secContribCol = _scoreColor(totalContrib);
+        return '<tr style="background:#161b22;">'
+             + '<td colspan="7" style="padding:3px 4px;font-size:0.58rem;font-weight:600;color:#7d8590;letter-spacing:.04em;">'
+             + title + '&nbsp;<span style="color:' + secContribCol + ';">' + (totalContrib > 0 ? '+' : '') + totalContrib.toFixed(2) + '</span>'
+             + '</td></tr>'
+             + rows;
+    }
+
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:0.6rem;">';
+    html += '<thead><tr style="color:#7d8590;border-bottom:1px solid #ffffff15;">'
+         + '<th style="padding:3px 4px;text-align:left;">Stock</th>'
+         + '<th style="padding:3px 4px;text-align:center;" title="9:15 candle position">9:15</th>'
+         + '<th style="padding:3px 4px;text-align:center;" title="Current LTP vs strike">Trend</th>'
+         + '<th style="padding:3px 4px;text-align:center;" title="Futures trend">FT</th>'
+         + '<th style="padding:3px 4px;text-align:center;" title="Put-Call Ratio">PCR</th>'
+         + '<th style="padding:3px 4px;text-align:center;" title="OI+OBV score">OI</th>'
+         + '<th style="padding:3px 4px;text-align:center;" title="Weighted contribution">Wt.</th>'
+         + '</tr></thead><tbody>';
+
+    html += _buildSection('NIFTY 50', NIFTY_50_WEIGHTED_STOCKS);
+    html += _buildSection('BANK NIFTY', NIFTY_BANK_WEIGHTED_STOCKS);
+
+    html += '</tbody></table>';
+    el.html(html);
+}
+
+// ─── Score History Table ──────────────────────────────────────────────────────
+// Per-interval score reconstruction.
+// Varying per interval  : A/D (all 3), Futures trend (all 3) — captured in GTB_AD_INTERVAL_HISTORY
+// Fixed (point-in-time) : 9:15 scores, OI/OBV scores, component scores — don't change per candle
+// Must be called AFTER setScore() so all score globals are populated.
+function renderScoreHistory() {
+    var el = jQ('#gtb-score-history-table');
+    if (!el.length) return;
+
+    if (!GTB_AD_INTERVAL_HISTORY || !GTB_AD_INTERVAL_HISTORY.length) {
+        el.html('<span style="color:#7d8590;font-size:0.62rem;">No interval data yet — run a full refresh first.</span>');
+        return;
+    }
+
+    // ── Fixed components (don't vary per candle) ──────────────────────────────
+    var fixed915 =
+        (ALL_9_15_CLOSE_SCORE        || 0) +
+        (NIFTY_50_9_15_CLOSE_SCORE   || 0) +
+        (NIFTY_BANK_9_15_CLOSE_SCORE || 0) +
+        (GIFT_NIFTY_9_15_CLOSE_SCORE || 0) +
+        (SENSEX_9_15_CLOSE_SCORE     || 0) +
+        (RELIANCE_9_15_CLOSE_SCORE   || 0) +
+        (HDFCBANK_9_15_CLOSE_SCORE   || 0);
+
+    var fixedOI =
+        (NIFTY_50_OI_OBV_SCORE   || 0) +
+        (NIFTY_BANK_OI_OBV_SCORE || 0) +
+        (RELIANCE_OI_OBV_SCORE   || 0) +
+        (HDFCBANK_OI_OBV_SCORE   || 0) +
+        (ICICIBANK_OI_OBV_SCORE  || 0);
+
+    // Pre-load data needed for per-interval component score
+    var _b915   = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN")) || {};
+    var _opens  = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"))      || {};
+
+    // Per-interval component score: same as computeComponentScores() but uses
+    // candle close from GTB_COMPONENT_CLOSE_MAP instead of live LTP.
+    // futures_trend and oi_obv still from INSTRUMENT_SCORE_MAP (futures captured per-interval
+    // separately in row.nFBull etc — but per-stock futures trend requires per-stock map
+    // which isn't stored; use current INSTRUMENT_SCORE_MAP.futures_trend as best approximation).
+    function _compScoreAtTime(time) {
+        function _instrScore(name) {
+            var close = (GTB_COMPONENT_CLOSE_MAP[name] || {})[time];
+            if (!close) return 0;
+            var openDetail = _opens[name];
+            if (!openDetail) return 0;
+
+            // 9:15 score (fixed)
+            var c915 = (_b915[name] || {})['CLOSE_9_15'];
+            var s915 = c915 === 'AST' ? 2 : c915 === 'ASO' ? 1 : c915 === 'BST' ? -2 : c915 === 'BSO' ? -1 : 0;
+
+            // current_trend: candle close vs ASO/BSO strike at open price
+            var sd = getStrikeDetails({ price: openDetail.price }, name);
+            var aso = parseFloat(sd.ustrikeOne), ast = parseFloat(sd.ustrikeTwo);
+            var bso = parseFloat(sd.bstrikeOne), bst = parseFloat(sd.bstrikeTwo);
+            var sTrend = 0;
+            if      (close >= ast) sTrend = 2;
+            else if (close >= aso) sTrend = 1;
+            else if (close <= bst) sTrend = -2;
+            else if (close <= bso) sTrend = -1;
+
+            // futures_trend and oi_obv from INSTRUMENT_SCORE_MAP (best available)
+            var sFut = (INSTRUMENT_SCORE_MAP[name] || {}).futures_trend || 0;
+            var sOI  = (INSTRUMENT_SCORE_MAP[name] || {}).oi_obv        || 0;
+
+            return s915 + sTrend + sFut + sOI;
+        }
+
+        var n50 = 0, bn = 0;
+        try {
+            jQ.each(NIFTY_50_WEIGHTED_STOCKS, function(name, weight) {
+                n50 += _instrScore(name) * (weight / 100);
+            });
+            jQ.each(NIFTY_BANK_WEIGHTED_STOCKS, function(name, weight) {
+                bn += _instrScore(name) * (weight / 100);
+            });
+        } catch(e) {}
+        return parseFloat((n50 + bn).toFixed(2));
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    // A/D score: (adv-dec)/(adv+dec) — same formula as the globals
+    function _adScore(adv, dec) {
+        var t = adv + dec;
+        return t > 0 ? parseFloat(((adv - dec) / t).toFixed(2)) : 0;
+    }
+
+    // Futures trend score: +1 / 0 / -1 — same as ALL/NIFTY/BANK_FUTURES_TREND_SCORE
+    function _ftScore(bull, bear) {
+        return bull > bear ? 1 : bear > bull ? -1 : 0;
+    }
+
+    function _scoreColor(s) {
+        if (s >= 8) return '#3fb950';
+        if (s >= 5) return '#d2a679';
+        if (s >= 1) return '#fbbf24';
+        return '#f85149';
+    }
+
+    function _bar(s) {
+        var max = 15;
+        var pct = Math.max(0, Math.min(100, ((s + max) / (max * 2)) * 100));
+        var col = _scoreColor(s);
+        return '<div style="width:55px;height:5px;background:#ffffff10;border-radius:3px;display:inline-block;vertical-align:middle;">'
+             + '<div style="width:' + pct + '%;height:100%;background:' + col + ';border-radius:3px;"></div>'
+             + '</div>';
+    }
+
+    function _signed(v) {
+        var c = v > 0 ? '#3fb950' : v < 0 ? '#f85149' : '#7d8590';
+        var s = v > 0 ? '+' + v : '' + v;
+        return '<span style="color:' + c + ';">' + s + '</span>';
+    }
+
+    // ── Table ─────────────────────────────────────────────────────────────────
+    var html = '<div style="font-size:0.55rem;color:#7d8590;padding:3px 5px 2px;border-bottom:1px solid #ffffff10;">'
+             + '<i class="bi bi-info-circle"></i>&nbsp;'
+             + '9:15 &amp; OI fixed at refresh · A/D, Futures trend &amp; Component scores vary per interval'
+             + '</div>';
+
+    html += '<table style="width:100%;border-collapse:collapse;font-size:0.6rem;">';
+    html += '<thead><tr style="color:#7d8590;border-bottom:1px solid #ffffff15;">'
+         + '<th style="padding:3px 5px;text-align:left;white-space:nowrap;">Time</th>'
+         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">N50 A/D</th>'
+         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">BN A/D</th>'
+         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">FT</th>'
+         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">Score</th>'
+         + '<th style="padding:3px 5px;min-width:60px;"></th>'
+         + '</tr></thead><tbody>';
+
+    GTB_AD_INTERVAL_HISTORY.forEach(function(row) {
+        // A/D scores
+        var nAd  = _adScore(row.nAdv,   row.nDec);
+        var bnAd = _adScore(row.bnAdv,  row.bnDec);
+        var aAd  = _adScore(row.allAdv, row.allDec);
+
+        // Futures trend scores (per-interval cumulative bull/bear)
+        var allFt = _ftScore(row.allFBull || 0, row.allFBear || 0);
+        var nFt   = _ftScore(row.nFBull   || 0, row.nFBear   || 0);
+        var bnFt  = _ftScore(row.bnFBull  || 0, row.bnFBear  || 0);
+        var ftTotal = allFt + nFt + bnFt;
+
+        // Component scores: per-interval using candle close for current_trend
+        var compAtTime = _compScoreAtTime(row.time);
+
+        var s = parseFloat((fixed915 + fixedOI + compAtTime + nAd + bnAd + aAd + ftTotal).toFixed(2));
+        var col = _scoreColor(s);
+
+        // N50 A/D compact
+        function _ad2(adv, dec) {
+            var diff = adv - dec;
+            var c2 = diff > 0 ? '#3fb950' : diff < 0 ? '#f85149' : '#7d8590';
+            return '<span style="color:#c9d1d9;">' + adv + '</span><span style="color:#7d8590;">/</span>'
+                 + '<span style="color:#c9d1d9;">' + dec + '</span>'
+                 + '&nbsp;<span style="color:' + c2 + ';">(' + (diff > 0 ? '+' : '') + diff + ')</span>';
+        }
+
+        html += '<tr style="border-bottom:1px solid #ffffff08;">'
+             + '<td style="padding:2px 5px;color:#7d8590;white-space:nowrap;">' + row.time + '</td>'
+             + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + _ad2(row.nAdv,   row.nDec)  + '</td>'
+             + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + _ad2(row.bnAdv,  row.bnDec) + '</td>'
+             + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + _signed(ftTotal) + '</td>'
+             + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;color:' + col + ';font-weight:600;">' + s + '</td>'
+             + '<td style="padding:2px 5px;">' + _bar(s) + '</td>'
+             + '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.html(html);
+}
+
+// ─── OI + IV/OBV Strike Scoring ───────────────────────────────────────────────
+//
+// HOW SUPPORT AND RESISTANCE IS DETERMINED USING OI + IV/OBV
+// ───────────────────────────────────────────────────────────
+//
+// RESISTANCE (market likely to reverse down at this strike):
+//   CE OI↑ + CE IV falling  → CE WRITE  — call writers are selling premium here,
+//                               capping upside. IV falls because supply of calls
+//                               increases (writers push price down). Score: −w
+//   CE OI↑ + CE IV rising   → CE BUY    — buyers are paying higher premium to own
+//                               calls, expecting a breakout above this strike.
+//                               Bullish signal. Score: +w
+//
+// SUPPORT (market likely to reverse up at this strike):
+//   PE OI↑ + PE IV falling  → PE WRITE  — put writers are selling premium here,
+//                               building a floor. IV falls because supply of puts
+//                               increases. Bullish (writers confident of support).
+//                               Score: +w
+//   PE OI↑ + PE IV rising   → PE BUY    — buyers are paying higher premium to own
+//                               puts (protection/speculation on fall). Bearish.
+//                               Score: −w
+//
+// STRONG RESISTANCE (highest conviction bearish signal at a strike):
+//   CE OI↑ + CE IV falling + PE OI↑ + PE IV rising
+//   → CE WRITE + PE BUY = both sides confirm resistance; call writers capping,
+//     put buyers hedging against fall. getOISignal() returns 'SELL'.
+//
+// STRONG SUPPORT (highest conviction bullish signal at a strike):
+//   CE OI↑ + CE IV rising + PE OI↑ + PE IV falling
+//   → CE BUY + PE WRITE = both sides confirm support; call buyers expecting breakout,
+//     put writers confident price won't fall. getOISignal() returns 'BUY'.
+//
+// SHORT SQUEEZE (forced move up):
+//   CE OI↓ + CE IV rising   → CE COV    — trapped call writers buying back (covering).
+//                               Reduces resistance. Score: +w
+//   PE OI↓ + PE IV falling  → PE UNWIND — put buyers exiting (longs unwinding).
+//                               Removes downward hedge. Score: +w
+//
+// LONG UNWINDING (forced move down):
+//   CE OI↓ + CE IV falling  → CE UNWIND — call longs exiting, confidence fading.
+//                               Score: −w
+//   PE OI↓ + PE IV rising   → PE COV    — put writers buying back, expecting more
+//                               downside. Score: −w
+//
+// SIGNAL PRIORITY (what overrides what):
+//   1. IV change (most direct — reflects actual premium buying/selling intent)
+//   2. OBV cumulative sign (proxy when IV unavailable — reflects volume pressure)
+//   3. Price direction alone (weakest — can be misleading due to delta moves)
+//
+// WEIGHTS:
+//   ATM strike: w=2 (most price-sensitive, highest gamma, most relevant)
+//   All other strikes: w=1
+//   Full weight (w): price + IV/OBV both agree
+//   Half weight (w×0.5): only IV/OBV signals (price flat or conflicting)
+//   Low weight (w×0.3): only price direction (IV unavailable, OBV flat)
+//
+// OI WALL (absolute OI, not change):
+//   Total PE OI > Total CE OI at a strike → support wall (+0.5)
+//   Total CE OI > Total PE OI at a strike → resistance wall (−0.5)
+// ─────────────────────────────────────────────────────────────────────────────
 function scoreOIStrikeForSignal(item, isATM, priceChange) {
     let score = 0;
-    let w = isATM ? 2 : 1;
+    let w = isATM ? 2 : 1; // ATM weighted 2× — highest gamma, most price-sensitive strike
+
+    // Underlying price direction — threshold ±0.1% filters noise
     let pc = parseFloat(priceChange) || 0;
-    let priceUp   = pc >  0.1;
-    let priceDown = pc < -0.1;
+    let priceUp   = pc >  0.1; // underlying moved up meaningfully
+    let priceDown = pc < -0.1; // underlying moved down meaningfully
 
-    let chgCE = parseFloat(item['CHG_OI_CE']);
-    let chgPE = parseFloat(item['CHG_OI_PE']);
-    let oiCE  = parseFloat(item['OI_CE']);
-    let oiPE  = parseFloat(item['OI_PE']);
+    // OI change since previous day close — positive = new positions added, negative = positions closed
+    let chgCE = parseFloat(item['CHG_OI_CE']); // call OI change: +ve = new CE positions, −ve = CE positions closed
+    let chgPE = parseFloat(item['CHG_OI_PE']); // put  OI change: +ve = new PE positions, −ve = PE positions closed
+    let oiCE  = parseFloat(item['OI_CE']);      // total call OI — large value = strong resistance wall
+    let oiPE  = parseFloat(item['OI_PE']);      // total put  OI — large value = strong support floor
 
+    // ── Step 1: OBV (fallback signal when IV is not available) ───────────────
+    // Cumulative OBV sign across all 5-min candles today:
+    //   CE OBV > 0 → more volume traded on up-ticks of CE price = net buying pressure in calls
+    //   CE OBV < 0 → more volume traded on down-ticks of CE price = net selling/writing pressure in calls
+    //   PE OBV > 0 → net buying pressure in puts (bearish for underlying)
+    //   PE OBV < 0 → net writing pressure in puts (bullish for underlying — writers building support)
+    // NOTE: Using cumulative sign, not delta between last two candles.
+    //   Delta only reflects the most recent 5-min move; cumulative reflects the full day's pressure.
     let ceObvList = item['CE_OBV'];
     let peObvList = item['PE_OBV'];
-    let ceObvDelta = ceObvList.length >= 2
-        ? parseFloat(ceObvList[ceObvList.length - 1]['obv']) - parseFloat(ceObvList[ceObvList.length - 2]['obv'])
-        : parseFloat(ceObvList[ceObvList.length - 1]['obv']);
-    let peObvDelta = peObvList.length >= 2
-        ? parseFloat(peObvList[peObvList.length - 1]['obv']) - parseFloat(peObvList[peObvList.length - 2]['obv'])
-        : parseFloat(peObvList[peObvList.length - 1]['obv']);
+    let ceObvCumulative = parseFloat(ceObvList[ceObvList.length - 1]['obv']);
+    let peObvCumulative = parseFloat(peObvList[peObvList.length - 1]['obv']);
+    let obvCEUp   = ceObvCumulative > 0; // net call buying pressure today
+    let obvCEDown = ceObvCumulative < 0; // net call writing/selling pressure today
+    let obvPEUp   = peObvCumulative > 0; // net put buying pressure today (bearish signal)
+    let obvPEDown = peObvCumulative < 0; // net put writing pressure today (bullish — support building)
 
-    let obvCEUp   = ceObvDelta > 0;
-    let obvCEDown = ceObvDelta < 0;
-    let obvPEUp   = peObvDelta > 0;
-    let obvPEDown = peObvDelta < 0;
+    // ── Step 2: IV change (primary signal — overrides OBV when available) ────
+    // IV is calculated from Black-Scholes inversion on each 5-min candle using underlying spot price.
+    // IV change directly tells us WHO is active at this strike:
+    //   CE IV rising  (▲) → call buyers paying higher premium  = BUYING intent  → CE BUY
+    //   CE IV falling (▼) → call writers increasing supply     = WRITING intent → CE WRITE (resistance)
+    //   PE IV rising  (▲) → put buyers paying higher premium   = BUYING intent  → PE BUY  (bearish)
+    //   PE IV falling (▼) → put writers increasing supply      = WRITING intent → PE WRITE (support floor)
+    // Threshold ±0.3% filters out noise from small random tick movements.
+    // OBV cannot distinguish delta-driven price moves from actual buying/writing;
+    // IV change is model-based and independent of underlying direction.
+    let ceIvList = item['CE_IV'] || [];
+    let peIvList = item['PE_IV'] || [];
+    let ivCEUp = null, ivCEDown = null, ivPEUp = null, ivPEDown = null;
 
-    // --- CE OI classification ---
-    // OBV is the tiebreaker when price and OBV conflict — OBV reflects where volume actually went.
-    // Full weight when price+OBV agree; half weight when only OBV signals; 0.3w when only price signals.
-    // CE OI↑ + Price↓ + OBV↓ = call writing (bearish)
-    // CE OI↑ + Price↑ + OBV↑ = call buying (bullish)
-    // CE OI↓ + Price↑ + OBV↑ = short covering (bullish squeeze)
-    // CE OI↓ + Price↓ + OBV↓ = long unwinding (bearish)
+    if (ceIvList.length >= 2) {
+        // Find last two valid (non-null) IV values — nulls occur if spot data was missing for that candle
+        let ceIvCurr = null, ceIvPrev = null;
+        for (let _i = ceIvList.length - 1; _i >= 0 && ceIvCurr === null; _i--) if (ceIvList[_i].iv !== null) ceIvCurr = ceIvList[_i].iv;
+        for (let _i = ceIvList.length - 2; _i >= 0 && ceIvPrev === null; _i--) if (ceIvList[_i].iv !== null) ceIvPrev = ceIvList[_i].iv;
+        if (ceIvCurr !== null && ceIvPrev !== null) {
+            ivCEUp   = ceIvCurr > ceIvPrev + 0.3; // CE IV ↑ >0.3% = call buyers paying up = BUY signal
+            ivCEDown = ceIvCurr < ceIvPrev - 0.3; // CE IV ↓ >0.3% = call writers selling = WRITE signal (resistance)
+        }
+    }
+    if (peIvList.length >= 2) {
+        let peIvCurr = null, peIvPrev = null;
+        for (let _i = peIvList.length - 1; _i >= 0 && peIvCurr === null; _i--) if (peIvList[_i].iv !== null) peIvCurr = peIvList[_i].iv;
+        for (let _i = peIvList.length - 2; _i >= 0 && peIvPrev === null; _i--) if (peIvList[_i].iv !== null) peIvPrev = peIvList[_i].iv;
+        if (peIvCurr !== null && peIvPrev !== null) {
+            ivPEUp   = peIvCurr > peIvPrev + 0.3; // PE IV ↑ >0.3% = put buyers paying up = bearish (PE BUY)
+            ivPEDown = peIvCurr < peIvPrev - 0.3; // PE IV ↓ >0.3% = put writers selling = bullish (PE WRITE = support)
+        }
+    }
+
+    // IV overrides OBV when available — IV is direct (premium intent), OBV is indirect (price volume proxy)
+    if (ivCEUp !== null) { obvCEUp = ivCEUp;   obvCEDown = ivCEDown; }
+    if (ivPEUp !== null) { obvPEUp = ivPEUp;   obvPEDown = ivPEDown; }
+
+    // ── Step 3: CE OI Classification ─────────────────────────────────────────
+    // Determine if call positions are being written (resistance building) or bought (bullish breakout).
+    //
+    // When CE OI increases (chgCE > 0) — new call positions are being opened:
+    //   CE OI↑ + IV↓ (or OBV↓) → CE WRITE — writers selling calls, capping upside = RESISTANCE. Score −w
+    //   CE OI↑ + IV↑ (or OBV↑) → CE BUY   — buyers opening calls, expecting rally = BULLISH.  Score +w
+    //   Only IV/OBV signal (price flat/conflicting) → half weight (±w×0.5)
+    //   Only price signal (IV unavailable, OBV flat) → low weight (±w×0.3)
+    //
+    // When CE OI decreases (chgCE < 0) — existing call positions are being closed:
+    //   CE OI↓ + price↑ + IV↑ → CE COV    — short-covering: trapped writers buying back = BULLISH SQUEEZE. Score +w
+    //   CE OI↓ + price↓ + IV↓ → CE UNWIND — long-unwinding: call buyers exiting = bearish confidence fading. Score −w
     let ceLabel = 'CE NEUTRAL';
     if (chgCE > 0) {
-        if      (priceDown && obvCEDown) { ceLabel = 'CE WRITE';  score -= w; }
-        else if (priceUp   && obvCEUp)   { ceLabel = 'CE BUY';    score += w; }
-        else if (obvCEDown)              { ceLabel = 'CE WRITE';  score -= w * 0.5; } // OBV overrides price
-        else if (obvCEUp)                { ceLabel = 'CE BUY';    score += w * 0.5; } // OBV overrides price
-        else if (priceDown)              { ceLabel = 'CE WRITE';  score -= w * 0.3; } // price only, OBV flat
-        else if (priceUp)                { ceLabel = 'CE BUY';    score += w * 0.3; } // price only, OBV flat
+        // New CE positions opened — writing or buying?
+        if      (priceDown && obvCEDown) { ceLabel = 'CE WRITE';  score -= w;       } // CE OI↑ + price↓ + IV/OBV↓ = call writing = RESISTANCE ✓
+        else if (priceUp   && obvCEUp)   { ceLabel = 'CE BUY';    score += w;       } // CE OI↑ + price↑ + IV/OBV↑ = call buying = BULLISH ✓
+        else if (obvCEDown)              { ceLabel = 'CE WRITE';  score -= w * 0.5; } // CE OI↑ + IV/OBV↓ only = likely writing despite price flat
+        else if (obvCEUp)                { ceLabel = 'CE BUY';    score += w * 0.5; } // CE OI↑ + IV/OBV↑ only = likely buying despite price flat
+        else if (priceDown)              { ceLabel = 'CE WRITE';  score -= w * 0.3; } // CE OI↑ + price↓ only = weak write signal (IV not available)
+        else if (priceUp)                { ceLabel = 'CE BUY';    score += w * 0.3; } // CE OI↑ + price↑ only = weak buy signal
     } else if (chgCE < 0) {
-        if      (priceUp   && obvCEUp)   { ceLabel = 'CE COV';    score += w; }
-        else if (priceDown && obvCEDown) { ceLabel = 'CE UNWIND'; score -= w; }
-        else if (obvCEUp)                { ceLabel = 'CE COV';    score += w * 0.5; }
-        else if (obvCEDown)              { ceLabel = 'CE UNWIND'; score -= w * 0.5; }
-        else if (priceUp)                { ceLabel = 'CE COV';    score += w * 0.3; }
-        else if (priceDown)              { ceLabel = 'CE UNWIND'; score -= w * 0.3; }
+        // Existing CE positions closed — covering or unwinding?
+        if      (priceUp   && obvCEUp)   { ceLabel = 'CE COV';    score += w;       } // CE OI↓ + price↑ + IV↑ = short covering = BULLISH SQUEEZE ✓
+        else if (priceDown && obvCEDown) { ceLabel = 'CE UNWIND'; score -= w;       } // CE OI↓ + price↓ + IV↓ = long unwinding = bearish conviction ✓
+        else if (obvCEUp)                { ceLabel = 'CE COV';    score += w * 0.5; } // CE OI↓ + IV↑ only = likely short covering
+        else if (obvCEDown)              { ceLabel = 'CE UNWIND'; score -= w * 0.5; } // CE OI↓ + IV↓ only = likely unwinding
+        else if (priceUp)                { ceLabel = 'CE COV';    score += w * 0.3; } // price signal only
+        else if (priceDown)              { ceLabel = 'CE UNWIND'; score -= w * 0.3; } // price signal only
     }
 
-    // --- PE OI classification ---
-    // PE OI↑ + Price↑ + OBV↓ = put writing (bullish — floor being built)
-    // PE OI↑ + Price↓ + OBV↑ = put buying (bearish — hedging/speculating fall)
-    // PE OI↓ + Price↓ + OBV↓ = put short covering (bearish — writers buying back)
-    // PE OI↓ + Price↑ + OBV↑ = put long unwinding (mildly bullish)
+    // ── Step 4: PE OI Classification ─────────────────────────────────────────
+    // Determine if put positions are being written (support building) or bought (bearish hedge).
+    //
+    // When PE OI increases (chgPE > 0) — new put positions are being opened:
+    //   PE OI↑ + IV↓ (or OBV↓) → PE WRITE — writers selling puts, building a support floor = BULLISH.   Score +w
+    //   PE OI↑ + IV↑ (or OBV↑) → PE BUY   — buyers buying puts for protection/speculation = BEARISH.   Score −w
+    //
+    //   Strong RESISTANCE signal (both sides confirm):
+    //     CE OI↑ + CE IV↓ (CE WRITE) + PE OI↑ + PE IV↑ (PE BUY) → getOISignal() = 'SELL'
+    //     Interpretation: call writers capping the top + put buyers hedging against fall = double-confirmed resistance
+    //
+    //   Strong SUPPORT signal (both sides confirm):
+    //     CE OI↑ + CE IV↑ (CE BUY) + PE OI↑ + PE IV↓ (PE WRITE) → getOISignal() = 'BUY'
+    //     Interpretation: call buyers expecting breakout + put writers confident floor holds = double-confirmed support
+    //
+    // When PE OI decreases (chgPE < 0) — existing put positions are being closed:
+    //   PE OI↓ + price↓ + IV↓ → PE COV    — put writers buying back (short covering), expecting more downside. Score −w
+    //   PE OI↓ + price↑ + IV↑ → PE UNWIND — put longs exiting (long unwinding), bearish hedge removed = mildly bullish. Score +w×0.5
     let peLabel = 'PE NEUTRAL';
     if (chgPE > 0) {
-        if      (priceUp   && obvPEDown) { peLabel = 'PE WRITE';  score += w; }
-        else if (priceDown && obvPEUp)   { peLabel = 'PE BUY';    score -= w; }
-        else if (obvPEDown)              { peLabel = 'PE WRITE';  score += w * 0.5; } // OBV overrides price
-        else if (obvPEUp)                { peLabel = 'PE BUY';    score -= w * 0.5; } // OBV overrides price
-        else if (priceUp)                { peLabel = 'PE WRITE';  score += w * 0.3; }
-        else if (priceDown)              { peLabel = 'PE BUY';    score -= w * 0.3; }
+        // New PE positions opened — writing (support) or buying (bearish hedge)?
+        if      (priceUp   && obvPEDown) { peLabel = 'PE WRITE';  score += w;       } // PE OI↑ + price↑ + IV/OBV↓ = put writing = SUPPORT FLOOR ✓
+        else if (priceDown && obvPEUp)   { peLabel = 'PE BUY';    score -= w;       } // PE OI↑ + price↓ + IV/OBV↑ = put buying = BEARISH (downside hedge) ✓
+        else if (obvPEDown)              { peLabel = 'PE WRITE';  score += w * 0.5; } // PE OI↑ + IV/OBV↓ only = likely put writing (support)
+        else if (obvPEUp)                { peLabel = 'PE BUY';    score -= w * 0.5; } // PE OI↑ + IV/OBV↑ only = likely put buying (bearish)
+        else if (priceUp)                { peLabel = 'PE WRITE';  score += w * 0.3; } // price signal only = weak support signal
+        else if (priceDown)              { peLabel = 'PE BUY';    score -= w * 0.3; } // price signal only = weak bearish signal
     } else if (chgPE < 0) {
-        if      (priceDown && obvPEDown) { peLabel = 'PE COV';    score -= w; }
-        else if (priceUp   && obvPEUp)   { peLabel = 'PE UNWIND'; score += w * 0.5; }
-        else if (obvPEDown)              { peLabel = 'PE COV';    score -= w * 0.5; }
-        else if (obvPEUp)                { peLabel = 'PE UNWIND'; score += w * 0.3; }
-        else if (priceDown)              { peLabel = 'PE COV';    score -= w * 0.3; }
-        else if (priceUp)                { peLabel = 'PE UNWIND'; score += w * 0.3; }
+        // Existing PE positions closed — covering or unwinding?
+        if      (priceDown && obvPEDown) { peLabel = 'PE COV';    score -= w;       } // PE OI↓ + price↓ + IV↓ = put writers covering = more downside expected ✓
+        else if (priceUp   && obvPEUp)   { peLabel = 'PE UNWIND'; score += w * 0.5; } // PE OI↓ + price↑ + IV↑ = put longs exiting = bearish hedge removed (mildly bullish) ✓
+        else if (obvPEDown)              { peLabel = 'PE COV';    score -= w * 0.5; } // IV/OBV↓ only
+        else if (obvPEUp)                { peLabel = 'PE UNWIND'; score += w * 0.3; } // IV/OBV↑ only
+        else if (priceDown)              { peLabel = 'PE COV';    score -= w * 0.3; } // price signal only
+        else if (priceUp)                { peLabel = 'PE UNWIND'; score += w * 0.3; } // price signal only
     }
 
-    // Total OI wall: large PE OI = support floor; large CE OI = resistance ceiling
-    if      (oiPE > oiCE) score += 0.5;
-    else if (oiCE > oiPE) score -= 0.5;
+    // ── Step 5: OI Wall (absolute OI, not change) ────────────────────────────
+    // Even without any OI change today, a large standing OI creates a gravitational wall.
+    // Large PE OI > CE OI at strike = strong support floor (many put writers defending this level). +0.5
+    // Large CE OI > PE OI at strike = strong resistance ceiling (many call writers capping here). −0.5
+    if      (oiPE > oiCE) score += 0.5; // PE wall > CE wall = support dominant
+    else if (oiCE > oiPE) score -= 0.5; // CE wall > PE wall = resistance dominant
 
     return { score: score, ceLabel: ceLabel, peLabel: peLabel };
 }
@@ -1353,8 +2033,19 @@ function computeOIScoreFromData(oiData) {
         score += scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange).score;
     });
 
-    // Weighted PCR: ATM and ATM±1 count 3×, farther strikes 1×
-    // Deep OTM hedging skews raw PCR; weighting focuses on directionally relevant strikes
+    // ── PCR (Put-Call Ratio) signal ───────────────────────────────────────────
+    // PCR = Total PE OI / Total CE OI across all scanned strikes.
+    // PCR > 1.0 → more put OI than call OI = put writers dominating = bullish (support floor stronger than resistance ceiling)
+    // PCR < 1.0 → more call OI than put OI = call writers dominating = bearish (resistance stronger than support)
+    // PCR > 1.3 = strong bullish bias; PCR < 0.7 = strong bearish bias.
+    //
+    // Weighted PCR: ATM strike counts 3×, all others 1×.
+    // Deep OTM options are often institutional hedges unrelated to intraday direction;
+    // weighting ATM focuses the ratio on the strikes that actually matter for today's move.
+    //
+    // chPCR = same ratio but using OI change (today's new positions only, not standing OI).
+    // chPCR rising intraday = fresh money flowing into puts = bearish bias building.
+    // chPCR falling intraday = fresh money flowing into calls = bullish bias building.
     let weightedPEOI = 0, weightedCEOI = 0;
     let weightedChPEOI = 0, weightedChCEOI = 0;
     jQ.each(oiData.tableData, function (index, item) {
@@ -1364,19 +2055,21 @@ function computeOIScoreFromData(oiData) {
         weightedChPEOI += parseFloat(item['CHG_OI_PE']) * w;
         weightedChCEOI += parseFloat(item['CHG_OI_CE']) * w;
     });
-    let pcr   = weightedCEOI   > 0 ? weightedPEOI   / weightedCEOI   : 1;
-    let chPcr = weightedChCEOI > 0 ? weightedChPEOI / weightedChCEOI : 1;
+    let pcr   = weightedCEOI   > 0 ? weightedPEOI   / weightedCEOI   : 1; // standing PCR
+    let chPcr = weightedChCEOI > 0 ? weightedChPEOI / weightedChCEOI : 1; // intraday change PCR
 
-    if      (pcr > 1.3)              score += 1;
-    else if (pcr >= 1.0)             score += 0.5;
-    else if (pcr >= 0.7)             score -= 0.5;
-    else                             score -= 1;
+    // Standing PCR score: reflects where the majority of option writers have built walls
+    if      (pcr > 1.3)              score += 1;    // PCR >1.3: strong put wall = bullish (support dominant)
+    else if (pcr >= 1.0)             score += 0.5;  // PCR 1–1.3: mild put dominance = slight bullish
+    else if (pcr >= 0.7)             score -= 0.5;  // PCR 0.7–1: call dominance = slight bearish
+    else                             score -= 1;    // PCR <0.7: heavy call wall = bearish (resistance dominant)
 
+    // Change PCR score: reflects fresh money direction TODAY
     if (!isNaN(chPcr)) {
-        if      (chPcr > 1.3)        score += 0.5;
+        if      (chPcr > 1.3)        score += 0.5;  // New put OI >> new call OI = fresh bullish positions
         else if (chPcr >= 1.0)       score += 0.25;
         else if (chPcr >= 0.7)       score -= 0.25;
-        else                         score -= 0.5;
+        else                         score -= 0.5;  // New call OI >> new put OI = fresh bearish positions
     }
 
     return parseFloat(score.toFixed(2));
@@ -1395,7 +2088,7 @@ async function fetchWeightedStocksOIScore() {
 
     for (let name of weightedNames) {
         if (alreadyComputed.has(name)) continue;
-        jQ("#processing-trend").html("OI Scan: " + name);
+        _gtbProgress('OI: ' + name);
         try {
             // strikToShowOverride = 2 → ATM-2, ATM-1, ATM, ATM+1, ATM+2 (5 strikes)
             let oiData = await showTrendingOI(name, 2);
@@ -1414,7 +2107,7 @@ async function fetchWeightedStocksOIScore() {
             console.log("OI score error for " + name, e);
         }
     }
-    jQ("#processing-trend").html("OI scan done");
+    _gtbProgress('OI scan done', 'green');
 }
 
 // Maps futures REMARK type to a +1/0/-1 score signal
@@ -1579,11 +2272,114 @@ function setScore() {
 
     // --- Final market signal (score + VIX + futures conflict + 9:15 pattern) ---
     let marketSignal = getMarketSignal(SCORE, breakOutNineFifteen);
-    let signalHtml = '<div class="gtb-signal-block">'
-    signalHtml += '<div class="sv-badge ' + marketSignal.color + ' gtb-signal-main-badge">' + marketSignal.signal + '</div>'
-    signalHtml += '<div class="gtb-signal-reason">' + marketSignal.reason + '</div>'
+
+    // ── Unified signal card render ────────────────────────────────────────────
+    // Maps signal name → accent colour + icon
+    const SIG_META = {
+        'STRONG BUY':  { accent: '#3fb950', icon: 'bi-rocket-takeoff-fill',  dimBg: 'rgba(63,185,80,0.12)'  },
+        'BUY':         { accent: '#3fb950', icon: 'bi-arrow-up-circle-fill', dimBg: 'rgba(63,185,80,0.08)'  },
+        'SELL':        { accent: '#f85149', icon: 'bi-arrow-down-circle-fill',dimBg: 'rgba(248,81,73,0.08)' },
+        'STRONG SELL': { accent: '#f85149', icon: 'bi-exclamation-octagon-fill',dimBg:'rgba(248,81,73,0.12)'},
+        'WAIT':        { accent: '#fbbf24', icon: 'bi-hourglass-split',      dimBg: 'rgba(251,191,36,0.08)' },
+        'NO TRADE':    { accent: '#fbbf24', icon: 'bi-slash-circle-fill',    dimBg: 'rgba(251,191,36,0.08)' },
+    };
+    let sm   = SIG_META[marketSignal.signal] || { accent: '#7d8590', icon: 'bi-dash-circle', dimBg: 'rgba(125,133,144,0.08)' };
+    let ts   = marketSignal.tradeSignal || { outcome: 'Sideways', level: 'No trade' };
+    let outc = ts.outcome || 'Sideways';
+    let outcAccent = outc === 'Buy' ? '#3fb950' : outc === 'Sell' ? '#f85149' : outc === 'Buy/Sell' ? '#fbbf24' : '#7d8590';
+
+    let signalHtml = '<div style="background:' + sm.dimBg + ';border:1px solid ' + sm.accent + '33;border-radius:6px;padding:8px 10px;">'
+
+    // Row 1: big signal badge + 9:15 pattern outcome pill on the right
+    signalHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+    signalHtml += '<span style="font-size:0.85rem;font-weight:900;color:' + sm.accent + ';letter-spacing:0.5px;">'
+                + '<i class="bi ' + sm.icon + '" style="margin-right:5px;"></i>' + marketSignal.signal + '</span>'
+    signalHtml += '<span style="font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:10px;background:' + outcAccent + '22;color:' + outcAccent + ';border:1px solid ' + outcAccent + '55;">'
+                + outc + '</span>'
+    signalHtml += '</div>'
+
+    // Row 2: reason text
+    signalHtml += '<div style="font-size:0.62rem;color:var(--gtb-muted,#7d8590);line-height:1.4;margin-bottom:6px;">' + marketSignal.reason + '</div>'
+
+    // Row 3: divider
+    signalHtml += '<div style="border-top:1px solid ' + sm.accent + '22;margin-bottom:6px;"></div>'
+
+    // Row 4: entry level — derived from 9:15 close combo via inline strategyMap
+    let n915   = breakOutNineFifteen['NIFTY 50']  ? breakOutNineFifteen['NIFTY 50']['CLOSE_9_15']  : 'B/W';
+    let sx915  = breakOutNineFifteen['SENSEX']     ? breakOutNineFifteen['SENSEX']['CLOSE_9_15']    : 'B/W';
+    let bn915  = breakOutNineFifteen['NIFTY BANK'] ? breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']: 'B/W';
+    var _norm915 = function(v) { return (v === 'AST') ? 'ASO' : (v === 'BST') ? 'BSO' : (v || 'B/W'); };
+    var _stratKey = _norm915(n915) + '-' + _norm915(sx915) + '-' + _norm915(bn915);
+    // Inline copy of strategyMap so level is always resolved without relying on call chain
+    var _stratLookup = {
+        'ASO-ASO-ASO': { outcome:'Buy',      level:'at BSO/BST' },
+        'ASO-ASO-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'ASO-ASO-B/W': { outcome:'Buy',      level:'at BSO/BST' },
+        'ASO-BSO-ASO': { outcome:'Buy',      level:'at BSO/BST — Sensex lag, Nifty+Bank agree' },
+        'ASO-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST — bank sector leading down' },
+        'ASO-BSO-B/W': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'ASO-B/W-ASO': { outcome:'Buy',      level:'at BSO/BST' },
+        'ASO-B/W-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'ASO-B/W-B/W': { outcome:'Buy',      level:'at BSO/BST — Nifty leading, wait for others' },
+        'BSO-ASO-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'BSO-ASO-BSO': { outcome:'Sell',     level:'at ASO/AST — Nifty+Bank down, Sensex lagging' },
+        'BSO-ASO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+        'BSO-BSO-ASO': { outcome:'Sell',     level:'at ASO/AST — bank sector resilient but outvoted' },
+        'BSO-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST' },
+        'BSO-BSO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+        'BSO-B/W-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'BSO-B/W-BSO': { outcome:'Sell',     level:'at ASO/AST' },
+        'BSO-B/W-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+        'B/W-ASO-ASO': { outcome:'Buy',      level:'at BSO/BST — Nifty indecisive but both others confirm' },
+        'B/W-ASO-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'B/W-ASO-B/W': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'B/W-BSO-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+        'B/W-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST — both Sensex+Bank confirm down' },
+        'B/W-BSO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+        'B/W-B/W-ASO': { outcome:'Buy',      level:'at BSO/BST — Bank Nifty leading' },
+        'B/W-B/W-BSO': { outcome:'Sell',     level:'at ASO/AST — Bank Nifty leading down' },
+        'B/W-B/W-B/W': { outcome:'Sideways', level:'No trade — all indices in range' }
+    };
+    var _stratEntry = _stratLookup[_stratKey] || { outcome: 'Sideways', level: 'No trade' };
+    var _stratLevel = _stratEntry.level;
+    var _stratOutc  = _stratEntry.outcome;
+    var _stratAccent = _stratOutc === 'Buy' ? '#3fb950' : _stratOutc === 'Sell' ? '#f85149' : _stratOutc === 'Buy/Sell' ? '#fbbf24' : '#7d8590';
+    var levelIcon = _stratOutc === 'Buy' ? 'bi-arrow-up-circle' : _stratOutc === 'Sell' ? 'bi-arrow-down-circle' : _stratOutc === 'Buy/Sell' ? 'bi-arrow-left-right' : 'bi-dash-circle';
+
+    // Level description — prominent, always shown
+    signalHtml += '<div style="font-size:0.72rem;font-weight:700;color:' + _stratAccent + ';'
+                + 'display:flex;align-items:flex-start;gap:5px;line-height:1.4;">'
+                + '<i class="bi ' + levelIcon + '" style="margin-top:2px;flex-shrink:0;font-size:0.75rem;"></i>'
+                + '<span>' + _stratLevel + '</span>'
+                + '</div>'
+
     signalHtml += '</div>'
     jQ("#market-final-signal").html(signalHtml);
+    jQ("#trend-scoreboard-outcome").html(''); // merged into market-final-signal above
+
+    // ── SENSEX + GIFT NIFTY 9:15 badges on their own panels ─────────────────
+    (function() {
+        function _915badge(val) {
+            var norm = (val === 'AST' || val === 'ASO') ? 'ASO'
+                     : (val === 'BST' || val === 'BSO') ? 'BSO' : 'B/W';
+            var raw  = val || 'B/W';
+            var bull = (val === 'AST' || val === 'ASO');
+            var bear = (val === 'BST' || val === 'BSO');
+            var bg   = bull ? '#3fb95022' : bear ? '#f8514922' : '#ffffff0f';
+            var col  = bull ? '#3fb950'   : bear ? '#f85149'   : '#7d8590';
+            var bdr  = bull ? '#3fb95055' : bear ? '#f8514955' : '#ffffff20';
+            var icon = bull ? 'bi-arrow-up-short' : bear ? 'bi-arrow-down-short' : 'bi-dash';
+            return '<span style="display:inline-flex;align-items:center;gap:1px;'
+                 + 'padding:1px 5px;border-radius:4px;background:' + bg + ';color:' + col
+                 + ';border:1px solid ' + bdr + ';font-weight:600;">'
+                 + '<i class="bi ' + icon + '"></i>' + raw
+                 + '</span>';
+        }
+        var sx = (breakOutNineFifteen['SENSEX']     || {})['CLOSE_9_15'] || null;
+        var gn = (breakOutNineFifteen['GIFT NIFTY'] || {})['CLOSE_9_15'] || null;
+        jQ('#SENSEX-915-badge').html(sx ? _915badge(sx) : '');
+        jQ('#GIFT-NIFTY-915-badge').html(gn ? _915badge(gn) : '');
+    })();
 
     // Update top bar signal pill
     try { updateTopBarSignal(marketSignal.signal, getTradingWindow()); } catch(e) {}
@@ -1617,32 +2413,7 @@ function setScore() {
     try { renderExitBanner(); } catch(e) {}
     try { updateTopBarTickers(); } catch(e) {}
 
-    // --- 9:15 pattern signal (kept separate — direction context, not overridden by score) ---
-    let output = marketSignal.tradeSignal;
-
-    let html = ''
-
-    html += '<div class="row">'
-
-    html += '<div class="col-md-12">'
-    if (output['outcome'] == "Buy") {
-        html += '<span class="sv-badge sv-badge-green" style="font-size:0.75rem;padding:4px 10px;">' + output['outcome'] + '</span>';
-    } else if (output['outcome'] == "Sell") {
-        html += '<span class="sv-badge sv-badge-red" style="font-size:0.75rem;padding:4px 10px;">' + output['outcome'] + '</span>';
-    } else if (output['outcome'] == "Sideways") {
-        html += '<span class="sv-badge sv-badge-muted" style="font-size:0.75rem;padding:4px 10px;">' + output['outcome'] + '</span>';
-    } else {
-        html += '<span class="sv-badge sv-badge-amber" style="font-size:0.75rem;padding:4px 10px;">' + output['outcome'] + '</span>';
-    }
-    html += '</div>'
-
-    html += '<div class="col-md-12">'
-    html += '<div>Level : ' + output['level'] + '</div>'
-    html += '</div>'
-
-    html += '</div>'
-
-    jQ("#trend-scoreboard-outcome").html(html);
+    // trend-scoreboard-outcome is now merged into market-final-signal above
 
     html = ''
     html += '<table class="gtb-score-table" style="width:100%;">'
@@ -1756,6 +2527,13 @@ function showStockComponent() {
     return ''; // table now lives in #gtb-right inside commonMarkupPlaceHolder
 }
 
+// Renders futures data returned by showFutureDetails() into the dashboard UI.
+// Updates:
+//   #{tempName}-futures       — LONG/SHORT signal badges (PLUS/MINUS)
+//   #{tempName}-futures-premium — premium badge (green if contango/+ve, red if backwardation)
+//   #{tempName}-futures-vwap  — VWAP trend label (price vs VWAP = bullish/bearish)
+//   #{tempName}-futures-trend — futures REMARK badge (LONG/SHORT/UNWINDING etc.)
+// Also stores remark in INSTRUMENT_SCORE_MAP[name].futures_trend for composite score.
 function setFutureDetails(name, data) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -1815,6 +2593,26 @@ jQ(document).on("click", ".show-notes", function () {
     showNotes();
 });
 
+// Persist time picker value across topbar rebuilds
+jQ(document).on("change", "#gtb-hist-time", function() {
+    var t = jQ(this).val() || '';
+    if (t) localStorage.setItem('GTB_HIST_TIME', t);
+    else   localStorage.removeItem('GTB_HIST_TIME');
+});
+
+// Settings gear dropdown toggle
+jQ(document).on("click", "#gtb-settings-toggle", function(e) {
+    e.stopPropagation();
+    var menu = jQ("#gtb-settings-menu");
+    menu.toggle();
+});
+// Close settings menu when clicking outside
+jQ(document).on("click", function(e) {
+    if (!jQ(e.target).closest(".gtb-settings-wrap").length) {
+        jQ("#gtb-settings-menu").hide();
+    }
+});
+
 jQ(document).on("click", ".refresh-scoreboard", function () {
     let that = jQ(this);
     that.attr("disabled", true);
@@ -1835,6 +2633,14 @@ function popupWinControls(popupClass) {
         + '</span>';
 }
 
+// After replacing a popup's titlebar text with our custom controls via popupWinControls(),
+// call this to hide the native PopupWindow library buttons — otherwise both sets appear.
+// The library adds individual buttons (.popupwindow_titlebar_button) — there is no
+// wrapper container, so we target the shared base class that all four buttons carry.
+function hideNativePopupButtons(popupClass) {
+    jQ('.' + popupClass).find('.popupwindow_titlebar_button').hide();
+}
+
 jQ(document).on("click", ".popup-win-close", function () {
     let cls = jQ(this).closest('[data-popup]').data('popup');
     jQ('.' + cls).find('.popupwindow_titlebar_button_close').trigger('click');
@@ -1844,8 +2650,10 @@ jQ(document).on("click", ".popup-win-restore", function () {
     let btn   = jQ(this);
     let cls   = btn.closest('[data-popup]').data('popup');
     let popEl = jQ('.' + cls);
-    let isMax = popEl.data('maximized');
+    let isMax = popEl.data('maximized') || false;
     popEl.find('.popupwindow_titlebar_button_maximize').trigger('click');
+    // Toggle and persist maximized state so the next click goes the other way
+    popEl.data('maximized', !isMax);
     if (isMax) {
         btn.find('i').removeClass('bi-fullscreen-exit').addClass('bi-fullscreen');
         btn.attr('title', 'Maximize').removeClass('is-active');
@@ -1853,12 +2661,13 @@ jQ(document).on("click", ".popup-win-restore", function () {
         btn.find('i').removeClass('bi-fullscreen').addClass('bi-fullscreen-exit');
         btn.attr('title', 'Restore').addClass('is-active');
     }
-    // Re-show content if it was minimized
-    let ctrlGroup = btn.closest('[data-popup]');
+    // Re-show content if it was collapsed by minimize
     let collapseTarget = popEl.find('.popup-win-content-area');
     if (collapseTarget.length) collapseTarget.show();
     btn.closest('[data-popup]').find('.popup-win-minimize')
         .removeClass('is-active').find('i').removeClass('bi-chevron-up').addClass('bi-dash');
+    // Restore any height constraints imposed by minimize
+    popEl.find('.popupwindow_content').show();
     popEl.css({ height: '', 'min-height': '', overflow: '' });
 });
 
@@ -1906,8 +2715,10 @@ jQ(document).on("click", ".gtb-win-minimize", function () {
 jQ(document).on("click", ".gtb-win-restore", function () {
     let popupEl = jQ('.popup-custom-style-groot-trade-bot');
     let btn     = jQ(this);
-    let isMaximized = popupEl.data('maximized');
+    let isMaximized = popupEl.data('maximized') || false;
     popupEl.find('.popupwindow_titlebar_button_maximize').trigger('click');
+    // Persist toggle state so next click goes the other way
+    popupEl.data('maximized', !isMaximized);
     if (isMaximized) {
         btn.find('i').removeClass('bi-fullscreen-exit').addClass('bi-fullscreen');
         btn.attr('title', 'Maximise').removeClass('is-active');
@@ -1938,6 +2749,45 @@ jQ(document).on("click", ".gtb-collapse-toggle", function (e) {
         body.addClass("hidden");
         jQ(this).addClass("collapsed");
     }
+    // LightweightCharts canvas can blank when sibling sections change layout.
+    // Re-trigger resize on all LW charts in the same column after collapse.
+    let col = jQ(this).closest('.gtb-instr-col, .gtb-grid-card');
+    col.find('.gtb-chart-area').each(function() {
+        let lwc = this._lwChart;
+        if (lwc) {
+            setTimeout(function() {
+                try { lwc.resize(col[0] ? col[0].clientWidth - 2 : 300, lwc.options().height || 150); } catch(err) {}
+            }, 50);
+        }
+    });
+});
+
+// ── Global OI / Futures toggle ────────────────────────────────────────────────
+let _gtbOIVisible = true;
+jQ(document).on('click', '#gtb-toggle-oi-futures', function() {
+    _gtbOIVisible = !_gtbOIVisible;
+    jQ('.gtb-collapsible').each(function() {
+        let header = jQ(this).find('.gtb-collapse-toggle');
+        let bodyId = header.data('target');
+        let body = jQ('#' + bodyId);
+        if (_gtbOIVisible) {
+            body.removeClass('hidden');
+            header.removeClass('collapsed');
+        } else {
+            body.addClass('hidden');
+            header.addClass('collapsed');
+        }
+    });
+    jQ(this).html(_gtbOIVisible
+        ? '<i class="bi bi-eye-slash"></i> Hide OI/FUT'
+        : '<i class="bi bi-eye"></i> Show OI/FUT');
+    // Resize all LW charts after panels collapse/expand
+    setTimeout(function() {
+        jQ('.gtb-chart-area').each(function() {
+            let lwc = this._lwChart;
+            if (lwc) { try { lwc.resize(jQ(this).width() || 300, 150); } catch(e) {} }
+        });
+    }, 80);
 });
 
 // ── European Market Open Alert ────────────────────────────────────────────────
@@ -2098,8 +2948,14 @@ function renderTopTradesPanel() {
         let scoreStr = (st.score > 0 ? '+' : '') + st.score;
         let volClass = parseFloat(st.volRatio) >= 1.3 ? 'vol-high' : 'vol-low';
         let strongDot = st.strong ? '<span class="tr-strong-dot" title="Strong setup"></span>' : '';
+        let kiteToken = INSTRUMENT_TOKENS[st.name] || '';
+        let kiteUrl   = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/NSE/' + st.name + '/' + kiteToken;
+        let sbUrl     = 'https://web.sensibull.com/option-strategy-builder?instrument_symbol=' + st.name;
         h += '<div class="gtb-trade-row ' + cls + '">';
-        h += '<span class="tr-name">' + strongDot + st.name + '</span>';
+        h += '<span class="tr-name">' + strongDot
+            + '<a href="' + kiteUrl + '" target="_blank" class="oi-link" title="Kite chart" style="font-weight:700;">' + st.name + '</a>'
+            + '<a href="' + sbUrl + '" target="_blank" class="oi-link" title="Sensibull Strategy Builder" style="margin-left:3px;font-size:0.58rem;">SB</a>'
+            + '</span>';
         h += '<span class="tr-score">' + scoreStr + '</span>';
         h += '<span class="tr-vol ' + volClass + '" title="Volume vs avg">' + st.volRatio + 'x</span>';
         h += '<span class="tr-chg ' + chgCls + '">' + (parseFloat(st.pChange) > 0 ? '+' : '') + st.pChange + '%</span>';
@@ -2112,6 +2968,11 @@ function renderTopTradesPanel() {
 // Reads the user-selected direction from the LONG/SHORT/NONE buttons.
 // Only checks exit for the direction the user says they are in.
 let _gtbTradeDir = localStorage.getItem('GTB_TRADE_DIR') || 'NONE';
+
+// Persist #scan-weighted-only state across refreshes (topbar is rebuilt each refresh)
+jQ(document).on('change', '#scan-weighted-only', function () {
+    localStorage.setItem('GTB_SCAN_WEIGHTED', jQ(this).is(':checked') ? '1' : '0');
+});
 
 jQ(document).on('click', '.gtb-dir-btn', function () {
     _gtbTradeDir = jQ(this).data('dir');
@@ -2345,62 +3206,167 @@ function showComponentOITable(name) {
         return 'OTM ' + diff;
     }
 
-    let html = '<div style="overflow-x:auto;">'
-    html += '<table class="table display nowrap oi-strike-table" style="width:100%;">'
+    // ── IV cell helper — shows current IV% with ▲/▼ direction arrow ───────────
+    function _ivCell(ivList) {
+        if (!ivList || !ivList.length) return '<span style="color:#7d8590;">—</span>';
+        let curr = null, prev = null;
+        for (let _i = ivList.length - 1; _i >= 0 && curr === null; _i--) if (ivList[_i].iv !== null) curr = ivList[_i].iv;
+        for (let _i = ivList.length - 2; _i >= 0 && prev === null; _i--) if (ivList[_i].iv !== null) prev = ivList[_i].iv;
+        if (curr === null) return '<span style="color:#7d8590;">—</span>';
+        let arrow = '', color = '#e6edf3';
+        if (prev !== null) {
+            let diff = curr - prev;
+            if (diff > 0.3)       { arrow = '▲'; color = '#f85149'; }
+            else if (diff < -0.3) { arrow = '▼'; color = '#3fb950'; }
+        }
+        return '<span style="color:' + color + ';">' + curr.toFixed(1) + arrow + '</span>';
+    }
 
-    // Group header row
-    html += '<thead><tr>'
+    // ── Build per-strike signal labels (CE/PE outcome interpretation) ──────────
+    let priceChange = stock[0] && stock[0]['DATA'] ? (stock[0]['DATA'].priceChange || 0) : 0;
+    let strikeSignalMap = {};
+    strikes.forEach(function(s) {
+        if (s) strikeSignalMap[s['STRIKE']] = scoreOIStrikeForSignal(s, !!s['ATM_STRIKE'], priceChange);
+    });
+
+    // ── Signal label cell ───────────────────────────────────────────────────────
+    function _signalBadge(label) {
+        if (!label || label === '—') return '<span style="color:#7d8590;font-size:0.65rem;">—</span>';
+        let bg = '#444';
+        if (label === 'CE WRITE' || label === 'CE UNWIND') bg = '#6b1a1a';      // bearish — resistance
+        else if (label === 'CE BUY'   || label === 'CE COV')   bg = '#1a4a1a';  // bullish — breakout
+        else if (label === 'PE WRITE' || label === 'PE UNWIND') bg = '#1a4a1a'; // bullish — support
+        else if (label === 'PE BUY'   || label === 'PE COV')    bg = '#6b1a1a'; // bearish — put buyers
+        let color = (bg === '#1a4a1a') ? '#3fb950' : (bg === '#6b1a1a') ? '#f85149' : '#aaa';
+        return '<span style="font-size:0.62rem;padding:1px 4px;border-radius:3px;background:' + bg + ';color:' + color + ';white-space:nowrap;">' + label + '</span>';
+    }
+
+    // ── Per-group background — alternating subtle tints for vertical separation ──
+    let groupBgs = ['rgba(255,255,255,0.02)', 'rgba(88,166,255,0.04)'];
+    function _groupBg(i) { return i === atmIdx ? 'rgba(88,166,255,0.08)' : groupBgs[i % 2]; }
+
+    // ── Separator style — 3px coloured left border on first col of each group ───
+    function _sepStyle(i) {
+        if (i === 0) return '';
+        let color = i === atmIdx ? '#58a6ff' : '#3d444d';
+        return 'border-left:3px solid ' + color + ';';
+    }
+
+    let html = '<div style="overflow-x:auto;">'
+    html += '<table class="table display nowrap oi-strike-table" style="width:100%;border-collapse:separate;border-spacing:0;">'
+    html += '<thead>'
+
+    // Row 1 — Strike group label (ITM / ATM / OTM) with separator
+    html += '<tr>'
     for (let i = 0; i < strikes.length; i++) {
         let gc = strikeGroupClass(i);
         let gl = strikeGroupLabel(i);
         let isATM = i === atmIdx;
-        let extraStyle = isATM ? 'font-weight:900;letter-spacing:0.5px;' : '';
-        html += '<th colspan="5" class="strike-colspan-class ' + gc + '" style="' + extraStyle + '">' + gl + '</th>'
+        let extraStyle = (isATM ? 'font-weight:900;letter-spacing:0.5px;' : '') + _sepStyle(i) + 'background:' + _groupBg(i) + ';';
+        html += '<th colspan="7" class="strike-colspan-class ' + gc + '" style="text-align:center;' + extraStyle + '">' + gl + '</th>'
     }
     html += '</tr>'
 
-    // Sub-header: CE | CE OBV | Strike | PE OBV | PE
+    // Row 2 — Column sub-headers with interpretation subtitle
+    //   Layout per strike group: CE Δ | CE OBV | CE IV% | STRIKE | PE IV% | PE OBV | PE Δ
+    let colDefs = [
+        { label: 'CE Δ',   hint: 'OI Change',   hintColor: '#f85149',
+          title: 'CE OI Change: +ve = new call positions (resistance). −ve = positions closed.' },
+        { label: 'CE OBV', hint: 'Vol Pressure', hintColor: '#f85149',
+          title: 'CE OBV: cumulative volume on up-ticks vs down-ticks today. +ve = call buying (bearish).' },
+        { label: 'CE IV%', hint: 'Implied Vol',  hintColor: '#58a6ff',
+          title: 'CE Implied Volatility %. ▲ = call buyers paying up (CE BUY / bullish). ▼ = call writers active (CE WRITE / resistance).' },
+        { label: 'STRIKE', hint: '',             hintColor: '',
+          title: 'Strike price. ATM = at-the-money.' },
+        { label: 'PE IV%', hint: 'Implied Vol',  hintColor: '#58a6ff',
+          title: 'PE Implied Volatility %. ▲ = put buyers paying up (PE BUY / bearish). ▼ = put writers active (PE WRITE / support floor).' },
+        { label: 'PE OBV', hint: 'Vol Pressure', hintColor: '#3fb950',
+          title: 'PE OBV: cumulative volume on up-ticks vs down-ticks today. +ve = put buying (bearish).' },
+        { label: 'PE Δ',   hint: 'OI Change',   hintColor: '#3fb950',
+          title: 'PE OI Change: +ve = new put positions (support). −ve = positions closed.' },
+    ];
     html += '<tr>'
     for (let i = 0; i < strikes.length; i++) {
         let isATM = i === atmIdx;
-        let cls = isATM ? 'oi-atm-subhdr' : '';
-        html += '<th class="number-align ' + cls + '">CE Δ</th>'
-        html += '<th class="number-align ' + cls + '">CE OBV</th>'
-        html += '<th class="text-align ' + cls + '">Strike</th>'
-        html += '<th class="number-align ' + cls + '">PE OBV</th>'
-        html += '<th class="number-align ' + cls + '">PE Δ</th>'
+        let atmCls = isATM ? 'oi-atm-subhdr' : '';
+        let bg = _groupBg(i);
+        // Bottom border colour matches the group's left-border colour — ties each header block together
+        let hdrBorderColor = isATM ? '#58a6ff' : '#3d444d';
+        colDefs.forEach(function(col, ci) {
+            let leftSep = (ci === 0) ? _sepStyle(i) : '';
+            let align = (col.label === 'STRIKE') ? 'center' : 'right';
+            html += '<th class="' + atmCls + '" style="background:' + bg + ';text-align:' + align + ';padding:3px 5px;border-bottom:2px solid ' + hdrBorderColor + ';' + leftSep + '" title="' + col.title + '">'
+                + '<div style="font-size:0.7rem;font-weight:700;">' + col.label + '</div>'
+                + (col.hint ? '<div style="font-size:0.58rem;color:' + col.hintColor + ';font-weight:400;line-height:1.1;">' + col.hint + '</div>' : '')
+                + '</th>'
+        });
     }
-    html += '</tr></thead><tbody><tr>'
+    html += '</tr>'
+    html += '</thead><tbody>'
 
     // Data row
+    html += '<tr>'
     for (let i = 0; i < strikes.length; i++) {
         let s = strikes[i];
-        if (!s) { html += '<td colspan="5"></td>'; continue; }
+        let sep = _sepStyle(i);
+        let bg = _groupBg(i);
+        if (!s) { html += '<td colspan="7" style="background:' + bg + ';' + sep + '"></td>'; continue; }
         let isATM = i === atmIdx;
-        let tdCls = isATM ? 'oi-atm-cell' : '';
+        let tdBase = 'background:' + bg + ';padding:4px 5px;font-size:0.72rem;vertical-align:middle;';
 
-        let ceObv = s['CE_OBV'][s['CE_OBV'].length - 1]['obv'];
-        let peObv = s['PE_OBV'][s['PE_OBV'].length - 1]['obv'];
+        let ceObvList = s['CE_OBV'], peObvList = s['PE_OBV'];
+        let ceObv = parseFloat(ceObvList[ceObvList.length-1]['obv']);
+        let peObv = parseFloat(peObvList[peObvList.length-1]['obv']);
 
         let ceChg = parseFloat(s['CHG_OI_CE']);
         let peChg = parseFloat(s['CHG_OI_PE']);
-        let ceColor = ceChg > 0 ? 'style="color:#f85149;"' : ceChg < 0 ? 'style="color:#3fb950;"' : '';
-        let peColor = peChg > 0 ? 'style="color:#3fb950;"' : peChg < 0 ? 'style="color:#f85149;"' : '';
+        let ceChgColor = ceChg > 0 ? '#f85149' : ceChg < 0 ? '#3fb950' : '#e6edf3';
+        let peChgColor = peChg > 0 ? '#3fb950' : peChg < 0 ? '#f85149' : '#e6edf3';
+        let ceObvColor = ceObv > 0 ? '#f85149' : ceObv < 0 ? '#3fb950' : '#e6edf3';
+        let peObvColor = peObv > 0 ? '#3fb950' : peObv < 0 ? '#f85149' : '#e6edf3';
 
         let strikeHtml = '<div style="display:flex;gap:4px;justify-content:center;align-items:center;">'
-            + '<span style="font-weight:' + (isATM ? '900' : '600') + ';">' + s['STRIKE'] + '</span>'
+            + '<span style="font-weight:' + (isATM ? '900' : '600') + ';font-size:0.75rem;">' + s['STRIKE'] + '</span>'
             + '<a href="' + link.replaceAll("##INSTRUMENT##", s.CE.tradingsymbol).replaceAll("##TOKEN##", s.CE.instrument_token) + '" target="_blank" class="oi-link">CE</a>'
             + '<a href="' + link.replaceAll("##INSTRUMENT##", s.PE.tradingsymbol).replaceAll("##TOKEN##", s.PE.instrument_token) + '" target="_blank" class="oi-link">PE</a>'
             + '</div>'
 
-        html += '<td class="number-align ' + tdCls + '" ' + ceColor + '>' + s['CHG_OI_CE'] + '</td>'
-        html += '<td class="number-align ' + tdCls + '">' + ceObv + '</td>'
-        html += '<td class="text-align ' + tdCls + '">' + strikeHtml + '</td>'
-        html += '<td class="number-align ' + tdCls + '">' + peObv + '</td>'
-        html += '<td class="number-align ' + tdCls + '" ' + peColor + '>' + s['CHG_OI_PE'] + '</td>'
+        let td = function(content, color, extraStyle) {
+            return '<td style="' + tdBase + (extraStyle||'') + 'text-align:right;color:' + (color||'#e6edf3') + ';">' + content + '</td>';
+        }
+        html += td(s['CHG_OI_CE'], ceChgColor, sep)
+        html += td(ceObv,              ceObvColor, '')
+        html += td(_ivCell(s['CE_IV']), '', '')
+        html += '<td style="' + tdBase + 'text-align:center;">' + strikeHtml + '</td>'
+        html += td(_ivCell(s['PE_IV']), '', '')
+        html += td(peObv,              peObvColor, '')
+        html += td(s['CHG_OI_PE'], peChgColor, '')
     }
+    html += '</tr>'
 
-    html += '</tr></tbody></table></div>'
+    // Signal outcome row — CE/PE signal badge + score per strike
+    html += '<tr>'
+    for (let i = 0; i < strikes.length; i++) {
+        let s = strikes[i];
+        let sep = _sepStyle(i);
+        let bg = _groupBg(i);
+        let tdBase = 'background:' + bg + ';padding:3px 5px;font-size:0.65rem;vertical-align:middle;border-top:1px dashed #30363d;';
+        if (!s) { html += '<td colspan="7" style="' + tdBase + sep + '"></td>'; continue; }
+        let sig = strikeSignalMap[s['STRIKE']] || {};
+        let ceLabel = sig.ceLabel || '—';
+        let peLabel = sig.peLabel || '—';
+        let score   = sig.score   || 0;
+        let scoreColor = score >= 2 ? '#3fb950' : score <= -2 ? '#f85149' : score > 0 ? '#85c785' : score < 0 ? '#e08080' : '#7d8590';
+
+        html += '<td colspan="3" style="' + tdBase + sep + 'text-align:center;">' + _signalBadge(ceLabel) + '</td>'
+        html += '<td style="' + tdBase + 'text-align:center;">'
+            + '<span title="Strike score" style="font-size:0.65rem;font-weight:700;color:' + scoreColor + ';">' + (score > 0 ? '+' : '') + score + '</span>'
+            + '</td>'
+        html += '<td colspan="3" style="' + tdBase + 'text-align:center;">' + _signalBadge(peLabel) + '</td>'
+    }
+    html += '</tr>'
+
+    html += '</tbody></table></div>'
     jQ("#" + tempName + "-component-oi-list-table").html(html);
 }
 
@@ -2613,19 +3579,16 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
         grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
         rightPriceScale: { borderColor: '#30363d', visible: true, scaleMargins: { top: 0.05, bottom: 0.05 } },
-        timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+        timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: false, rightOffset: 5 },
         localization: {
-            // LW Charts treats Unix seconds as UTC; Zerodha timestamps are IST (UTC+5:30).
-            // Add the IST offset so the displayed time matches the market clock.
-            timeFormatter: function(utcSec) {
-                var ist = new Date((utcSec + 19800) * 1000); // 19800 = 5.5 * 3600
-                var h = ('0' + ist.getUTCHours()).slice(-2);
-                var m = ('0' + ist.getUTCMinutes()).slice(-2);
-                return h + ':' + m;
+            timeFormatter: function(t) {
+                // Timestamps are pre-shifted by +19800s (IST offset) so UTC display = IST time
+                var d = new Date(t * 1000);
+                return ('0' + d.getUTCHours()).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2);
             }
         },
-        handleScroll: false,
-        handleScale: false,
+        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+        handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: { time: true, price: false } },
     });
 
     let candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
@@ -2634,9 +3597,11 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
         wickUpColor: '#3fb950', wickDownColor: '#f85149',
     });
 
+    let IST_OFFSET = 19800; // UTC+5:30 in seconds
     let lwData = candles.map(function(c) {
         return {
-            time: Math.floor(new Date(c[0]).getTime() / 1000),
+            // Add IST offset so LW's UTC display shows correct IST time on x-axis
+            time: Math.floor(new Date(c[0]).getTime() / 1000) + IST_OFFSET,
             open: parseFloat(c[1]), high: parseFloat(c[2]),
             low: parseFloat(c[3]),  close: parseFloat(c[4]),
         };
@@ -2655,16 +3620,73 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
             color: lineColors[key] || '#7d8590',
             lineWidth: 1,
             lineStyle: LightweightCharts.LineStyle.Dashed,
+            // axisLabelVisible shows a small coloured price marker on the Y-axis.
+            // title is intentionally kept as the short key only — the full "VIXU: 8933.24"
+            // text was rendering as a large opaque box on the line, covering the candles.
             axisLabelVisible: true,
-            title: rl.text || '',
+            title: key,
         });
     });
 
+    // ── Y-axis: include all ref lines so VIXU/BST are visible, but pad based on
+    //    the candle range (not total range) so candles stay prominent and aren't
+    //    squeezed into a thin band when ref lines are far above/below.
+    if (lwData.length) {
+        var candlePrices = [];
+        lwData.forEach(function(c) { candlePrices.push(c.low, c.high); });
+        var candleMin = Math.min.apply(null, candlePrices);
+        var candleMax = Math.max.apply(null, candlePrices);
+        var candleRange = candleMax - candleMin || 1;
+
+        // Extend the visible range to include all ref lines
+        var allPrices = candlePrices.slice();
+        (refLines || []).forEach(function(rl) { allPrices.push(parseFloat(rl.value)); });
+        var minP = Math.min.apply(null, allPrices);
+        var maxP = Math.max.apply(null, allPrices);
+
+        // Pad by 30% of the candle range so candles always fill a reasonable portion
+        var pad = candleRange * 0.30;
+        candleSeries.applyOptions({
+            autoscaleInfoProvider: function() {
+                return { priceRange: { minValue: minP - pad, maxValue: maxP + pad } };
+            }
+        });
+    }
+
     chart.timeScale().fitContent();
 
-    // Responsive resize
+    // ── Zoom / fit controls ──────────────────────────────────────────────────
+    var ctrl = document.createElement('div');
+    ctrl.className = 'lw-chart-controls';
+    ctrl.innerHTML =
+        '<button class="lw-chart-btn" data-action="zoom-in"  title="Zoom In">+</button>'  +
+        '<button class="lw-chart-btn" data-action="zoom-out" title="Zoom Out">−</button>' +
+        '<button class="lw-chart-btn" data-action="fit"      title="Fit All">⤢</button>';
+    container.appendChild(ctrl);
+
+    ctrl.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        e.stopPropagation();
+        var ts = chart.timeScale();
+        var action = btn.getAttribute('data-action');
+        if (action === 'fit') {
+            ts.fitContent();
+        } else {
+            var range = ts.getVisibleLogicalRange();
+            if (!range) return;
+            var span  = range.to - range.from;
+            var mid   = (range.from + range.to) / 2;
+            var factor = action === 'zoom-in' ? 0.6 : 1.6;
+            var half   = (span * factor) / 2;
+            ts.setVisibleLogicalRange({ from: mid - half, to: mid + half });
+        }
+    });
+
+    // Responsive resize — guard against zero-width during collapse transitions
     let ro = new ResizeObserver(function() {
-        chart.resize(container.clientWidth, chartHeight || 150);
+        let w = container.clientWidth;
+        if (w > 0) chart.resize(w, chartHeight || 150);
     });
     ro.observe(container);
     container._lwChart = chart;
@@ -2675,18 +3697,73 @@ function _buildATRBadges(ltp, name, candles) {
     let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
     try {
         let instrScore = computeInstrumentScore(name);
-        let oiObv = (INSTRUMENT_SCORE_MAP[name] && INSTRUMENT_SCORE_MAP[name].oi_obv) || 0;
-        let instrNet = instrScore.current_trend + instrScore.futures_trend + oiObv;
-        let dir = instrNet > 0 ? 'LONG' : instrNet < 0 ? 'SHORT' : null;
+        let oiObv      = (INSTRUMENT_SCORE_MAP[name] && INSTRUMENT_SCORE_MAP[name].oi_obv) || 0;
+
+        // ── Majority-vote direction ────────────────────────────────────────────
+        // Each of the 4 pillars gets one vote. Raw-sum was wrong: a +2 trend score
+        // (price at AST) could mask futures=SHORT + OI=SELL both pointing the other way.
+        // Now each pillar casts exactly one vote regardless of magnitude.
+        let votes = { bull: 0, bear: 0, labels: [] };
+        function _vote(val, label) {
+            if (val > 0) { votes.bull++; votes.labels.push({ l: label, v: 1  }); }
+            else if (val < 0) { votes.bear++; votes.labels.push({ l: label, v: -1 }); }
+            else { votes.labels.push({ l: label, v: 0 }); }
+        }
+        _vote(instrScore.nine_fifteen,  '9:15');
+        _vote(instrScore.current_trend, 'Trend');
+        _vote(instrScore.futures_trend, 'Fut');
+        _vote(oiObv,                    'OI');
+
+        // Direction: needs strict majority (3+ of 4). Tied = no direction.
+        let dir = null;
+        if (votes.bull >= 3) dir = 'LONG';
+        else if (votes.bear >= 3) dir = 'SHORT';
+
+        // Conflict: futures AND OI agree against the trend direction — flag it
+        let futDir = instrScore.futures_trend > 0 ? 1 : instrScore.futures_trend < 0 ? -1 : 0;
+        let oiDir  = oiObv > 0 ? 1 : oiObv < 0 ? -1 : 0;
+        let trendDir = instrScore.current_trend > 0 ? 1 : instrScore.current_trend < 0 ? -1 : 0;
+        let conflicted = (futDir !== 0 && oiDir !== 0 && futDir === oiDir && futDir !== trendDir && trendDir !== 0);
+
+        // If no strict majority but futures+OI both agree, use their direction
+        if (!dir && futDir !== 0 && futDir === oiDir) dir = futDir > 0 ? 'LONG' : 'SHORT';
+        // Last fallback: 9:15 breakout
         if (!dir) dir = instrScore.nine_fifteen > 0 ? 'LONG' : instrScore.nine_fifteen < 0 ? 'SHORT' : null;
 
+        // ── Signal dots: compact inline badges, one per pillar ────────────────
+        function _dot(label, val) {
+            let c = val > 0 ? '#3fb950' : val < 0 ? '#f85149' : '#7d8590';
+            let sym = val > 0 ? '▲' : val < 0 ? '▼' : '—';
+            return '<span style="font-size:0.55rem;color:' + c + ';background:' + c + '18;border:1px solid ' + c + '44;'
+                 + 'border-radius:3px;padding:0px 3px;line-height:1.5;white-space:nowrap;" title="' + label + '">'
+                 + label + '&nbsp;' + sym + '</span>';
+        }
+        // Build inline dots string (no wrapper div — stays in the flex strip)
+        let dotsBadges = '';
+        votes.labels.forEach(function(e) { dotsBadges += _dot(e.l, e.v); });
+
         let slHtml = '<div class="gtb-atr-strip">';
+
+        // Inline conflict icon (no block div — keeps everything on one line)
+        if (conflicted) {
+            slHtml += '<span style="font-size:0.6rem;color:#fbbf24;flex-shrink:0;" '
+                   + 'title="Conflict — Trend says ' + (trendDir > 0 ? 'LONG' : 'SHORT') + ' but Futures+OI say ' + (futDir > 0 ? 'LONG' : 'SHORT') + '">'
+                   + '<i class="bi bi-exclamation-triangle-fill"></i></span>';
+        }
+
+        // Signal dots inline in strip
+        slHtml += dotsBadges;
+
         if (dir) {
             let slData = computeSLAndTarget(ltp, dir, candles);
             if (slData) {
                 let dc = dir === 'LONG' ? '#0d3320' : '#3d0d0d';
                 let fc = dir === 'LONG' ? '#3fb950' : '#f85149';
-                slHtml += '<span class="gtb-sl-badge dir-badge" style="background:' + dc + ';color:' + fc + ';border-color:' + fc + ';">' + dir + '</span>';
+                // Show vote tally on the direction badge: e.g. "LONG 3/4"
+                let tally = dir === 'LONG' ? votes.bull : votes.bear;
+                slHtml += '<span style="width:1px;height:14px;background:#ffffff20;flex-shrink:0;margin:0 2px;"></span>';
+                slHtml += '<span class="gtb-sl-badge dir-badge" style="background:' + dc + ';color:' + fc + ';border-color:' + fc + ';" title="' + tally + ' of 4 signals agree">'
+                       + dir + ' <span style="font-size:0.55rem;opacity:0.8;">' + tally + '/4</span></span>';
                 slHtml += '<span class="gtb-sl-badge atr"><span class="sb-label">ATR</span><span class="sb-val">' + slData.atr + '</span></span>';
                 slHtml += '<span class="gtb-sl-badge sl"><span class="sb-label">SL</span><span class="sb-val">' + slData.sl + '</span></span>';
                 slHtml += '<span class="gtb-sl-badge t1"><span class="sb-label">T1</span><span class="sb-val">' + slData.target1 + '</span></span>';
@@ -2694,8 +3771,10 @@ function _buildATRBadges(ltp, name, candles) {
                 slHtml += '<span class="gtb-sl-badge atr"><span class="sb-label">R:R</span><span class="sb-val">' + slData.rr + '</span></span>';
             }
         } else {
+            // No majority — show both scenarios side by side
             let slLong  = computeSLAndTarget(ltp, 'LONG',  candles);
             let slShort = computeSLAndTarget(ltp, 'SHORT', candles);
+            slHtml += '<span style="width:1px;height:14px;background:#ffffff20;flex-shrink:0;margin:0 2px;"></span>';
             slHtml += '<span class="gtb-sl-badge atr"><span class="sb-label">ATR</span><span class="sb-val">' + slLong.atr + '</span></span>';
             slHtml += '<span class="atr-divider" style="color:#3fb950;">↑</span>';
             slHtml += '<span class="gtb-sl-badge sl"><span class="sb-label">SL</span><span class="sb-val">' + slLong.sl + '</span></span>';
@@ -2710,10 +3789,23 @@ function _buildATRBadges(ltp, name, candles) {
     } catch(e) {}
 }
 
+// ── Candlestick Chart Renderer (NSE instruments) ───────────────────────────────
+// Fetches intraday candles for an NSE instrument and renders a LightweightCharts
+// candlestick chart with ASO/AST/BSO/BST/VIXL/VIXU/OPEN reference lines.
+//
+// Parameters:
+//   name        — instrument display name (key in INSTRUMENT_TOKENS)
+//   bindtoDivId — optional DOM id to render into (defaults to #{tempName}-chart)
+//   chartHeight — pixel height (defaults to 150)
+//
+// Side effects:
+//   Updates #{tempName}-ltp with formatted live price
+//   Updates #{tempName}-atr-sl with ATR-based stop-loss badges (_buildATRBadges)
+//   Caches previous day candle via savePreviousStockQuote (for OI change baseline)
 async function showTopChart(name, bindtoDivId, chartHeight) {
     try {
         let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
-        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], _gtbCurrDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL);
         await savePreviousStockQuote(tempName, INSTRUMENT_TOKENS[name]);
         let scriptData = generateTrend(name);
 
@@ -2728,11 +3820,24 @@ async function showTopChart(name, bindtoDivId, chartHeight) {
         ];
 
         let containerId = (bindtoDivId || ('#' + tempName + '-chart')).replace('#', '');
-        _renderLWChart(containerId, data.data.candles, refLines, chartHeight || 150);
+        let _chartCandles = _gtbTrimCandles(data.data.candles);
+        _renderLWChart(containerId, _chartCandles, refLines, chartHeight || 150);
 
-        let ltp = data.data.candles[data.data.candles.length - 1][4];
+        let ltp = _chartCandles[_chartCandles.length - 1][4];
         jQ('#' + tempName + '-ltp').html(parseFloat(ltp).toLocaleString('en-IN'));
-        _buildATRBadges(ltp, name, data.data.candles);
+        _buildATRBadges(ltp, name, _chartCandles);
+
+        // 9:15 breakout badge
+        try {
+            let b915 = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN")) || {};
+            let close915 = (b915[name] || {}).CLOSE_9_15;
+            if (close915) {
+                let isBull = (close915 === 'ASO' || close915 === 'AST');
+                let isBear = (close915 === 'BSO' || close915 === 'BST');
+                let cls = isBull ? 'gtb-915-bull' : isBear ? 'gtb-915-bear' : 'gtb-915-neutral';
+                jQ('#' + tempName + '-915-badge').html('<span class="' + cls + '">' + close915 + '</span>');
+            }
+        } catch(e) {}
     } catch (error) {
         console.error('Error in showTopChart for ' + name, error);
     }
@@ -2860,39 +3965,67 @@ function updateScoresOfOI(name, item, priceChange) {
 
 }
 
+// ─── Final OI Signal from ATM Labels + Net Score ──────────────────────────────
+//
+// LABEL MEANING REFERENCE:
+//   CE BUY    — call buyers active, expecting rally                  → bullish
+//   CE WRITE  — call writers capping upside (resistance building)    → bearish
+//   CE COV    — call writers covering (short squeeze underway)       → bullish
+//   CE UNWIND — call buyers exiting (bullish conviction fading)      → bearish
+//   PE WRITE  — put writers building support floor                   → bullish
+//   PE BUY    — put buyers hedging/speculating on a fall             → bearish
+//   PE UNWIND — put longs exiting (bearish hedge removed)            → mildly bullish
+//   PE COV    — put writers buying back (expecting more downside)    → bearish
+//
+// ATM COMBO PRIORITY (highest conviction signals — both CE + PE agree):
+//   CE COV  + PE WRITE → STRONG BUY  — trapped writers covering + put writers building floor
+//                         = double-forced squeeze. Both sides confirm support.
+//   CE BUY  + PE WRITE → BUY         — call buyers + put writers = both sides bullish
+//                         CE IV↑ + PE IV↓ = buyers paying up for calls, writers confident of support.
+//   CE WRITE + PE COV  → STRONG SELL — call writers capping + put writers buying back
+//                         = double-confirmed breakdown. Resistance + no support below.
+//   CE WRITE + PE BUY  → SELL        — call writers (resistance) + put buyers (bearish hedge)
+//                         CE IV↓ + PE IV↑ = strong resistance signal. See scoreOIStrikeForSignal comments.
+//   CE COV  + PE BUY   → WAIT        — mixed: writers covering (bullish) but put buyers active (bearish)
+//   CE BUY  + PE COV   → WAIT        — mixed: calls bought but put writers exiting (uncertain)
+//
+// FALLBACK: if ATM combo not decisive, use net score across all strikes:
+//   score ≥ +6 = STRONG BUY, ≥ +2 = BUY, ≤ −6 = STRONG SELL, ≤ −2 = SELL, else NEUTRAL
+// ─────────────────────────────────────────────────────────────────────────────
 function getOISignal(score, atmCeLabel, atmPeLabel) {
-    // ATM combined label takes priority — most price-sensitive strike
+    // Count bullish vs bearish signals from ATM CE and PE labels
     let atmBullish = 0, atmBearish = 0;
+    // Bullish labels: call buyers/covering (upside expected) + put writers/unwinding (support confirmed)
     let bullishLabels = { 'CE BUY': 1, 'CE COV': 1, 'PE WRITE': 1, 'PE UNWIND': 1 };
+    // Bearish labels: call writers (resistance) + put buyers/covering (downside expected)
     let bearishLabels = { 'CE WRITE': 1, 'CE UNWIND': 1, 'PE BUY': 1, 'PE COV': 1 };
     if (atmCeLabel && bullishLabels[atmCeLabel]) atmBullish++;
     if (atmCeLabel && bearishLabels[atmCeLabel]) atmBearish++;
     if (atmPeLabel && bullishLabels[atmPeLabel]) atmBullish++;
     if (atmPeLabel && bearishLabels[atmPeLabel]) atmBearish++;
 
-    let atmNet = atmBullish - atmBearish; // +2=both bullish, -2=both bearish, 0=mixed
+    let atmNet = atmBullish - atmBearish; // +2=both bullish, −2=both bearish, 0=mixed/neutral
 
-    // Specific high-conviction ATM combos
-    let atmLabel = (atmCeLabel || '') + '|' + (atmPeLabel || '');
-    // Short squeeze: CE covering + PE writing = market being forced up
-    if (atmCeLabel === 'CE COV' && atmPeLabel === 'PE WRITE') return { signal: 'STRONG BUY', color: '#155724', bg: '#d4edda' };
-    // CE buying + PE writing = both sides bullish
-    if (atmCeLabel === 'CE BUY'  && atmPeLabel === 'PE WRITE') return { signal: 'BUY',         color: '#155724', bg: '#d4edda' };
-    // CE writing + PE covering = both sides bearish, market being forced down
-    if (atmCeLabel === 'CE WRITE' && atmPeLabel === 'PE COV')  return { signal: 'STRONG SELL', color: '#721c24', bg: '#f8d7da' };
-    // CE writing + PE buying = both sides bearish
-    if (atmCeLabel === 'CE WRITE' && atmPeLabel === 'PE BUY')  return { signal: 'SELL',         color: '#721c24', bg: '#f8d7da' };
-    // CE covering + PE buying = mixed — short covering but puts being bought, cautious
-    if (atmCeLabel === 'CE COV'  && atmPeLabel === 'PE BUY')   return { signal: 'WAIT',         color: '#856404', bg: '#fff3cd' };
-    // CE buying + PE covering = mixed — calls bought but put writers exiting
-    if (atmCeLabel === 'CE BUY'  && atmPeLabel === 'PE COV')   return { signal: 'WAIT',         color: '#856404', bg: '#fff3cd' };
+    // High-conviction ATM combos checked first (both CE and PE agree = strongest signal)
+    // Short squeeze: call writers forced to cover + put writers actively building floor
+    if (atmCeLabel === 'CE COV'   && atmPeLabel === 'PE WRITE') return { signal: 'STRONG BUY',  color: '#155724', bg: '#d4edda' };
+    // CE IV↑ (call buying) + PE IV↓ (put writing) = both sides confirm support at ATM
+    if (atmCeLabel === 'CE BUY'   && atmPeLabel === 'PE WRITE') return { signal: 'BUY',          color: '#155724', bg: '#d4edda' };
+    // Breakdown: call writers force market down + put writers buying back (no support)
+    if (atmCeLabel === 'CE WRITE' && atmPeLabel === 'PE COV')   return { signal: 'STRONG SELL',  color: '#721c24', bg: '#f8d7da' };
+    // CE IV↓ (call writing = resistance) + PE IV↑ (put buying = bearish hedge) = double resistance confirmation
+    if (atmCeLabel === 'CE WRITE' && atmPeLabel === 'PE BUY')   return { signal: 'SELL',          color: '#721c24', bg: '#f8d7da' };
+    // Mixed: short covering (bullish) but put buyers active (bearish hedge) = wait for clarity
+    if (atmCeLabel === 'CE COV'   && atmPeLabel === 'PE BUY')   return { signal: 'WAIT',          color: '#856404', bg: '#fff3cd' };
+    // Mixed: call buyers active (bullish) but put writers exiting (support base weakening)
+    if (atmCeLabel === 'CE BUY'   && atmPeLabel === 'PE COV')   return { signal: 'WAIT',          color: '#856404', bg: '#fff3cd' };
 
-    // Fall back to net score across all strikes
+    // Fallback: ATM combo inconclusive — use net score across all scanned strikes
     if      (score >=  6) return { signal: 'STRONG BUY',  color: '#155724', bg: '#d4edda' };
     else if (score >=  2) return { signal: 'BUY',          color: '#155724', bg: '#d4edda' };
-    else if (score <=  -6) return { signal: 'STRONG SELL', color: '#721c24', bg: '#f8d7da' };
-    else if (score <=  -2) return { signal: 'SELL',         color: '#721c24', bg: '#f8d7da' };
-    else                   return { signal: 'NEUTRAL',      color: '#383d41', bg: '#e2e3e5' };
+    else if (score <= -6) return { signal: 'STRONG SELL',  color: '#721c24', bg: '#f8d7da' };
+    else if (score <= -2) return { signal: 'SELL',          color: '#721c24', bg: '#f8d7da' };
+    else                  return { signal: 'NEUTRAL',       color: '#383d41', bg: '#e2e3e5' };
 }
 
 function updateScoresOfTrend(name, score, atmCeLabel, atmPeLabel) {
@@ -3050,8 +4183,9 @@ function showOIOBVBarChart(name) {
         let sumPE = parseFloat(item['OI_PE']) + parseFloat(item['CHG_OI_PE'])
         oiCESUM.push(sumCE.toFixed(1))
         oiPESUM.push(sumPE.toFixed(1))
-        oiCEOBV.push(item['CE_OBV'][item['CE_OBV'].length - 1]['obv'])
-        oiPEOBV.push(item['PE_OBV'][item['PE_OBV'].length - 1]['obv'])
+        let _ceObvL = item['CE_OBV'], _peObvL = item['PE_OBV'];
+        oiCEOBV.push(parseFloat(_ceObvL[_ceObvL.length-1]['obv']).toFixed(1))
+        oiPEOBV.push(parseFloat(_peObvL[_peObvL.length-1]['obv']).toFixed(1))
 
         let result = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange);
         oiScore += updateScoresOfOI(name, item, priceChange);
@@ -3127,6 +4261,18 @@ function showOIOBVBarChart(name) {
     showComponentOITable(name)
 }
 
+// ── Futures Data Fetcher ───────────────────────────────────────────────────────
+// Fetches futures intraday (5-min) and previous day candles for an instrument.
+// Computes VWAP (volume-weighted avg price) from intraday candles.
+// Determines futures remark (LONG / SHORT / LONG_UNWINDING / SHORT_COVERING /
+// BULLS_CONSOLIDATING / BEARS_CONSOLIDATING etc.) from OI + price change:
+//   Price↑ + OI↑ → LONG (fresh longs)
+//   Price↓ + OI↓ → SHORT_COVERING (longs exiting)
+//   Price↓ + OI↑ → SHORT (fresh shorts = bearish)
+//   Price↑ + OI↓ → LONG_UNWINDING (longs exiting on rise)
+// Also computes futures premium = futures LTP − spot LTP.
+// USDINR / CRUDEOILM: premium skipped (no spot traded on same exchange).
+// Returns data passed to setFutureDetails() for UI render and to INSTRUMENT_SCORE_MAP.
 async function showFutureDetails(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -3145,13 +4291,13 @@ async function showFutureDetails(name) {
             futures = item;
         }
     })
-    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY, PREVIOUS_DAY, 'day');
+    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbPrevDay(), _gtbPrevDay(), 'day');
     // Fetch intraday 5-minute candles for real VWAP calculation
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbCurrDay(), _gtbCurrDayTo(), '5minute');
 
     let intradayCandles = []
     let prevData = []
-    jQ.each(cres.data.candles, function (index, item) {
+    jQ.each(_gtbTrimCandles(cres.data.candles), function (index, item) {
         let map = {}
         map['date'] = moment(item[0]).format("HH:mm")
         map.open = item[1]
@@ -3200,6 +4346,12 @@ async function showFutureDetails(name) {
     resp['tradingsymbol'] = futures['tradingsymbol']
 
     resp['vwap'] = getVwapTrend(dailyCandle, prevDayCandle);
+    resp['vwapPrice'] = intradayCandles.length > 1
+        ? computeIntradayVwap(intradayCandles)
+        : parseFloat(((
+            ((parseFloat(dailyCandle.high) + parseFloat(dailyCandle.low) + parseFloat(dailyCandle.close)) / 3) * parseFloat(dailyCandle.volume) +
+            ((parseFloat(prevDayCandle.high) + parseFloat(prevDayCandle.low) + parseFloat(prevDayCandle.close)) / 3) * parseFloat(prevDayCandle.volume)
+          ) / (parseFloat(dailyCandle.volume) + parseFloat(prevDayCandle.volume))).toFixed(2)) || 0;
     resp['trend'] = getFutureDirection(dailyCandle, prevDayCandle, name);
 
     return resp;
@@ -3791,6 +4943,33 @@ function getFutureDirection(quote, prevQuote, symbol) {
 }
 
 let scriptsVolumeMap = {}
+
+// ── Weighted-only scan helper ─────────────────────────────────────────────────
+// Returns the list of stocks to scan for Advance/Decline and Futures trend.
+// When #scan-weighted-only is checked, returns the union of NIFTY_50_WEIGHTED_STOCKS
+// and NIFTY_BANK_WEIGHTED_STOCKS keys (de-duplicated) — typically ~15 stocks instead of
+// the full FO_LIST (~200). This cuts scan time significantly while keeping index movers.
+function getActiveScanList() {
+    if (jQ('#scan-weighted-only').is(':checked')) {
+        let seen = {};
+        let list = [];
+        Object.keys(NIFTY_50_WEIGHTED_STOCKS).forEach(function(n) { if (!seen[n]) { seen[n] = true; list.push(n); } });
+        Object.keys(NIFTY_BANK_WEIGHTED_STOCKS).forEach(function(n) { if (!seen[n]) { seen[n] = true; list.push(n); } });
+        return list;
+    }
+    return FO_LIST;
+}
+
+// ── Advance/Decline Scanner ───────────────────────────────────────────────────
+// Counts how many instruments in FO_LIST, NIFTY_50_LIST, and NIFTY_BANK_LIST are
+// currently in ASO/BSO trend, then plots bar charts for visual A/D ratio.
+//
+// Also updates the global advance/decline scores:
+//   ALL_ADVANCE_DECLINE_SCORE, NIFTY_50_ADVANCE_DECLINE_SCORE, NIFTY_BANK_ADVANCE_DECLINE_SCORE
+//   +1 if ASO count > BSO count, −1 if BSO > ASO, 0 if equal
+//
+// Charts rendered with c3.js as grouped bar charts per timestamp (one bar per refresh cycle).
+// Data is appended to existing series so historical advance/decline ratio is visible.
 async function showAdvacenDeclineScanner() {
     let scriptData = generateTrends()
 
@@ -3829,16 +5008,21 @@ async function showAdvacenDeclineScanner() {
 
     let x = ['x'];
 
-    for (let i = 0; i < FO_LIST.length; i++) {
-        console.log("Processing " + FO_LIST[i]);
-        try {
-            let asoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['ustrikeOne']);
-            let bsoPrice = parseFloat(scriptData[FO_LIST[i]]['strikeData']['bstrikeOne']);
-            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + FO_LIST.length);
+    // Reset per-interval history maps before the stock loop
+    GTB_AD_INTERVAL_HISTORY = [];
+    GTB_COMPONENT_CLOSE_MAP = {};
 
-            let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[FO_LIST[i]], CURRENT_DAY, CURRENT_DAY, '5minute');
+    let activeScanList = getActiveScanList();
+    for (let i = 0; i < activeScanList.length; i++) {
+        console.log("Processing " + activeScanList[i]);
+        try {
+            let asoPrice = parseFloat(scriptData[activeScanList[i]]['strikeData']['ustrikeOne']);
+            let bsoPrice = parseFloat(scriptData[activeScanList[i]]['strikeData']['bstrikeOne']);
+            _gtbProgress('A/D: ' + activeScanList[i] + ' (' + (i+1) + '/' + activeScanList.length + ')');
+
+            let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[activeScanList[i]], _gtbCurrDay(), _gtbCurrDayTo(), '5minute');
             let volume = 0;
-            jQ.each(data.data.candles, function (index, item) {
+            jQ.each(_gtbTrimCandles(data.data.candles), function (index, item) {
                 let time = moment(item[0]).format("HH:mm");
                 if (i == 0) {
                     let map = {}
@@ -3872,29 +5056,39 @@ async function showAdvacenDeclineScanner() {
                 }
 
                 volume += item[5];
-                all = all + FO_LIST.length;
+                all = all + activeScanList.length;
                 allNifty = allNifty + NIFTY_50_LIST.length;
                 allBank = allBank + NIFTY_BANK_LIST.length;
             });
 
-            scriptsVolumeMap[FO_LIST[i]] = volume;
+            scriptsVolumeMap[activeScanList[i]] = volume;
+
+            // Capture candle close for weighted component stocks (for per-interval component score)
+            var _name = activeScanList[i];
+            if (NIFTY_50_WEIGHTED_STOCKS[_name] !== undefined || NIFTY_BANK_WEIGHTED_STOCKS[_name] !== undefined) {
+                if (!GTB_COMPONENT_CLOSE_MAP[_name]) GTB_COMPONENT_CLOSE_MAP[_name] = {};
+                jQ.each(_gtbTrimCandles(data.data.candles), function (index, item) {
+                    var t = moment(item[0]).format("HH:mm");
+                    GTB_COMPONENT_CLOSE_MAP[_name][t] = parseFloat(item[4]); // candle close
+                });
+            }
 
             jQ.each(data.data.candles, function (index, item) {
                 let time = moment(item[0]).format("HH:mm");
                 if (advanceMap[time]) {
                     if (item[4] > asoPrice) {
-                        advanceMap[time]['SYMBOL'].push(FO_LIST[i])
+                        advanceMap[time]['SYMBOL'].push(activeScanList[i])
                         advanceMap[time]['COUNT'] = advanceMap[time]['COUNT'] + 1
                         allAdvances++;
 
-                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
-                            advanceMapNifty[time]['SYMBOL'].push(FO_LIST[i])
+                        if (jQ.inArray(activeScanList[i], NIFTY_50_LIST) != -1) {
+                            advanceMapNifty[time]['SYMBOL'].push(activeScanList[i])
                             advanceMapNifty[time]['COUNT'] = advanceMapNifty[time]['COUNT'] + 1
                             allNiftyAdvances++;
                         }
 
-                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
-                            advanceMapBank[time]['SYMBOL'].push(FO_LIST[i])
+                        if (jQ.inArray(activeScanList[i], NIFTY_BANK_LIST) != -1) {
+                            advanceMapBank[time]['SYMBOL'].push(activeScanList[i])
                             advanceMapBank[time]['COUNT'] = advanceMapBank[time]['COUNT'] + 1
                             allBankAdvances++;
                         }
@@ -3903,18 +5097,18 @@ async function showAdvacenDeclineScanner() {
 
                 if (declineMap[time]) {
                     if (item[4] < bsoPrice) {
-                        declineMap[time]['SYMBOL'].push(FO_LIST[i])
+                        declineMap[time]['SYMBOL'].push(activeScanList[i])
                         declineMap[time]['COUNT'] = declineMap[time]['COUNT'] + 1
                         allDeclines++;
 
-                        if (jQ.inArray(FO_LIST[i], NIFTY_50_LIST) != -1) {
-                            declineMapNifty[time]['SYMBOL'].push(FO_LIST[i])
+                        if (jQ.inArray(activeScanList[i], NIFTY_50_LIST) != -1) {
+                            declineMapNifty[time]['SYMBOL'].push(activeScanList[i])
                             declineMapNifty[time]['COUNT'] = declineMapNifty[time]['COUNT'] + 1
                             allNiftyDeclines++
                         }
 
-                        if (jQ.inArray(FO_LIST[i], NIFTY_BANK_LIST) != -1) {
-                            declineMapBank[time]['SYMBOL'].push(FO_LIST[i])
+                        if (jQ.inArray(activeScanList[i], NIFTY_BANK_LIST) != -1) {
+                            declineMapBank[time]['SYMBOL'].push(activeScanList[i])
                             declineMapBank[time]['COUNT'] = declineMapBank[time]['COUNT'] + 1
                             allBankDeclines++
                         }
@@ -3922,7 +5116,7 @@ async function showAdvacenDeclineScanner() {
                 }
             });
         } catch (e) {
-            console.log("Error in processing " + FO_LIST[i])
+            console.log("Error in processing " + activeScanList[i])
         }
 
 
@@ -3964,6 +5158,30 @@ async function showAdvacenDeclineScanner() {
     adVanceDeclineColumnsNiftyBank.push(advanceSeriesNiftyBank);
     adVanceDeclineColumnsNiftyBank.push(declineSeriesNiftyBank);
 
+    // ── Save per-interval A/D snapshot for score history table ───────────────
+    // Cumulative: same logic as allAdvances/allDeclines globals — accumulate across
+    // all candles up to each time slot so the score at time T matches what the score
+    // panel would show if the refresh had been done at time T.
+    var _cumNAdv = 0, _cumNDec = 0, _cumBnAdv = 0, _cumBnDec = 0, _cumAAdv = 0, _cumADec = 0;
+    x.forEach(function(ts) {
+        if (ts === 'x') return;
+        var t = moment(ts).format('HH:mm');
+        _cumNAdv  += (advanceMapNifty[t] || {}).COUNT || 0;
+        _cumNDec  += (declineMapNifty[t] || {}).COUNT || 0;
+        _cumBnAdv += (advanceMapBank[t]  || {}).COUNT || 0;
+        _cumBnDec += (declineMapBank[t]  || {}).COUNT || 0;
+        _cumAAdv  += (advanceMap[t]      || {}).COUNT || 0;
+        _cumADec  += (declineMap[t]      || {}).COUNT || 0;
+        GTB_AD_INTERVAL_HISTORY.push({
+            time: t,
+            nAdv: _cumNAdv, nDec: _cumNDec,
+            bnAdv: _cumBnAdv, bnDec: _cumBnDec,
+            allAdv: _cumAAdv, allDec: _cumADec
+        });
+    });
+    // Futures trend per-interval is captured separately in showFuturesTrendScanner
+    // and merged into GTB_AD_INTERVAL_HISTORY by _gtbMergeIntervalFutures().
+
     // Normalize to ratio: (advances - declines) / total, range -1 to +1
     // Gives proportional signal: 45/50 advancing = +0.8, not just +1
     let allTotal = allAdvances + allDeclines;
@@ -3994,6 +5212,48 @@ async function showAdvacenDeclineScanner() {
     });
 
     jQ("#NIFTY-BANK-advance-decline-adr").html("ADR:" + ((allBankAdvances / allBankDeclines).toFixed(2)) + "|A:" + allBankAdvances + "|D: " + allBankDeclines);
+
+    // ── Score panel A/D display — one count per stock using current LTP ─────────
+    (function() {
+        try {
+            var ltpPrices   = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}');
+            var openDetails = JSON.parse(localStorage.getItem('INSTRUMENT_LIST_GLOBAL') || '{}');
+
+            function _countAD(list) {
+                var adv = 0, dec = 0;
+                for (var i = 0; i < list.length; i++) {
+                    var sym = list[i];
+                    var ltp = ltpPrices[sym] && ltpPrices[sym].ltp ? parseFloat(ltpPrices[sym].ltp) : null;
+                    if (!ltp || !openDetails[sym]) continue;
+                    var open = parseFloat(openDetails[sym].price);
+                    if (!open) continue;
+                    var sd = getStrikeDetails({ price: open }, sym);
+                    var aso = parseFloat(sd.ustrikeOne);
+                    var bso = parseFloat(sd.bstrikeOne);
+                    if (ltp >= aso) adv++;
+                    else if (ltp <= bso) dec++;
+                }
+                return { adv: adv, dec: dec, total: list.length };
+            }
+
+            function _adrHtml(label, r) {
+                var ratio = r.dec > 0 ? (r.adv / r.dec).toFixed(2) : r.adv > 0 ? '∞' : '—';
+                var net = r.adv - r.dec;
+                var netColor = net > 0 ? '#3fb950' : net < 0 ? '#f85149' : '#7d8590';
+                var neutral = r.total - r.adv - r.dec;
+                return '<span style="color:#7d8590;margin-right:3px;">' + label + '</span>'
+                     + '<span style="color:#3fb950;font-weight:700;">A:' + r.adv + '</span>'
+                     + '<span style="color:#7d8590;margin:0 2px;">/</span>'
+                     + '<span style="color:#f85149;font-weight:700;">D:' + r.dec + '</span>'
+                     + '<span style="color:#7d8590;margin-left:2px;">N:' + neutral + '</span>'
+                     + '<span style="color:' + netColor + ';font-weight:800;margin-left:4px;">(' + (net > 0 ? '+' : '') + net + ')</span>'
+                     + '<span style="color:#58a6ff;font-weight:700;margin-left:4px;">' + ratio + '</span>';
+            }
+
+            jQ('#gtb-adr-n50').html(_adrHtml('N50', _countAD(NIFTY_50_LIST)));
+            jQ('#gtb-adr-bn').html(_adrHtml('BN',  _countAD(NIFTY_BANK_LIST)));
+        } catch(e) {}
+    })();
     let adBN = _adCols(adVanceDeclineColumnsNiftyBank);
     _renderBarChart('#NIFTY-BANK-advance-decline', {
         labels: adBN.labels, timeFormat: true, stacked: true, height: 80, showXLabels: false,
@@ -4011,6 +5271,23 @@ async function showAdvacenDeclineScanner() {
 
 }
 
+// ── Futures Trend Scanner ─────────────────────────────────────────────────────
+// Iterates FUTURE_INTRUMENT_LIST and fetches OI + price change for every instrument.
+// Classifies each into: LONG / SHORT / SHORT_COVERING / LONG_UNWINDING /
+//   BULLS_CONSOLIDATING / BEARS_CONSOLIDATING / GAMBLING_BUY_NEWS_AND_EVENTS
+//
+// Classification rules (futures remark logic):
+//   Price↑ + OI↑         → LONG            (fresh longs entering = bullish)
+//   Price↓ + OI↓         → SHORT_COVERING  (shorts closing out = temporarily bullish)
+//   Price↓ + OI↑         → SHORT           (fresh shorts = bearish)
+//   Price↑ + OI↓         → LONG_UNWINDING  (longs exiting on rise = bearish)
+//   OI stable + Price↑   → BULLS_CONSOLIDATING
+//   OI stable + Price↓   → BEARS_CONSOLIDATING
+//
+// Updates:
+//   globalFuturesTrend[name] — cached for use in component score and setFutureDetails
+//   INSTRUMENT_SCORE_MAP[name].futures_trend — getFuturesTrendScore(remark) +1/0/-1
+//   ALL/NIFTY_50/NIFTY_BANK_FUTURES_TREND_SCORE — aggregate score of LONG vs SHORT counts
 async function showFuturesTrend() {
 
     let LONGSeries = ['Long']
@@ -4088,10 +5365,10 @@ async function showFuturesTrend() {
     let NiftyBankBEARSMap = {}
 
     let categoryList = [];
-    // Spread to avoid mutating the shared FO_LIST array on every call
+    // Use weighted-only list when the flag is enabled, otherwise full FO_LIST
     // Exclude MCX instruments — they use showFutureDetailsMCX, not NSE futures data
     let mcxNames = new Set(COMMODITIES_FUTURE_INSTRUMENT_LIST.map(function(f) { return f.name; }));
-    let allList = [...FO_LIST, "NIFTY 50", "NIFTY BANK"].filter(function(n) { return !mcxNames.has(n); });
+    let allList = [...getActiveScanList(), "NIFTY 50", "NIFTY BANK"].filter(function(n) { return !mcxNames.has(n); });
 
     let allFuturesAdvances = 0;
     let allFuturesDeclines = 0;
@@ -4106,7 +5383,7 @@ async function showFuturesTrend() {
 
     for (let i = 0; i < allList.length; i++) {
         let name = allList[i];
-        jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + allList.length);
+        _gtbProgress('Futures: ' + allList[i] + ' (' + (i+1) + '/' + allList.length + ')');
         jQ.each(FUTURE_INTRUMENT_LIST, function (index, item) {
             let instName = name
             if (instName == "NIFTY 50") {
@@ -4123,8 +5400,8 @@ async function showFuturesTrend() {
         })
         try {
 
-            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], PREVIOUS_DAY, PREVIOUS_DAY, 'day');
-            let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], CURRENT_DAY, CURRENT_DAY, '5minute');
+            let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbPrevDay(), _gtbPrevDay(), 'day');
+            let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbCurrDay(), _gtbCurrDayTo(), '5minute');
             let prevData = []
             jQ.each(pres.data.candles, function (index, item) {
                 let map = {}
@@ -4139,7 +5416,7 @@ async function showFuturesTrend() {
             });
             prevData = prevData[prevData.length - 1];
             let data = []
-            jQ.each(cres.data.candles, function (index, item) {
+            jQ.each(_gtbTrimCandles(cres.data.candles), function (index, item) {
                 let time = moment(item[0]).format("HH:mm");
                 if (i == 0) {
                     let map = {}
@@ -4640,6 +5917,35 @@ async function showFuturesTrend() {
     jQ("#NIFTY-50-advance-decline-adr-future").html("ADR:" + ((allNiftyFuturesAdvances / allNiftyFuturesDeclines).toFixed(2)) + "|A:" + allNiftyFuturesAdvances + "|D:" + allNiftyFuturesDeclines);
 
     jQ("#NIFTY-BANK-advance-decline-adr-future").html("ADR:" + ((allNiftyBankFuturesAdvances / allNiftyBankFuturesDeclines).toFixed(2)) + "|A:" + allNiftyBankFuturesAdvances + "|D:" + allNiftyBankFuturesDeclines);
+
+    // ── Capture per-interval futures trend for score history ─────────────────
+    // Cumulative bull/bear counts up to each time slot — same logic as the globals.
+    var _cumFBull = 0, _cumFBear = 0;
+    var _cumNFBull = 0, _cumNFBear = 0;
+    var _cumBnFBull = 0, _cumBnFBear = 0;
+    var _ftIntervals = {};
+    x.forEach(function(ts) {
+        if (ts === 'x') return;
+        var t = moment(ts).format('HH:mm');
+        _cumFBull   += (BULLSMap[t]         || {}).COUNT || 0;
+        _cumFBear   += (BEARSMap[t]          || {}).COUNT || 0;
+        _cumNFBull  += (NiftyBULLSMap[t]     || {}).COUNT || 0;
+        _cumNFBear  += (NiftyBEARSMap[t]     || {}).COUNT || 0;
+        _cumBnFBull += (NiftyBankBULLSMap[t] || {}).COUNT || 0;
+        _cumBnFBear += (NiftyBankBEARSMap[t] || {}).COUNT || 0;
+        _ftIntervals[t] = {
+            allBull: _cumFBull,   allBear: _cumFBear,
+            nBull:   _cumNFBull,  nBear:   _cumNFBear,
+            bnBull:  _cumBnFBull, bnBear:  _cumBnFBear
+        };
+    });
+    // Merge into GTB_AD_INTERVAL_HISTORY (A/D scanner runs before futures scanner)
+    GTB_AD_INTERVAL_HISTORY.forEach(function(row) {
+        var ft = _ftIntervals[row.time] || {};
+        row.allFBull  = ft.allBull  || 0;  row.allFBear  = ft.allBear  || 0;
+        row.nFBull    = ft.nBull    || 0;  row.nFBear    = ft.nBear    || 0;
+        row.bnFBull   = ft.bnBull   || 0;  row.bnFBear   = ft.bnBear   || 0;
+    });
 
 
 

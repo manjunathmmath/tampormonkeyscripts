@@ -1,4 +1,38 @@
-async function showTopChartMCX(name) {
+// ─── commodities.js ────────────────────────────────────────────────────────────
+// Chart rendering for MCX (commodity futures) instruments.
+//
+// KEY DIFFERENCES vs NSE equity charts (showTopChart in grootTradeBot.js):
+//
+//   1. TOKEN SOURCE: Uses COMMODITIES_FUTURE_INSTRUMENT_LIST (MCX tokens)
+//      instead of INSTRUMENT_TOKENS (NSE tokens).
+//
+//   2. STRIKE LEVELS: Uses MCX_FUTURE_STRIKE_DIFF (e.g. "100,100" for CRUDEOILM)
+//      instead of NSE_STRIKE_DIFF. Layout is identical:
+//        BST = open − strikeOne − strikeTwo
+//        BSO = open − strikeOne
+//        ASO = open + strikeOne
+//        AST = open + strikeOne + strikeTwo
+//
+//   3. VIX INDEX: MCX instruments use commodity volatility indexes instead of India VIX:
+//        CRUDEOIL / CRUDEOILM  → OVX  (CBOE Crude Oil Volatility Index)
+//        GOLD / GOLDM          → GVZ  (CBOE Gold Volatility Index)
+//        SILVER / SILVERM      → VXSLV (CBOE Silver Volatility Index)
+//        NATURALGAS / NATGASMINI → VIX (India VIX as proxy — no gas-specific index)
+//        USDINR                → 4.85 (fixed 4.85% implied vol for USD/INR FX pair)
+//      Range formula: range = prevClose × (VIX% / √246) — same as calculateVixRange("DAILY")
+//
+//   4. DATE CONSTANTS: Uses MCX_CURRENT_DAY / MCX_PREVIOUS_DAY (may differ from
+//      NSE CURRENT_DAY/PREVIOUS_DAY if MCX settlement calendar differs).
+//
+//   5. NO PREMIUM: CRUDEOILM/CRUDEOIL have no spot traded on MCX — premium stays blank.
+//      Only NSE futures (NIFTY, BANKNIFTY, stocks) have spot → futures premium.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Renders the MCX candlestick chart for a commodity futures instrument.
+// Fetches intraday 5-min candles (MCX_CURRENT_DAY) + prev day close for strike levels.
+// Draws ASO/AST/BSO/BST + VIXL/VIXU reference lines using _renderLWChart.
+// Updates LTP display and ATR/stop-loss badges via _buildATRBadges.
+async function showTopChartMCX(name, chartHeight) {
     try {
 
         let futures;
@@ -12,8 +46,9 @@ async function showTopChartMCX(name) {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
-        let data = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_CURRENT_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
-        let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
+        let data = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), HISTORICAL_DATA_INTERVAL);
+        let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
+        data.data.candles = _gtbTrimCandles(data.data.candles, MCX_CURRENT_DAY);
 
         let strikeDiff = MCX_FUTURE_STRIKE_DIFF[name];
         if (!strikeDiff) {
@@ -125,7 +160,7 @@ async function showTopChartMCX(name) {
 
         // Use LightweightCharts candlestick (defined in grootTradeBot.js)
         if (typeof _renderLWChart === 'function') {
-            _renderLWChart(tempName + '-chart', data.data.candles, refLines, 150);
+            _renderLWChart(tempName + '-chart', data.data.candles, refLines, chartHeight || 150);
         }
 
         let ltp = data.data.candles[data.data.candles.length - 1][4];
@@ -148,8 +183,8 @@ async function showFutureDetailsMCX(name) {
             futures = item;
         }
     })
-    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], MCX_CURRENT_DAY, MCX_CURRENT_DAY, 'day');
+    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
+    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), 'day');
 
 
     let data = []
@@ -308,13 +343,29 @@ async function showTrendingOIMCX(instrument, strikToShowOverride) {
         }
     }
     strikeData.sort(function (a, b) { return parseFloat(a.STRIKE) - parseFloat(b.STRIKE) })
-    let tableData = await showOITrendingDetails(strikeData, selectedStrike)
+
+    // Fetch futures candles as underlying for IV calculation (MCX has no cash spot)
+    let spotCandles = [];
+    try {
+        let futEntry = COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === instrument; });
+        if (futEntry) {
+            let interval = jQ("#api-data-interval option:selected").val() || '5minute';
+            let spotData = await getHistoricalDataUsingPromise(futEntry.instrument_token, _gtbMcxPrevDay(), _gtbMcxCurrDayTo(), interval);
+            spotCandles = (spotData && spotData['data'] && spotData['data']['candles']) ? spotData['data']['candles'] : [];
+        }
+    } catch(e) { console.log('MCX IV: could not fetch spot candles', e); }
+
+    let expiryDateStr = selectedStrike.length ? selectedStrike[0].expiry : null;
+
+    let tableData = await showMCXOITrendingDetails(strikeData, selectedStrike, spotCandles, expiryDateStr)
     return tableData
 }
 
 
 
-async function showMCXOITrendingDetails(strikeData, selectedStrike) {
+async function showMCXOITrendingDetails(strikeData, selectedStrike, spotCandles, expiryDateStr) {
+    spotCandles = spotCandles || [];
+    expiryDateStr = expiryDateStr || null;
     let strikeMap = {}
     for (let i = 0; i < strikeData.length; i++) {
         try {
@@ -338,11 +389,13 @@ async function showMCXOITrendingDetails(strikeData, selectedStrike) {
                     HISTORICAL_DATA_INTERVAL_OVERRIDE = '5minute'
                 }
 
-                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, MCX_PREVIOUS_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
+                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, _gtbMcxPrevDay(), _gtbMcxCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                currDataCE.data.candles = _gtbTrimCandles(currDataCE.data.candles, MCX_CURRENT_DAY);
 
-                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, MCX_PREVIOUS_DAY, MCX_PREVIOUS_DAY, 'day');
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, MCX_PREVIOUS_DAY, MCX_CURRENT_DAY, HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
+                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, _gtbMcxPrevDay(), _gtbMcxCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                currDataPE.data.candles = _gtbTrimCandles(currDataPE.data.candles, MCX_CURRENT_DAY);
 
 
 
@@ -415,6 +468,15 @@ async function showMCXOITrendingDetails(strikeData, selectedStrike) {
             obj['prevDataPE'] = prevDataPE
             obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
             obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+
+            // IV series using futures price as underlying (MCX has no cash spot)
+            if (expiryDateStr && spotCandles.length) {
+                obj['CE_IV'] = calculateIVSeries(currDataCE, index, true,  expiryDateStr, spotCandles)
+                obj['PE_IV'] = calculateIVSeries(currDataPE, index, false, expiryDateStr, spotCandles)
+            } else {
+                obj['CE_IV'] = []
+                obj['PE_IV'] = []
+            }
 
             tableData.push(obj)
         } catch (err) {

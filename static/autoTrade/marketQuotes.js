@@ -40,6 +40,7 @@ async function showMarketQuoteAnalyzer() {
     showPopUpWindow('quick-quote-analyzer', html, "Quick Quote Analyzer", 950, 550);
     var divId = "popup-custom-style-quick-quote-analyzer";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    hideNativePopupButtons(divId);
 
     jQ("." + divId).on("close.popupwindow", function () {
     });

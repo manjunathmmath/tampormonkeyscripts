@@ -1,4 +1,26 @@
+// ─── script.js ────────────────────────────────────────────────────────────────
+// Main Tampermonkey entry point for kite.zerodha.com.
+//
+// Responsibilities:
+//   1. LTP scan — scrapes live prices from the Kite watchlist DOM every minute
+//      (autoStartScanLtp, scanLtpPrice) and injects strike labels (ASO/AST/BSO/BST/VIXU/VIXL)
+//      next to each instrument in the sidebar.
+//   2. Open price load — fetches today's open + previous close via Kite historical API
+//      (loadOpenPrice) or scrapes from pre-market DOM (loadPreMarketOpenPrice).
+//   3. Auto-refresh — every 5 minutes during market hours (09:15–16:30), triggers
+//      the full grootTradeBot score refresh (startTimer → commonShowPopupWindow).
+//   4. Chart page detection — on Kite chart pages, auto-opens the individual stock
+//      popup (showDetailsOnChartPage) for the instrument in the URL.
+//   5. OAuth — handles Kite Connect API OAuth callback (getSetAccessToken) —
+//      exchanges request_token + api_secret for access_token.
+// ─────────────────────────────────────────────────────────────────────────────
+
 let timerInstance = null
+
+// Core refresh orchestrator. Called by the "Start Refresh" button or auto-refresh timer.
+// Guards: only runs between 09:15 and 16:30 on market days (unless isManual=true).
+// Steps: scan LTP prices → if manual, also render the grootTradeBot popup.
+// After run, schedules next auto-refresh timer via startRefresh().
 async function autoRefreshEachTabs(instance, isManual) {
     clearInterval(timerInstance)
 
@@ -42,12 +64,20 @@ async function commonRefresh(that, isManual) {
     await autoRefreshEachTabs(that, isManual);
 }
 
+// Starts the interval-based auto-refresh countdown displayed in #refresh-timer-one.
+// Calls startTimer(REFRESH_TIME) which ticks every second and fires commonShowPopupWindow
+// at every 5-minute mark (m % 5 == 0 && s == 10) when #enable-auto-refresh is checked.
 function startRefresh() {
     var display = document.querySelector('#refresh-timer-one');
     startTimer(REFRESH_TIME, display);
 };
 
 
+// Background LTP poller — runs every second via setInterval (started on DOM ready).
+// At s==59 (last second of each minute): if INSTRUMENT_LTP_PRICE is already cached,
+// triggers updateStrorageLtpPrice() to re-scan the Kite DOM for fresh LTP values.
+// The clock is also displayed in #refresh-timer-one.
+// This runs independently of the manual refresh button — always on while the page is loaded.
 function autoStartScanLtp() {
     setInterval(function () {
         var d = new Date();
@@ -96,6 +126,11 @@ jQ(document).on("click", "#load-price", function (e) {
     }
 });
 
+// Loads today's open price and yesterday's close for all instruments.
+// Before 09:15: uses pre-market DOM scan (loadPreMarketOpenPrice) — scrapes Kite sidebar.
+// After 09:15:  uses Kite historical API day candle — candles[0]=prev day, candles[1]=today.
+// Saves result to INSTRUMENT_LIST_GLOBAL: { name: { price(open), prevPrice, perc } }
+// Also saves India VIX quote (for VIXL/VIXU levels) and then scans LTP.
 async function loadOpenPrice() {
     await saveVixQuote();
     let currentTime = moment().format("HH:mm")
@@ -238,6 +273,15 @@ function updateStatusBar(that) {
     jQ("#status-bar-container").append(html)
 }
 
+// Core DOM scraper — reads live LTP from Kite watchlist sidebar for each instrument.
+// For each instrument in the active watchlist tab:
+//   1. Reads name (.symbol .name) and price (.price .last-price) from the DOM
+//   2. Saves to INSTRUMENT_LTP_PRICE: { name: { name, ltp } }
+//   3. Injects ASO/AST/BSO/BST/VIXU/VIXL badges based on current price vs strike levels
+//   4. Updates the top status bar for INDIA VIX, NIFTY 50, NIFTY BANK, SENSEX
+//
+// HTML entity handling: M&amp;M → M&M, M&amp;MFIN → M&MFIN, GVT&amp;D → GVT&D
+// Badge injection: removes old .strike-info badges then re-adds current ones.
 async function scanLtpPrice() {
     jQ("#status-bar-container").html('')
     await callSleepForAWhile(1000)
@@ -461,6 +505,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     showPopUpWindow('groot-trade-bot-stock', html, symbol, 1000, 320);
     let divId = "popup-custom-style-groot-trade-bot-stock";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    hideNativePopupButtons(divId);
     await showTopChart(symbol);
     await showPrictionProbabilty(symbol)
     showOIOBVBarChart(symbol);
@@ -475,6 +520,12 @@ window.addEventListener('load', function () {
 
 
 
+// ── Kite Connect OAuth Callback Handler ───────────────────────────────────────
+// When Kite redirects back after login with ?request_token=xxx&status=success,
+// exchanges the request_token for a persistent access_token via Kite Connect API.
+// Checksum = SHA256(api_key + request_token + api_secret).
+// On success: stores access_token to g_config and redirects to dashboard.
+// Used to enable live order placement via Kite Connect (not enctoken route).
 async function getSetAccessToken(){
     await callSleepForAWhile(2000)
     if (window.location.href.includes('request_token')) {

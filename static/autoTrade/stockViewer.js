@@ -1,3 +1,29 @@
+// ─── stockViewer.js ────────────────────────────────────────────────────────────
+// Multi-stock side-by-side viewer popup.
+//
+// PURPOSE:
+//   Displays a grid of stock "cards", each showing chart + futures + OI/OBV data,
+//   allowing quick visual comparison across a filtered subset of instruments.
+//
+// FILTERS (toolbar buttons):
+//   ALL      — all instruments in INSTRUMENT_TOKENS
+//   ASO      — instruments currently above strike one (bullish breakout)
+//   BSO      — instruments currently below strike one (bearish breakdown)
+//   N50      — Nifty 50 constituents (NIFTY_50_LIST)
+//   BN       — Bank Nifty constituents (NIFTY_BANK_LIST)
+//   WEIGHTED — top-weighted constituents used for component score (WEIGHTED_STOCKS)
+//
+// CARD LAYOUT per instrument (3 sub-columns):
+//   Col 1: LightweightCharts candlestick with ASO/AST/BSO/BST/VIXU/VIXL lines
+//   Col 2: OI/OBV bar chart (showOIOBVBarChartStockViewer) + PCR + OI score + signal
+//   Col 3: Futures premium, VWAP trend, futures trend (setFutureDetailsStockViewer)
+//
+// SCORE FLOW:
+//   updateScoresOfOIStockViewer() → scoreOIStrikeForSignal() → OI + IV score per strike
+//   updateScoresOfTrendStockViewer() → getOISignal() → BUY/SELL/STRONG signal label
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Opens the Stock Viewer popup. Counts ASO/BSO stocks upfront for filter buttons.
 jQ(document).on("click", "#show-stock-viewer", function (e) {
     e.preventDefault();
     showStockViewer();
@@ -14,6 +40,8 @@ jQ(document).on("click", ".refresh-oi-stock-viewer", async function (e) {
 });
 
 
+// Renders the Stock Viewer popup shell with filter buttons + empty content area.
+// The actual stock cards are populated by showStockAnalyzer() when a filter is clicked.
 function showStockViewer() {
 
     let html = ''
@@ -56,6 +84,7 @@ function showStockViewer() {
     showPopUpWindow('stock-viewer-scanner', html, "STOCK VIEWER", 950, 550);
     var divId = "popup-custom-style-stock-viewer-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    hideNativePopupButtons(divId);
 }
 
 jQ(document).on("click", ".stock-trend-filter", function (e) {
@@ -63,6 +92,13 @@ jQ(document).on("click", ".stock-trend-filter", function (e) {
     showStockAnalyzer(type);
 });
 
+// Populates #oi-viewer-scanner-content with stock cards for the selected filter type.
+// For each instrument in the filtered list:
+//   1. Renders card HTML (chart + futures + OI columns)
+//   2. Renders candlestick chart via showTopChartStockViewer()
+//   3. Fetches futures details via showFutureDetails() → setFutureDetailsStockViewer()
+//   4. Fetches OI/OBV via showPrictionProbabilty() → showOIOBVBarChartStockViewer()
+// Runs sequentially (await in loop) to avoid rate-limiting the Kite historical API.
 async function showStockAnalyzer(type) {
     let html = ''
 
@@ -135,6 +171,8 @@ async function showStockAnalyzer(type) {
 
 }
 
+// Updates the OI score + signal badge in the stock viewer card for a given instrument.
+// Calls getOISignal() to convert raw OI score + ATM CE/PE labels into a BUY/SELL string.
 function updateScoresOfTrendStockViewer(name, score, atmCeLabel, atmPeLabel) {
     let sig = getOISignal(score, atmCeLabel, atmPeLabel);
     let scoreCls = score > 0 ? 'sv-badge sv-badge-green' : 'sv-badge sv-badge-red';
@@ -205,14 +243,8 @@ function showOIOBVBarChartStockViewer(name) {
 
         // OBV delta instead of cumulative level
         let ceObvList = item['CE_OBV'], peObvList = item['PE_OBV'];
-        let ceObvDelta = ceObvList.length >= 2
-            ? parseFloat(ceObvList[ceObvList.length-1]['obv']) - parseFloat(ceObvList[ceObvList.length-2]['obv'])
-            : parseFloat(ceObvList[ceObvList.length-1]['obv']);
-        let peObvDelta = peObvList.length >= 2
-            ? parseFloat(peObvList[peObvList.length-1]['obv']) - parseFloat(peObvList[peObvList.length-2]['obv'])
-            : parseFloat(peObvList[peObvList.length-1]['obv']);
-        oiCEOBV.push(parseFloat(ceObvDelta).toFixed(1))
-        oiPEOBV.push(parseFloat(peObvDelta).toFixed(1))
+        oiCEOBV.push(parseFloat(ceObvList[ceObvList.length-1]['obv']).toFixed(1))
+        oiPEOBV.push(parseFloat(peObvList[peObvList.length-1]['obv']).toFixed(1))
 
         let result = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange);
         let strikeScore = updateScoresOfOIStockViewer(name, item, priceChange);
@@ -331,8 +363,9 @@ function showComponentOITableStockViewer(name) {
         if (s) {
             let ceChg = parseFloat(s['CHG_OI_CE']);
             let peChg = parseFloat(s['CHG_OI_PE']);
-            let ceObv = parseFloat(s['CE_OBV'][s['CE_OBV'].length - 1]['obv']);
-            let peObv = parseFloat(s['PE_OBV'][s['PE_OBV'].length - 1]['obv']);
+            let ceObvL = s['CE_OBV'], peObvL = s['PE_OBV'];
+            let ceObv = parseFloat(ceObvL[ceObvL.length-1]['obv']);
+            let peObv = parseFloat(peObvL[peObvL.length-1]['obv']);
             let ceColor = ceChg > 0 ? 'color:var(--gtb-red);' : ceChg < 0 ? 'color:var(--gtb-green);' : '';
             let peColor = peChg > 0 ? 'color:var(--gtb-green);' : peChg < 0 ? 'color:var(--gtb-red);' : '';
             let ceLink = s.CE ? '<a href="' + link.replace('##INSTRUMENT##', s.CE.tradingsymbol).replace('##TOKEN##', s.CE.instrument_token) + '" target="_blank">CE</a>' : 'CE';
@@ -389,7 +422,7 @@ async function showTopChartStockViewer(name) {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
-        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], CURRENT_DAY, CURRENT_DAY, HISTORICAL_DATA_INTERVAL);
+        let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], _gtbCurrDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL);
         await savePreviousStockQuote(tempName, INSTRUMENT_TOKENS[name])
         let previousQuote = JSON.parse(localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE"));
         let scriptData = generateTrend(name)
