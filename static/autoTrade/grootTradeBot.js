@@ -65,7 +65,9 @@ jQ(document).on('click', '.maximize-component-btn', function() {
 function showMaximizeOverlay(title, bodyHtml) {
     jQ('#groot-maximize-title').html(title);
     jQ('#groot-maximize-body').html(bodyHtml);
-    jQ('#groot-maximize-overlay').addClass('active');
+    // Match the current dashboard theme (overlay lives on <body>, not inside the container)
+    var isLight = jQ('#main-trade-bot-container').hasClass('gtb-light');
+    jQ('#groot-maximize-overlay').toggleClass('gtb-light', isLight).addClass('active');
 }
 
 function maximizeComponent(name, type) {
@@ -383,6 +385,8 @@ async function scanNineFifteenCandle() {
 
 function commonMarkupPlaceHolder() {
     let h = '';
+    // Info icon — click opens a styled popover explaining the section (see GTB_INFO map)
+    function _ii(k) { return ' <i class="bi bi-info-circle gtb-info-i" data-info="' + k + '" title="What does this show?"></i>'; }
 
     // ── TOP BAR ──────────────────────────────────────────────────────────────
     h += '<div id="gtb-topbar">';
@@ -469,6 +473,23 @@ function commonMarkupPlaceHolder() {
     h += '<a id="data-load" class="gtb-ctrl-link" style="font-size:0.62rem;"><i class="bi bi-sliders"></i> Data settings</a>';
     h += '</div>';
 
+
+    // Theme toggle (dark / light)
+    var _savedTheme = localStorage.getItem('GTB_THEME') || 'dark';
+    h += '<div style="margin-top:4px;padding-top:6px;border-top:1px solid #ffffff10;">';
+    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;">THEME</div>';
+    h += '<div style="display:flex;gap:4px;">';
+    h += '<button class="gtb-theme-btn" data-theme="dark" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_savedTheme==='dark'?'#00b4d8':'transparent') + ';color:' + (_savedTheme==='dark'?'#fff':'#7d8590') + ';"><i class="bi bi-moon-stars-fill"></i> Dark</button>';
+    h += '<button class="gtb-theme-btn" data-theme="light" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_savedTheme==='light'?'#00b4d8':'transparent') + ';color:' + (_savedTheme==='light'?'#fff':'#7d8590') + ';"><i class="bi bi-sun-fill"></i> Light</button>';
+    h += '</div></div>';
+
+    // Row height slider — taller rows = bigger charts
+    var _savedRowH = parseInt(localStorage.getItem('GTB_ROW_H') || '84');
+    h += '<div style="margin-top:4px;">';
+    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;">ROW HEIGHT <span id="gtb-grid-h-val">' + _savedRowH + '</span>px</div>';
+    h += '<input type="range" id="gtb-grid-h-slider" min="60" max="180" step="6" value="' + _savedRowH + '" style="width:100%;cursor:pointer;accent-color:#00b4d8;">';
+    h += '</div>';
+
     // Last refresh time
     h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
     h += '<span id="last-refresh-time" style="font-size:0.58rem;color:#7d8590;">—</span>';
@@ -488,394 +509,346 @@ function commonMarkupPlaceHolder() {
 
     h += '</div>'; // end topbar
 
-    // ── MAIN 3-COLUMN ─────────────────────────────────────────────────────────
     h += '<div id="gtb-main">';
 
-    // ── LEFT: Score + Trade Panel ─────────────────────────────────────────────
+    // ── Instrument icon map ───────────────────────────────────────────────────
+    var instrIcons = {
+        'NIFTY 50':   'bi-graph-up-arrow', 'NIFTY BANK': 'bi-bank2',
+        'GIFT NIFTY': 'bi-globe-asia-australia', 'SENSEX': 'bi-globe2',
+        'CRUDEOILM':  'bi-droplet-fill',   'USDINR': 'bi-currency-exchange',
+        'RELIANCE': 'bi-fuel-pump', 'HDFCBANK': 'bi-building', 'ICICIBANK': 'bi-credit-card'
+    };
+
+    // ════════════════════════════════════════════════════════════════
+    // LEFT PANEL — Score, Signal, Pillars, Entry, History
+    // ════════════════════════════════════════════════════════════════
     h += '<div id="gtb-left">';
 
     // Score gauge
     h += '<div class="gtb-card gtb-widget" id="gtb-score-gauge">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-speedometer2"></i> SCORE</span>';
-    h += '<button class="sv-icon-btn show-notes" title="Notes"><i class="bi bi-info-circle"></i></button></div>';
+    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-speedometer2"></i> SCORE' + _ii('score') + '</span>';
+    h += '<button class="sv-icon-btn show-notes" title="Trading notes"><i class="bi bi-journal-text"></i></button></div>';
     h += '<div class="gtb-card-body gtb-widget-body" style="height:120px;">';
     h += '<div id="trend-scoreboard" style="height:110px;"></div>';
     h += '<div id="score-board-number" style="text-align:center;margin-top:-4px;"></div>';
     h += '</div>';
-    h += '<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 6px;border-top:1px solid #ffffff10;">';
-    h += '<div id="gtb-adr-n50" style="font-size:0.6rem;color:#7d8590;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">N50 A/D —</div>';
-    h += '<div id="gtb-adr-bn"  style="font-size:0.6rem;color:#7d8590;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">BN A/D —</div>';
-    h += '</div>';
-    h += '</div>';
+    h += '<div style="display:flex;flex-direction:column;gap:2px;padding:4px 8px 5px;border-top:1px solid #ffffff10;">';
+    h += '<div id="gtb-adr-n50" style="font-size:0.58rem;color:#7d8590;">N50 A/D —</div>';
+    h += '<div id="gtb-adr-bn"  style="font-size:0.58rem;color:#7d8590;">BN A/D —</div>';
+    h += '</div></div>';
 
-    // Signal card
+    // Signal + outcome
     h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-lightning-charge"></i> SIGNAL</span></div>';
-    h += '<div class="gtb-card-body gtb-widget-body" style="height:140px;overflow-y:auto;">';
+    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-lightning-charge"></i> SIGNAL' + _ii('signal') + '</span></div>';
+    h += '<div class="gtb-card-body gtb-widget-body" style="height:120px;overflow-y:auto;">';
     h += '<div id="market-final-signal"></div>';
-    h += '<div id="trend-scoreboard-outcome" style="margin-top:6px;"></div>';
+    h += '<div id="trend-scoreboard-outcome" style="margin-top:4px;"></div>';
     h += '</div></div>';
 
-    // Pillar breakdown
+    // Entry / Trade
     h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-bar-chart-steps"></i> PILLARS</span></div>';
-    h += '<div class="gtb-card-body gtb-widget-body" style="height:200px;overflow-y:auto;" id="gtb-pillars-body">';
-    h += '<div style="color:#64748b;font-size:0.6rem;text-align:center;">Refreshing…</div>';
-    h += '</div></div>';
-
-    // Entry confluence + Trade panel
-    h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-crosshair"></i> ENTRY / TRADE</span></div>';
-    h += '<div class="gtb-card-body gtb-widget-body" style="height:110px;" id="entry-confluence-panel"></div>';
+    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-crosshair"></i> ENTRY / TRADE' + _ii('entry') + '</span></div>';
+    h += '<div class="gtb-card-body gtb-widget-body" style="height:100px;" id="entry-confluence-panel"></div>';
     h += '</div>';
 
-    // Exit signal — fixed height banner with direction selector
+    // Exit banner
     h += '<div class="gtb-exit-wrap">';
     h += '<div class="gtb-exit-dir-btns">';
-    h += '<button class="gtb-dir-btn" data-dir="NONE"  title="No position">—</button>';
-    h += '<button class="gtb-dir-btn bull" data-dir="LONG"  title="I am LONG"><i class="bi bi-arrow-up-circle-fill"></i> LONG</button>';
-    h += '<button class="gtb-dir-btn bear" data-dir="SHORT" title="I am SHORT"><i class="bi bi-arrow-down-circle-fill"></i> SHORT</button>';
+    h += '<button class="gtb-dir-btn" data-dir="NONE">—</button>';
+    h += '<button class="gtb-dir-btn bull" data-dir="LONG"><i class="bi bi-arrow-up-circle-fill"></i> LONG</button>';
+    h += '<button class="gtb-dir-btn bear" data-dir="SHORT"><i class="bi bi-arrow-down-circle-fill"></i> SHORT</button>';
     h += '</div>';
     h += '<div id="gtb-exit-signal" class="gtb-exit-banner hold"><i class="bi bi-door-open"></i> No position set</div>';
     h += '</div>';
 
-    // Top trades
+    // Pillars (collapsible)
     h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-stars"></i> TOP TRADES</span>';
-    h += '<button class="sv-icon-btn refresh-scoreboard" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button></div>';
-    h += '<div class="gtb-card-body gtb-widget-body" style="height:175px;" id="gtb-top-trades-list">';
+    h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-pillars-body">';
+    h += '<span class="gtb-card-title"><i class="bi bi-bar-chart-steps"></i> PILLARS' + _ii('pillars') + '</span>';
+    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="gtb-pillars-body" class="gtb-collapse-body gtb-widget-body" style="height:200px;overflow-y:auto;">';
+    h += '<div style="color:#64748b;font-size:0.6rem;text-align:center;padding:8px;">Refreshing…</div>';
+    h += '</div></div>';
+
+    // Top trades (collapsible)
+    h += '<div class="gtb-card gtb-widget">';
+    h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-top-trades-list">';
+    h += '<span class="gtb-card-title"><i class="bi bi-stars"></i> TOP TRADES' + _ii('toptrades') + '</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-scoreboard" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="gtb-top-trades-list" class="gtb-collapse-body gtb-widget-body" style="height:160px;">';
     h += '<div class="gtb-empty-msg"><i class="bi bi-hourglass-split"></i> Refreshing…</div>';
     h += '</div></div>';
 
-    // Score detail table (collapsible)
+    // Score detail (collapsible)
     h += '<div class="gtb-card gtb-widget">';
     h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-score-detail">';
-    h += '<span class="gtb-card-title"><i class="bi bi-table"></i> SCORE DETAIL</span>';
-    h += '<span class="hdr-actions">';
-    h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-    h += '</span>';
-    h += '</div>';
-    h += '<div id="gtb-score-detail" class="gtb-collapse-body gtb-widget-body" style="height:260px;overflow-x:auto;">';
-    h += '<div id="trend-scoreboard-table" style="height:100%;overflow-y:auto;overflow-x:auto;"></div>';
+    h += '<span class="gtb-card-title"><i class="bi bi-table"></i> SCORE DETAIL' + _ii('scoredetail') + '</span>';
+    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="gtb-score-detail" class="gtb-collapse-body gtb-widget-body" style="height:240px;overflow:auto;">';
+    h += '<div id="trend-scoreboard-table" style="overflow:auto;"></div>';
     h += '</div></div>';
 
-    // Score history table (collapsible)
+    // Score history (collapsible)
     h += '<div class="gtb-card gtb-widget">';
     h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-score-history">';
-    h += '<span class="gtb-card-title"><i class="bi bi-clock-history"></i> SCORE HISTORY</span>';
-    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span>';
-    h += '</div>';
+    h += '<span class="gtb-card-title"><i class="bi bi-clock-history"></i> SCORE HISTORY' + _ii('scorehistory') + '</span>';
+    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-score-history" class="gtb-collapse-body gtb-widget-body" style="height:220px;overflow:auto;">';
     h += '<div id="gtb-score-history-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
     h += '</div></div>';
 
-    // Component breakdown panel (collapsible)
-    h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-component-panel">';
-    h += '<span class="gtb-card-title"><i class="bi bi-bar-chart-steps"></i> COMPONENTS</span>';
-    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span>';
-    h += '</div>';
-    h += '<div id="gtb-component-panel" class="gtb-collapse-body gtb-widget-body" style="height:300px;overflow:auto;">';
-    h += '<div id="gtb-component-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
-    h += '</div></div>';
-
     h += '</div>'; // end #gtb-left
 
-    // ── CENTER: Tabbed OI Focus ───────────────────────────────────────────────
-    h += '<div id="gtb-center">';
+    // ════════════════════════════════════════════════════════════════
+    // RIGHT PANEL
+    // TOP: 3×3 chart grid — all 9 instruments, fills height, no scroll
+    // BOTTOM: detail sections — scrollable
+    // ════════════════════════════════════════════════════════════════
+    h += '<div id="gtb-right">';
 
-    // ── Row 1: Index charts (NIFTY 50 + NIFTY BANK) — always fully visible ───
-    let indexInstruments = ['NIFTY 50', 'NIFTY BANK'];
-    let instrIcons = { 'NIFTY 50': 'bi-graph-up-arrow', 'NIFTY BANK': 'bi-bank2', 'RELIANCE': 'bi-fuel-pump', 'HDFCBANK': 'bi-building', 'ICICIBANK': 'bi-credit-card', 'CRUDEOILM': 'bi-droplet-fill', 'USDINR': 'bi-currency-exchange' };
+    // All 9 instruments in declaration order (row1: markets, row2: stocks)
+    var _allInstruments = [
+        { name: 'GIFT NIFTY', mcx: false },
+        { name: 'NIFTY 50',   mcx: false },
+        { name: 'NIFTY BANK', mcx: false },
+        { name: 'SENSEX',     mcx: false },
+        { name: 'CRUDEOILM',  mcx: true  },
+        { name: 'USDINR',     mcx: true  },
+        { name: 'RELIANCE',   mcx: false },
+        { name: 'HDFCBANK',   mcx: false },
+        { name: 'ICICIBANK',  mcx: false },
+    ];
 
-    h += '<div class="gtb-grid-row" id="gtb-index-row">';
-    indexInstruments.forEach(function(name) {
-        let tid = name.replace(/ /g, '-').replace(/&/g, '-');
-        let icon = instrIcons[name];
-        h += '<div class="gtb-instr-col" id="gtb-pane-' + tid + '">';
+    // ════════════════════════════════════════════════════════════════
+    // OVERVIEW BANNER — answers "what is this dashboard telling me?"
+    // ════════════════════════════════════════════════════════════════
+    h += '<div id="gtb-overview">';
 
-        // Chart card
-        h += '<div class="gtb-grid-card">';
-        h += '<div class="gtb-grid-card-header">';
-        let isMcxInstr = (name === 'CRUDEOILM' || name === 'USDINR');
-        let exchLink = isMcxInstr ? 'MCX' : 'NSE';
-        let mcxEntry = isMcxInstr ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === name; }) : null;
-        let linkToken = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
-        let linkSymbol = mcxEntry ? mcxEntry.tradingsymbol : name;
-        let kiteLink = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
-        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></span>';
-        h += '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
-        h += '<span class="gtb-ltp-inline" id="' + tid + '-ltp"></span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-chart" class="gtb-chart-area"></div>';
-        h += '<div id="' + tid + '-atr-sl" class="gtb-atr-row"></div>';
+    // 1) Verdict block — big composite verdict + score
+    h += '<div class="gtb-ov-block gtb-ov-verdict-block">';
+    h +=   '<div class="gtb-ov-cap">MARKET VERDICT' + _ii('verdict') + '</div>';
+    h +=   '<div class="gtb-ov-verdict" id="gtb-ov-verdict">—</div>';
+    h +=   '<div class="gtb-ov-verdict-sub" id="gtb-ov-verdict-sub">Awaiting data…</div>';
+    h += '</div>';
+
+    // 2) Composite score dial
+    h += '<div class="gtb-ov-block gtb-ov-score-block">';
+    h +=   '<div class="gtb-ov-cap">COMPOSITE SCORE' + _ii('compscore') + '</div>';
+    h +=   '<div class="gtb-ov-score" id="gtb-ov-score">—</div>';
+    h +=   '<div class="gtb-ov-score-scale" id="gtb-ov-score-scale"><span>-40</span><span>0</span><span>+40</span></div>';
+    h += '</div>';
+
+    // 3) Breadth — bullish vs bearish instruments
+    h += '<div class="gtb-ov-block gtb-ov-breadth-block">';
+    h +=   '<div class="gtb-ov-cap">INSTRUMENT BREADTH' + _ii('breadth') + '</div>';
+    h +=   '<div class="gtb-ov-breadth-bar" id="gtb-ov-breadth-bar">';
+    h +=     '<div class="gtb-ov-breadth-fill bull" id="gtb-ov-breadth-bull" style="width:50%;"></div>';
+    h +=     '<div class="gtb-ov-breadth-fill bear" id="gtb-ov-breadth-bear" style="width:50%;"></div>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ov-breadth-legend"><span id="gtb-ov-breadth-bull-n" class="bull">0 ▲</span>'
+       +   '<span id="gtb-ov-breadth-bear-n" class="bear">0 ▼</span></div>';
+    h += '</div>';
+
+    // 4) Key stats — A/D + VIX
+    h += '<div class="gtb-ov-block gtb-ov-stats-block">';
+    h +=   '<div class="gtb-ov-cap">KEY STATS' + _ii('keystats') + '</div>';
+    h +=   '<div class="gtb-ov-stat"><span class="gtb-ov-stat-lbl">N50 A/D</span><span class="gtb-ov-stat-val" id="gtb-ov-n50ad">—</span></div>';
+    h +=   '<div class="gtb-ov-stat"><span class="gtb-ov-stat-lbl">BN A/D</span><span class="gtb-ov-stat-val" id="gtb-ov-bnad">—</span></div>';
+    h +=   '<div class="gtb-ov-stat"><span class="gtb-ov-stat-lbl">INDIA VIX</span><span class="gtb-ov-stat-val" id="gtb-ov-vix">—</span></div>';
+    h += '</div>';
+
+    h += '</div>'; // end #gtb-overview
+
+    // ════════════════════════════════════════════════════════════════
+    // INSTRUMENT ROWS — one horizontal row per instrument
+    //   [tab] NAME / LTP+chg | wide chart | 9:15 | FUTURES | OI | SL
+    // ════════════════════════════════════════════════════════════════
+    h += '<div id="gtb-rows-head">';
+    h +=   '<span class="gtb-rh-instr">INSTRUMENT' + _ii('col-instrument') + '</span>';
+    h +=   '<span class="gtb-rh-chart">PRICE ACTION' + _ii('col-price') + '</span>';
+    h +=   '<span class="gtb-rh-915">9:15' + _ii('col-915') + '</span>';
+    h +=   '<span class="gtb-rh-fut">FUTURES' + _ii('col-futures') + '</span>';
+    h +=   '<span class="gtb-rh-oi">OPEN INTEREST' + _ii('col-oi') + '</span>';
+    h +=   '<span class="gtb-rh-sl">SL / TARGET' + _ii('col-sl') + '</span>';
+    h += '</div>';
+
+    h += '<div id="gtb-rows">';
+    _allInstruments.forEach(function(item, idx) {
+        var name = item.name;
+        var tid  = name.replace(/ /g, '-').replace(/&/g, '-');
+        var icon = instrIcons[name] || 'bi-bar-chart';
+        var isMcx = !!item.mcx;
+        var exchLink = isMcx ? 'MCX' : 'NSE';
+        var mcxEntry = isMcx ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f){ return f.name === name; }) : null;
+        var linkToken  = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
+        var linkSymbol = mcxEntry ? mcxEntry.tradingsymbol    : name;
+        var kiteLink   = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
+
+        // Category: index / commodity / stock — drives the left colour tab
+        var cat = isMcx ? 'cmdty' : (idx <= 3 ? 'index' : 'stock');
+        var hasFut = (name !== 'GIFT NIFTY' && name !== 'SENSEX');
+
+        h += '<div class="gtb-row cat-' + cat + '" id="gtb-pane-' + tid + '">';
+
+        // ── Identity: name + LTP + change ──────────────────────────────────
+        h += '<div class="gtb-row-id">';
+        h +=   '<div class="gtb-row-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></div>';
+        h +=   '<div class="gtb-row-ltp" id="' + tid + '-ltp"></div>';
+        h +=   '<div class="gtb-row-id-actions">';
+        h +=     '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
+        h +=     '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+        h +=   '</div>';
         h += '</div>';
 
-        // OI card (collapsible)
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-oi-body">';
-        h += '<span class="gtb-grid-section-label"><i class="bi bi-bar-chart-fill"></i> OI / OBV</span>';
-        h += '<span class="hdr-meta">';
-        h += '<span id="' + tid + '-pcr-probability" class="gtb-pcr-chip"></span>';
-        h += '<span id="' + tid + '-oi-score" class="gtb-oi-score-chip"></span>';
-        h += '</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-oi-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
-        h += '<div id="' + tid + '-oi-signal-row" class="gtb-signal-row"></div>';
-        h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
-        h += '<div id="' + tid + '-component-oi-list-table" class="gtb-oi-table"></div>';
-        h += '</div></div>';
+        // ── Wide candlestick chart ─────────────────────────────────────────
+        h += '<div id="' + tid + '-chart" class="gtb-chart-mini gtb-row-chart"></div>';
 
-        // Futures card (collapsible)
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-fut-body">';
-        h += '<span class="gtb-grid-section-label" id="futures-chart-' + tid + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</span>';
-        h += '<span class="hdr-meta">';
-        h += '<span id="' + tid + '-futures-premium" class="gtb-pcr-chip"></span>';
-        h += '</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-futures" data-name="' + name + '" title="Refresh Futures"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-fut-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-futures" class="gtb-futures-content"></div>';
-        h += '<div id="' + tid + '-futures-vwap" class="gtb-futures-meta"></div>';
-        h += '<div id="' + tid + '-futures-trend" class="gtb-futures-meta"></div>';
-        h += '</div></div>';
-
-        // 9:15 close (collapsible, only for index)
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-915-body">';
-        h += '<span class="gtb-grid-section-label"><i class="bi bi-clock-history"></i> 9:15 CLOSE</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-nine-fifteen" data-name="' + name + '" title="Refresh 9:15"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span>';
+        // ── 9:15 ───────────────────────────────────────────────────────────
+        h += '<div class="gtb-row-col gtb-row-915"><span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
+        h +=   '<button class="gtb-prob-btn" data-name="' + name + '" title="Strike-level probability (backtest)"><i class="bi bi-percent"></i></button>';
         h += '</div>';
-        h += '<div id="' + tid + '-915-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-nine-fifteen-close" class="gtb-915-strip"></div>';
-        h += '<div id="' + tid + '-nine-fifteen-close-table" class="gtb-915-table"></div>';
-        h += '</div></div>';
 
-        // A/D (collapsible, only for index)
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-ad-body">';
-        h += '<span class="gtb-grid-section-label"><i class="bi bi-arrows-collapse-vertical"></i> ADVANCE / DECLINE</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-advance-decline" data-name="' + name + '" title="Refresh Spot A/D"><i class="bi bi-arrow-clockwise"></i> S</button>';
-        h += '<button class="sv-icon-btn refresh-advance-decline-futures" data-name="' + name + '" title="Refresh Futures A/D"><i class="bi bi-arrow-clockwise"></i> F</button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-ad-body" class="gtb-collapse-body">';
-        h += '<div class="gtb-ad-label">SPOT <span id="' + tid + '-advance-decline-adr" class="gtb-adr-val"></span></div>';
-        h += '<div id="' + tid + '-advance-decline" class="gtb-chart-ad"></div>';
-        h += '<div class="gtb-ad-label" style="margin-top:4px;">FUTURES <span id="' + tid + '-advance-decline-adr-future" class="gtb-adr-val"></span></div>';
-        h += '<div id="' + tid + '-advance-decline-future" class="gtb-chart-ad"></div>';
-        h += '</div></div>';
+        // ── Futures ────────────────────────────────────────────────────────
+        h += '<div class="gtb-row-col gtb-row-fut">';
+        if (hasFut) {
+            h +=   '<span id="' + tid + '-futures-premium" class="gtb-cell-premium-chip"></span>';
+            h +=   '<div id="' + tid + '-futures" class="gtb-cell-fut-signals"></div>';
+            h +=   '<div id="' + tid + '-futures-trend" class="gtb-cell-fut-remark"></div>';
+        } else {
+            h +=   '<span class="gtb-row-na">—</span>';
+        }
+        h += '</div>';
 
-        h += '</div>'; // end .gtb-instr-col
+        // ── OI ─────────────────────────────────────────────────────────────
+        h += '<div class="gtb-row-col gtb-row-oi">';
+        if (hasFut) {
+            h +=   '<span id="' + tid + '-pcr-probability" class="gtb-pcr-chip"></span>';
+            h +=   '<span id="' + tid + '-oi-score" class="gtb-oi-score-chip"></span>';
+        } else {
+            h +=   '<span class="gtb-row-na">—</span>';
+        }
+        h += '</div>';
+
+        // ── SL / Target ────────────────────────────────────────────────────
+        h += '<div class="gtb-row-col gtb-row-sl"><div id="' + tid + '-atr-sl" class="gtb-cell-sl-wrap"></div></div>';
+
+        h += '</div>'; // end .gtb-row
     });
-    h += '</div>'; // end #gtb-index-row
+    h += '</div>'; // end #gtb-rows
 
-    // ── Row 2: Stock instruments (3 across) ───────────────────────────────────
-    let stockInstruments = ['RELIANCE', 'HDFCBANK', 'ICICIBANK'];
-    h += '<div class="gtb-grid-row gtb-grid-3" id="gtb-stocks-row">';
-    stockInstruments.forEach(function(name) {
-        let tid = name.replace(/ /g, '-').replace(/&/g, '-');
-        let icon = instrIcons[name];
-        h += '<div class="gtb-instr-col" id="gtb-pane-' + tid + '">';
+    // ── Detail sections — collapsed by default, toggled open ──────────
+    h += '<div id="gtb-details-area">';
+    h += '<div id="gtb-detail-toggle-bar" onclick="(function(){var a=document.getElementById(\'gtb-detail-inner\');var open=a.style.display!==\'none\';a.style.display=open?\'none\':\'\';document.getElementById(\'gtb-detail-caret\').style.transform=open?\'rotate(-90deg)\':\'\';})();">';
+    h += '<i class="bi bi-layers"></i> DETAILS — OI / FUTURES / 9:15 / A/D / COMPONENTS' + _ii('details');
+    h += '<span style="margin-left:auto;font-size:0.7rem;transition:transform 0.2s;" id="gtb-detail-caret">▾</span>';
+    h += '</div>';
+    h += '<div id="gtb-detail-inner" style="display:none;">';
 
-        h += '<div class="gtb-grid-card">';
-        h += '<div class="gtb-grid-card-header">';
-        let isMcxInstr = (name === 'CRUDEOILM' || name === 'USDINR');
-        let exchLink = isMcxInstr ? 'MCX' : 'NSE';
-        let mcxEntry = isMcxInstr ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === name; }) : null;
-        let linkToken = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
-        let linkSymbol = mcxEntry ? mcxEntry.tradingsymbol : name;
-        let kiteLink = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
-        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></span>';
-        h += '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
-        h += '<span class="gtb-ltp-inline" id="' + tid + '-ltp"></span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-chart" class="gtb-chart-area"></div>';
-        h += '<div id="' + tid + '-atr-sl" class="gtb-atr-row"></div>';
-        h += '</div>';
+    // Per-instrument OI / Futures / 9:15 / A/D (only for instruments that have them)
+    var _detailInstruments = [
+        { name: 'NIFTY 50',   oi: true, futures: true, n915: true, ad: true },
+        { name: 'NIFTY BANK', oi: true, futures: true, n915: true, ad: true },
+        { name: 'CRUDEOILM',  oi: true, futures: true },
+        { name: 'USDINR',     oi: true, futures: true },
+        { name: 'RELIANCE',   oi: true, futures: true },
+        { name: 'HDFCBANK',   oi: true, futures: true },
+        { name: 'ICICIBANK',  oi: true, futures: true },
+    ];
 
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-oi-body">';
-        h += '<span class="gtb-grid-section-label"><i class="bi bi-bar-chart-fill"></i> OI / OBV</span>';
-        h += '<span class="hdr-meta">';
-        h += '<span id="' + tid + '-pcr-probability" class="gtb-pcr-chip"></span>';
-        h += '<span id="' + tid + '-oi-score" class="gtb-oi-score-chip"></span>';
-        h += '</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-oi-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
-        h += '<div id="' + tid + '-oi-signal-row" class="gtb-signal-row"></div>';
-        h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
-        h += '<div id="' + tid + '-component-oi-list-table" class="gtb-oi-table"></div>';
-        h += '</div></div>';
+    h += '<div id="gtb-detail-cols">';
+    _detailInstruments.forEach(function(item) {
+        var name = item.name;
+        var tid  = name.replace(/ /g, '-').replace(/&/g, '-');
+        h += '<div class="gtb-detail-col" id="gtb-detail-' + tid + '">';
+        h += '<div class="gtb-detail-col-title">' + name + '</div>';
 
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-fut-body">';
-        h += '<span class="gtb-grid-section-label" id="futures-chart-' + tid + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</span>';
-        h += '<span class="hdr-meta">';
-        h += '<span id="' + tid + '-futures-premium" class="gtb-pcr-chip"></span>';
-        h += '</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-futures" data-name="' + name + '" title="Refresh Futures"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-fut-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-futures" class="gtb-futures-content"></div>';
-        h += '<div id="' + tid + '-futures-vwap" class="gtb-futures-meta"></div>';
-        h += '<div id="' + tid + '-futures-trend" class="gtb-futures-meta"></div>';
-        h += '</div></div>';
+        if (item.oi) {
+            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-oi-body">';
+            h += '<span><i class="bi bi-bar-chart-fill"></i> OI/OBV</span>';
+            h += '<span class="gtb-detail-meta"></span>';
+            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+            h += '<div id="' + tid + '-oi-body" class="gtb-collapse-body">';
+            h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
+            h += '<div id="' + tid + '-oi-signal-row" class="gtb-signal-row"></div>';
+            h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
+            h += '<div id="' + tid + '-component-oi-list-table" class="gtb-oi-table"></div>';
+            h += '</div>';
+        }
 
-        h += '</div>'; // end .gtb-instr-col
+        if (item.futures) {
+            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-fut-body">';
+            h += '<span id="futures-chart-' + tid + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</span>';
+            h += '<span class="gtb-detail-meta"></span>';
+            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-futures" data-name="' + name + '" title="Refresh Futures"><i class="bi bi-arrow-clockwise"></i></button><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+            h += '<div id="' + tid + '-fut-body" class="gtb-collapse-body">';
+            h += '<div id="' + tid + '-futures-vwap" class="gtb-futures-meta"></div>';
+            h += '</div>';
+        }
+
+        if (item.n915) {
+            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-915-body">';
+            h += '<span><i class="bi bi-clock-history"></i> 9:15 CLOSE</span>';
+            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-nine-fifteen" data-name="' + name + '" title="Refresh 9:15"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+            h += '<div id="' + tid + '-915-body" class="gtb-collapse-body">';
+            h += '<div id="' + tid + '-nine-fifteen-close" class="gtb-915-strip"></div>';
+            h += '<div id="' + tid + '-nine-fifteen-close-table" class="gtb-915-table"></div>';
+            h += '</div>';
+        }
+
+        if (item.ad) {
+            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-ad-body">';
+            h += '<span><i class="bi bi-arrows-collapse-vertical"></i> A/D</span>';
+            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="' + name + '" title="Spot A/D"><i class="bi bi-arrow-clockwise"></i> S</button><button class="sv-icon-btn refresh-advance-decline-futures" data-name="' + name + '" title="Futures A/D"><i class="bi bi-arrow-clockwise"></i> F</button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+            h += '<div id="' + tid + '-ad-body" class="gtb-collapse-body">';
+            h += '<div class="gtb-ad-label">SPOT <span id="' + tid + '-advance-decline-adr" class="gtb-adr-val"></span></div>';
+            h += '<div id="' + tid + '-advance-decline" class="gtb-chart-ad"></div>';
+            h += '<div class="gtb-ad-label" style="margin-top:4px;">FUTURES <span id="' + tid + '-advance-decline-adr-future" class="gtb-adr-val"></span></div>';
+            h += '<div id="' + tid + '-advance-decline-future" class="gtb-chart-ad"></div>';
+            h += '</div>';
+        }
+
+        h += '</div>'; // end .gtb-detail-col
     });
-    h += '</div>'; // end #gtb-stocks-row
+    h += '</div>'; // end #gtb-detail-cols
 
-    // ── Row 3: Commodities (CRUDEOILM + USDINR side by side) ─────────────────
-    let commInstruments = ['CRUDEOILM', 'USDINR'];
-    h += '<div class="gtb-grid-row" id="gtb-comm-row">';
-    commInstruments.forEach(function(name) {
-        let tid = name.replace(/ /g, '-').replace(/&/g, '-');
-        let icon = instrIcons[name];
-        h += '<div class="gtb-instr-col" id="gtb-pane-' + tid + '">';
-
-        h += '<div class="gtb-grid-card">';
-        h += '<div class="gtb-grid-card-header">';
-        let isMcxInstr = (name === 'CRUDEOILM' || name === 'USDINR');
-        let exchLink = isMcxInstr ? 'MCX' : 'NSE';
-        let mcxEntry = isMcxInstr ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f) { return f.name === name; }) : null;
-        let linkToken = mcxEntry ? mcxEntry.instrument_token : INSTRUMENT_TOKENS[name];
-        let linkSymbol = mcxEntry ? mcxEntry.tradingsymbol : name;
-        let kiteLink = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
-        h += '<span class="gtb-grid-instr-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></span>';
-        h += '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
-        h += '<span class="gtb-ltp-inline" id="' + tid + '-ltp"></span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-chart" class="gtb-chart-area"></div>';
-        h += '<div id="' + tid + '-atr-sl" class="gtb-atr-row"></div>';
-        h += '</div>';
-
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-oi-body">';
-        h += '<span class="gtb-grid-section-label"><i class="bi bi-bar-chart-fill"></i> OI / OBV</span>';
-        h += '<span class="hdr-meta">';
-        h += '<span id="' + tid + '-pcr-probability" class="gtb-pcr-chip"></span>';
-        h += '<span id="' + tid + '-oi-score" class="gtb-oi-score-chip"></span>';
-        h += '</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-oi-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
-        h += '<div id="' + tid + '-oi-signal-row" class="gtb-signal-row"></div>';
-        h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
-        h += '<div id="' + tid + '-component-oi-list-table" class="gtb-oi-table"></div>';
-        h += '</div></div>';
-
-        h += '<div class="gtb-grid-card gtb-collapsible">';
-        h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="' + tid + '-fut-body">';
-        h += '<span class="gtb-grid-section-label" id="futures-chart-' + tid + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</span>';
-        h += '<span class="hdr-meta">';
-        h += '<span id="' + tid + '-futures-premium" class="gtb-pcr-chip"></span>';
-        h += '</span>';
-        h += '<span class="hdr-actions">';
-        h += '<button class="sv-icon-btn refresh-futures" data-name="' + name + '" title="Refresh Futures"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-        h += '</span></div>';
-        h += '<div id="' + tid + '-fut-body" class="gtb-collapse-body">';
-        h += '<div id="' + tid + '-futures" class="gtb-futures-content"></div>';
-        h += '<div id="' + tid + '-futures-vwap" class="gtb-futures-meta"></div>';
-        h += '<div id="' + tid + '-futures-trend" class="gtb-futures-meta"></div>';
-        h += '</div></div>';
-
-        h += '</div>'; // end .gtb-instr-col
-    });
-    h += '</div>'; // end #gtb-comm-row
-
-    // ── ALL A/D + 9:15 row ────────────────────────────────────────────────────
-    h += '<div class="gtb-grid-card" id="gtb-all-ad-section" style="margin:6px;border-radius:8px;">';
-    h += '<div class="gtb-grid-card-header gtb-collapse-toggle" data-target="gtb-all-ad-body">';
-    h += '<span class="gtb-grid-section-label"><i class="bi bi-clock-history"></i> ALL STOCKS — 9:15 &amp; A/D</span>';
-    h += '<span class="hdr-actions">';
-    h += '<button class="sv-icon-btn refresh-advance-decline" data-name="ALL" title="Refresh All Spot A/D"><i class="bi bi-arrow-clockwise"></i> SPOT</button>';
-    h += '<button class="sv-icon-btn refresh-advance-decline-futures" data-name="ALL" title="Refresh All Futures A/D"><i class="bi bi-arrow-clockwise"></i> FUT</button>';
-    h += '<i class="bi bi-chevron-down gtb-caret"></i>';
-    h += '</span></div>';
+    // All-stocks A/D + 9:15
+    h += '<div id="gtb-all-ad-section">';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="gtb-all-ad-body">';
+    h += '<span><i class="bi bi-clock-history"></i> ALL STOCKS — 9:15 &amp; A/D</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="ALL" title="Spot A/D"><i class="bi bi-arrow-clockwise"></i> SPOT</button>';
+    h += '<button class="sv-icon-btn refresh-advance-decline-futures" data-name="ALL" title="Futures A/D"><i class="bi bi-arrow-clockwise"></i> FUT</button>';
+    h += '<i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-all-ad-body" class="gtb-collapse-body">';
     h += '<div id="ALL-nine-fifteen-close" class="gtb-915-strip"></div>';
     h += '<div id="ALL-nine-fifteen-close-table" style="max-height:80px;overflow-y:auto;margin-top:4px;"></div>';
     h += '<div style="display:flex;gap:8px;margin-top:6px;">';
-    h += '<div style="flex:1;"><div class="gtb-ad-label">ALL SPOT ADR <span id="all-advance-decline-adr" class="gtb-adr-val"></span></div><div id="advance-decline-trend" class="gtb-chart-ad"></div></div>';
-    h += '<div style="flex:1;"><div class="gtb-ad-label">ALL FUTURES ADR <span id="all-advance-decline-adr-future" class="gtb-adr-val"></span></div><div id="advance-decline-futures-trend" class="gtb-chart-ad"></div></div>';
-    h += '</div>';
+    h += '<div style="flex:1;"><div class="gtb-ad-label">SPOT <span id="all-advance-decline-adr" class="gtb-adr-val"></span></div><div id="advance-decline-trend" class="gtb-chart-ad"></div></div>';
+    h += '<div style="flex:1;"><div class="gtb-ad-label">FUTURES <span id="all-advance-decline-adr-future" class="gtb-adr-val"></span></div><div id="advance-decline-futures-trend" class="gtb-chart-ad"></div></div>';
+    h += '</div></div></div>';
+
+    // Components + instrument list
+    h += '<div style="display:flex;border-top:1px solid var(--gtb-border);">';
+
+    h += '<div style="flex:2;border-right:1px solid var(--gtb-border);">';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="gtb-component-panel">';
+    h += '<span><i class="bi bi-bar-chart-steps"></i> WEIGHTED COMPONENTS</span>';
+    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="gtb-component-panel" class="gtb-collapse-body" style="max-height:280px;overflow:auto;">';
+    h += '<div id="gtb-component-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
     h += '</div></div>';
 
-    h += '</div>'; // end #gtb-center
-
-    // ── RIGHT: Secondary instruments + stock list ─────────────────────────────
-    h += '<div id="gtb-right">';
-
-    // GIFT NIFTY + SENSEX mini charts
-    ['GIFT NIFTY', 'SENSEX'].forEach(function(name) {
-        let tid = name.replace(/ /g, '-').replace(/&/g, '-');
-        h += '<div class="gtb-instr-card">';
-        h += '<div class="gtb-instr-header">';
-        h += '<span class="gtb-instr-name"><i class="bi bi-globe-asia-australia"></i> ' + name + '</span>';
-        h += '<div class="gtb-instr-badges">';
-        h += '<span id="' + tid + '-915-badge" style="font-size:0.55rem;"></span>';
-        h += '<span id="' + tid + '-ltp" style="font-size:0.62rem;color:#e6edf3;font-weight:800;font-variant-numeric:tabular-nums;"></span>';
-        h += '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh chart"><i class="bi bi-arrow-clockwise"></i></button>';
-        h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
-        h += '</div></div>';
-        h += '<div class="gtb-instr-body">';
-        h += '<div id="' + tid + '-chart" style="height:80px;"></div>';
-        h += '<div id="' + tid + '-atr-sl" style="margin-top:2px;"></div>';
-        h += '</div></div>';
-    });
-
-    // USDINR and CRUDEOILM are now full center tabs — keep hidden placeholder divs so async writers don't error
-    ['CRUDEOILM', 'USDINR'].forEach(function(name) {
-        // These IDs are already rendered in the center tab pane above.
-        // No duplicate divs needed here.
-    });
-
-    // Stock list
-    h += '<div class="gtb-card">';
-    h += '<div class="gtb-card-header">';
-    h += '<span class="gtb-card-title"><i class="bi bi-collection"></i> INSTRUMENTS</span>';
-    h += '<button class="sv-icon-btn refresh-stock-list" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
-    h += '</div>';
-    h += '<div style="max-height:280px;overflow-y:auto;">';
+    h += '<div style="flex:1;">';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="gtb-stock-list-body">';
+    h += '<span><i class="bi bi-collection"></i> INSTRUMENTS</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-stock-list" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="gtb-stock-list-body" class="gtb-collapse-body" style="max-height:280px;overflow-y:auto;">';
     h += '<table class="table display nowrap" id="stock-list-table" style="width:100%;font-size:0.58rem;margin-bottom:0;"></table>';
     h += '</div></div>';
+
+    h += '</div>'; // end components+list row
+
+    h += '</div>'; // end #gtb-detail-inner
+    h += '</div>'; // end #gtb-details-area
 
     h += '</div>'; // end #gtb-right
 
@@ -907,6 +880,8 @@ function commonMarkupPlaceHolder() {
 
 function showCompoenentPlaceHolders() {
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
+    _gtbApplyTheme(localStorage.getItem('GTB_THEME') || 'dark');
+    _gtbApplyGridH(parseInt(localStorage.getItem('GTB_ROW_H') || '84'));
 }
 
 // ── Main Refresh Orchestrator ──────────────────────────────────────────────────
@@ -1643,10 +1618,136 @@ function renderComponentPanel() {
     el.html(html);
 }
 
+// ─── Per-5min OI/OBV score reconstruction ─────────────────────────────────────
+// Faithful reconstruction: re-runs scoreOIStrikeForSignal() at a past candle time T
+// using the per-candle data already retained in oiData (raw option candles with OI[6],
+// the cumulative CE_OBV/PE_OBV series, the CE_IV/PE_IV series, and underlying spot
+// candles for priceChange@T). Returns the same scale as computeOIScoreFromData().
+//
+// The instruments that feed the main OI score (NIFTY 50, NIFTY BANK, RELIANCE,
+// HDFCBANK, ICICIBANK) each store oiData in INSTRUMENT_SCORE_MAP[name].oiData.
+
+var _GTB_OI_SCORED_INSTRUMENTS = ['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK'];
+
+// Index of the current-day candle at (or just before) "HH:mm".
+// currData spans prev-day + current-day, so we restrict to the most recent day.
+function _gtbCandleIdxAtTime(candles, hhmm) {
+    if (!candles || !candles.length) return -1;
+    var lastDay = moment(candles[candles.length - 1][0]).format('YYYY-MM-DD');
+    var found = -1;
+    for (var k = 0; k < candles.length; k++) {
+        var m = moment(candles[k][0]);
+        if (m.format('YYYY-MM-DD') !== lastDay) continue;
+        var t = m.format('HH:mm');
+        if (t === hhmm) { found = k; break; }
+        if (t < hhmm) { found = k; }       // remember last candle before T
+        else break;                         // passed T → stop
+    }
+    return found;
+}
+
+// Underlying % change at time T: (close@T − day-open) / day-open × 100.
+function _gtbPriceChangeAtTime(spot, hhmm) {
+    if (!spot || !spot.length) return 0;
+    var lastDay = moment(spot[spot.length - 1][0]).format('YYYY-MM-DD');
+    var dayOpen = null;
+    for (var k = 0; k < spot.length; k++) {
+        if (moment(spot[k][0]).format('YYYY-MM-DD') === lastDay) { dayOpen = parseFloat(spot[k][1]); break; }
+    }
+    var i = _gtbCandleIdxAtTime(spot, hhmm);
+    if (i < 0 || dayOpen === null || dayOpen <= 0) return 0;
+    return (parseFloat(spot[i][4]) - dayOpen) / dayOpen * 100;
+}
+
+// Reconstruct a single strike's `item` as it was at time T (shape that
+// scoreOIStrikeForSignal expects: OI_CE/OI_PE/CHG_OI_CE/CHG_OI_PE/CE_OBV/PE_OBV/CE_IV/PE_IV).
+function _gtbStrikeItemAtTime(item, hhmm) {
+    var cc = item.currDataCE, cp = item.currDataPE;
+    if (!cc || !cp || !cc.length || !cp.length) return null;
+    var iCE = _gtbCandleIdxAtTime(cc, hhmm);
+    var iPE = _gtbCandleIdxAtTime(cp, hhmm);
+    if (iCE < 0 || iPE < 0) return null;
+    var OID = (typeof OI_DIVISOR !== 'undefined') ? OI_DIVISOR : 100000;
+
+    var oiCE = parseFloat(cc[iCE][6]) || 0;
+    var oiPE = parseFloat(cp[iPE][6]) || 0;
+    var prevOICE = parseFloat(item.prevDataCE[item.prevDataCE.length - 1][6]) || 0;
+    var prevOIPE = parseFloat(item.prevDataPE[item.prevDataPE.length - 1][6]) || 0;
+
+    // OBV / IV series align by index with their currData candles → slice up to T.
+    var ceObv = (item.CE_OBV || []).slice(0, iCE + 1);
+    var peObv = (item.PE_OBV || []).slice(0, iPE + 1);
+    if (!ceObv.length || !peObv.length) return null;
+
+    return {
+        OI_CE:     (oiCE / OID).toFixed(1),
+        OI_PE:     (oiPE / OID).toFixed(1),
+        CHG_OI_CE: ((oiCE - prevOICE) / OID).toFixed(1),
+        CHG_OI_PE: ((oiPE - prevOIPE) / OID).toFixed(1),
+        ATM_STRIKE: item.ATM_STRIKE,
+        CE_OBV: ceObv,
+        PE_OBV: peObv,
+        CE_IV: (item.CE_IV || []).slice(0, iCE + 1),
+        PE_IV: (item.PE_IV || []).slice(0, iPE + 1),
+    };
+}
+
+// Per-instrument OI score at time T — mirrors computeOIScoreFromData() exactly,
+// but every strike is evaluated at candle T instead of the latest candle.
+function _oiScoreAtTime(oiData, hhmm) {
+    if (!oiData || !oiData.tableData || !oiData.tableData.length) return null;
+    var priceChangeT = _gtbPriceChangeAtTime(oiData.spotCandles || [], hhmm);
+
+    var score = 0, any = false;
+    var wPE = 0, wCE = 0, wChPE = 0, wChCE = 0;
+    jQ.each(oiData.tableData, function (idx, item) {
+        var at = _gtbStrikeItemAtTime(item, hhmm);
+        if (!at) return;
+        any = true;
+        score += scoreOIStrikeForSignal(at, !!item['ATM_STRIKE'], priceChangeT).score;
+        var w = item['ATM_STRIKE'] ? 3 : 1;
+        wPE   += parseFloat(at.OI_PE)     * w;
+        wCE   += parseFloat(at.OI_CE)     * w;
+        wChPE += parseFloat(at.CHG_OI_PE) * w;
+        wChCE += parseFloat(at.CHG_OI_CE) * w;
+    });
+    if (!any) return null;
+
+    // Weighted PCR bands — identical thresholds to computeOIScoreFromData()
+    var pcr   = wCE   > 0 ? wPE   / wCE   : 1;
+    var chPcr = wChCE > 0 ? wChPE / wChCE : 1;
+    if      (pcr > 1.3)  score += 1;
+    else if (pcr >= 1.0) score += 0.5;
+    else if (pcr >= 0.7) score -= 0.5;
+    else                 score -= 1;
+    if (!isNaN(chPcr)) {
+        if      (chPcr > 1.3)  score += 0.5;
+        else if (chPcr >= 1.0) score += 0.25;
+        else if (chPcr >= 0.7) score -= 0.25;
+        else                   score -= 0.5;
+    }
+    return parseFloat(score.toFixed(2));
+}
+
+// Sum of per-interval OI scores across the 5 scored instruments at time T.
+// Falls back to the instrument's current (snapshot) oi_obv if its per-candle data
+// is unavailable, so the total never silently drops a contributor.
+function _oiScoreAllAtTime(hhmm) {
+    var total = 0;
+    _GTB_OI_SCORED_INSTRUMENTS.forEach(function (name) {
+        var sm = INSTRUMENT_SCORE_MAP[name];
+        if (!sm) return;
+        var s = sm.oiData ? _oiScoreAtTime(sm.oiData, hhmm) : null;
+        total += (s === null) ? (sm.oi_obv || 0) : s;
+    });
+    return parseFloat(total.toFixed(2));
+}
+
 // ─── Score History Table ──────────────────────────────────────────────────────
 // Per-interval score reconstruction.
-// Varying per interval  : A/D (all 3), Futures trend (all 3) — captured in GTB_AD_INTERVAL_HISTORY
-// Fixed (point-in-time) : 9:15 scores, OI/OBV scores, component scores — don't change per candle
+// Varying per interval  : A/D (all 3), Futures trend (all 3), OI/OBV (5 instruments),
+//                         component scores — recomputed for each candle.
+// Fixed (point-in-time) : 9:15 scores only — sealed at 9:20, identical all day.
 // Must be called AFTER setScore() so all score globals are populated.
 function renderScoreHistory() {
     var el = jQ('#gtb-score-history-table');
@@ -1667,12 +1768,8 @@ function renderScoreHistory() {
         (RELIANCE_9_15_CLOSE_SCORE   || 0) +
         (HDFCBANK_9_15_CLOSE_SCORE   || 0);
 
-    var fixedOI =
-        (NIFTY_50_OI_OBV_SCORE   || 0) +
-        (NIFTY_BANK_OI_OBV_SCORE || 0) +
-        (RELIANCE_OI_OBV_SCORE   || 0) +
-        (HDFCBANK_OI_OBV_SCORE   || 0) +
-        (ICICIBANK_OI_OBV_SCORE  || 0);
+    // OI/OBV is now reconstructed per interval via _oiScoreAllAtTime(row.time)
+    // (each instrument falls back to its snapshot oi_obv if per-candle data is missing).
 
     // Pre-load data needed for per-interval component score
     var _b915   = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN")) || {};
@@ -1760,7 +1857,7 @@ function renderScoreHistory() {
     // ── Table ─────────────────────────────────────────────────────────────────
     var html = '<div style="font-size:0.55rem;color:#7d8590;padding:3px 5px 2px;border-bottom:1px solid #ffffff10;">'
              + '<i class="bi bi-info-circle"></i>&nbsp;'
-             + '9:15 &amp; OI fixed at refresh · A/D, Futures trend &amp; Component scores vary per interval'
+             + '9:15 fixed at refresh · A/D, Futures, OI/OBV &amp; Component scores reconstructed per interval'
              + '</div>';
 
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.6rem;">';
@@ -1769,10 +1866,12 @@ function renderScoreHistory() {
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">N50 A/D</th>'
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">BN A/D</th>'
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">FT</th>'
+         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;" title="OI/OBV score (5 instruments) reconstructed at this candle">OI</th>'
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">Score</th>'
          + '<th style="padding:3px 5px;min-width:60px;"></th>'
          + '</tr></thead><tbody>';
 
+    var _prevOI = null;
     GTB_AD_INTERVAL_HISTORY.forEach(function(row) {
         // A/D scores
         var nAd  = _adScore(row.nAdv,   row.nDec);
@@ -1785,11 +1884,23 @@ function renderScoreHistory() {
         var bnFt  = _ftScore(row.bnFBull  || 0, row.bnFBear  || 0);
         var ftTotal = allFt + nFt + bnFt;
 
+        // OI/OBV score: faithfully reconstructed at this candle (falls back to snapshot)
+        var oiAtTime = _oiScoreAllAtTime(row.time);
+
         // Component scores: per-interval using candle close for current_trend
         var compAtTime = _compScoreAtTime(row.time);
 
-        var s = parseFloat((fixed915 + fixedOI + compAtTime + nAd + bnAd + aAd + ftTotal).toFixed(2));
+        var s = parseFloat((fixed915 + oiAtTime + compAtTime + nAd + bnAd + aAd + ftTotal).toFixed(2));
         var col = _scoreColor(s);
+
+        // OI trend arrow vs previous interval
+        var oiArrow = '';
+        if (_prevOI !== null) {
+            if      (oiAtTime > _prevOI + 0.01) oiArrow = '<span style="color:#3fb950;">▲</span>';
+            else if (oiAtTime < _prevOI - 0.01) oiArrow = '<span style="color:#f85149;">▼</span>';
+            else                                oiArrow = '<span style="color:#7d8590;">·</span>';
+        }
+        _prevOI = oiAtTime;
 
         // N50 A/D compact
         function _ad2(adv, dec) {
@@ -1805,6 +1916,7 @@ function renderScoreHistory() {
              + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + _ad2(row.nAdv,   row.nDec)  + '</td>'
              + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + _ad2(row.bnAdv,  row.bnDec) + '</td>'
              + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + _signed(ftTotal) + '</td>'
+             + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;">' + oiArrow + '&nbsp;' + _signed(oiAtTime) + '</td>'
              + '<td style="padding:2px 5px;text-align:right;white-space:nowrap;color:' + col + ';font-weight:600;">' + s + '</td>'
              + '<td style="padding:2px 5px;">' + _bar(s) + '</td>'
              + '</tr>';
@@ -2179,6 +2291,51 @@ function computeComponentScores() {
     NIFTY_BANK_COMPONENT_SCORE = parseFloat(bnScore.toFixed(2));
 }
 
+// ── Overview banner renderer ──────────────────────────────────────────────
+// Populates #gtb-overview from the composite SCORE + marketSignal + score map.
+// Non-critical: wrapped in try/catch by the caller.
+function _renderGtbOverview(score, marketSignal) {
+    var sig = (marketSignal && marketSignal.signal) || 'WAIT';
+
+    // Verdict colour class by signal
+    var verdictCls = 'neutral';
+    if (sig.indexOf('STRONG BUY') >= 0)  verdictCls = 'strong-buy';
+    else if (sig.indexOf('BUY') >= 0)    verdictCls = 'buy';
+    else if (sig.indexOf('STRONG SELL') >= 0) verdictCls = 'strong-sell';
+    else if (sig.indexOf('SELL') >= 0)   verdictCls = 'sell';
+
+    var ov = jQ('#gtb-ov-verdict');
+    ov.text(sig).attr('class', 'gtb-ov-verdict ' + verdictCls);
+    jQ('#gtb-ov-verdict-sub').text((marketSignal && marketSignal.reason) || '');
+
+    // Composite score number + colour band
+    var scoreCls = score < 0 ? 'red' : score < 5 ? 'orange' : score < 8 ? 'yellow' : 'green';
+    jQ('#gtb-ov-score').text((score > 0 ? '+' : '') + parseFloat(score).toFixed(1))
+        .attr('class', 'gtb-ov-score ' + scoreCls);
+
+    // Instrument breadth — bullish vs bearish per score.total
+    var names = ['GIFT NIFTY','NIFTY 50','NIFTY BANK','SENSEX','CRUDEOILM','USDINR','RELIANCE','HDFCBANK','ICICIBANK'];
+    var bull = 0, bear = 0;
+    names.forEach(function(n) {
+        var sm = INSTRUMENT_SCORE_MAP[n] && INSTRUMENT_SCORE_MAP[n].score;
+        var t = sm ? sm.total : (INSTRUMENT_SCORE_MAP[n] ? INSTRUMENT_SCORE_MAP[n].futures_trend : 0);
+        if (t > 0) bull++; else if (t < 0) bear++;
+    });
+    var total = bull + bear || 1;
+    jQ('#gtb-ov-breadth-bull').css('width', (bull / total * 100) + '%');
+    jQ('#gtb-ov-breadth-bear').css('width', (bear / total * 100) + '%');
+    jQ('#gtb-ov-breadth-bull-n').text(bull + ' ▲');
+    jQ('#gtb-ov-breadth-bear-n').text(bear + ' ▼');
+
+    // Mirror A/D + VIX from existing widgets (already populated elsewhere)
+    var n50ad = jQ('#gtb-adr-n50').text().replace('N50 A/D', '').replace('N50', '').trim();
+    var bnad  = jQ('#gtb-adr-bn').text().replace('BN A/D', '').replace('BN', '').trim();
+    var vix   = jQ('#gtb-vix-val').text().trim();
+    jQ('#gtb-ov-n50ad').text(n50ad || '—');
+    jQ('#gtb-ov-bnad').text(bnad || '—');
+    jQ('#gtb-ov-vix').text(vix || '—');
+}
+
 function setScore() {
 
 
@@ -2272,6 +2429,9 @@ function setScore() {
 
     // --- Final market signal (score + VIX + futures conflict + 9:15 pattern) ---
     let marketSignal = getMarketSignal(SCORE, breakOutNineFifteen);
+
+    // --- Overview banner (top of right panel) ---
+    try { _renderGtbOverview(SCORE, marketSignal); } catch (e) { /* overview is non-critical */ }
 
     // ── Unified signal card render ────────────────────────────────────────────
     // Maps signal name → accent colour + icon
@@ -2537,10 +2697,14 @@ function showStockComponent() {
 function setFutureDetails(name, data) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
-    // Futures PLUS/MINUS are HTML strings of badge spans — render them as a compact 2-row layout
+    // Futures PLUS/MINUS are HTML strings of badge spans — render them as a compact 2-row layout.
+    // Colour BOTH rows by the actual REMARK sentiment (not by position) so a bearish signal
+    // like "Long Unwinding" never appears on a green/bullish row.
+    var _sent = (typeof getFuturesTrendScore === 'function') ? getFuturesTrendScore(data['REMARK']) : 0;
+    var _rowCls = _sent > 0 ? 'bull' : _sent < 0 ? 'bear' : 'neutral';
     let futHtml = '<div class="gtb-futures-signals">';
-    futHtml += '<div class="gtb-fut-row bull">' + (data['PLUS'] || '—') + '</div>';
-    futHtml += '<div class="gtb-fut-row bear">' + (data['MINUS'] || '—') + '</div>';
+    futHtml += '<div class="gtb-fut-row ' + _rowCls + '">' + (data['PLUS'] || '—') + '</div>';
+    futHtml += '<div class="gtb-fut-row ' + _rowCls + '">' + (data['MINUS'] || '—') + '</div>';
     futHtml += '</div>';
     jQ("#" + tempName + "-futures").html(futHtml);
 
@@ -2611,6 +2775,66 @@ jQ(document).on("click", function(e) {
     if (!jQ(e.target).closest(".gtb-settings-wrap").length) {
         jQ("#gtb-settings-menu").hide();
     }
+});
+
+
+// ── Theme toggle (dark / light) ──────────────────────────────────────────────
+function _gtbApplyTheme(theme) {
+    // The maximize overlay is appended to <body>, outside #main-trade-bot-container,
+    // so it needs the theme class applied directly to inherit the light palette.
+    var container = jQ('#main-trade-bot-container').add('#groot-maximize-overlay');
+    if (theme === 'light') container.addClass('gtb-light');
+    else                    container.removeClass('gtb-light');
+    localStorage.setItem('GTB_THEME', theme);
+    // Reflect active state on the toggle buttons
+    jQ('.gtb-theme-btn').each(function() {
+        var active = jQ(this).data('theme') === theme;
+        jQ(this).css({ background: active ? '#00b4d8' : 'transparent', color: active ? '#fff' : '#7d8590' });
+    });
+    // Live-recolour existing charts (no re-fetch) so they match the new theme
+    _gtbRecolorCharts();
+}
+
+// Theme-aware LightweightCharts colours
+function _gtbChartColors() {
+    var light = jQ('#main-trade-bot-container').hasClass('gtb-light');
+    return light
+        ? { bg: '#ffffff', grid: '#e7edf4', bdr: '#c5d0de', text: '#5a6678' }
+        : { bg: '#060a12', grid: '#122038', bdr: '#1b2d47', text: '#5c7499' };
+}
+// Recolour all live charts in place via applyOptions (no data re-fetch)
+function _gtbRecolorCharts() {
+    var c = _gtbChartColors();
+    jQ('#gtb-rows .gtb-row-chart, [id$="-chart"]').each(function() {
+        var ch = this._lwChart;
+        if (!ch) return;
+        try {
+            ch.applyOptions({
+                layout: { background: { color: c.bg }, textColor: c.text },
+                grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+                rightPriceScale: { borderColor: c.bdr },
+                timeScale: { borderColor: c.bdr },
+            });
+        } catch (e) {}
+    });
+}
+jQ(document).on('click', '.gtb-theme-btn', function(e) {
+    e.stopPropagation();
+    _gtbApplyTheme(jQ(this).data('theme'));
+});
+
+// ── Row height slider — sets per-row min-height (taller = bigger charts) ──────
+function _gtbApplyGridH(px) {
+    jQ('#main-trade-bot-container')[0].style.setProperty('--gtb-row-h', px + 'px');
+    jQ('#gtb-grid-h-val').text(px);
+    localStorage.setItem('GTB_ROW_H', px);
+    // Resize existing LW charts to match new row height
+    jQ('#gtb-rows .gtb-row-chart').each(function() {
+        if (this._lwChart) { try { this._lwChart.resize(this.clientWidth, this.clientHeight); } catch (e) {} }
+    });
+}
+jQ(document).on('input', '#gtb-grid-h-slider', function() {
+    _gtbApplyGridH(parseInt(jQ(this).val()));
 });
 
 jQ(document).on("click", ".refresh-scoreboard", function () {
@@ -3029,10 +3253,11 @@ function updateFuturesStrip(name, remark, vwap, premium) {
     let tid = name.replace(/ /g, '-').replace(/&/g, '-');
     let remarkEl = jQ('#gtb-strip-remark-' + tid);
     if (!remarkEl.length) return;
-    let isLong  = remark && (remark.includes('LONG') || remark.includes('COVERING') || remark.includes('BULL'));
-    let isShort = remark && (remark.includes('SHORT') || remark.includes('BEAR') || remark.includes('UNWINDING'));
-    let cls = isLong ? 'long' : isShort ? 'short' : 'other';
-    let icon = isLong ? '▲' : isShort ? '▼' : '—';
+    // Use the authoritative sentiment, not substring matching — "LONG_UNWINDING"
+    // contains "LONG" but is bearish, so includes('LONG') wrongly flagged it bullish.
+    let sent = (typeof getFuturesTrendScore === 'function') ? getFuturesTrendScore(remark) : 0;
+    let cls  = sent > 0 ? 'long' : sent < 0 ? 'short' : 'other';
+    let icon = sent > 0 ? '▲'    : sent < 0 ? '▼'     : '—';
     remarkEl.attr('class', 'gtb-fut-remark ' + cls).text(icon + ' ' + (remark || '—'));
     if (vwap)    jQ('#gtb-strip-vwap-' + tid).text('VWAP ' + parseFloat(vwap).toFixed(1));
     if (premium !== undefined) jQ('#gtb-strip-prem-' + tid).text('PREM ' + (premium > 0 ? '+' : '') + parseFloat(premium).toFixed(1));
@@ -3045,32 +3270,217 @@ jQ(document).on("click", ".refresh-stock-list", function () {
     that.attr("disabled", false);
 });
 
-function showNotes() {
-    let htmlNote = ''
-    htmlNote += '<div class="row" style="">'
-    htmlNote += '<div class="col-md-12">'
-    htmlNote += '<h5 style="text-align:center;">NOTES</h5>'
-    htmlNote += '</div>'
-    htmlNote += '<div class="col-md-12">'
-    htmlNote += '<ul>'
-    htmlNote += '<li>Depending on the number of ASO/BSO and  9:15 ASO/BSO</li>'
-    htmlNote += '<li>2 ASO is strong uptrend</li>'
-    htmlNote += '<li>2 BSO is strong downtrend</li>'
-    htmlNote += '<li>Sensex ASO/BSO doesn\'t have much weightage</li>'
-    htmlNote += '<li>Check RELIANCE AND HDFC BANK</li>'
-    htmlNote += '<li>Check OI/OBV</li>'
-    htmlNote += '<li>Check VIX -ve/+ve </li>'
-    htmlNote += '<li>Check VIX range</li>'
-    htmlNote += '<li>Check ADR</li>'
-    htmlNote += '<li>Check CRUDE OIL</li>'
-    htmlNote += '<li>Check Future Trend</li>'
-    htmlNote += '<li>Check World Market/Europe Market around 12.45 - 1PM</li>'
-    htmlNote += '</ul>'
-    htmlNote += '</div>'
-    htmlNote += '</div>'
+// ── Section info popovers ─────────────────────────────────────────────────────
+// Each key maps to a short explanation shown when its (i) icon is clicked.
+var GTB_INFO = {
+    score:        { icon:'bi-speedometer2',     title:'Score Gauge',
+        body:'The composite market score on a −40…+40 dial. It sums every signal: 9:15 breakouts, advance/decline breadth, futures trend, OI/OBV, and weighted index constituents. Gauge colour: <b style="color:#f85149">red &lt;0</b>, <b style="color:#d29922">orange 1–4</b>, <b style="color:#fbbf24">yellow 5–7</b>, <b style="color:#3fb950">green ≥8</b>. Below it: live N50 &amp; Bank-Nifty advance/decline counts.' },
+    signal:       { icon:'bi-lightning-charge', title:'Trade Signal',
+        body:'The final call — STRONG BUY · BUY · WAIT · SELL · STRONG SELL · NO TRADE — derived from the composite score combined with VIX, any futures conflict, and the 9:15 candle pattern. The sub-line gives the suggested entry level (e.g. “at BSO/BST for long”).' },
+    entry:        { icon:'bi-crosshair',        title:'Entry / Trade',
+        body:'Entry-confluence panel: how strongly 9:15, current trend, futures and OI agree, and the resulting bullish/bearish tilt that supports an entry here.' },
+    pillars:      { icon:'bi-bar-chart-steps',  title:'Pillars',
+        body:'The individual scoring pillars and each one’s contribution to the total: 9:15 close, advance/decline, futures trend, OI/OBV, and the weighted index components.' },
+    toptrades:    { icon:'bi-stars',            title:'Top Trades',
+        body:'The instruments ranked highest (and lowest) by composite score this cycle — your best long and short candidates right now.' },
+    scoredetail:  { icon:'bi-table',            title:'Score Detail',
+        body:'Full breakdown table: every score component and each weighted constituent’s contribution, so you can see exactly what drives the total.' },
+    scorehistory: { icon:'bi-clock-history',    title:'Score History',
+        body:'The composite score reconstructed at each 5-minute candle of the day (A/D, futures, OI/OBV and components recomputed per interval) so you can see how the score evolved.' },
+    verdict:      { icon:'bi-flag-fill',        title:'Market Verdict',
+        body:'The headline market call with a one-line reason. It blends the composite score, VIX state and the 9:15 pattern into a plain-English verdict.' },
+    compscore:    { icon:'bi-123',              title:'Composite Score',
+        body:'The total score number (−40…+40). The further from zero, the stronger the directional confluence. Positive = bullish, negative = bearish.' },
+    breadth:      { icon:'bi-distribute-horizontal', title:'Instrument Breadth',
+        body:'Of the 9 tracked instruments (GIFT NIFTY, NIFTY 50, NIFTY BANK, SENSEX, CRUDEOILM, USDINR, RELIANCE, HDFCBANK, ICICIBANK), how many are net-bullish ▲ vs net-bearish ▼ by their own composite score. The bar shows the split.' },
+    keystats:     { icon:'bi-clipboard-data',   title:'Key Stats',
+        body:'N50 &amp; Bank-Nifty advance/decline (A = above breakout, D = below, N = within range, net, and the A÷D ratio) plus the live India VIX.' },
+    'col-instrument': { icon:'bi-tag',          title:'Instrument',
+        body:'Name and live LTP of each tracked instrument. The coloured left tab marks its type: <b style="color:#00b4d8">cyan = index</b>, <b style="color:#ffbe0b">amber = commodity</b>, <b style="color:#38bdf8">blue = stock</b>.' },
+    'col-price':  { icon:'bi-graph-up',         title:'Price Action',
+        body:'Intraday candlestick chart with reference levels drawn as solid lines: OPEN, VIX upper/lower range, ASO/AST (breakout above) and BSO/BST (breakdown below).' },
+    'col-915':    { icon:'bi-clock',            title:'9:15 Close',
+        body:'Where the first 9:15 candle closed vs the strike levels: <b>AST/ASO</b> = above (bullish), <b>BSO/BST</b> = below (bearish), <b>B/W</b> = within range. Sealed at 9:20 and fixed all day.' },
+    'col-futures':{ icon:'bi-rocket-takeoff',   title:'Futures',
+        body:'Futures positioning: LONG / SHORT / Short-Covering / Long-Unwinding etc., the premium/discount vs spot, and a bull/bear tint. Long build-up &amp; short-covering are bullish; shorts &amp; long-unwinding are bearish.' },
+    'col-oi':     { icon:'bi-bar-chart-fill',   title:'Open Interest',
+        body:'Options read for the strike band: PCR plus an OI/OBV score. Put writing builds support (bullish); call writing builds resistance (bearish). Score &gt;0 bullish, &lt;0 bearish.' },
+    'col-sl':     { icon:'bi-shield',           title:'SL / Target',
+        body:'Suggested stop-loss and first target (T1) derived from the instrument’s ATR, with the trade direction badge.' },
+    details:      { icon:'bi-layers',           title:'Details',
+        body:'Deep-dive panels (click the bar to expand): full OI/OBV charts, futures, 9:15 tables, advance/decline, and the weighted-component breakdown per instrument.' },
+};
 
-    callSackBarInfo(htmlNote)
+// Build the popover element once, lazily
+function _gtbInfoPop() {
+    var el = document.getElementById('gtb-info-pop');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'gtb-info-pop';
+        el.innerHTML = '<div class="gtb-info-pop-hd"><span class="gtb-info-pop-title"></span>'
+            + '<i class="bi bi-x-lg gtb-info-pop-close"></i></div><div class="gtb-info-pop-body"></div>';
+        document.body.appendChild(el);
+    }
+    return el;
 }
+
+jQ(document).on('click', '.gtb-info-i', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    var key = jQ(this).data('info');
+    var info = GTB_INFO[key];
+    if (!info) return;
+    var pop = _gtbInfoPop();
+    // Theme match (overlay-style elements live on <body>)
+    jQ(pop).toggleClass('gtb-light', jQ('#main-trade-bot-container').hasClass('gtb-light'));
+    pop.querySelector('.gtb-info-pop-title').innerHTML = '<i class="bi ' + info.icon + '"></i> ' + info.title;
+    pop.querySelector('.gtb-info-pop-body').innerHTML = info.body;
+    pop.style.display = 'block';
+    // Position near the icon, clamped to the viewport
+    var r = this.getBoundingClientRect();
+    var pw = 280, ph = pop.offsetHeight || 140;
+    var left = Math.min(r.left, window.innerWidth - pw - 12);
+    var top  = r.bottom + 8;
+    if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 8);
+    pop.style.left = Math.max(8, left) + 'px';
+    pop.style.top  = top + 'px';
+});
+jQ(document).on('click', '.gtb-info-pop-close', function() { jQ('#gtb-info-pop').hide(); });
+jQ(document).on('click', function(e) {
+    if (!jQ(e.target).closest('#gtb-info-pop, .gtb-info-i').length) jQ('#gtb-info-pop').hide();
+});
+
+function showNotes() {
+    var items = [
+        { i:'bi-1-circle-fill',    t:'9:15 breakout count',  d:'Read the number of ASO/BSO and the 9:15 ASO/BSO together — that combo sets the day’s bias.' },
+        { i:'bi-arrow-up-circle',  t:'2 ASO',               d:'Two ASO = strong uptrend.' },
+        { i:'bi-arrow-down-circle',t:'2 BSO',               d:'Two BSO = strong downtrend.' },
+        { i:'bi-dash-circle',      t:'Sensex weighting',    d:'Sensex ASO/BSO doesn’t carry much weight — don’t over-rely on it.' },
+        { i:'bi-building',         t:'Heavyweights',        d:'Always check RELIANCE and HDFC BANK — they move the index.' },
+        { i:'bi-bar-chart-fill',   t:'OI / OBV',            d:'Confirm with the OI/OBV read (support vs resistance walls).' },
+        { i:'bi-activity',         t:'VIX direction',       d:'Check VIX −ve/+ve and whether price is inside the VIX range.' },
+        { i:'bi-distribute-horizontal', t:'ADR',            d:'Check advance/decline breadth across constituents.' },
+        { i:'bi-droplet-fill',     t:'Crude oil',           d:'Check CRUDE OIL for risk-on/off cues.' },
+        { i:'bi-rocket-takeoff',   t:'Futures trend',       d:'Check the futures trend for positioning.' },
+        { i:'bi-globe',            t:'Global markets',      d:'Check World / Europe markets around 12:45–1:00 PM.' },
+    ];
+    var body = '<div class="gtb-notes-grid">';
+    items.forEach(function(n) {
+        body += '<div class="gtb-note-card"><div class="gtb-note-ic"><i class="bi ' + n.i + '"></i></div>'
+             +  '<div class="gtb-note-tx"><div class="gtb-note-t">' + n.t + '</div>'
+             +  '<div class="gtb-note-d">' + n.d + '</div></div></div>';
+    });
+    body += '</div>';
+    showMaximizeOverlay('<i class="bi bi-journal-text"></i> Trading Checklist', body);
+}
+
+// ── Strike-level probability backtest ─────────────────────────────────────────
+// Backtests how price behaves once it touches each strike level, using daily OHLC.
+// Levels are deterministic from the day's open + fixed strike steps (NSE_STRIKE_DIFF):
+//   ASO = open+s1, AST = open+s1+s2, BSO = open−s1, BST = open−s1−s2.
+// For each past day we check if a level was *touched* (high≥ up-level / low≤ down-level)
+// and whether the day *closed* on the bullish or bearish side of that level:
+//   ASO/AST: Up% = close ≥ level (continued up),  Down% = close < level (reversed down)
+//   BSO/BST: Up% = close > level (reversed up),   Down% = close ≤ level (continued down)
+// "Up%" always = bullish outcome, "Down%" = bearish outcome, so it reads consistently.
+async function _gtbStrikeProb(name, lookback) {
+    lookback = lookback || 60;
+    var ckey = 'GTB_STRIKEPROB_' + name + '_' + moment().format('YYYY-MM-DD') + '_' + lookback;
+    try { var c = localStorage.getItem(ckey); if (c) return JSON.parse(c); } catch (e) {}
+
+    var token = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS[name] : null;
+    if (!token && typeof COMMODITIES_FUTURE_INSTRUMENT_LIST !== 'undefined') {
+        var m = COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function (f) { return f.name === name; });
+        if (m) token = m.instrument_token;
+    }
+    if (!token) return { error: 'No instrument token for ' + name };
+
+    var sd = getStrikeDiff(name).split(',');
+    var s1 = parseInt(sd[0]) || 0, s2 = parseInt(sd[1]) || s1;
+    if (!s1) return { error: 'No strike interval for ' + name };
+
+    var to   = moment().format('YYYY-MM-DD');
+    var from = moment().subtract(Math.ceil(lookback * 1.6) + 12, 'days').format('YYYY-MM-DD');
+    var res  = await getHistoricalDataUsingPromise(token, from, to, 'day');
+    var candles = (res && res.data && res.data.candles) ? res.data.candles : [];
+    if (!candles.length) return { error: 'No historical data for ' + name };
+    candles = candles.slice(-lookback);
+
+    function mk() { return { n: 0, bull: 0, bear: 0 }; }
+    var L = { ASO: mk(), AST: mk(), BSO: mk(), BST: mk() };
+    candles.forEach(function (cd) {
+        var open = parseFloat(cd[1]), high = parseFloat(cd[2]), low = parseFloat(cd[3]), close = parseFloat(cd[4]);
+        if (!open) return;
+        var ASO = open + s1, AST = open + s1 + s2, BSO = open - s1, BST = open - s1 - s2;
+        if (high >= ASO) { L.ASO.n++; if (close >= ASO) L.ASO.bull++; else L.ASO.bear++; }
+        if (high >= AST) { L.AST.n++; if (close >= AST) L.AST.bull++; else L.AST.bear++; }
+        if (low  <= BSO) { L.BSO.n++; if (close >  BSO) L.BSO.bull++; else L.BSO.bear++; }
+        if (low  <= BST) { L.BST.n++; if (close >  BST) L.BST.bull++; else L.BST.bear++; }
+    });
+    function row(x) {
+        return { n: x.n, up: x.n ? Math.round(x.bull / x.n * 100) : 0, down: x.n ? Math.round(x.bear / x.n * 100) : 0 };
+    }
+    var out = { name: name, days: candles.length, s1: s1, s2: s2,
+        ASO: row(L.ASO), AST: row(L.AST), BSO: row(L.BSO), BST: row(L.BST) };
+    try { localStorage.setItem(ckey, JSON.stringify(out)); } catch (e) {}
+    return out;
+}
+
+// Renders the probability result into the maximize overlay body.
+function _renderStrikeProb(name, r) {
+    if (!r || r.error) {
+        return '<div style="padding:24px;text-align:center;color:var(--gtb-muted);font-size:0.8rem;">'
+            + '<i class="bi bi-exclamation-triangle"></i> ' + ((r && r.error) || 'No data') + '</div>';
+    }
+    var meta = [
+        { k: 'AST', label: 'AST', desc: 'open +' + (r.s1 + r.s2) + ' (2nd up)',  expect: 'reversal down' },
+        { k: 'ASO', label: 'ASO', desc: 'open +' + r.s1 + ' (1st up)',           expect: 'continuation up' },
+        { k: 'BSO', label: 'BSO', desc: 'open −' + r.s1 + ' (1st down)',         expect: 'continuation down' },
+        { k: 'BST', label: 'BST', desc: 'open −' + (r.s1 + r.s2) + ' (2nd down)', expect: 'reversal up' },
+    ];
+    var html = '<div class="gtb-prob-wrap">';
+    html += '<div class="gtb-prob-sub">Of the last <b>' + r.days + '</b> trading days, '
+         +  'how price closed once each level was touched intraday. '
+         +  '<b style="color:var(--gtb-green)">Up%</b> = bullish outcome, '
+         +  '<b style="color:var(--gtb-red)">Down%</b> = bearish outcome.</div>';
+    html += '<table class="gtb-prob-table"><thead><tr>'
+         +  '<th>Level</th><th>Touched</th><th>▲ Up</th><th>▼ Down</th><th>Bias</th></tr></thead><tbody>';
+    meta.forEach(function (mt) {
+        var d = r[mt.k];
+        var upWin = d.up >= d.down;
+        var biasTxt = d.n === 0 ? '—' : (upWin ? 'UP ' + d.up + '%' : 'DOWN ' + d.down + '%');
+        var biasCls = d.n === 0 ? 'flat' : (upWin ? 'up' : 'down');
+        html += '<tr>'
+            + '<td><span class="gtb-prob-lvl ' + mt.k.toLowerCase() + '">' + mt.label + '</span>'
+            + '<div class="gtb-prob-desc">' + mt.desc + '</div></td>'
+            + '<td class="gtb-prob-n">' + d.n + '</td>'
+            + '<td><div class="gtb-prob-bar"><div class="gtb-prob-fill up" style="width:' + d.up + '%"></div></div>'
+            + '<span class="gtb-prob-pct up">' + d.up + '%</span></td>'
+            + '<td><div class="gtb-prob-bar"><div class="gtb-prob-fill down" style="width:' + d.down + '%"></div></div>'
+            + '<span class="gtb-prob-pct down">' + d.down + '%</span></td>'
+            + '<td><span class="gtb-prob-bias ' + biasCls + '">' + biasTxt + '</span></td>'
+            + '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '<div class="gtb-prob-foot"><i class="bi bi-info-circle"></i> '
+         +  'Low “Touched” counts = small sample, treat the % with caution. Levels use a fixed strike step ('
+         +  r.s1 + '/' + r.s2 + '), computed from each day’s open.</div>';
+    html += '</div>';
+    return html;
+}
+
+jQ(document).on('click', '.gtb-prob-btn', async function (e) {
+    e.preventDefault(); e.stopPropagation();
+    var name = jQ(this).data('name');
+    showMaximizeOverlay('<i class="bi bi-percent"></i> ' + name + ' — Strike-Level Probability (60-day backtest)',
+        '<div style="padding:30px;text-align:center;color:var(--gtb-muted);font-size:0.85rem;">'
+        + '<i class="bi bi-hourglass-split"></i> Backtesting last 60 days…</div>');
+    try {
+        var r = await _gtbStrikeProb(name, 60);
+        jQ('#groot-maximize-body').html(_renderStrikeProb(name, r));
+    } catch (err) {
+        jQ('#groot-maximize-body').html('<div style="padding:24px;color:var(--gtb-red);">Error: ' + (err && err.message) + '</div>');
+    }
+});
 
 function placeHolder(name) {
     let tempName = name.replaceAll(" ", "-")
@@ -3572,14 +3982,22 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
     container.innerHTML = '';
     container.style.position = 'relative';
 
+    var _lwc    = (typeof _gtbChartColors === 'function') ? _gtbChartColors() : { bg:'#060a12', grid:'#122038', bdr:'#1b2d47', text:'#5c7499' };
+    var _lwBg   = _lwc.bg;
+    var _lwGrid = _lwc.grid;
+    var _lwBdr  = _lwc.bdr;
+    var _lwText = _lwc.text;
+
+    // When no explicit height is given, fill the container (row cells are short)
+    var _chH = chartHeight || container.clientHeight || 150;
     let chart = LightweightCharts.createChart(container, {
         width: container.clientWidth || 300,
-        height: chartHeight || 150,
-        layout: { background: { color: '#0d1117' }, textColor: '#7d8590' },
-        grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
+        height: _chH,
+        layout: { background: { color: _lwBg }, textColor: _lwText },
+        grid: { vertLines: { color: _lwGrid }, horzLines: { color: _lwGrid } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        rightPriceScale: { borderColor: '#30363d', visible: true, scaleMargins: { top: 0.05, bottom: 0.05 } },
-        timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: false, rightOffset: 5 },
+        rightPriceScale: { borderColor: _lwBdr, visible: true, scaleMargins: { top: 0.05, bottom: 0.05 }, minimumWidth: 52 },
+        timeScale: { borderColor: _lwBdr, timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: false, rightOffset: 5 },
         localization: {
             timeFormatter: function(t) {
                 // Timestamps are pre-shifted by +19800s (IST offset) so UTC display = IST time
@@ -3608,25 +4026,41 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
     });
     candleSeries.setData(lwData);
 
-    // Reference price lines
+    // Reference price lines — axis labels hidden to avoid cluttering the Y-axis.
+    // Values are shown in an overlay legend instead (built below).
     let lineColors = {
-        'OPEN': '#d29922', 'VIXL': '#58a6ff', 'VIXU': '#58a6ff',
-        'ASO': '#3fb950', 'AST': '#3fb950', 'BSO': '#f85149', 'BST': '#f85149',
+        'OPEN': '#ffbe0b', 'VIXL': '#38bdf8', 'VIXU': '#38bdf8',
+        'ASO': '#00e5a0', 'AST': '#00e5a0', 'BSO': '#ff4d6a', 'BST': '#ff4d6a',
     };
+    var _shortLabel = { 'OPEN':'O', 'VIXL':'V↓', 'VIXU':'V↑', 'AST':'A+', 'ASO':'A', 'BSO':'B', 'BST':'B-' };
     (refLines || []).forEach(function(rl) {
         let key = rl.key || rl.text.split(':')[0].trim();
         candleSeries.createPriceLine({
             price: parseFloat(rl.value),
             color: lineColors[key] || '#7d8590',
             lineWidth: 1,
-            lineStyle: LightweightCharts.LineStyle.Dashed,
-            // axisLabelVisible shows a small coloured price marker on the Y-axis.
-            // title is intentionally kept as the short key only — the full "VIXU: 8933.24"
-            // text was rendering as a large opaque box on the line, covering the candles.
-            axisLabelVisible: true,
-            title: key,
+            lineStyle: LightweightCharts.LineStyle.Solid,
+            axisLabelVisible: false,
+            title: '',
         });
     });
+    // Overlay legend — tiny table in the top-right corner listing all ref levels
+    if (refLines && refLines.length) {
+        var _legendEl = document.createElement('div');
+        _legendEl.className = 'lw-ref-legend';
+        var _legendHtml = '';
+        (refLines || []).forEach(function(rl) {
+            var key = rl.key || rl.text.split(':')[0].trim();
+            var label = _shortLabel[key] || key;
+            var color = lineColors[key] || '#7d8590';
+            var val = parseFloat(rl.value);
+            var valStr = val >= 1000 ? val.toLocaleString('en-IN', {maximumFractionDigits: 1}) : val.toFixed(2);
+            _legendHtml += '<div class="lw-ref-row"><span class="lw-ref-lbl" style="color:' + color + '">' + label + '</span>'
+                + '<span class="lw-ref-val">' + valStr + '</span></div>';
+        });
+        _legendEl.innerHTML = _legendHtml;
+        container.appendChild(_legendEl);
+    }
 
     // ── Y-axis: include all ref lines so VIXU/BST are visible, but pad based on
     //    the candle range (not total range) so candles stay prominent and aren't
@@ -3686,7 +4120,8 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
     // Responsive resize — guard against zero-width during collapse transitions
     let ro = new ResizeObserver(function() {
         let w = container.clientWidth;
-        if (w > 0) chart.resize(w, chartHeight || 150);
+        let hh = chartHeight || container.clientHeight || 150;
+        if (w > 0) chart.resize(w, hh);
     });
     ro.observe(container);
     container._lwChart = chart;
@@ -3821,7 +4256,8 @@ async function showTopChart(name, bindtoDivId, chartHeight) {
 
         let containerId = (bindtoDivId || ('#' + tempName + '-chart')).replace('#', '');
         let _chartCandles = _gtbTrimCandles(data.data.candles);
-        _renderLWChart(containerId, _chartCandles, refLines, chartHeight || 150);
+        // No explicit height → let _renderLWChart fill the row cell via clientHeight
+        _renderLWChart(containerId, _chartCandles, refLines, chartHeight);
 
         let ltp = _chartCandles[_chartCandles.length - 1][4];
         jQ('#' + tempName + '-ltp').html(parseFloat(ltp).toLocaleString('en-IN'));

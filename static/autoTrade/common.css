@@ -19,15 +19,15 @@
 @keyframes gtb-overlay-in { from { opacity:0; } to { opacity:1; } }
 #groot-maximize-overlay.active { display: flex; }
 #groot-maximize-panel {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--gtb-surface);
+  border: 1px solid var(--gtb-border);
   border-radius: 12px;
   width: 96vw;
   max-width: 1400px;
   min-height: 70vh;
   position: relative;
   padding: 0;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px #30363d40;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px var(--gtb-border);
   animation: gtb-panel-in 0.18s cubic-bezier(.4,0,.2,1);
 }
 @keyframes gtb-panel-in { from { transform: translateY(-12px) scale(0.98); opacity:0; } to { transform: none; opacity:1; } }
@@ -35,9 +35,9 @@
   font-size: 0.85rem;
   font-weight: 800;
   padding: 12px 44px 12px 16px;
-  border-bottom: 1px solid #30363d;
-  color: #e6edf3;
-  background: #1f2937;
+  border-bottom: 1px solid var(--gtb-border);
+  color: var(--gtb-text);
+  background: var(--gtb-surface2);
   border-radius: 12px 12px 0 0;
   letter-spacing: 0.5px;
   display: flex; align-items: center; gap: 8px;
@@ -46,6 +46,8 @@
   padding: 14px 16px 20px;
   width: 100%;
   box-sizing: border-box;
+  background: var(--gtb-surface);
+  color: var(--gtb-text);
 }
 #groot-maximize-close {
   position: absolute;
@@ -54,13 +56,96 @@
   cursor: pointer;
   font-size: 1.1rem;
   line-height: 1;
-  color: #7d8590;
+  color: var(--gtb-muted);
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 6px;
   transition: all 0.15s;
 }
-#groot-maximize-close:hover { color: #f85149; background: #3d0d0d; }
+#groot-maximize-close:hover { color: var(--gtb-red); background: var(--gtb-red-dim); }
+
+/* ── Section info icon + popover ───────────────────────────────── */
+.gtb-info-i {
+  font-size: 0.82em; color: var(--gtb-muted); cursor: pointer;
+  opacity: 0.55; transition: opacity .15s, color .15s;
+  vertical-align: baseline; margin-left: 3px;
+}
+.gtb-info-i:hover { opacity: 1; color: var(--gtb-accent); }
+
+#gtb-info-pop {
+  display: none; position: fixed; z-index: 100000;
+  width: 280px; max-width: 90vw;
+  background: var(--gtb-surface); color: var(--gtb-text);
+  border: 1px solid var(--gtb-border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  font-size: 0.68rem; line-height: 1.5;
+  animation: gtb-overlay-in .12s ease;
+}
+.gtb-info-pop-hd {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; background: var(--gtb-surface2);
+  border-bottom: 1px solid var(--gtb-border);
+}
+.gtb-info-pop-title { font-weight: 800; font-size: 0.7rem; flex: 1; }
+.gtb-info-pop-title i { color: var(--gtb-accent); margin-right: 4px; }
+.gtb-info-pop-close { cursor: pointer; color: var(--gtb-muted); font-size: 0.68rem; }
+.gtb-info-pop-close:hover { color: var(--gtb-red); }
+.gtb-info-pop-body { padding: 9px 11px; }
+.gtb-info-pop-body b { font-weight: 800; }
+
+/* ── Trading checklist (redesigned NOTES) ──────────────────────── */
+.gtb-notes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (max-width: 760px) { .gtb-notes-grid { grid-template-columns: 1fr; } }
+.gtb-note-card {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--gtb-bg); border: 1px solid var(--gtb-border2);
+  border-left: 3px solid var(--gtb-accent); padding: 9px 11px;
+}
+.gtb-note-ic { color: var(--gtb-accent); font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.gtb-note-t { font-weight: 800; font-size: 0.72rem; color: var(--gtb-text); margin-bottom: 2px; }
+.gtb-note-d { font-size: 0.68rem; color: var(--gtb-muted); line-height: 1.45; }
+
+/* ── Strike-probability button + table ─────────────────────────── */
+.gtb-prob-btn {
+  background: var(--gtb-surface2); border: 1px solid var(--gtb-border2);
+  color: var(--gtb-muted); font-size: 0.5rem; cursor: pointer;
+  padding: 1px 4px; margin-top: 3px; line-height: 1;
+  transition: color .15s, border-color .15s;
+}
+.gtb-prob-btn:hover { color: var(--gtb-accent); border-color: var(--gtb-accent); }
+
+.gtb-prob-wrap { font-size: 0.72rem; color: var(--gtb-text); }
+.gtb-prob-sub { color: var(--gtb-muted); margin-bottom: 12px; line-height: 1.5; font-size: 0.7rem; }
+.gtb-prob-table { width: 100%; border-collapse: collapse; }
+.gtb-prob-table th {
+  text-align: left; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em;
+  color: var(--gtb-muted); text-transform: uppercase;
+  padding: 6px 8px; border-bottom: 1px solid var(--gtb-border);
+}
+.gtb-prob-table td { padding: 8px; border-bottom: 1px solid var(--gtb-border2); vertical-align: middle; }
+.gtb-prob-lvl {
+  font-weight: 800; font-family: var(--gtb-mono); font-size: 0.78rem;
+  padding: 2px 7px; border: 1px solid transparent;
+}
+.gtb-prob-lvl.ast, .gtb-prob-lvl.aso { color: var(--gtb-green); background: var(--gtb-green-dim); border-color: var(--gtb-green); }
+.gtb-prob-lvl.bso, .gtb-prob-lvl.bst { color: var(--gtb-red);   background: var(--gtb-red-dim);   border-color: var(--gtb-red); }
+.gtb-prob-desc { font-size: 0.58rem; color: var(--gtb-muted); margin-top: 3px; }
+.gtb-prob-n { font-family: var(--gtb-mono); font-weight: 700; color: var(--gtb-text); text-align: center; }
+.gtb-prob-bar {
+  display: inline-block; width: 70px; height: 8px; vertical-align: middle;
+  background: var(--gtb-surface2); border: 1px solid var(--gtb-border2); overflow: hidden;
+}
+.gtb-prob-fill { height: 100%; }
+.gtb-prob-fill.up   { background: var(--gtb-green); }
+.gtb-prob-fill.down { background: var(--gtb-red); }
+.gtb-prob-pct { font-family: var(--gtb-mono); font-weight: 700; font-size: 0.68rem; margin-left: 6px; }
+.gtb-prob-pct.up   { color: var(--gtb-green); }
+.gtb-prob-pct.down { color: var(--gtb-red); }
+.gtb-prob-bias { font-weight: 800; font-size: 0.68rem; font-family: var(--gtb-mono); padding: 2px 7px; }
+.gtb-prob-bias.up   { color: var(--gtb-green); background: var(--gtb-green-dim); }
+.gtb-prob-bias.down { color: var(--gtb-red);   background: var(--gtb-red-dim); }
+.gtb-prob-bias.flat { color: var(--gtb-muted); background: var(--gtb-surface2); }
+.gtb-prob-foot { margin-top: 12px; font-size: 0.62rem; color: var(--gtb-muted); line-height: 1.5; }
 
 /* ── 9:15 close strip ──────────────────────────────────────── */
 .gtb-915-strip {
@@ -1205,34 +1290,89 @@ td.details-control {
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── CSS variables ─────────────────────────────────────────── */
+/* ── Institutional dark (Bloomberg-style navy) ──────────────── */
 :root {
-  --gtb-bg:        #0d1117;
-  --gtb-surface:   #161b22;
-  --gtb-surface2:  #1f2937;
-  --gtb-border:    #30363d;
-  --gtb-border2:   #21262d;
-  --gtb-text:      #e6edf3;
-  --gtb-muted:     #7d8590;
-  --gtb-green:     #3fb950;
-  --gtb-green-dim: #0d3320;
-  --gtb-red:       #f85149;
-  --gtb-red-dim:   #3d0d0d;
-  --gtb-amber:     #d29922;
-  --gtb-amber-dim: #2d1d04;
-  --gtb-blue:      #58a6ff;
-  --gtb-blue-dim:  #0d2040;
-  --gtb-gold:      #fbbf24;
+  /* Surfaces */
+  --gtb-bg:        #060a12;
+  --gtb-surface:   #0b1220;
+  --gtb-surface2:  #101c30;
+  --gtb-border:    #1b2d47;
+  --gtb-border2:   #122038;
+
+  /* Text */
+  --gtb-text:      #dde4f2;
+  --gtb-muted:     #5c7499;
+
+  /* Signal */
+  --gtb-green:     #00e5a0;
+  --gtb-green-dim: #002b1e;
+  --gtb-red:       #ff4d6a;
+  --gtb-red-dim:   #2d000e;
+  --gtb-amber:     #ffbe0b;
+  --gtb-amber-dim: #241700;
+  --gtb-blue:      #38bdf8;
+  --gtb-blue-dim:  #001e35;
+  --gtb-gold:      #ffd166;
+  --gtb-gold-dim:  #251b00;
+
+  /* Accent */
+  --gtb-accent:    #00b4d8;
+  --gtb-accent-dim:#001e2d;
+
+  /* Mono font for numbers */
+  --gtb-mono: 'JetBrains Mono','Fira Code','Consolas','Courier New',monospace;
 }
+
+/* ── Light theme — applied via .gtb-light on #main-trade-bot-container ── */
+.gtb-light {
+  --gtb-bg:        #ffffff;
+  --gtb-surface:   #f3f6fa;
+  --gtb-surface2:  #e7edf4;
+  --gtb-border:    #c5d0de;
+  --gtb-border2:   #dde4ee;
+  --gtb-text:      #16202e;
+  --gtb-muted:     #5a6678;
+  --gtb-green:     #0a8f5f;
+  --gtb-green-dim: #d8f6ea;
+  --gtb-red:       #d61f44;
+  --gtb-red-dim:   #ffe1e8;
+  --gtb-amber:     #a9760a;
+  --gtb-amber-dim: #fbeecb;
+  --gtb-blue:      #1f6fd6;
+  --gtb-blue-dim:  #dcebff;
+  --gtb-gold:      #b07d00;
+  --gtb-gold-dim:  #f6ecc9;
+  --gtb-accent:    #0a8aa8;
+  --gtb-accent-dim:#d6eff6;
+}
+
+/* Force chart background in light mode */
+.gtb-light .gtb-chart-mini,
+.gtb-light .gtb-chart-oi,
+.gtb-light .gtb-chart-ad { background: #ffffff; }
+
+/* Light-mode overrides for spots that hardcode dark colours */
+.gtb-light #gtb-topbar { background: linear-gradient(180deg, #f3f6fa 0%, #ffffff 100%); }
+.gtb-light .gtb-brand  { text-shadow: none; }
+.gtb-light .lw-chart-btn { background: rgba(255,255,255,0.9) !important; }
+.gtb-light .gtb-ov-verdict.strong-buy,
+.gtb-light .gtb-ov-verdict.strong-sell { text-shadow: none; }
+
+/* ── Remove rounded corners across the whole dashboard ─────────── */
+#main-trade-bot-container,
+#main-trade-bot-container *,
+.popup-custom-style-groot-trade-bot.popupwindow,
+.popup-custom-style-groot-trade-bot .popupwindow_content { border-radius: 0 !important; }
 
 /* ── Top Bar ─────────────────────────────────────────────────── */
 #gtb-topbar {
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 10px; height: 44px;
-  background: var(--gtb-surface);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 10px; height: 46px;
+  background: linear-gradient(180deg, #0e1828 0%, var(--gtb-surface) 100%);
   border-bottom: 1px solid var(--gtb-border);
   position: sticky; top: 0; z-index: 200;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  flex-shrink: 0;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.6);
+  flex-shrink: 0; overflow: hidden;
 }
 .gtb-topbar-controls {
   display: flex; align-items: center; gap: 8px;
@@ -1264,9 +1404,13 @@ td.details-control {
 .popup-custom-style-groot-trade-bot .popupwindow_titlebar,
 .popup-custom-style-groot-trade-bot .popupwindow_statusbar { display: none !important; }
 .popup-custom-style-groot-trade-bot .popupwindow_content {
-  top: 0 !important; bottom: 0 !important;
   padding: 0 !important; background: var(--gtb-bg) !important;
   border-top: none !important;
+  /* Positioning context for the absolutely-pinned container below. The library
+     sizes this element via flex (flex:1 1 auto inside the .popupwindow column),
+     so it has a definite size; position:relative lets us pin to it exactly. */
+  position: relative !important;
+  overflow: hidden !important;
 }
 .popup-custom-style-groot-trade-bot .popupwindow_content:after { height: 0 !important; }
 
@@ -1365,14 +1509,16 @@ td.details-control {
 .gtb-eu-alert-close:hover { color: var(--gtb-text); }
 
 .gtb-brand {
-  font-size: 0.75rem; font-weight: 900; color: var(--gtb-gold);
-  letter-spacing: 2px; white-space: nowrap; padding-right: 8px;
+  font-size: 0.72rem; font-weight: 900; color: var(--gtb-accent);
+  letter-spacing: 3px; white-space: nowrap; padding-right: 10px;
   border-right: 1px solid var(--gtb-border); margin-right: 4px;
+  text-shadow: 0 0 12px var(--gtb-accent)88;
   text-transform: uppercase;
 }
 .gtb-ticker {
   display: flex; flex-direction: column; align-items: flex-start;
-  padding: 4px 10px; border-radius: 6px; background: var(--gtb-bg);
+  justify-content: center;
+  padding: 3px 9px; border-radius: 6px; background: var(--gtb-bg);
   border: 1px solid var(--gtb-border2); min-width: 90px;
   transition: border-color 0.2s;
 }
@@ -1382,11 +1528,12 @@ td.details-control {
   letter-spacing: 0.8px; text-transform: uppercase; line-height: 1;
 }
 .gtb-ticker .tk-ltp {
-  font-size: 0.88rem; color: var(--gtb-text); font-weight: 800;
-  font-variant-numeric: tabular-nums; line-height: 1.3;
+  font-size: 0.8rem; color: var(--gtb-text); font-weight: 800;
+  font-family: var(--gtb-mono); font-variant-numeric: tabular-nums; line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 .gtb-ticker .tk-chg {
-  font-size: 0.62rem; font-weight: 700; line-height: 1;
+  font-size: 0.58rem; font-weight: 700; line-height: 1;
 }
 .gtb-ticker .tk-chg.up   { color: var(--gtb-green); }
 .gtb-ticker .tk-chg.down { color: var(--gtb-red); }
@@ -1418,25 +1565,36 @@ td.details-control {
 .gtb-window-pill.closed { background: #1f2937; color: var(--gtb-muted); border-color: var(--gtb-border); }
 
 .gtb-signal-pill {
-  font-size: 0.78rem; font-weight: 900; padding: 5px 16px;
-  border-radius: 6px; letter-spacing: 0.5px; white-space: nowrap;
+  font-size: 0.72rem; font-weight: 900; padding: 4px 14px;
+  border-radius: 5px; letter-spacing: 1px; white-space: nowrap;
   border: 1px solid transparent; transition: box-shadow 0.3s;
+  text-transform: uppercase; font-family: var(--gtb-mono);
 }
 .gtb-signal-pill.strong-buy  {
-  background: linear-gradient(135deg,#0d3320,#14532d);
-  color: var(--gtb-green); border-color: #1a5c38;
-  box-shadow: 0 0 12px #3fb95044, inset 0 1px 0 #3fb95033;
+  background: linear-gradient(135deg, var(--gtb-green-dim), #004d2e);
+  color: var(--gtb-green); border-color: #006644;
+  box-shadow: 0 0 16px var(--gtb-green)44, inset 0 1px 0 var(--gtb-green)22;
 }
-.gtb-signal-pill.buy         { background: #0d3320; color: var(--gtb-green); border-color: #1a5c38; }
-.gtb-signal-pill.wait        { background: var(--gtb-amber-dim); color: var(--gtb-amber); border-color: #78491a; }
-.gtb-signal-pill.sideways    { background: #1f2937; color: var(--gtb-muted); border-color: var(--gtb-border); }
-.gtb-signal-pill.sell        { background: var(--gtb-red-dim); color: var(--gtb-red); border-color: #7f1d1d; }
+.gtb-signal-pill.buy         {
+  background: var(--gtb-green-dim); color: var(--gtb-green); border-color: #004d2e;
+}
+.gtb-signal-pill.wait        {
+  background: var(--gtb-amber-dim); color: var(--gtb-amber); border-color: #5a3a00;
+}
+.gtb-signal-pill.sideways    {
+  background: var(--gtb-surface2); color: var(--gtb-muted); border-color: var(--gtb-border);
+}
+.gtb-signal-pill.sell        {
+  background: var(--gtb-red-dim); color: var(--gtb-red); border-color: #7f0022;
+}
 .gtb-signal-pill.strong-sell {
-  background: linear-gradient(135deg,#3d0d0d,#7f1d1d);
-  color: var(--gtb-red); border-color: #b91c1c;
-  box-shadow: 0 0 12px #f8514944, inset 0 1px 0 #f8514933;
+  background: linear-gradient(135deg, var(--gtb-red-dim), #4d0019);
+  color: var(--gtb-red); border-color: #991133;
+  box-shadow: 0 0 16px var(--gtb-red)44, inset 0 1px 0 var(--gtb-red)22;
 }
-.gtb-signal-pill.no-trade    { background: #1f2937; color: var(--gtb-gold); border-color: #78491a; }
+.gtb-signal-pill.no-trade    {
+  background: var(--gtb-gold-dim); color: var(--gtb-gold); border-color: #5a3a00;
+}
 .gtb-signal-pill.strong-buy,
 .gtb-signal-pill.strong-sell { animation: gtb-glow 2s ease-in-out infinite; }
 @keyframes gtb-glow {
@@ -1445,9 +1603,13 @@ td.details-control {
 }
 
 /* ── Layout skeleton ─────────────────────────────────────────── */
+/* Pinned to the popup content box with absolute inset:0 → a GUARANTEED definite
+   height, so the inner flex chain (topbar + #gtb-main + scroll regions) always
+   bounds correctly regardless of how the popup library sizes its content. */
 #main-trade-bot-container {
+  position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  height: 100%; width: 100%; overflow: hidden;
+  overflow: hidden;
   background: var(--gtb-bg);
 }
 
@@ -1455,21 +1617,6 @@ td.details-control {
   display: flex; background: var(--gtb-bg); gap: 0;
   flex: 1; overflow: hidden;
   min-height: 0;
-}
-#gtb-left {
-  width: 224px; min-width: 224px; background: var(--gtb-surface);
-  border-right: 1px solid var(--gtb-border); overflow-y: auto;
-  padding: 6px; display: flex; flex-direction: column; gap: 5px;
-}
-#gtb-center {
-  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
-  background: var(--gtb-bg);
-  display: flex; flex-direction: column;
-}
-#gtb-right {
-  width: 236px; min-width: 236px; background: var(--gtb-surface);
-  border-left: 1px solid var(--gtb-border); overflow-y: auto;
-  padding: 6px; display: flex; flex-direction: column; gap: 5px;
 }
 
 /* ── Card ────────────────────────────────────────────────────── */
@@ -2003,10 +2150,369 @@ td.details-control {
    GRID LAYOUT — all instruments visible simultaneously
    ═══════════════════════════════════════════════════════════════ */
 
-/* Center is now a scrollable flex column of rows */
-#gtb-center { gap: 0; }
+/* ── Two-panel layout ───────────────────────────────────────────── */
+#gtb-main {
+  display: flex; flex-direction: row;
+}
 
-/* Each row is a horizontal flex of instrument columns */
+/* LEFT: dashboard widgets, fixed width, scrollable */
+#gtb-left {
+  width: 200px; min-width: 200px; flex-shrink: 0;
+  background: linear-gradient(180deg, var(--gtb-surface) 0%, var(--gtb-bg) 100%);
+  border-right: 1px solid var(--gtb-border);
+  overflow-y: auto; overflow-x: hidden;
+  padding: 6px 4px; display: flex; flex-direction: column; gap: 5px;
+}
+/* Compact card headers in left panel */
+#gtb-left .gtb-card-header {
+  padding: 5px 8px; min-height: 28px;
+  background: var(--gtb-surface2);
+  border-bottom: 1px solid var(--gtb-border2);
+}
+#gtb-left .gtb-card-title  { font-size: 0.56rem; letter-spacing: 0.06em; font-weight: 800; }
+/* Tighter widget bodies */
+#gtb-left .gtb-widget-body { padding: 0; }
+/* Cards in left panel get a subtle left accent */
+#gtb-left .gtb-widget-card {
+  border-left: 2px solid var(--gtb-border);
+  border-radius: 4px; overflow: hidden;
+}
+
+/* RIGHT: flex column — fixed overview/header at top, charts scroll in the
+   middle, details scroll at the bottom. The panel itself doesn't scroll. */
+#gtb-right {
+  flex: 1; min-width: 0; min-height: 0;
+  background: var(--gtb-bg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   OVERVIEW BANNER — top-level "what is the dashboard saying" summary
+   ══════════════════════════════════════════════════════════════════════ */
+#gtb-overview {
+  flex-shrink: 0;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.3fr 1fr;
+  gap: 1px;
+  background: var(--gtb-border2);
+  border-bottom: 2px solid var(--gtb-border);
+}
+.gtb-ov-block {
+  background: linear-gradient(180deg, var(--gtb-surface) 0%, var(--gtb-bg) 100%);
+  padding: 8px 12px;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 4px; min-width: 0; overflow: hidden;
+}
+.gtb-ov-cap {
+  font-size: 0.46rem; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gtb-muted);
+}
+
+/* Verdict block */
+.gtb-ov-verdict {
+  font-size: 1.25rem; font-weight: 900; letter-spacing: 0.04em;
+  font-family: var(--gtb-mono); line-height: 1.05;
+  color: var(--gtb-muted);
+}
+.gtb-ov-verdict.strong-buy  { color: var(--gtb-green); text-shadow: 0 0 18px var(--gtb-green)55; }
+.gtb-ov-verdict.buy         { color: var(--gtb-green); }
+.gtb-ov-verdict.sell        { color: var(--gtb-red); }
+.gtb-ov-verdict.strong-sell { color: var(--gtb-red); text-shadow: 0 0 18px var(--gtb-red)55; }
+.gtb-ov-verdict.neutral     { color: var(--gtb-amber); }
+.gtb-ov-verdict-sub {
+  font-size: 0.54rem; color: var(--gtb-muted); line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Composite score block */
+.gtb-ov-score {
+  font-size: 1.5rem; font-weight: 900; font-family: var(--gtb-mono);
+  letter-spacing: -0.03em; line-height: 1;
+}
+.gtb-ov-score.red    { color: var(--gtb-red); }
+.gtb-ov-score.orange { color: #ff9f1c; }
+.gtb-ov-score.yellow { color: var(--gtb-amber); }
+.gtb-ov-score.green  { color: var(--gtb-green); }
+.gtb-ov-score-scale {
+  display: flex; justify-content: space-between;
+  font-size: 0.42rem; color: var(--gtb-muted); font-family: var(--gtb-mono);
+}
+
+/* Breadth block */
+.gtb-ov-breadth-bar {
+  display: flex; height: 12px; border-radius: 3px; overflow: hidden;
+  background: var(--gtb-surface2); border: 1px solid var(--gtb-border2);
+}
+.gtb-ov-breadth-fill { height: 100%; transition: width 0.4s ease; }
+.gtb-ov-breadth-fill.bull { background: linear-gradient(90deg, var(--gtb-green-dim), var(--gtb-green)); }
+.gtb-ov-breadth-fill.bear { background: linear-gradient(90deg, var(--gtb-red), var(--gtb-red-dim)); }
+.gtb-ov-breadth-legend {
+  display: flex; justify-content: space-between;
+  font-size: 0.56rem; font-weight: 800; font-family: var(--gtb-mono);
+}
+.gtb-ov-breadth-legend .bull { color: var(--gtb-green); }
+.gtb-ov-breadth-legend .bear { color: var(--gtb-red); }
+
+/* Stats block */
+.gtb-ov-stats-block { gap: 3px; }
+.gtb-ov-stat {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.56rem; padding: 1px 0;
+  border-bottom: 1px solid var(--gtb-border2);
+}
+.gtb-ov-stat:last-child { border-bottom: none; }
+.gtb-ov-stat-lbl { color: var(--gtb-muted); font-weight: 700; letter-spacing: 0.04em; }
+.gtb-ov-stat-val { color: var(--gtb-text); font-family: var(--gtb-mono); font-weight: 700; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   INSTRUMENT ROWS — one horizontal row per instrument
+   ══════════════════════════════════════════════════════════════════════ */
+/* Shared column template (header + rows must match) */
+#gtb-rows-head,
+.gtb-row {
+  display: grid;
+  grid-template-columns: 152px 1fr 48px 220px 132px 124px;
+  align-items: stretch;
+}
+
+/* Sticky column header — stays pinned while the right panel scrolls */
+#gtb-rows-head {
+  flex-shrink: 0;
+  position: sticky; top: 0; z-index: 8;
+  background: var(--gtb-surface2);
+  border-bottom: 1px solid var(--gtb-border);
+  font-size: 0.46rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gtb-muted);
+}
+#gtb-rows-head > span {
+  padding: 4px 8px; border-right: 1px solid var(--gtb-border2);
+  display: flex; align-items: center;
+}
+#gtb-rows-head > span:last-child { border-right: none; }
+
+/* Charts scroll region — takes the space between header and details, scrolls
+   internally through the 9 instrument rows. */
+#gtb-rows {
+  flex: 1 1 0; min-height: 100px; overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+
+/* Fixed-height rows so each chart container has a deterministic height
+   (flex-distributed heights left chart containers unbounded → overflow). */
+.gtb-row {
+  flex: 0 0 var(--gtb-row-h, 84px);
+  height: var(--gtb-row-h, 84px);
+  grid-template-rows: 100%;            /* single track fills the fixed height  */
+  border-bottom: 1px solid var(--gtb-border2);
+  position: relative;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+.gtb-row:last-child { border-bottom: none; }
+.gtb-row:hover { background: color-mix(in srgb, var(--gtb-surface2) 30%, transparent); }
+
+/* Category colour tab on the far left edge */
+.gtb-row::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.gtb-row.cat-index::before { background: var(--gtb-accent); }
+.gtb-row.cat-cmdty::before { background: var(--gtb-amber); }
+.gtb-row.cat-stock::before { background: var(--gtb-blue); }
+
+/* ── Identity cell ───────────────────────────────────────────────────── */
+.gtb-row-id {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 2px; padding: 5px 8px 5px 11px;
+  border-right: 1px solid var(--gtb-border2);
+  min-width: 0; overflow: hidden;
+}
+.gtb-row-name {
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--gtb-text); text-transform: uppercase; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.gtb-row-name a { color: inherit; text-decoration: none; }
+.gtb-row-name a:hover { color: var(--gtb-accent); }
+.gtb-row-name i { color: var(--gtb-muted); }
+.gtb-row-ltp {
+  font-family: var(--gtb-mono); font-size: 0.78rem; font-weight: 700;
+  color: var(--gtb-text); letter-spacing: -0.02em; line-height: 1.1;
+}
+.gtb-row-id-actions { display: flex; gap: 2px; }
+.gtb-row-id-actions .sv-icon-btn { font-size: 0.56rem; padding: 0 2px; color: var(--gtb-muted); }
+.gtb-row-id-actions .sv-icon-btn:hover { color: var(--gtb-accent); }
+
+/* ── Wide chart cell ─────────────────────────────────────────────────── */
+.gtb-chart-mini { background: var(--gtb-bg); min-height: 0; }
+.gtb-row-chart {
+  border-right: 1px solid var(--gtb-border2);
+  min-width: 0; min-height: 0;
+  overflow: hidden;
+}
+/* The 7-row ref legend overflows short row charts — hide it here
+   (values are still visible as dashed price lines on the chart). */
+.gtb-row-chart .lw-ref-legend { display: none; }
+/* Shrink the zoom controls so they don't dominate a short chart */
+.gtb-row-chart .lw-chart-controls { top: 2px; right: 2px; transform: scale(0.82); transform-origin: top right; }
+
+/* ── Data columns ────────────────────────────────────────────────────── */
+.gtb-row-col {
+  display: flex; flex-wrap: wrap; align-content: center; align-items: center;
+  gap: 3px; padding: 5px 8px;
+  border-right: 1px solid var(--gtb-border2);
+  min-width: 0; overflow: hidden;
+}
+.gtb-row-sl { border-right: none; }
+.gtb-row-915 { justify-content: center; }
+.gtb-row-na { color: var(--gtb-muted); font-size: 0.6rem; opacity: 0.5; }
+
+/* LTP badge legacy (still used by some render paths) */
+.gtb-ltp-inline {
+  font-family: var(--gtb-mono) !important;
+  font-size: 0.78rem !important; font-weight: 700 !important;
+  color: var(--gtb-text) !important; letter-spacing: -0.02em;
+}
+
+/* ATR row: compact, single line */
+.gtb-atr-row { flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   INSTRUMENT PANEL — two inline strips below each chart
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared strip base ───────────────────────────────────────────────── */
+.gtb-cell-fut-bar,
+.gtb-cell-data-bar {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 4px; padding: 3px 7px;
+  flex-shrink: 0; min-width: 0; overflow: hidden;
+}
+.gtb-cell-fut-bar {
+  background: var(--gtb-surface);
+  border-top: 1px solid var(--gtb-border2);
+  min-height: 24px;
+}
+.gtb-cell-data-bar {
+  background: var(--gtb-bg);
+  border-top: 1px solid var(--gtb-border2);
+  min-height: 22px;
+}
+
+/* ── Strip label chip ───────────────────────────────────────────────── */
+.gtb-cell-bar-lbl {
+  font-size: 0.42rem; font-weight: 900; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gtb-muted);
+  background: var(--gtb-surface2);
+  border: 1px solid var(--gtb-border2);
+  border-radius: 2px; padding: 1px 4px; flex-shrink: 0;
+}
+
+/* ── Separator dot ───────────────────────────────────────────────────── */
+.gtb-cell-bar-sep {
+  width: 1px; height: 12px; background: var(--gtb-border);
+  flex-shrink: 0; margin: 0 2px;
+}
+
+/* ── Futures signal content (LONG/SHORT badge row) ──────────────────── */
+.gtb-cell-fut-signals {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 3px;
+  flex: 1; min-width: 0;
+}
+/* Suppress the score-chip inside the signal area (already shown in left panel) */
+.gtb-cell-fut-signals .gc-score-badge { display: none; }
+
+/* ── Futures remark badge ────────────────────────────────────────────── */
+.gtb-cell-fut-remark {
+  font-size: 0.5rem !important; font-weight: 700;
+  font-family: var(--gtb-mono) !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--gtb-muted); max-width: 90px;
+}
+
+/* ── Premium chip (CONTANGO / BACKWARDATION) ────────────────────────── */
+.gtb-cell-premium-chip { font-size: 0.5rem !important; }
+
+/* ── OI chips ────────────────────────────────────────────────────────── */
+.gtb-cell-data-bar .gtb-pcr-chip,
+.gtb-cell-data-bar .gtb-oi-score-chip {
+  font-size: 0.52rem !important;
+  font-family: var(--gtb-mono) !important;
+}
+
+/* ── SL/T1 wrap inside data bar ─────────────────────────────────────── */
+.gtb-cell-sl-wrap { display: flex; align-items: center; margin-left: auto; }
+.gtb-cell-sl-wrap .gtb-atr-row { background: transparent; border: none; padding: 0; }
+.gtb-cell-sl-wrap .gtb-atr-strip { padding: 0; gap: 2px; flex-wrap: nowrap; }
+.gtb-cell-sl-wrap .gtb-sl-badge.atr { display: none; }
+.gtb-cell-sl-wrap .gtb-sl-badge.t2  { display: none; }
+.gtb-cell-sl-wrap .gtb-atr-strip .gtb-sl-badge { padding: 1px 4px; min-width: 30px; }
+.gtb-cell-sl-wrap .gtb-atr-strip .gtb-sl-badge .sb-lbl { font-size: 0.4rem; }
+.gtb-cell-sl-wrap .gtb-atr-strip .gtb-sl-badge .sb-val {
+  font-size: 0.52rem; font-family: var(--gtb-mono);
+}
+
+/* ── Details area — its own scroll region pinned at the bottom of the right
+      panel, capped so it's always visible and never eats the charts. */
+#gtb-details-area {
+  flex: 0 0 auto;
+  max-height: 42%;
+  overflow-y: auto;
+  border-top: 2px solid var(--gtb-border);
+}
+/* Detail section toggle header (the "click to expand" bar) — sticky within
+   the details scroll region so it stays clickable while the details scroll. */
+#gtb-details-area > .gtb-detail-toggle:first-child,
+#gtb-detail-toggle-bar {
+  position: sticky; top: 0; z-index: 10;
+  background: linear-gradient(90deg, var(--gtb-surface) 0%, var(--gtb-surface2) 100%);
+  border-bottom: 1px solid var(--gtb-border);
+  font-size: 0.58rem; font-weight: 800;
+  letter-spacing: 0.1em; padding: 5px 12px;
+  cursor: pointer; color: var(--gtb-muted);
+  display: flex; align-items: center; gap: 8px;
+  text-transform: uppercase;
+}
+
+/* Instrument detail columns — horizontal scroll row */
+#gtb-detail-cols {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--gtb-border);
+}
+.gtb-detail-col {
+  min-width: 200px; max-width: 260px;
+  border-right: 1px solid var(--gtb-border);
+  flex-shrink: 0;
+}
+.gtb-detail-col:last-child { border-right: none; }
+.gtb-detail-col-title {
+  padding: 3px 8px;
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.05em;
+  color: #3b82f6; background: var(--gtb-surface);
+  border-bottom: 1px solid var(--gtb-border);
+  text-transform: uppercase;
+}
+
+/* Section detail toggles */
+.gtb-detail-toggle {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 6px;
+  font-size: 0.58rem; font-weight: 600; color: var(--gtb-muted);
+  background: var(--gtb-surface);
+  border-top: 1px solid var(--gtb-border);
+  cursor: pointer; letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+.gtb-detail-toggle:hover { color: var(--gtb-text); background: var(--gtb-surface2); }
+.gtb-detail-meta { display: flex; gap: 4px; }
+
+/* All-stocks A/D section */
+#gtb-all-ad-section { border-bottom: 1px solid var(--gtb-border); }
+
+/* Old grid-row kept for any remaining references */
 .gtb-grid-row {
   display: flex;
   gap: 6px;
@@ -2090,9 +2596,9 @@ td.details-control {
   pointer-events: all;
 }
 .lw-chart-btn {
-  background: rgba(22,27,34,0.82);
-  border: 1px solid #30363d;
-  color: #7d8590;
+  background: var(--gtb-surface2);
+  border: 1px solid var(--gtb-border);
+  color: var(--gtb-muted);
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1;
@@ -2103,14 +2609,42 @@ td.details-control {
   padding: 0;
   transition: background 0.1s, color 0.1s;
 }
-.lw-chart-btn:hover { background: #21262d; color: #e6edf3; border-color: #58a6ff; }
+.lw-chart-btn:hover { background: var(--gtb-surface); color: var(--gtb-accent); border-color: var(--gtb-accent); }
+
+/* ── Ref-level overlay legend (replaces axis labels) ─────────────────── */
+.lw-ref-legend {
+  position: absolute;
+  bottom: 22px; left: 4px;
+  z-index: 9;
+  background: rgba(13,17,23,0.78);
+  border: 1px solid rgba(48,54,61,0.6);
+  border-radius: 3px;
+  padding: 2px 5px;
+  pointer-events: none;
+}
+.gtb-light .lw-ref-legend {
+  background: rgba(246,248,250,0.85);
+  border-color: rgba(208,215,222,0.7);
+}
+.lw-ref-row {
+  display: flex; align-items: center; gap: 5px;
+  line-height: 1.45;
+}
+.lw-ref-lbl {
+  font-size: 0.52rem; font-weight: 700;
+  min-width: 14px; text-align: left;
+}
+.lw-ref-val {
+  font-size: 0.52rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gtb-muted);
+}
 .gtb-chart-oi   { height: 110px; }
 .gtb-chart-ad   { height: 80px; }
 .gtb-atr-row {
-  background: var(--gtb-surface);
-  border-top: 1px solid var(--gtb-border2);
-  padding: 4px 6px;
-  min-height: 32px;
+  background: transparent;
+  padding: 2px 0;
+  min-height: 0;
 }
 
 /* ── ATR / R:R badge strip ───────────────────────────────────── */
@@ -2156,10 +2690,20 @@ td.details-control {
   border-radius: 5px; border-left: 3px solid transparent;
   font-size: 0.58rem; align-items: center; min-height: 22px;
 }
-.gtb-fut-row.bull { background: var(--gtb-green-dim); border-left-color: var(--gtb-green); }
-.gtb-fut-row.bear { background: var(--gtb-red-dim);   border-left-color: var(--gtb-red); }
+.gtb-fut-row.bull    { background: var(--gtb-green-dim); border-left-color: var(--gtb-green); }
+.gtb-fut-row.bear    { background: var(--gtb-red-dim);   border-left-color: var(--gtb-red); }
+.gtb-fut-row.neutral { background: var(--gtb-surface2);  border-left-color: var(--gtb-muted); }
 .gtb-fut-row .badge { font-size: 0.55rem; padding: 2px 5px; }
 .gtb-futures-meta { font-size: 0.58rem; padding: 2px 6px; color: var(--gtb-muted); line-height: 1.4; }
+
+/* ── Futures signals inside compact chart-cell FUT bar ──────── */
+.gtb-cell-fut-signals .gtb-futures-content { padding: 0; }
+.gtb-cell-fut-signals .gtb-futures-signals { flex-direction: row; flex-wrap: wrap; gap: 3px; padding: 0; }
+.gtb-cell-fut-signals .gtb-fut-row {
+  padding: 1px 6px; min-height: 0; border-radius: 3px;
+  border-left-width: 2px; font-size: 0.52rem;
+}
+.gtb-cell-fut-signals .gtb-fut-row .badge { font-size: 0.5rem; padding: 1px 4px; }
 
 /* ── 9:15 close improvements ─────────────────────────────────── */
 .gtb-915-summary {
@@ -2237,7 +2781,7 @@ td.details-control {
 
 /* Collapsible sections */
 .gtb-collapse-toggle { cursor: pointer; user-select: none; }
-.gtb-collapse-toggle:hover { background: #252b3b !important; }
+.gtb-collapse-toggle:hover { background: var(--gtb-surface2) !important; }
 
 /* ── Header layout helpers ───────────────────────────────────── */
 /* Right-side meta group (badges) */
@@ -2908,3 +3452,98 @@ td.details-control {
 .popup-custom-style-groot-trade-bot-stock .sv-stock-col:last-child {
   border-right: none !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   INSTITUTIONAL POLISH — applied globally on top of the palette above
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Monospace all numeric/value displays */
+.gtb-ltp-inline, .tk-ltp, .tk-chg,
+.gtb-timer-badge, .gtb-score-number,
+#score-board-number, .sb-val,
+.gtb-adr-val, .gtb-pcr-chip, .gtb-oi-score-chip {
+  font-family: var(--gtb-mono) !important;
+}
+
+/* Score number — big, bold, centered */
+#score-board-number {
+  font-size: 2.2rem !important; font-weight: 900 !important;
+  font-family: var(--gtb-mono) !important;
+  letter-spacing: -0.04em; line-height: 1;
+}
+
+/* Score gauge card — stronger visual */
+#trend-scoreboard {
+  border-bottom: 3px solid var(--gtb-accent) !important;
+}
+
+/* Control link buttons — cleaner on the new palette */
+.gtb-ctrl-link {
+  background: var(--gtb-surface2) !important;
+  border-color: var(--gtb-border) !important;
+  color: var(--gtb-muted) !important;
+  font-size: 0.62rem !important;
+}
+.gtb-ctrl-link:hover {
+  color: var(--gtb-accent) !important;
+  border-color: var(--gtb-accent) !important;
+}
+
+/* Ref legend overlay — blend with new palette */
+.lw-ref-legend {
+  background: rgba(6,10,18,0.82) !important;
+  border-color: rgba(27,45,71,0.7) !important;
+}
+.lw-ref-val { color: var(--gtb-muted) !important; }
+
+/* Chart zoom controls — slightly larger hit area */
+.lw-chart-btn {
+  background: rgba(11,18,32,0.88) !important;
+  border-color: var(--gtb-border) !important;
+  color: var(--gtb-muted) !important;
+  width: 20px !important; height: 20px !important;
+}
+.lw-chart-btn:hover {
+  background: var(--gtb-surface2) !important;
+  color: var(--gtb-accent) !important;
+  border-color: var(--gtb-accent) !important;
+}
+
+/* Popup window border — deeper shadow on new bg */
+.popup-custom-style-groot-trade-bot.popupwindow {
+  box-shadow: 0 32px 96px rgba(0,0,0,0.85) !important;
+  border-color: var(--gtb-border) !important;
+  border-radius: 8px !important;
+}
+
+/* Timer badge — use accent instead of amber */
+.gtb-timer-badge {
+  color: var(--gtb-accent) !important;
+  background: var(--gtb-accent-dim) !important;
+  border-color: var(--gtb-border) !important;
+}
+
+/* VIX badge */
+.gtb-vix-badge {
+  border-color: var(--gtb-border) !important;
+  background: var(--gtb-surface2) !important;
+}
+
+/* Ticker — subtle left border accent */
+.gtb-ticker {
+  border-left: 2px solid var(--gtb-border) !important;
+  padding-left: 8px !important;
+}
+.gtb-ticker.up-tick   { border-left-color: var(--gtb-green)  !important; }
+.gtb-ticker.down-tick { border-left-color: var(--gtb-red)    !important; }
+
+/* Icon buttons in cells — accent on hover */
+.sv-icon-btn {
+  color: var(--gtb-muted);
+  transition: color 0.15s;
+}
+.sv-icon-btn:hover { color: var(--gtb-accent); }
+
+/* Tick animations on new bg */
+@keyframes tick-up   { 0% { background: var(--gtb-green-dim); } 100% { background: var(--gtb-bg); } }
+@keyframes tick-down { 0% { background: var(--gtb-red-dim);   } 100% { background: var(--gtb-bg); } }

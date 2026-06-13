@@ -547,5 +547,8 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
     map['tableData'] = tableData
     map['pcr'] = pcr
     map['chPcr'] = chPcr
+    // Underlying spot candles retained for per-5min score reconstruction
+    // (renderScoreHistory derives priceChange@T from these). See _oiScoreAtTime().
+    map['spotCandles'] = spotCandles
     return map
 }

@@ -218,6 +218,17 @@ async function showFutureDetailsMCX(name) {
     resp['ltp'] = data[data.length - 1]['close']
     resp['open'] = data[0]['close']
     resp['vwap'] = getVwapTrend(data[data.length - 1], prevData);
+    // Numeric VWAP — needed by updateFuturesStrip (NSE sets vwapPrice too; without it
+    // the strip does parseFloat() on the HTML label and shows NaN for MCX instruments).
+    (function () {
+        var q = data[data.length - 1], p = prevData;
+        var cTp = (parseFloat(q.high) + parseFloat(q.low) + parseFloat(q.close)) / 3;
+        var pTp = (parseFloat(p.high) + parseFloat(p.low) + parseFloat(p.close)) / 3;
+        var totVol = parseInt(q.volume) + parseInt(p.volume);
+        resp['vwapPrice'] = totVol > 0
+            ? ((cTp * parseFloat(q.volume) + pTp * parseFloat(p.volume)) / totVol).toFixed(2)
+            : 0;
+    })();
     resp['trend'] = getFutureDirection(data[data.length - 1], prevData, name);
     return resp;
 }
