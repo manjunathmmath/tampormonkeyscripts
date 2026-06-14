@@ -436,6 +436,7 @@ function commonMarkupPlaceHolder() {
        + 'border-radius:4px;padding:2px 4px;cursor:pointer;width:76px;" title="Snapshot end time — empty = live">';
 
     // Tool launchers as icon-only buttons
+    h += '<a id="show-915-backtest" class="gtb-ctrl-link" title="9:15 Trend — 60-day day-wise (NIFTY/SENSEX/BANK)"><i class="bi bi-calendar-week"></i></a>';
     h += '<a id="show-oi-viewer" class="gtb-ctrl-link" title="OI Analyzer"><i class="bi bi-eye"></i></a>';
     h += '<a id="show-stock-viewer" class="gtb-ctrl-link" title="Stock Viewer"><i class="bi bi-list-ul"></i></a>';
     h += '<a id="show-market-quote-analyzer" class="gtb-ctrl-link" title="Quotes"><i class="bi bi-graph-up"></i></a>';
@@ -649,7 +650,15 @@ function commonMarkupPlaceHolder() {
        +   '<span id="gtb-ov-breadth-bear-n" class="bear">0 ▼</span></div>';
     h += '</div>';
 
-    // 4) Key stats — A/D + VIX
+    // 4) 9:15 breakout counts — ASO vs BSO across constituents
+    h += '<div class="gtb-ov-block gtb-ov-915-block">';
+    h +=   '<div class="gtb-ov-cap">9:15 BREAKOUT' + _ii('ov915') + '</div>';
+    h +=   '<div class="gtb-ov-915-row"><span class="gtb-ov-915-lbl">N50</span><span class="gtb-ov-915-val" id="gtb-ov-915-n50">—</span></div>';
+    h +=   '<div class="gtb-ov-915-row"><span class="gtb-ov-915-lbl">BN</span><span class="gtb-ov-915-val" id="gtb-ov-915-bn">—</span></div>';
+    h +=   '<div class="gtb-ov-915-row"><span class="gtb-ov-915-lbl">ALL</span><span class="gtb-ov-915-val" id="gtb-ov-915-all">—</span></div>';
+    h += '</div>';
+
+    // 5) Key stats — A/D + VIX
     h += '<div class="gtb-ov-block gtb-ov-stats-block">';
     h +=   '<div class="gtb-ov-cap">KEY STATS' + _ii('keystats') + '</div>';
     h +=   '<div class="gtb-ov-stat"><span class="gtb-ov-stat-lbl">N50 A/D</span><span class="gtb-ov-stat-val" id="gtb-ov-n50ad">—</span></div>';
@@ -1775,6 +1784,7 @@ function renderScoreHistory() {
     var _b915   = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN")) || {};
     var _opens  = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"))      || {};
 
+
     // Per-interval component score: same as computeComponentScores() but uses
     // candle close from GTB_COMPONENT_CLOSE_MAP instead of live LTP.
     // futures_trend and oi_obv still from INSTRUMENT_SCORE_MAP (futures captured per-interval
@@ -1854,10 +1864,54 @@ function renderScoreHistory() {
         return '<span style="color:' + c + ';">' + s + '</span>';
     }
 
+    // ── Debug breakdown: LIVE panel vs latest history row, term by term ─────────
+    // Pinpoints which sub-score (9:15 / A/D / Futures / OI / Component) diverges.
+    var live = {
+        n915: fixed915,
+        ad:  (typeof ALL_ADVANCE_DECLINE_SCORE      !== 'undefined' ? ALL_ADVANCE_DECLINE_SCORE      : 0)
+           + (typeof NIFTY_50_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_50_ADVANCE_DECLINE_SCORE : 0)
+           + (typeof NIFTY_BANK_ADVANCE_DECLINE_SCORE!== 'undefined'? NIFTY_BANK_ADVANCE_DECLINE_SCORE: 0),
+        ft:  (typeof ALL_FUTURES_TREND_SCORE      !== 'undefined' ? ALL_FUTURES_TREND_SCORE      : 0)
+           + (typeof NIFTY_50_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_50_FUTURES_TREND_SCORE : 0)
+           + (typeof NIFTY_BANK_FUTURES_TREND_SCORE!== 'undefined'? NIFTY_BANK_FUTURES_TREND_SCORE: 0),
+        oi:  (typeof NIFTY_50_OI_OBV_SCORE  !== 'undefined' ? NIFTY_50_OI_OBV_SCORE  : 0)
+           + (typeof NIFTY_BANK_OI_OBV_SCORE!== 'undefined' ? NIFTY_BANK_OI_OBV_SCORE: 0)
+           + (typeof RELIANCE_OI_OBV_SCORE  !== 'undefined' ? RELIANCE_OI_OBV_SCORE  : 0)
+           + (typeof HDFCBANK_OI_OBV_SCORE  !== 'undefined' ? HDFCBANK_OI_OBV_SCORE  : 0)
+           + (typeof ICICIBANK_OI_OBV_SCORE !== 'undefined' ? ICICIBANK_OI_OBV_SCORE : 0),
+        comp:(typeof NIFTY_50_COMPONENT_SCORE  !== 'undefined' ? NIFTY_50_COMPONENT_SCORE  : 0)
+           + (typeof NIFTY_BANK_COMPONENT_SCORE!== 'undefined' ? NIFTY_BANK_COMPONENT_SCORE: 0)
+    };
+    live.total = live.n915 + live.ad + live.ft + live.oi + live.comp;
+
+    var lastRow = GTB_AD_INTERVAL_HISTORY[GTB_AD_INTERVAL_HISTORY.length - 1];
+    var hb = null;
+    if (lastRow) {
+        var _had = _adScore(lastRow.nAdv, lastRow.nDec) + _adScore(lastRow.bnAdv, lastRow.bnDec) + _adScore(lastRow.allAdv, lastRow.allDec);
+        var _hft = _ftScore(lastRow.allFBull||0, lastRow.allFBear||0) + _ftScore(lastRow.nFBull||0, lastRow.nFBear||0) + _ftScore(lastRow.bnFBull||0, lastRow.bnFBear||0);
+        var _hoi = _oiScoreAllAtTime(lastRow.time);   // per-candle reconstruction
+        var _hcomp = _compScoreAtTime(lastRow.time);
+        hb = { time: lastRow.time, n915: fixed915, ad: _had, ft: _hft, oi: _hoi, comp: _hcomp,
+               total: fixed915 + _had + _hft + _hoi + _hcomp };
+    }
+    function _bd(v) { v = parseFloat(v) || 0; var c = v > 0 ? '#3fb950' : v < 0 ? '#f85149' : '#7d8590'; return '<td style="text-align:right;padding:2px 8px;font-family:monospace;color:' + c + ';">' + (v >= 0 ? '+' : '') + v.toFixed(2) + '</td>'; }
+    var html = '';
+    if (hb) {
+        html += '<div style="padding:5px 6px;border-bottom:1px solid #ffffff15;">';
+        html += '<div style="font-size:0.55rem;color:#fbbf24;font-weight:700;margin-bottom:3px;"><i class="bi bi-bug"></i> SCORE BREAKDOWN — Live panel vs ' + hb.time + ' row</div>';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:0.58rem;color:#c9d1d9;">';
+        html += '<thead><tr style="color:#7d8590;"><th style="text-align:left;padding:2px 8px;"></th><th style="text-align:right;padding:2px 8px;">9:15</th><th style="text-align:right;padding:2px 8px;">A/D</th><th style="text-align:right;padding:2px 8px;">FUT</th><th style="text-align:right;padding:2px 8px;">OI</th><th style="text-align:right;padding:2px 8px;">COMP</th><th style="text-align:right;padding:2px 8px;">TOTAL</th></tr></thead><tbody>';
+        html += '<tr><td style="padding:2px 8px;color:#7d8590;">LIVE</td>' + _bd(live.n915) + _bd(live.ad) + _bd(live.ft) + _bd(live.oi) + _bd(live.comp) + _bd(live.total) + '</tr>';
+        html += '<tr><td style="padding:2px 8px;color:#7d8590;">' + hb.time + '</td>' + _bd(hb.n915) + _bd(hb.ad) + _bd(hb.ft) + _bd(hb.oi) + _bd(hb.comp) + _bd(hb.total) + '</tr>';
+        html += '<tr style="border-top:1px solid #ffffff15;"><td style="padding:2px 8px;color:#fbbf24;">Δ</td>'
+              + _bd(hb.n915 - live.n915) + _bd(hb.ad - live.ad) + _bd(hb.ft - live.ft) + _bd(hb.oi - live.oi) + _bd(hb.comp - live.comp) + _bd(hb.total - live.total) + '</tr>';
+        html += '</tbody></table></div>';
+    }
+
     // ── Table ─────────────────────────────────────────────────────────────────
-    var html = '<div style="font-size:0.55rem;color:#7d8590;padding:3px 5px 2px;border-bottom:1px solid #ffffff10;">'
+    html += '<div style="font-size:0.55rem;color:#7d8590;padding:3px 5px 2px;border-bottom:1px solid #ffffff10;">'
              + '<i class="bi bi-info-circle"></i>&nbsp;'
-             + '9:15 fixed at refresh · A/D, Futures, OI/OBV &amp; Component scores reconstructed per interval'
+             + '9:15 fixed · A/D, Futures, OI/OBV &amp; Component reconstructed per interval (independent of the live Score panel)'
              + '</div>';
 
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.6rem;">';
@@ -1866,11 +1920,13 @@ function renderScoreHistory() {
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">N50 A/D</th>'
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">BN A/D</th>'
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">FT</th>'
-         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;" title="OI/OBV score (5 instruments) reconstructed at this candle">OI</th>'
+         + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;" title="OI/OBV score (5 instruments) reconstructed per candle (independent of the live panel)">OI</th>'
          + '<th style="padding:3px 5px;text-align:right;white-space:nowrap;">Score</th>'
          + '<th style="padding:3px 5px;min-width:60px;"></th>'
          + '</tr></thead><tbody>';
 
+    // OI + Component reconstructed per interval (independent of the live snapshot
+    // panel — the two are intentionally separate). A/D and Futures vary per interval too.
     var _prevOI = null;
     GTB_AD_INTERVAL_HISTORY.forEach(function(row) {
         // A/D scores
@@ -1884,10 +1940,9 @@ function renderScoreHistory() {
         var bnFt  = _ftScore(row.bnFBull  || 0, row.bnFBear  || 0);
         var ftTotal = allFt + nFt + bnFt;
 
-        // OI/OBV score: faithfully reconstructed at this candle (falls back to snapshot)
+        // OI/OBV score: per-candle reconstruction (falls back to snapshot if no data)
         var oiAtTime = _oiScoreAllAtTime(row.time);
-
-        // Component scores: per-interval using candle close for current_trend
+        // Component score: per-candle using candle close for current_trend
         var compAtTime = _compScoreAtTime(row.time);
 
         var s = parseFloat((fixed915 + oiAtTime + compAtTime + nAd + bnAd + aAd + ftTotal).toFixed(2));
@@ -2334,6 +2389,30 @@ function _renderGtbOverview(score, marketSignal) {
     jQ('#gtb-ov-n50ad').text(n50ad || '—');
     jQ('#gtb-ov-bnad').text(bnad || '—');
     jQ('#gtb-ov-vix').text(vix || '—');
+
+    // 9:15 breakout counts — ASO/AST (above) vs BSO/BST (below) across constituents
+    try {
+        var b915 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
+        function _count915(list) {
+            var a = 0, b = 0;
+            (list || []).forEach(function (nm) {
+                var c = (b915[nm] || {})['CLOSE_9_15'];
+                if (c === 'ASO' || c === 'AST') a++;
+                else if (c === 'BSO' || c === 'BST') b++;
+            });
+            return { a: a, b: b };
+        }
+        function _fmt915(r) {
+            return '<span style="color:var(--gtb-green);font-weight:800;">' + r.a + ' ▲</span>'
+                 + '<span style="color:var(--gtb-muted);margin:0 3px;">/</span>'
+                 + '<span style="color:var(--gtb-red);font-weight:800;">' + r.b + ' ▼</span>';
+        }
+        var _n50list = (typeof NIFTY_50_LIST   !== 'undefined') ? NIFTY_50_LIST   : [];
+        var _bnlist  = (typeof NIFTY_BANK_LIST !== 'undefined') ? NIFTY_BANK_LIST : [];
+        jQ('#gtb-ov-915-n50').html(_fmt915(_count915(_n50list)));
+        jQ('#gtb-ov-915-bn').html(_fmt915(_count915(_bnlist)));
+        jQ('#gtb-ov-915-all').html(_fmt915(_count915(Object.keys(b915))));
+    } catch (e) {}
 }
 
 function setScore() {
@@ -2468,38 +2547,9 @@ function setScore() {
     let n915   = breakOutNineFifteen['NIFTY 50']  ? breakOutNineFifteen['NIFTY 50']['CLOSE_9_15']  : 'B/W';
     let sx915  = breakOutNineFifteen['SENSEX']     ? breakOutNineFifteen['SENSEX']['CLOSE_9_15']    : 'B/W';
     let bn915  = breakOutNineFifteen['NIFTY BANK'] ? breakOutNineFifteen['NIFTY BANK']['CLOSE_9_15']: 'B/W';
-    var _norm915 = function(v) { return (v === 'AST') ? 'ASO' : (v === 'BST') ? 'BSO' : (v || 'B/W'); };
+    var _norm915 = _gtbNorm915;
     var _stratKey = _norm915(n915) + '-' + _norm915(sx915) + '-' + _norm915(bn915);
-    // Inline copy of strategyMap so level is always resolved without relying on call chain
-    var _stratLookup = {
-        'ASO-ASO-ASO': { outcome:'Buy',      level:'at BSO/BST' },
-        'ASO-ASO-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'ASO-ASO-B/W': { outcome:'Buy',      level:'at BSO/BST' },
-        'ASO-BSO-ASO': { outcome:'Buy',      level:'at BSO/BST — Sensex lag, Nifty+Bank agree' },
-        'ASO-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST — bank sector leading down' },
-        'ASO-BSO-B/W': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'ASO-B/W-ASO': { outcome:'Buy',      level:'at BSO/BST' },
-        'ASO-B/W-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'ASO-B/W-B/W': { outcome:'Buy',      level:'at BSO/BST — Nifty leading, wait for others' },
-        'BSO-ASO-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'BSO-ASO-BSO': { outcome:'Sell',     level:'at ASO/AST — Nifty+Bank down, Sensex lagging' },
-        'BSO-ASO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
-        'BSO-BSO-ASO': { outcome:'Sell',     level:'at ASO/AST — bank sector resilient but outvoted' },
-        'BSO-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST' },
-        'BSO-BSO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
-        'BSO-B/W-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'BSO-B/W-BSO': { outcome:'Sell',     level:'at ASO/AST' },
-        'BSO-B/W-B/W': { outcome:'Sell',     level:'at ASO/AST' },
-        'B/W-ASO-ASO': { outcome:'Buy',      level:'at BSO/BST — Nifty indecisive but both others confirm' },
-        'B/W-ASO-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'B/W-ASO-B/W': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'B/W-BSO-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
-        'B/W-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST — both Sensex+Bank confirm down' },
-        'B/W-BSO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
-        'B/W-B/W-ASO': { outcome:'Buy',      level:'at BSO/BST — Bank Nifty leading' },
-        'B/W-B/W-BSO': { outcome:'Sell',     level:'at ASO/AST — Bank Nifty leading down' },
-        'B/W-B/W-B/W': { outcome:'Sideways', level:'No trade — all indices in range' }
-    };
+    var _stratLookup = GTB_STRAT_LOOKUP;   // shared map (see top-level definition)
     var _stratEntry = _stratLookup[_stratKey] || { outcome: 'Sideways', level: 'No trade' };
     var _stratLevel = _stratEntry.level;
     var _stratOutc  = _stratEntry.outcome;
@@ -3293,6 +3343,8 @@ var GTB_INFO = {
         body:'The total score number (−40…+40). The further from zero, the stronger the directional confluence. Positive = bullish, negative = bearish.' },
     breadth:      { icon:'bi-distribute-horizontal', title:'Instrument Breadth',
         body:'Of the 9 tracked instruments (GIFT NIFTY, NIFTY 50, NIFTY BANK, SENSEX, CRUDEOILM, USDINR, RELIANCE, HDFCBANK, ICICIBANK), how many are net-bullish ▲ vs net-bearish ▼ by their own composite score. The bar shows the split.' },
+    ov915:        { icon:'bi-clock',            title:'9:15 Breakout Count',
+        body:'How many constituents closed their 9:15 candle <b style="color:#00e5a0">above</b> their ASO/AST level (▲ bullish) vs <b style="color:#ff4d6a">below</b> their BSO/BST level (▼ bearish). Shown for NIFTY 50, BANK NIFTY, and ALL scanned stocks. A strong skew sets the day’s opening bias.' },
     keystats:     { icon:'bi-clipboard-data',   title:'Key Stats',
         body:'N50 &amp; Bank-Nifty advance/decline (A = above breakout, D = below, N = within range, net, and the A÷D ratio) plus the live India VIX.' },
     'col-instrument': { icon:'bi-tag',          title:'Instrument',
@@ -3372,6 +3424,347 @@ function showNotes() {
     body += '</div>';
     showMaximizeOverlay('<i class="bi bi-journal-text"></i> Trading Checklist', body);
 }
+
+// ── 9:15 strategy map (shared by setScore and the day-wise backtest) ──────────
+// Key = norm(NIFTY)-norm(SENSEX)-norm(BANK) where AST→ASO and BST→BSO.
+var _gtbNorm915 = function (v) { return (v === 'AST') ? 'ASO' : (v === 'BST') ? 'BSO' : (v || 'B/W'); };
+var GTB_STRAT_LOOKUP = {
+    'ASO-ASO-ASO': { outcome:'Buy',      level:'at BSO/BST' },
+    'ASO-ASO-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'ASO-ASO-B/W': { outcome:'Buy',      level:'at BSO/BST' },
+    'ASO-BSO-ASO': { outcome:'Buy',      level:'at BSO/BST — Sensex lag, Nifty+Bank agree' },
+    'ASO-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST — bank sector leading down' },
+    'ASO-BSO-B/W': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'ASO-B/W-ASO': { outcome:'Buy',      level:'at BSO/BST' },
+    'ASO-B/W-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'ASO-B/W-B/W': { outcome:'Buy',      level:'at BSO/BST — Nifty leading, wait for others' },
+    'BSO-ASO-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'BSO-ASO-BSO': { outcome:'Sell',     level:'at ASO/AST — Nifty+Bank down, Sensex lagging' },
+    'BSO-ASO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+    'BSO-BSO-ASO': { outcome:'Sell',     level:'at ASO/AST — bank sector resilient but outvoted' },
+    'BSO-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST' },
+    'BSO-BSO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+    'BSO-B/W-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'BSO-B/W-BSO': { outcome:'Sell',     level:'at ASO/AST' },
+    'BSO-B/W-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+    'B/W-ASO-ASO': { outcome:'Buy',      level:'at BSO/BST — Nifty indecisive but both others confirm' },
+    'B/W-ASO-BSO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'B/W-ASO-B/W': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'B/W-BSO-ASO': { outcome:'Buy/Sell', level:'at BSO/BST for long, at ASO/AST for short' },
+    'B/W-BSO-BSO': { outcome:'Sell',     level:'at ASO/AST — both Sensex+Bank confirm down' },
+    'B/W-BSO-B/W': { outcome:'Sell',     level:'at ASO/AST' },
+    'B/W-B/W-ASO': { outcome:'Buy',      level:'at BSO/BST — Bank Nifty leading' },
+    'B/W-B/W-BSO': { outcome:'Sell',     level:'at ASO/AST — Bank Nifty leading down' },
+    'B/W-B/W-B/W': { outcome:'Sell',     level:'at ASO/AST — all indices in range, bearish bias' }
+};
+
+// Classify a 9:15 close vs strike levels derived from the day's open (same rules
+// as scanNineFifteenCandle / setScore.get915Score).
+function _gtbClassify915(name, dayOpen, closeNineFifteen) {
+    var sd = getStrikeDetails({ price: dayOpen }, name);
+    var ast = parseFloat(sd.ustrikeTwo), aso = parseFloat(sd.ustrikeOne);
+    var bso = parseFloat(sd.bstrikeOne), bst = parseFloat(sd.bstrikeTwo);
+    if (closeNineFifteen > ast) return 'AST';
+    if (closeNineFifteen > aso) return 'ASO';
+    if (closeNineFifteen < bst) return 'BST';
+    if (closeNineFifteen < bso) return 'BSO';
+    return 'B/W';
+}
+
+// Builds a day-wise 9:15 trend table for NIFTY 50 / SENSEX / NIFTY BANK over the
+// last `lookback` trading days, resolving each day's combo via GTB_STRAT_LOOKUP.
+// Simulate one leg of the entry-level trade on a day's intraday (5-min) candles.
+//   long  → ideal entry at BSO (Buy bias / bullish)
+//   short → ideal entry at ASO (Sell bias / bearish)
+// Two cases, both evaluated (held to the day's close):
+//   • entryType 'level' — price reached the strike → entered there. P/L vs that level.
+//   • entryType 'trend' — price NEVER reached the strike (no pullback) but the bias
+//     still ran; treated as entering at the OPEN and riding the trend. P/L vs open.
+//     (Sell that just closed below, or Buy that just closed above, still counts.)
+// Returns { dir, entryType, entry, exit, pnl, pnlPct, win }.
+function _gtbSimLeg(dir, cands, open) {
+    if (!cands || cands.length < 2 || !open) return null;
+    var sd = getStrikeDetails({ price: open }, 'NIFTY 50');
+    var ASO = parseFloat(sd.ustrikeOne), BSO = parseFloat(sd.bstrikeOne);
+    var isLong = dir === 'long';
+    var level = isLong ? BSO : ASO;
+    var openTs = cands[0][0];                             // the 9:15 candle timestamp
+    var filled = false, fillIdx = -1, exit = open, exitTs = openTs, favOpen = 0, favLevel = 0;
+    var entryTs = null, favOpenTs = openTs, favLevelTs = null;
+    for (var k = 1; k < cands.length; k++) {            // after the 9:15 candle
+        var ts = cands[k][0];
+        if (moment(ts).hour() >= 12) break;              // morning session only — cutoff at 12:00 (pre-Europe)
+        var hi = parseFloat(cands[k][2]), lo = parseFloat(cands[k][3]);
+        exit = parseFloat(cands[k][4]); exitTs = ts;     // running close → ends at the 12:00 close
+        // best favourable move from the open (used if it never pulls back → trend entry)
+        var fO = isLong ? (hi - open) : (open - lo);
+        if (fO > favOpen) { favOpen = fO; favOpenTs = ts; }
+        if (!filled && (isLong ? (lo <= level) : (hi >= level))) { filled = true; entryTs = ts; fillIdx = k; }
+        if (filled) {                                    // best favourable move from the strike level
+            var fL = isLong ? (hi - level) : (level - lo);
+            if (fL > favLevel) { favLevel = fL; favLevelTs = ts; }
+        }
+    }
+    var entry = filled ? level : open;                   // no pullback → entered at open (trend)
+    var pnl = isLong ? (exit - entry) : (entry - exit);
+    var mfe = filled ? favLevel : favOpen;               // max favourable excursion from the actual entry
+
+    // ── MAE (max adverse) + sequenced target/stop from the entry ────────────────
+    // Target & stop = one strike step (s1) → a transparent 1:1 R bracket.
+    var sdiff = getStrikeDiff('NIFTY 50').split(',');
+    var s1 = parseInt(sdiff[0]) || 50;
+    var target = s1, stop = s1;
+    var startK = filled ? fillIdx : 1;
+    var maxAdv = 0, tpsl = 'OPEN';
+    for (var j = startK; j >= 1 && j < cands.length; j++) {
+        if (moment(cands[j][0]).hour() >= 12) break;
+        var hj = parseFloat(cands[j][2]), lj = parseFloat(cands[j][3]);
+        var favN = isLong ? (hj - entry) : (entry - lj);
+        var advN = isLong ? (entry - lj) : (hj - entry);
+        if (advN > maxAdv) maxAdv = advN;
+        if (tpsl === 'OPEN') {                            // SL checked first (same-candle = conservative)
+            if (advN >= stop) tpsl = 'SL';
+            else if (favN >= target) tpsl = 'TP';
+        }
+    }
+
+    var fmt = function (t) { return t ? moment(t).format('HH:mm') : '—'; };
+    return { dir: dir, entryType: filled ? 'level' : 'trend', entry: entry, exit: exit,
+             pnl: pnl, pnlPct: entry ? (pnl / entry * 100) : 0, win: pnl >= 0,
+             mfe: mfe, mfePct: entry ? (mfe / entry * 100) : 0,
+             mae: maxAdv, maePct: entry ? (maxAdv / entry * 100) : 0,
+             tpsl: tpsl, target: target, stop: stop,
+             entryTime: fmt(filled ? entryTs : openTs),  // when the position was taken
+             peakTime:  fmt(filled ? favLevelTs : favOpenTs), // when the max-favourable price occurred
+             exitTime:  fmt(exitTs) };
+}
+
+// Which legs a strategy outcome implies (per the user's bias definitions):
+//   Buy → long only · Sell → short only · Buy/Sell → both legs · Sideways → none
+function _gtbLegsFor(outcome) {
+    if (outcome === 'Buy')      return ['long'];
+    if (outcome === 'Sell')     return ['short'];
+    if (outcome === 'Buy/Sell') return ['long', 'short'];
+    return [];
+}
+
+async function _gtbBuild915Trend(lookback) {
+    lookback = lookback || 60;
+    var instruments = ['NIFTY 50', 'SENSEX', 'NIFTY BANK', 'GIFT NIFTY'];
+    var to   = moment().format('YYYY-MM-DD');
+    // Kite caps the 5-minute interval at 100 days/request → keep the window under that.
+    // ~98 calendar days ≈ 68 trading days, enough to fill a 60-day lookback.
+    var calDays = Math.min(98, Math.ceil(lookback * 1.45) + 6);
+    var from = moment().subtract(calDays, 'days').format('YYYY-MM-DD');
+
+    var byInstr = {};
+    for (var i = 0; i < instruments.length; i++) {
+        var name = instruments[i];
+        var token = INSTRUMENT_TOKENS[name];
+        if (!token) { byInstr[name] = {}; continue; }
+        var res = await getHistoricalDataUsingPromise(token, from, to, '5minute');
+        var candles = (res && res.data && res.data.candles) ? res.data.candles : [];
+        var dayMap = {};
+        candles.forEach(function (c) {
+            var d = moment(c[0]).format('YYYY-MM-DD');
+            if (!dayMap[d]) {
+                dayMap[d] = { open: parseFloat(c[1]), close915: parseFloat(c[4]), dayClose: parseFloat(c[4]), cands: [c] };
+            } else {
+                dayMap[d].dayClose = parseFloat(c[4]);     // last candle close = day close
+                dayMap[d].cands.push(c);                    // retain intraday path for trade sim
+            }
+        });
+        Object.keys(dayMap).forEach(function (d) {
+            dayMap[d].cls = _gtbClassify915(name, dayMap[d].open, dayMap[d].close915);
+            // close at noon = last candle before 12:00 (pre-Europe morning session)
+            var c12 = dayMap[d].close915;
+            dayMap[d].cands.forEach(function (c) { if (moment(c[0]).hour() < 12) c12 = parseFloat(c[4]); });
+            dayMap[d].close12 = c12;
+        });
+        byInstr[name] = dayMap;
+    }
+
+    // Strategy needs NIFTY/SENSEX/BANK; GIFT NIFTY is an extra reference column.
+    var allDates = Object.keys(byInstr['NIFTY 50'] || {}).filter(function (d) {
+        return byInstr['SENSEX'][d] && byInstr['NIFTY BANK'][d];
+    }).sort().reverse().slice(0, lookback);
+
+    var rows = allDates.map(function (d) {
+        var n = byInstr['NIFTY 50'][d], s = byInstr['SENSEX'][d], b = byInstr['NIFTY BANK'][d];
+        var g = (byInstr['GIFT NIFTY'] || {})[d];
+        var key = _gtbNorm915(n.cls) + '-' + _gtbNorm915(s.cls) + '-' + _gtbNorm915(b.cls);
+        var strat = GTB_STRAT_LOOKUP[key] || { outcome: 'Sideways', level: 'No trade' };
+        var c12 = (n.close12 !== undefined) ? n.close12 : n.dayClose;   // close at noon (pre-Europe)
+        var move = c12 >= n.open ? 'UP' : 'DOWN';
+        var movePct = n.open ? ((c12 - n.open) / n.open * 100) : 0;
+        var legs = _gtbLegsFor(strat.outcome).map(function (dir) { return _gtbSimLeg(dir, n.cands, n.open); }).filter(Boolean);
+        return { date: d, n: n.cls, s: s.cls, b: b.cls, g: g ? g.cls : '—', key: key,
+                 outcome: strat.outcome, level: strat.level, move: move, movePct: movePct, legs: legs };
+    });
+    return rows;
+}
+
+function _render915Trend(rows) {
+    if (!rows || !rows.length) {
+        return '<div style="padding:24px;text-align:center;color:var(--gtb-muted);"><i class="bi bi-exclamation-triangle"></i> No data</div>';
+    }
+    // Aggregate per-leg P/L stats (each Buy/Sell day = 2 legs)
+    var win = 0, loss = 0, levelN = 0, trendN = 0, legCount = 0, totPnl = 0, totMfe = 0, totMae = 0, tpN = 0, slN = 0;
+    rows.forEach(function (r) {
+        (r.legs || []).forEach(function (lg) {
+            legCount++; totPnl += lg.pnl; totMfe += (lg.mfe || 0); totMae += (lg.mae || 0);
+            if (lg.win) win++; else loss++;
+            if (lg.tpsl === 'TP') tpN++; else if (lg.tpsl === 'SL') slN++;
+            if (lg.entryType === 'level') levelN++; else trendN++;
+        });
+    });
+    var winPct = legCount ? Math.round(win / legCount * 100) : 0;
+    var avgPnl = legCount ? (totPnl / legCount) : 0;
+    var avgMfe = legCount ? (totMfe / legCount) : 0;
+    var avgMae = legCount ? (totMae / legCount) : 0;
+    var tpslN  = tpN + slN;
+    var tpPct  = tpslN ? Math.round(tpN / tpslN * 100) : 0;   // target-before-stop hit rate (1:1)
+
+    // ── Per-combo performance (which 9:15 combos actually have an edge) ──────────
+    var combo = {};
+    rows.forEach(function (r) {
+        if (!combo[r.key]) combo[r.key] = { key: r.key, outcome: r.outcome, days: 0, legs: 0, win: 0, pnl: 0, mfe: 0 };
+        var c = combo[r.key]; c.days++;
+        (r.legs || []).forEach(function (lg) { c.legs++; if (lg.win) c.win++; c.pnl += lg.pnl; c.mfe += (lg.mfe || 0); });
+    });
+    var comboRows = Object.keys(combo).map(function (k) {
+        var c = combo[k];
+        c.winPct = c.legs ? Math.round(c.win / c.legs * 100) : 0;
+        c.avgPnl = c.legs ? (c.pnl / c.legs) : 0;
+        c.avgMfe = c.legs ? (c.mfe / c.legs) : 0;
+        return c;
+    }).sort(function (a, b) { return b.winPct - a.winPct || b.days - a.days; });
+
+    function _cls(v) {
+        var c = (v === 'AST' || v === 'ASO') ? 'up' : (v === 'BST' || v === 'BSO') ? 'down' : 'flat';
+        return '<span class="gtb-t915-cls ' + c + '">' + v + '</span>';
+    }
+    function _out(o) {
+        var c = o === 'Buy' ? 'up' : o === 'Sell' ? 'down' : o === 'Buy/Sell' ? 'mix' : 'flat';
+        return '<span class="gtb-t915-out ' + c + '">' + o + '</span>';
+    }
+    function _leg(lg) {
+        var tag = lg.dir === 'long' ? 'L' : 'S';
+        var cls = lg.win ? 'up' : 'down';
+        var sign = lg.pnl >= 0 ? '+' : '';
+        var et = lg.entryType === 'level' ? 'lvl' : 'trd';   // lvl = filled at strike, trd = no-pullback (entered at open)
+        return '<span class="gtb-t915-leg ' + cls + (lg.entryType === 'trend' ? ' trend' : '') + '">'
+             + tag + ' ' + (lg.win ? '✓' : '✗') + ' ' + sign + lg.pnl.toFixed(1) + ' '
+             + '<span class="gtb-t915-et">' + et + '</span></span>';
+    }
+    function _legMfe(lg) {
+        var tag = lg.dir === 'long' ? 'L' : 'S';
+        // MFE is the best favourable points from entry — always ≥ 0 (green if it gave a swing)
+        var cls = lg.mfe > 0 ? 'up' : 'flat';
+        return '<span class="gtb-t915-leg ' + cls + '">' + tag + ' +' + (lg.mfe || 0).toFixed(0)
+             + ' <span class="gtb-t915-et">(' + (lg.mfePct || 0).toFixed(2) + '%)</span></span>';
+    }
+    function _legTime(lg, field) {
+        var tag = lg.dir === 'long' ? 'L' : 'S';
+        var c = lg.dir === 'long' ? 'up' : 'down';
+        return '<span class="gtb-t915-leg ' + c + '">' + tag + ' ' + (lg[field] || '—') + '</span>';
+    }
+    function _legMae(lg) {            // max adverse (heat) — always shown red
+        var tag = lg.dir === 'long' ? 'L' : 'S';
+        return '<span class="gtb-t915-leg ' + ((lg.mae || 0) > 0 ? 'down' : 'flat') + '">' + tag + ' −' + (lg.mae || 0).toFixed(0)
+             + ' <span class="gtb-t915-et">(' + (lg.maePct || 0).toFixed(2) + '%)</span></span>';
+    }
+    function _legTpsl(lg) {           // 1:1 target-vs-stop outcome
+        var tag = lg.dir === 'long' ? 'L' : 'S';
+        var m = lg.tpsl === 'TP' ? ['up', '✓ TP'] : lg.tpsl === 'SL' ? ['down', '✗ SL'] : ['flat', 'open'];
+        return '<span class="gtb-t915-leg ' + m[0] + '">' + tag + ' ' + m[1] + '</span>';
+    }
+
+    var html = '<div class="gtb-t915-wrap">';
+    html += '<div class="gtb-t915-sub">Daily 9:15 combo for <b>NIFTY · SENSEX · BANK</b> (with <b>GIFT NIFTY</b> reference) over the last <b>'
+         +  rows.length + '</b> trading days. The <b>Result</b> enters NIFTY per bias — '
+         +  '<b style="color:var(--gtb-green)">long @ BSO</b> (Buy), <b style="color:var(--gtb-red)">short @ ASO</b> (Sell), '
+         +  'or <b>both</b> (Buy/Sell). If price reaches the level it’s an <b>lvl</b> entry; if it never pulled back but the bias '
+         +  'still ran, it’s a <b>trd</b> entry taken at the open. Evaluated in the <b>morning session till 12:00</b> (pre-Europe); P/L marked at the 12:00 close. '
+         +  '<b>Max Fav</b>/<b>Max Adv</b> are the best favourable (MFE) and worst adverse (MAE) swings from the entry; '
+         +  '<b>1:1 TP/SL</b> is whether a one-strike-step (' + (rows[0] && rows[0].legs[0] ? rows[0].legs[0].target : 's1') + '-pt) target was hit before an equal stop.</div>';
+    html += '<div class="gtb-t915-stats">'
+         +  '<span class="gtb-t915-stat win">✓ ' + win + ' profit</span>'
+         +  '<span class="gtb-t915-stat loss">✗ ' + loss + ' loss</span>'
+         +  '<span class="gtb-t915-stat">Win-rate <b>' + winPct + '%</b></span>'
+         +  '<span class="gtb-t915-stat">Avg P/L <b style="color:' + (avgPnl >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + '">'
+         +  (avgPnl >= 0 ? '+' : '') + avgPnl.toFixed(1) + ' pts</b></span>'
+         +  '<span class="gtb-t915-stat">Net <b style="color:' + (totPnl >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + '">'
+         +  (totPnl >= 0 ? '+' : '') + totPnl.toFixed(0) + ' pts</b></span>'
+         +  '<span class="gtb-t915-stat">Avg max-fav <b style="color:var(--gtb-green)">+' + avgMfe.toFixed(1) + '</b> / max-adv <b style="color:var(--gtb-red)">−' + avgMae.toFixed(1) + ' pts</b></span>'
+         +  '<span class="gtb-t915-stat">1:1 target hit <b>' + tpPct + '%</b> (' + tpN + ' TP / ' + slN + ' SL)</span>'
+         +  '<span class="gtb-t915-stat">' + levelN + ' lvl · ' + trendN + ' trd entries</span>'
+         +  '</div>';
+
+    // ── Per-combo edge table ────────────────────────────────────────────────────
+    html += '<div class="gtb-t915-combo-h"><i class="bi bi-trophy"></i> Per-combo edge '
+         +  '<span style="font-weight:400;color:var(--gtb-muted);">(NIFTY-SENSEX-BANK · sorted by win-rate · low N = unreliable)</span></div>';
+    html += '<table class="gtb-t915-table gtb-t915-combo"><thead><tr>'
+         +  '<th>Combo</th><th>Bias</th><th>Days</th><th>Win-rate</th><th>Avg P/L</th><th>Avg Max-Fav</th></tr></thead><tbody>';
+    comboRows.forEach(function (c) {
+        var wc = c.winPct >= 60 ? 'var(--gtb-green)' : c.winPct <= 40 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+        var lowN = c.days < 4 ? ' style="opacity:0.5;"' : '';
+        html += '<tr' + lowN + '>'
+            + '<td class="gtb-t915-date" style="font-family:var(--gtb-mono);">' + c.key + '</td>'
+            + '<td>' + _out(c.outcome) + '</td>'
+            + '<td class="gtb-t915-date">' + c.days + '</td>'
+            + '<td style="color:' + wc + ';font-weight:800;font-family:var(--gtb-mono);">' + c.winPct + '%</td>'
+            + '<td style="color:' + (c.avgPnl >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + ';font-family:var(--gtb-mono);">'
+            + (c.avgPnl >= 0 ? '+' : '') + c.avgPnl.toFixed(1) + '</td>'
+            + '<td style="color:var(--gtb-green);font-family:var(--gtb-mono);">+' + c.avgMfe.toFixed(1) + '</td>'
+            + '</tr>';
+    });
+    html += '</tbody></table>';
+
+    html += '<div class="gtb-t915-combo-h"><i class="bi bi-calendar3"></i> Day-by-day</div>';
+    html += '<table class="gtb-t915-table"><thead><tr>'
+         +  '<th>Date</th><th>GIFT</th><th>NIFTY</th><th>SENSEX</th><th>BANK</th><th>Strategy</th><th>Entry Level</th><th>Nifty →12pm</th><th>Result (P/L)</th><th>Max Fav</th><th>Max Adv</th><th>1:1 TP/SL</th><th>Entry @</th><th>Peak @</th>'
+         +  '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+        var mvColor = r.move === 'UP' ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        var empty = '<span class="gtb-t915-leg flat">—</span>';
+        var resHtml = (r.legs && r.legs.length) ? r.legs.map(_leg).join(' ') : empty;
+        var mfeHtml = (r.legs && r.legs.length) ? r.legs.map(_legMfe).join(' ') : empty;
+        var maeHtml = (r.legs && r.legs.length) ? r.legs.map(_legMae).join(' ') : empty;
+        var tpslHtml= (r.legs && r.legs.length) ? r.legs.map(_legTpsl).join(' ') : empty;
+        var entHtml = (r.legs && r.legs.length) ? r.legs.map(function (lg) { return _legTime(lg, 'entryTime'); }).join(' ') : empty;
+        var pkHtml  = (r.legs && r.legs.length) ? r.legs.map(function (lg) { return _legTime(lg, 'peakTime'); }).join(' ') : empty;
+        html += '<tr>'
+            + '<td class="gtb-t915-date">' + moment(r.date).format('DD MMM') + '</td>'
+            + '<td>' + _cls(r.g) + '</td><td>' + _cls(r.n) + '</td><td>' + _cls(r.s) + '</td><td>' + _cls(r.b) + '</td>'
+            + '<td>' + _out(r.outcome) + '</td>'
+            + '<td class="gtb-t915-lvl">' + r.level + '</td>'
+            + '<td style="color:' + mvColor + ';font-weight:700;font-family:var(--gtb-mono);">'
+            + (r.move === 'UP' ? '▲' : '▼') + ' ' + (r.movePct >= 0 ? '+' : '') + r.movePct.toFixed(2) + '%</td>'
+            + '<td>' + resHtml + '</td>'
+            + '<td>' + mfeHtml + '</td>'
+            + '<td>' + maeHtml + '</td>'
+            + '<td>' + tpslHtml + '</td>'
+            + '<td>' + entHtml + '</td>'
+            + '<td>' + pkHtml + '</td>'
+            + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+}
+
+jQ(document).on('click', '#show-915-backtest', async function (e) {
+    e.preventDefault();
+    showMaximizeOverlay('<i class="bi bi-calendar-week"></i> 9:15 Opening-Trend + Entry-Level P/L Backtest — 60-Day, till 12:00 (GIFT · NIFTY · SENSEX · BANK)',
+        '<div style="padding:30px;text-align:center;color:var(--gtb-muted);font-size:0.85rem;">'
+        + '<i class="bi bi-hourglass-split"></i> Building last 60 days of 9:15 trend…</div>');
+    try {
+        var rows = await _gtbBuild915Trend(60);
+        jQ('#groot-maximize-body').html(_render915Trend(rows));
+    } catch (err) {
+        jQ('#groot-maximize-body').html('<div style="padding:24px;color:var(--gtb-red);">Error: ' + (err && err.message) + '</div>');
+    }
+});
 
 // ── Strike-level probability backtest ─────────────────────────────────────────
 // Backtests how price behaves once it touches each strike level, using daily OHLC.
