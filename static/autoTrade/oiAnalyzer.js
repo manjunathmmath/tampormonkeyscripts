@@ -124,45 +124,40 @@ function calculateIVSeries(optionCandles, strike, isCall, expiryDateStr, spotCan
 //   STRIKEDATA   — { ustrikeOne, ustrikeTwo, bstrikeOne, bstrikeTwo }
 //   TREND        — active trend labels ["ASO", "VIXU", …]
 async function showPrictionProbabilty(name) {
-    stock = []
     let scriptData = generateTrend(name)
-    let scripts = []
-    let obj = {}
-    obj['TRADINGSYMBOL'] = name;
-    obj['CLOSE'] = scriptData['prevPrice'];
-    obj['PRICE'] = scriptData['price'];
-    obj['PERC'] = scriptData['perc'];
-    obj['TREND'] = scriptData['trends'];
-    obj['LTP'] = scriptData['ltp'];
-    obj['STRIKEDATA'] = scriptData['strikeData'];
-    obj['CURRENT_PRICE'] = scriptData['ltp'];
-    obj['TREND'] = scriptData['trends'];
-    scripts.push(obj)
+    // Build entry locally — never touch the global `stock` array here.
+    // This allows parallel calls across instruments without race conditions.
+    let entry = {}
+    entry['TRADINGSYMBOL'] = name;
+    entry['LTP']           = scriptData['ltp'];
+    entry['OPEN']          = scriptData['openPrice'] || scriptData['prevPrice'];
+    entry['CLOSE']         = scriptData['prevPrice'];
+    entry['PRICE']         = scriptData['price'];
+    entry['PERC']          = scriptData['perc'];
+    entry['TREND']         = scriptData['trends'];
+    entry['STRIKEDATA']    = scriptData['strikeData'];
+    entry['DATA']          = '';
 
-    for (let i = 0; i < scripts.length; i++) {
-        let obj = {}
-        obj['TRADINGSYMBOL'] = scripts[i]['TRADINGSYMBOL']
-        obj['LTP'] = scripts[i]['LTP']
-        obj['TREND'] = scripts[i]['TREND']
-        obj['STRIKEDATA'] = scripts[i]['STRIKEDATA']
-        obj['CLOSE'] = scripts[i]['CLOSE']
-        obj['PRICE'] = scripts[i]['PRICE']
-        obj['PERC'] = scripts[i]['PERC']
-        obj['DATA'] = ''
-        stock.push(obj)
+    if (name !== 'GIFT NIFTY') {
+        try {
+            entry['DATA'] = await showTrendingOI(name);
+        } catch(err) {
+            console.log('Error fetching OI for ' + name, err);
+        }
     }
 
-    if (stock.length > 0) {
-        await callPredictionAnalyseTrend();
-    }
+    // Write result into per-instrument slot in INSTRUMENT_SCORE_MAP, then
+    // expose as stock[0] so showOIOBVBarChart (which reads stock[0]) still works.
+    if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+    INSTRUMENT_SCORE_MAP[name].stockEntry = entry;
+    stock = [entry];   // safe: showOIOBVBarChart is called immediately after, synchronously
 }
 
-// Iterates the `stock` array and fetches OI data for each instrument via showTrendingOI().
-// GIFT NIFTY is skipped — it has no option chain on NSE/BSE.
-// Results stored as stock[i]['DATA'] = { tableData, pcr, chPcr } for downstream rendering.
+// Legacy wrapper — kept for any external callers that still use it.
+// With the refactored showPrictionProbabilty above, this is no longer called
+// during the main refresh, but is preserved to avoid breaking other paths.
 async function callPredictionAnalyseTrend() {
-    let scriptsCount = stock.length
-    for (let i = 0; i < scriptsCount; i++) {
+    for (let i = 0; i < stock.length; i++) {
         try {
             let name = stock[i]['TRADINGSYMBOL']
             if (name != 'GIFT NIFTY') {
@@ -244,7 +239,7 @@ function calculateOBVFiveMinutesInterval(prevData, currData) {
 //   chPcr  = change PE OI / change CE OI (change PCR — directional pressure today)
 async function showTrendingOI(instrument, strikToShowOverride) {
     OI_DIVISOR = 100000
-    let strikToShow = (strikToShowOverride !== undefined) ? strikToShowOverride : 3
+    let strikToShow = (strikToShowOverride !== undefined) ? strikToShowOverride : 2
     let strikeData = []
     let selectedStrike = []
     let res = generateTrend(instrument)
@@ -255,16 +250,18 @@ async function showTrendingOI(instrument, strikToShowOverride) {
 
     if (instrument == "NIFTY 50") {
         instrument = "NIFTY"
-        strikToShow = 4
+        strikToShow = 3
     } else if (instrument == "NIFTY BANK") {
         instrument = "BANKNIFTY"
-        strikToShow = 4
+        strikToShow = 3
     } else if (instrument == "NIFTY FIN SERVICE") {
         instrument = "FINNIFTY"
-        strikToShow = 4
+        strikToShow = 3
     } else if (instrument == "NIFTY MID SELECT") {
         instrument = "MIDCPNIFTY"
-        strikToShow = 4
+        strikToShow = 3
+    } else if (instrument == "SENSEX") {
+        strikToShow = 3
     }
 
     let atmStrike = 0;
@@ -418,6 +415,17 @@ async function showTrendingOI(instrument, strikToShowOverride) {
 // and shared here to avoid repeated API calls per strike.
 //
 // Falls back to previous day data if current day candles are empty (pre-9:15 / holiday).
+// Previous-day daily candle is constant through the session → cache by token so
+// repeated refreshes don't re-fetch it (removes ~half the OI-scan API calls).
+var _gtbOIPrevCache = {};
+async function _gtbPrevDayCandle(tok) {
+    if (!_gtbOIPrevCache[PREVIOUS_DAY]) _gtbOIPrevCache[PREVIOUS_DAY] = {};
+    if (_gtbOIPrevCache[PREVIOUS_DAY][tok]) return _gtbOIPrevCache[PREVIOUS_DAY][tok];
+    var d = await getHistoricalDataUsingPromise(tok, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
+    _gtbOIPrevCache[PREVIOUS_DAY][tok] = d;
+    return d;
+}
+
 async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, expiryDateStr) {
     spotCandles = spotCandles || [];
     expiryDateStr = expiryDateStr || null;
@@ -444,11 +452,14 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
                     HISTORICAL_DATA_INTERVAL_OVERRIDE = '5minute'
                 }
 
-                let prevDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
-                let currDataCE = await getHistoricalDataUsingPromise(CE.instrument_token, _gtbPrevDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE);
-
-                let prevDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, PREVIOUS_DAY, PREVIOUS_DAY, 'day');
-                let currDataPE = await getHistoricalDataUsingPromise(PE.instrument_token, _gtbPrevDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE);
+                // Fetch all 4 series in parallel; prev-day comes from the session cache
+                let _oiFetch = await Promise.all([
+                    _gtbPrevDayCandle(CE.instrument_token),
+                    getHistoricalDataUsingPromise(CE.instrument_token, _gtbPrevDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE),
+                    _gtbPrevDayCandle(PE.instrument_token),
+                    getHistoricalDataUsingPromise(PE.instrument_token, _gtbPrevDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL_OVERRIDE)
+                ]);
+                let prevDataCE = _oiFetch[0], currDataCE = _oiFetch[1], prevDataPE = _oiFetch[2], currDataPE = _oiFetch[3];
 
 
 

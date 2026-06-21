@@ -254,22 +254,54 @@ function generateTrend(name) {
 // Returns Promise<{ data: { candles: [[timestamp, o, h, l, c, volume, oi], ...] } }>
 // On error resolves with [] to allow caller to handle gracefully.
 // Authentication: Kite enctoken from browser cookie (Tampermonkey context).
-function getHistoricalDataUsingPromise(code, fromDate, toDate, interval) {
-    jQ.ajaxSetup({
-        headers: {
-            'Authorization': `enctoken ${getCookie('enctoken')}`
-        }
-    });
-    return new Promise((resolve, reject) => {
+// ── Historical-API rate limiter ───────────────────────────────────────────────
+// Kite caps the historical endpoint at ~3 requests/sec. Parallel callers (Promise.all
+// bursts in the OI scan / backtests) would trip "Too many requests" (429), so every
+// historical call is funnelled through one queue: ≤ _GTB_HIST_CONC in flight and
+// ≥ _GTB_HIST_GAP ms between starts. On 429 it auto-retries with backoff.
+var _GTB_HIST_QUEUE = [];
+var _GTB_HIST_ACTIVE = 0;
+var _GTB_HIST_LAST = 0;
+var _GTB_HIST_CONC = 3;     // max concurrent historical requests
+var _GTB_HIST_GAP  = 320;   // min ms between request starts (~3/sec)
+
+function _gtbHistPump() {
+    if (!_GTB_HIST_QUEUE.length || _GTB_HIST_ACTIVE >= _GTB_HIST_CONC) return;
+    var wait = _GTB_HIST_GAP - (Date.now() - _GTB_HIST_LAST);
+    if (wait > 0) { setTimeout(_gtbHistPump, wait); return; }
+    var job = _GTB_HIST_QUEUE.shift();
+    _GTB_HIST_LAST = Date.now();
+    _GTB_HIST_ACTIVE++;
+    job().then(function () { _GTB_HIST_ACTIVE--; _gtbHistPump(); });
+    if (_GTB_HIST_QUEUE.length) setTimeout(_gtbHistPump, _GTB_HIST_GAP);   // allow next to start after the gap
+}
+
+function _gtbHistAjax(code, fromDate, toDate, interval, attempt) {
+    jQ.ajaxSetup({ headers: { 'Authorization': `enctoken ${getCookie('enctoken')}` } });
+    return new Promise(function (resolve) {
         jQ.ajax({
             url: BASE_URL + `/oms/instruments/historical/${code}/${interval}?user_id=HY8031&oi=1&from=${fromDate}&to=${toDate}`,
-            type: 'GET',
-            async: true,
-            cache: false,
+            type: 'GET', async: true, cache: false,
             success: function (data) { resolve(data); },
-            error:   function (request, status, error) { resolve([]); }
+            error: function (request) {
+                // 429 (Too many requests) → back off and retry up to 3×
+                if (request && request.status === 429 && (attempt || 0) < 3) {
+                    setTimeout(function () { _gtbHistAjax(code, fromDate, toDate, interval, (attempt || 0) + 1).then(resolve); }, 700 * ((attempt || 0) + 1));
+                } else {
+                    resolve([]);
+                }
+            }
         });
-    })
+    });
+}
+
+function getHistoricalDataUsingPromise(code, fromDate, toDate, interval) {
+    return new Promise(function (resolve) {
+        _GTB_HIST_QUEUE.push(function () {
+            return _gtbHistAjax(code, fromDate, toDate, interval, 0).then(function (d) { resolve(d); });
+        });
+        _gtbHistPump();
+    });
 }
 
 // jQuery-deferred version of getHistoricalDataUsingPromise (used in older call sites).

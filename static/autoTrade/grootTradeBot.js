@@ -11,7 +11,7 @@
 //        OI/OBV score per instrument (NIFTY_50/NIFTY_BANK/RELIANCE/HDFCBANK/ICICIBANK_OI_OBV_SCORE)
 //        Component scores (NIFTY_50_COMPONENT_SCORE, NIFTY_BANK_COMPONENT_SCORE)
 //      Gauge colors: red < 0, orange 1–4, yellow 5–7, green ≥ 8
-//   3. Strike scoring — scoreOIStrikeForSignal() uses OI Δ + IV (primary) / OBV (fallback)
+//   3. Strike scoring — scoreOIStrikeForSignal() uses OI Delta + IV (primary) / OBV (fallback)
 //      to classify each strike as CE WRITE / CE BUY / PE WRITE / PE BUY and compute
 //      a directional score. Strong resistance = CE WRITE + PE BUY. Strong support = CE BUY + PE WRITE.
 //   4. Component scores — computeInstrumentScore() / computeComponentScores() iterate
@@ -46,7 +46,33 @@ let componentColorHeader = {
     'SENSEX': '#ffbcb0',
 }
 // ── Maximize overlay ────────────────────────────────────────────────────────
-jQ('body').append('<div id="groot-maximize-overlay"><div id="groot-maximize-panel"><span id="groot-maximize-close" title="Close">✕</span><div id="groot-maximize-title"></div><div id="groot-maximize-body"></div></div></div>');
+jQ('body').append(
+    '<div id="groot-maximize-overlay">'
+  +   '<div id="groot-maximize-panel">'
+  +     '<div id="groot-maximize-title"></div>'
+  +     '<span id="groot-maximize-refresh" title="Refresh" style="display:none;">↺</span>'
+  +     '<span id="groot-maximize-close" title="Close">✕</span>'
+  +     '<div id="groot-maximize-body"></div>'
+  +   '</div>'
+  + '</div>'
+);
+
+// ── Chart Grid overlay (7-instrument full-screen view) ───────────────────────
+jQ('body').append(
+    '<div id="gtb-chartgrid-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(6px);flex-direction:column;">'
+  + '<div id="gtb-chartgrid-header" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #30363d;flex-shrink:0;">'
+  + '<span style="font-size:0.75rem;font-weight:700;color:#c9d1d9;letter-spacing:0.06em;"><i class="bi bi-grid-3x3-gap-fill"></i> CHART GRID</span>'
+  + '<span id="gtb-chartgrid-status" style="font-size:0.65rem;color:#7d8590;margin-left:4px;"></span>'
+  + '<span style="margin-left:auto;display:flex;gap:6px;">'
+  + '<select id="gtb-chartgrid-interval" style="font-size:0.62rem;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:2px 6px;cursor:pointer;">'
+  + '<option value="5minute">5 min</option><option value="15minute">15 min</option><option value="30minute">30 min</option><option value="60minute">1 hr</option>'
+  + '</select>'
+  + '<button id="gtb-chartgrid-refresh" style="font-size:0.62rem;background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:2px 8px;cursor:pointer;"><i class="bi bi-arrow-clockwise"></i> Refresh</button>'
+  + '<span id="gtb-chartgrid-close" style="cursor:pointer;color:#7d8590;font-size:1rem;padding:0 4px;line-height:1;" title="Close">✕</span>'
+  + '</span></div>'
+  + '<div id="gtb-chartgrid-body" style="flex:1;overflow:hidden;padding:8px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:6px;min-height:0;"></div>'
+  + '</div>'
+);
 
 jQ(document).on('click', '#groot-maximize-close, #groot-maximize-overlay', function(e) {
     if (e.target.id === 'groot-maximize-overlay' || e.target.id === 'groot-maximize-close' || jQ(e.target).closest('#groot-maximize-close').length) {
@@ -56,15 +82,263 @@ jQ(document).on('click', '#groot-maximize-close, #groot-maximize-overlay', funct
 });
 jQ(document).on('click', '#groot-maximize-panel', function(e) { e.stopPropagation(); });
 
+jQ(document).on('click', '#groot-maximize-refresh', async function() {
+    if (!_gtbMaxRefreshFn) return;
+    var btn = jQ(this);
+    btn.css('opacity', '0.4').css('pointer-events', 'none');
+    try { await _gtbMaxRefreshFn(); } catch(e) { console.log('maximize refresh error', e); }
+    btn.css('opacity', '').css('pointer-events', '');
+});
+
+// ── Chart Grid ────────────────────────────────────────────────────────────────
+var _gtbCGVisible = false;
+var _gtbChartGridCharts = {};   // name → LW chart instance
+
+var _GTB_CHARTGRID_INSTRUMENTS = [
+    { name: 'GIFT NIFTY',  label: 'GIFT NIFTY',  mcx: false },
+    { name: 'NIFTY 50',    label: 'NIFTY 50',    mcx: false },
+    { name: 'NIFTY BANK',  label: 'BANK NIFTY',  mcx: false },
+    { name: 'SENSEX',      label: 'SENSEX',       mcx: false },
+    { name: 'HDFCBANK',    label: 'HDFC BANK',    mcx: false },
+    { name: 'RELIANCE',    label: 'RELIANCE',     mcx: false },
+    { name: 'ICICIBANK',   label: 'ICICI BANK',   mcx: false },
+    { name: 'CRUDEOILM',   label: 'CRUDE OIL',    mcx: true  },
+];
+
+function _gtbChartGridSetStatus(msg) {
+    jQ('#gtb-chartgrid-status').text(msg || '');
+}
+
+function _gtbChartGridOpen() {
+    var isLight = jQ('#main-trade-bot-container').hasClass('gtb-light');
+    jQ('#gtb-chartgrid-overlay').toggleClass('gtb-light', isLight).css('display', 'flex');
+    _gtbCGVisible = true;
+    _gtbChartGridLoad();
+}
+
+function _gtbChartGridClose() {
+    jQ('#gtb-chartgrid-overlay').css('display', 'none');
+    _gtbCGVisible = false;
+    // Destroy all LW chart instances to free memory
+    Object.keys(_gtbChartGridCharts).forEach(function(k) {
+        try { _gtbChartGridCharts[k].remove(); } catch(e) {}
+    });
+    _gtbChartGridCharts = {};
+    jQ('#gtb-chartgrid-body').empty();
+}
+
+async function _gtbChartGridLoad() {
+    var body = jQ('#gtb-chartgrid-body');
+
+    // Destroy existing LW instances before clearing DOM
+    Object.keys(_gtbChartGridCharts).forEach(function(k) {
+        try { _gtbChartGridCharts[k].remove(); } catch(e) {}
+    });
+    _gtbChartGridCharts = {};
+    body.empty();
+
+    var interval = jQ('#gtb-chartgrid-interval').val() || '5minute';
+
+    // Build cell placeholders
+    _GTB_CHARTGRID_INSTRUMENTS.forEach(function(inst) {
+        var tid = inst.name.replace(/\s+/g, '-').replace(/&/g, '-');
+        body.append(
+            '<div class="gtb-cg-cell" id="gtb-cg-' + tid + '" style="'
+          + 'background:var(--gtb-bg,#0d1117);border:1px solid var(--gtb-border,#21262d);border-radius:6px;'
+          + 'display:flex;flex-direction:column;overflow:hidden;min-height:0;">'
+          + '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;flex-shrink:0;'
+          + 'border-bottom:1px solid var(--gtb-border,#21262d);">'
+          + '<span style="font-size:0.58rem;font-weight:700;color:var(--gtb-muted,#7d8590);flex-shrink:0;">' + inst.label + '</span>'
+          + '<span id="gtb-cg-levels-' + tid + '" style="display:flex;flex-wrap:nowrap;gap:4px;overflow:hidden;"></span>'
+          + '</div>'
+          + '<div id="gtb-cg-chart-' + tid + '" style="flex:1;min-height:0;position:relative;"></div>'
+          + '</div>'
+        );
+    });
+
+    _gtbChartGridSetStatus('Loading…');
+    var done = 0, total = _GTB_CHARTGRID_INSTRUMENTS.length;
+
+    // Fetch all candles in parallel
+    var results = await Promise.all(_GTB_CHARTGRID_INSTRUMENTS.map(async function(inst) {
+        try {
+            var token = inst.mcx
+                ? (COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f){ return f.name === inst.name; }) || {}).instrument_token
+                : INSTRUMENT_TOKENS[inst.name];
+            if (!token) return { inst: inst, candles: [], err: 'No token' };
+
+            var currDay  = inst.mcx ? _gtbMcxCurrDay()   : _gtbCurrDay();
+            var currDayTo = inst.mcx ? _gtbMcxCurrDayTo() : _gtbCurrDayTo();
+            var prevDay  = inst.mcx ? _gtbMcxPrevDay()   : null;
+
+            // MCX: fetch intraday + prev-day close in parallel (need prevClose for VIX calc)
+            var res, prevClose = null;
+            if (inst.mcx && prevDay) {
+                var fetches = await Promise.all([
+                    getHistoricalDataUsingPromise(token, currDay, currDayTo, interval),
+                    getHistoricalDataUsingPromise(token, prevDay, prevDay, 'day'),
+                ]);
+                res = fetches[0];
+                var prevCandles = fetches[1] && fetches[1].data && fetches[1].data.candles;
+                if (prevCandles && prevCandles.length) prevClose = parseFloat(prevCandles[0][4]);
+            } else {
+                res = await getHistoricalDataUsingPromise(token, currDay, currDayTo, interval);
+            }
+
+            var rawCandles = (res && res.data && res.data.candles) || [];
+            var candles = inst.mcx ? _gtbTrimCandles(rawCandles, currDay) : _gtbTrimCandles(rawCandles);
+            done++;
+            _gtbChartGridSetStatus(done + ' / ' + total + ' loaded');
+            return { inst: inst, candles: candles, prevClose: prevClose, err: null };
+        } catch(e) {
+            done++;
+            _gtbChartGridSetStatus(done + ' / ' + total + ' loaded');
+            return { inst: inst, candles: [], prevClose: null, err: e.message };
+        }
+    }));
+
+    if (!_gtbCGVisible) return;   // closed while loading
+
+    // Wait one animation frame so the grid cells have real dimensions
+    await new Promise(function(resolve) { requestAnimationFrame(function() { setTimeout(resolve, 30); }); });
+
+    results.forEach(function(r) {
+        var tid = r.inst.name.replace(/\s+/g, '-').replace(/&/g, '-');
+        var el = document.getElementById('gtb-cg-chart-' + tid);
+        if (!el) return;
+
+        if (r.err || !r.candles.length) {
+            el.innerHTML = '<div style="color:var(--gtb-muted,#7d8590);font-size:0.58rem;padding:8px;">'
+                + (r.err || 'No data') + '</div>';
+            return;
+        }
+
+        // Use the same helper as the main panel charts (handles LW v5 API + IST offset)
+        var refLines = [];
+        var _levelMeta = [
+            { key:'OPEN', short:'O',  color:'#ffbe0b' },
+            { key:'VIXU', short:'V↑', color:'#38bdf8' },
+            { key:'VIXL', short:'V↓', color:'#38bdf8' },
+            { key:'AST',  short:'A+', color:'#3fb950' },
+            { key:'ASO',  short:'A',  color:'#3fb950' },
+            { key:'BSO',  short:'B',  color:'#f85149' },
+            { key:'BST',  short:'B-', color:'#f85149' },
+        ];
+        try {
+            if (r.inst.mcx) {
+                // Compute strike + VIX levels directly from fetched candles (same logic as showTopChartMCX)
+                var mcxOpen = r.candles.length ? parseFloat(r.candles[0][1]) : null;
+                var mcxPrevClose = r.prevClose;
+                var mcxDiff = (MCX_FUTURE_STRIKE_DIFF[r.inst.name] || '100,100').split(',');
+                var mcxS1 = parseFloat(mcxDiff[0]), mcxS2 = parseFloat(mcxDiff[1]);
+                if (mcxOpen) {
+                    var mcxASO = mcxOpen + mcxS1, mcxAST = mcxASO + mcxS2;
+                    var mcxBSO = mcxOpen - mcxS1, mcxBST = mcxBSO - mcxS2;
+                    refLines.push({ key: 'OPEN', value: mcxOpen,  text: 'OPEN ' + mcxOpen.toFixed(2) });
+                    refLines.push({ key: 'AST',  value: mcxAST,   text: 'AST '  + mcxAST.toFixed(2) });
+                    refLines.push({ key: 'ASO',  value: mcxASO,   text: 'ASO '  + mcxASO.toFixed(2) });
+                    refLines.push({ key: 'BSO',  value: mcxBSO,   text: 'BSO '  + mcxBSO.toFixed(2) });
+                    refLines.push({ key: 'BST',  value: mcxBST,   text: 'BST '  + mcxBST.toFixed(2) });
+                }
+                if (mcxPrevClose) {
+                    // VIX index per commodity: CRUDEOILM → OVX, others fall back to India VIX
+                    var mcxVix = (r.inst.name === 'CRUDEOILM' || r.inst.name === 'CRUDEOIL') ? parseFloat(OVX)
+                               : (r.inst.name === 'GOLDM'    || r.inst.name === 'GOLD')      ? parseFloat(GVZ)
+                               : (r.inst.name === 'SILVERM'  || r.inst.name === 'SILVER')    ? parseFloat(VXSLV)
+                               : (r.inst.name === 'USDINR')                                  ? 4.85
+                               : parseFloat(VIX);
+                    var mcxVixChg  = mcxVix / Math.sqrt(246);
+                    var mcxVixRng  = mcxPrevClose * mcxVixChg / 100;
+                    var mcxVIXU    = mcxPrevClose + mcxVixRng;
+                    var mcxVIXL    = mcxPrevClose - mcxVixRng;
+                    refLines.push({ key: 'VIXU', value: mcxVIXU, text: 'VIXU ' + mcxVIXU.toFixed(2) });
+                    refLines.push({ key: 'VIXL', value: mcxVIXL, text: 'VIXL ' + mcxVIXL.toFixed(2) });
+                }
+            } else {
+                var sd = generateTrend(r.inst.name);
+                if (sd) {
+                    if (sd.open)                     refLines.push({ key: 'OPEN', value: +sd.open,                        text: 'OPEN ' + sd.open });
+                    if (sd.vix && sd.vix.vixDDUpper) refLines.push({ key: 'VIXU', value: +sd.vix.vixDDUpper,             text: 'VIXU ' + sd.vix.vixDDUpper });
+                    if (sd.vix && sd.vix.vixDDLower) refLines.push({ key: 'VIXL', value: +sd.vix.vixDDLower,             text: 'VIXL ' + sd.vix.vixDDLower });
+                    if (sd.strikeData) {
+                        refLines.push({ key: 'AST', value: +sd.strikeData.ustrikeTwo, text: 'AST ' + sd.strikeData.ustrikeTwo });
+                        refLines.push({ key: 'ASO', value: +sd.strikeData.ustrikeOne, text: 'ASO ' + sd.strikeData.ustrikeOne });
+                        refLines.push({ key: 'BSO', value: +sd.strikeData.bstrikeOne, text: 'BSO ' + sd.strikeData.bstrikeOne });
+                        refLines.push({ key: 'BST', value: +sd.strikeData.bstrikeTwo, text: 'BST ' + sd.strikeData.bstrikeTwo });
+                    }
+                }
+            }
+        } catch(e2) {}
+
+        // Populate the levels strip in the title bar
+        var levelsEl = document.getElementById('gtb-cg-levels-' + tid);
+        if (levelsEl && refLines.length) {
+            var fmt = function(v) {
+                v = parseFloat(v);
+                return v >= 1000 ? v.toLocaleString('en-IN', { maximumFractionDigits: 1 }) : v.toFixed(1);
+            };
+            var metaMap = {};
+            _levelMeta.forEach(function(m) { metaMap[m.key] = m; });
+            levelsEl.innerHTML = refLines.map(function(rl) {
+                var m = metaMap[rl.key] || { short: rl.key, color: '#7d8590' };
+                return '<span style="display:inline-flex;align-items:center;gap:1px;white-space:nowrap;">'
+                    + '<span style="font-size:0.44rem;font-weight:700;color:' + m.color + ';letter-spacing:0.02em;">' + m.short + '</span>'
+                    + '<span style="font-size:0.44rem;color:var(--gtb-muted,#7d8590);">' + fmt(rl.value) + '</span>'
+                    + '</span>';
+            }).join('<span style="color:#30363d;font-size:0.4rem;"> · </span>');
+        }
+
+        _renderLWChart('gtb-cg-chart-' + tid, r.candles, refLines, null, { hideLegend: true });
+        var lw = el._lwChart;
+        if (lw) {
+            _gtbChartGridCharts[r.inst.name] = lw;
+            // Fit and resize to actual cell dimensions
+            requestAnimationFrame(function() {
+                var w = el.clientWidth, h = el.clientHeight;
+                if (w > 0 && h > 0) { try { lw.resize(w, h); lw.timeScale().fitContent(); } catch(e3) {} }
+            });
+        }
+    });
+
+    _gtbChartGridSetStatus('');
+}
+
+jQ(document).on('click', '#show-chartgrid', function(e) {
+    e.preventDefault();
+    _gtbChartGridOpen();
+});
+jQ(document).on('click', '#gtb-chartgrid-close', function() { _gtbChartGridClose(); });
+jQ(document).on('click', '#gtb-chartgrid-refresh', function() { _gtbChartGridLoad(); });
+jQ(document).on('change', '#gtb-chartgrid-interval', function() { if (_gtbCGVisible) _gtbChartGridLoad(); });
+// Escape key closes the grid
+jQ(document).on('keydown', function(e) {
+    if (e.key === 'Escape' && _gtbCGVisible) { _gtbChartGridClose(); }
+});
+// Resize LW charts when overlay is visible
+jQ(window).on('resize', function() {
+    if (!_gtbCGVisible) return;
+    Object.keys(_gtbChartGridCharts).forEach(function(k) {
+        var tid = k.replace(/\s+/g, '-').replace(/&/g, '-');
+        var el = document.getElementById('gtb-cg-chart-' + tid);
+        if (el && _gtbChartGridCharts[k]) {
+            try { _gtbChartGridCharts[k].resize(el.clientWidth, el.clientHeight); } catch(e) {}
+        }
+    });
+});
+
 jQ(document).on('click', '.maximize-component-btn', function() {
     let name = jQ(this).attr('data-name');
     let type = jQ(this).attr('data-type');
     maximizeComponent(name, type);
 });
 
-function showMaximizeOverlay(title, bodyHtml) {
+var _gtbMaxRefreshFn = null;   // callback set by each maximize caller
+
+function showMaximizeOverlay(title, bodyHtml, refreshFn) {
     jQ('#groot-maximize-title').html(title);
     jQ('#groot-maximize-body').html(bodyHtml);
+    _gtbMaxRefreshFn = refreshFn || null;
+    jQ('#groot-maximize-refresh').css('display', refreshFn ? 'flex' : 'none');
     // Match the current dashboard theme (overlay lives on <body>, not inside the container)
     var isLight = jQ('#main-trade-bot-container').hasClass('gtb-light');
     jQ('#groot-maximize-overlay').toggleClass('gtb-light', isLight).addClass('active');
@@ -83,12 +357,29 @@ function maximizeOI(name) {
         alert('OI data not loaded yet. Please wait for the scan to complete.');
         return;
     }
+    function _renderOI() {
+        let freshData = (INSTRUMENT_SCORE_MAP[name] && INSTRUMENT_SCORE_MAP[name].oiData) || oiData;
+        let body = '';
+        body += '<div id="max-' + tempName + '-oi" style="width:100%;"></div>';
+        body += '<div id="max-' + tempName + '-oi-signal-row" style="padding:4px 0;"></div>';
+        body += '<div id="max-' + tempName + '-obv" style="width:100%;"></div>';
+        body += '<div id="max-' + tempName + '-oi-table" style="margin-top:8px;overflow-x:auto;"></div>';
+        jQ('#groot-maximize-body').html(body);
+        setTimeout(function() { renderOIOBVMaximized(name, tempName, freshData); }, 80);
+    }
+    async function _refreshOI() {
+        try {
+            await showPrictionProbabilty(name);
+            showOIOBVBarChart(name);
+        } catch(e) { console.log('OI refresh error', e); }
+        _renderOI();
+    }
     let body = '';
     body += '<div id="max-' + tempName + '-oi" style="width:100%;"></div>';
     body += '<div id="max-' + tempName + '-oi-signal-row" style="padding:4px 0;"></div>';
     body += '<div id="max-' + tempName + '-obv" style="width:100%;"></div>';
     body += '<div id="max-' + tempName + '-oi-table" style="margin-top:8px;overflow-x:auto;"></div>';
-    showMaximizeOverlay(name + ' — OI / OBV', body);
+    showMaximizeOverlay(name + ' — OI / OBV', body, _refreshOI);
 
     // Re-render charts into the maximized divs using cached data
     setTimeout(function() { renderOIOBVMaximized(name, tempName, oiData); }, 80);
@@ -160,82 +451,115 @@ function renderOIOBVMaximized(name, tempName, oiData) {
     srHtml += '</div>';
     jQ('#max-' + tempName + '-oi-signal-row').html(srHtml);
 
-    // OI table (reuse existing renderer by temporarily faking the target div)
-    jQ('#max-' + tempName + '-oi-table').html(jQ('#' + tempName + '-component-oi-list-table').html());
+    // Full OI table with IV — render into maximize body
+    // Try main panel source first; fall back to re-rendering from oiData
+    let mainTable = jQ('#' + tempName + '-component-oi-list-table');
+    if (mainTable.length && mainTable.html() && mainTable.html().trim().length > 20) {
+        jQ('#max-' + tempName + '-oi-table').html(mainTable.html());
+    } else {
+        // Stock viewer path: render directly into the max div
+        var _origTarget = jQ('<div id="' + tempName + '-component-oi-list-table" style="display:none;"></div>').appendTo('body');
+        try {
+            if (stock[0] && stock[0]['DATA']) showComponentOITable(name, '');
+            jQ('#max-' + tempName + '-oi-table').html(_origTarget.html());
+        } catch(e) {}
+        _origTarget.remove();
+    }
 }
 
 async function maximizeChart(name) {
     let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
     let isMCX = (name === 'CRUDEOILM' || name === 'USDINR');
-    let body = '';
-    body += '<div id="max-' + tempName + '-chart" style="width:100%;min-width:0;height:520px;border-radius:8px;overflow:hidden;display:block;"></div>';
-    body += '<div id="max-' + tempName + '-atr-sl" style="margin-top:8px;"></div>';
-    showMaximizeOverlay('<i class="bi bi-candlestick"></i> ' + name + ' — Candlestick Chart', body);
 
-    // Wait for overlay CSS animation (0.18s) to finish before reading clientWidth
-    setTimeout(async function() {
-        try {
-            let pane       = jQ('#gtb-pane-' + tempName);
-            let origAtrEl  = jQ('#' + tempName + '-atr-sl').detach();   // save atr row
-            let origChartEl = null;                                       // only set for MCX
+    function _buildBody() {
+        let b = '';
+        b += '<div id="max-' + tempName + '-chart" style="width:100%;min-width:0;height:520px;border-radius:8px;overflow:hidden;display:block;"></div>';
+        b += '<div id="max-' + tempName + '-atr-sl" style="margin-top:8px;"></div>';
+        return b;
+    }
 
-            // Alias the overlay's atr-sl div so _buildATRBadges writes there
-            jQ('#max-' + tempName + '-atr-sl').attr('id', tempName + '-atr-sl');
+    async function _loadChart(delay) {
+        return new Promise(function(resolve) {
+            setTimeout(async function() {
+                try {
+                    let pane       = jQ('#gtb-pane-' + tempName);
+                    let origAtrEl  = jQ('#' + tempName + '-atr-sl').detach();
+                    let origChartEl = null;
 
-            let maxChartEl;
-            if (isMCX) {
-                // For MCX, showTopChartMCX always writes to #{tempName}-chart.
-                // Swap IDs so the overlay div becomes the render target.
-                origChartEl = jQ('#' + tempName + '-chart').detach();   // save main panel chart div
-                jQ('#max-' + tempName + '-chart').attr('id', tempName + '-chart');
-                await showTopChartMCX(name, 520);
-                maxChartEl = document.getElementById(tempName + '-chart');
-                // Rename the overlay chart div back to max-*
-                jQ('#' + tempName + '-chart').attr('id', 'max-' + tempName + '-chart');
-            } else {
-                await showTopChart(name, '#max-' + tempName + '-chart', 520);
-                maxChartEl = document.getElementById('max-' + tempName + '-chart');
-            }
+                    jQ('#max-' + tempName + '-atr-sl').attr('id', tempName + '-atr-sl');
 
-            // Rename atr-sl back to overlay id
-            jQ('#' + tempName + '-atr-sl').attr('id', 'max-' + tempName + '-atr-sl');
+                    let maxChartEl;
+                    if (isMCX) {
+                        origChartEl = jQ('#' + tempName + '-chart').detach();
+                        jQ('#max-' + tempName + '-chart').attr('id', tempName + '-chart');
+                        await showTopChartMCX(name, 520);
+                        maxChartEl = document.getElementById(tempName + '-chart');
+                        jQ('#' + tempName + '-chart').attr('id', 'max-' + tempName + '-chart');
+                    } else {
+                        await showTopChart(name, '#max-' + tempName + '-chart', 520);
+                        maxChartEl = document.getElementById('max-' + tempName + '-chart');
+                    }
 
-            // ── Restore main panel ───────────────────────────────────────────
-            // For MCX: reinsert original chart div after the card header
-            if (origChartEl && origChartEl.length) {
-                pane.find('.gtb-grid-card-header').first().after(origChartEl);
-            }
-            // Reinsert original atr-sl after the (now-restored) chart area
-            if (origAtrEl.length) {
-                let chartArea = pane.find('.gtb-chart-area').first();
-                if (chartArea.length) chartArea.after(origAtrEl);
-            }
+                    jQ('#' + tempName + '-atr-sl').attr('id', 'max-' + tempName + '-atr-sl');
 
-            // Force overlay chart to fill the panel width
-            if (maxChartEl && maxChartEl._lwChart) {
-                requestAnimationFrame(function() {
-                    let panel = document.getElementById('groot-maximize-panel');
-                    let w = maxChartEl.clientWidth || (panel ? panel.clientWidth - 32 : 800);
-                    maxChartEl._lwChart.resize(w, 520);
-                    maxChartEl._lwChart.timeScale().fitContent();
-                });
-            }
-        } catch(e) {
-            jQ('#max-' + tempName + '-chart').html('<div style="color:#7d8590;padding:20px;">Chart unavailable: ' + e.message + '</div>');
-        }
-    }, 220);
+                    if (origChartEl && origChartEl.length) {
+                        pane.find('.gtb-grid-card-header').first().after(origChartEl);
+                    }
+                    if (origAtrEl.length) {
+                        let chartArea = pane.find('.gtb-chart-area').first();
+                        if (chartArea.length) chartArea.after(origAtrEl);
+                    }
+
+                    if (maxChartEl && maxChartEl._lwChart) {
+                        requestAnimationFrame(function() {
+                            let panel = document.getElementById('groot-maximize-panel');
+                            let w = maxChartEl.clientWidth || (panel ? panel.clientWidth - 32 : 800);
+                            maxChartEl._lwChart.resize(w, 520);
+                            maxChartEl._lwChart.timeScale().fitContent();
+                        });
+                    }
+                } catch(e) {
+                    jQ('#max-' + tempName + '-chart').html('<div style="color:#7d8590;padding:20px;">Chart unavailable: ' + e.message + '</div>');
+                }
+                resolve();
+            }, delay || 0);
+        });
+    }
+
+    async function _refreshChart() {
+        jQ('#groot-maximize-body').html(_buildBody());
+        await _loadChart(80);
+    }
+
+    showMaximizeOverlay('<i class="bi bi-candlestick"></i> ' + name + ' — Candlestick Chart', _buildBody(), _refreshChart);
+    await _loadChart(220);
 }
 
 function maximizeFutures(name) {
     let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
-    let existingHtml = jQ('#' + tempName + '-futures-trend').html() || '';
-    let existingVwap = jQ('#' + tempName + '-futures-vwap').html() || '';
-    let existingPremium = jQ('#' + tempName + '-futures-premium').html() || '';
-    let body = '';
-    body += '<div style="font-size:0.9rem;padding:4px 0 8px;">' + existingPremium + '</div>';
-    body += '<div style="margin-bottom:8px;">' + existingVwap + '</div>';
-    body += '<div style="font-size:1rem;">' + existingHtml + '</div>';
-    showMaximizeOverlay(name + ' — Futures', body);
+
+    function _buildFuturesBody() {
+        let html = jQ('#' + tempName + '-futures-trend').html() || '';
+        let vwap = jQ('#' + tempName + '-futures-vwap').html() || '';
+        let prem = jQ('#' + tempName + '-futures-premium').html() || '';
+        let b = '';
+        b += '<div style="font-size:0.9rem;padding:4px 0 8px;">' + prem + '</div>';
+        b += '<div style="margin-bottom:8px;">' + vwap + '</div>';
+        b += '<div style="font-size:1rem;">' + html + '</div>';
+        return b;
+    }
+
+    async function _refreshFutures() {
+        try {
+            let res = name === 'CRUDEOILM' || name === 'USDINR'
+                ? await showFutureDetailsMCX(name)
+                : await showFutureDetails(name);
+            if (res) setFutureDetails(name, res);
+        } catch(e) { console.log('futures refresh error', e); }
+        jQ('#groot-maximize-body').html(_buildFuturesBody());
+    }
+
+    showMaximizeOverlay(name + ' — Futures', _buildFuturesBody(), _refreshFutures);
 }
 // ── End maximize overlay ─────────────────────────────────────────────────────
 
@@ -390,7 +714,7 @@ function commonMarkupPlaceHolder() {
 
     // ── TOP BAR ──────────────────────────────────────────────────────────────
     h += '<div id="gtb-topbar">';
-    h += '<span class="gtb-brand"><i class="bi bi-graph-up-arrow"></i> GROOT</span>';
+    h += '<span class="gtb-brand"><i class="bi bi-graph-up"></i> GROOT</span>';
 
     // Ticker placeholders (updated by showTopChart / generateTrend after load)
     let tickers = [
@@ -422,12 +746,12 @@ function commonMarkupPlaceHolder() {
     h += '<span id="refresh-timer-one" class="gtb-timer-badge">00:00</span>';
     h += '<a id="start-auto-refresh" class="gtb-ctrl-link" title="Refresh now"><i class="bi bi-arrow-clockwise"></i> Refresh</a>';
     // Progress pill — shows current step during refresh, hidden at rest
-    h += '<span id="gtb-progress-pill" style="display:none;align-items:center;gap:5px;'
+    h += '<span id="gtb-progress-pill" style="visibility:hidden;display:inline-flex;align-items:center;gap:5px;'
        + 'font-size:0.6rem;color:#c9d1d9;background:#1f2937;border:1px solid #3b82f633;'
-       + 'border-radius:10px;padding:2px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+       + 'border-radius:10px;padding:2px 8px;width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;">'
        + '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;flex-shrink:0;'
        + 'animation:gtb-pulse 1s ease-in-out infinite;" id="gtb-progress-dot"></span>'
-       + '<span id="gtb-progress-text">Starting…</span>'
+       + '<span id="gtb-progress-text"></span>'
        + '</span>';
 
     // Time picker (compact, always visible — core feature)
@@ -436,7 +760,11 @@ function commonMarkupPlaceHolder() {
        + 'border-radius:4px;padding:2px 4px;cursor:pointer;width:76px;" title="Snapshot end time — empty = live">';
 
     // Tool launchers as icon-only buttons
-    h += '<a id="show-915-backtest" class="gtb-ctrl-link" title="9:15 Trend — 60-day day-wise (NIFTY/SENSEX/BANK)"><i class="bi bi-calendar-week"></i></a>';
+    h += '<a id="show-915-backtest" class="gtb-ctrl-link" title="9:15 Trend — 1-year day-wise backtest (NIFTY/SENSEX/BANK)"><i class="bi bi-calendar-week"></i></a>';
+    h += '<a id="show-all-oi" class="gtb-ctrl-link" title="OI Scan — all instruments incl. weighted constituents"><i class="bi bi-layers-fill"></i></a>';
+    h += '<a id="show-fut-accuracy" class="gtb-ctrl-link" title="Futures remark accuracy (5-min reconstruction)"><i class="bi bi-bullseye"></i></a>';
+    h += '<a id="show-futures-signal" class="gtb-ctrl-link" title="Futures signal — any instrument (NSE stocks / index / MCX)"><i class="bi bi-flag-fill"></i></a>';
+    h += '<a id="show-commodities" class="gtb-ctrl-link" title="Commodities — GIFT NIFTY &amp; Crude (chart, OI, futures)"><i class="bi bi-droplet-fill"></i></a>';
     h += '<a id="show-oi-viewer" class="gtb-ctrl-link" title="OI Analyzer"><i class="bi bi-eye"></i></a>';
     h += '<a id="show-stock-viewer" class="gtb-ctrl-link" title="Stock Viewer"><i class="bi bi-list-ul"></i></a>';
     h += '<a id="show-market-quote-analyzer" class="gtb-ctrl-link" title="Quotes"><i class="bi bi-graph-up"></i></a>';
@@ -463,12 +791,6 @@ function commonMarkupPlaceHolder() {
        + (localStorage.getItem('GTB_SCAN_WEIGHTED') === '1' ? ' checked' : '') + '>'
        + '<span>Weighted only</span></label>';
 
-    // Hide OI/FUT toggle
-    h += '<div style="margin-top:4px;padding-top:6px;border-top:1px solid #ffffff10;">';
-    h += '<a id="gtb-toggle-oi-futures" class="gtb-ctrl-link" style="font-size:0.62rem;" title="Toggle OI/Futures panels">'
-       + '<i class="bi bi-eye-slash"></i> Hide OI/FUT panels</a>';
-    h += '</div>';
-
     // Data settings
     h += '<div style="margin-top:4px;">';
     h += '<a id="data-load" class="gtb-ctrl-link" style="font-size:0.62rem;"><i class="bi bi-sliders"></i> Data settings</a>';
@@ -484,12 +806,42 @@ function commonMarkupPlaceHolder() {
     h += '<button class="gtb-theme-btn" data-theme="light" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_savedTheme==='light'?'#00b4d8':'transparent') + ';color:' + (_savedTheme==='light'?'#fff':'#7d8590') + ';"><i class="bi bi-sun-fill"></i> Light</button>';
     h += '</div></div>';
 
-    // Row height slider — taller rows = bigger charts
-    var _savedRowH = parseInt(localStorage.getItem('GTB_ROW_H') || '84');
+    // Row height + column width sliders
+    var _savedRowH = parseInt(localStorage.getItem('GTB_ROW_H') || '190');
     h += '<div style="margin-top:4px;">';
     h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;">ROW HEIGHT <span id="gtb-grid-h-val">' + _savedRowH + '</span>px</div>';
-    h += '<input type="range" id="gtb-grid-h-slider" min="60" max="180" step="6" value="' + _savedRowH + '" style="width:100%;cursor:pointer;accent-color:#00b4d8;">';
+    h += '<input type="range" id="gtb-grid-h-slider" min="120" max="320" step="10" value="' + _savedRowH + '" style="width:100%;cursor:pointer;accent-color:#00b4d8;">';
     h += '</div>';
+
+    // Column width sliders (each sets a CSS var on the container)
+    var _colDefs = [
+        { key:'chart',  label:'CHART',      min:140, max:600, step:10, def:260 },
+        { key:'fut',    label:'FUTURES',    min:120, max:400, step:10, def:190 },
+        { key:'oi',     label:'OI MATRIX',  min:120, max:400, step:10, def:210 },
+        { key:'oiobv',  label:'OI / OBV',   min:160, max:500, step:10, def:280 },
+        { key:'wt',     label:'WEIGHTAGE',  min:100, max:300, step:10, def:170 },
+        { key:'detail', label:'DETAILS',    min: 80, max:280, step:10, def:130 },
+    ];
+    h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
+    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;letter-spacing:0.08em;">COLUMN WIDTHS</div>';
+    _colDefs.forEach(function(c) {
+        var saved = parseInt(localStorage.getItem('GTB_COL_' + c.key.toUpperCase()) || c.def);
+        h += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">';
+        h += '<span style="font-size:0.46rem;color:#7d8590;min-width:52px;font-weight:700;">' + c.label + '</span>';
+        h += '<input type="range" class="gtb-col-slider" data-col="' + c.key + '" min="' + c.min + '" max="' + c.max + '" step="' + c.step + '" value="' + saved + '" style="flex:1;cursor:pointer;accent-color:#00b4d8;">';
+        h += '<span class="gtb-col-val" data-col="' + c.key + '" style="font-size:0.46rem;color:#7d8590;min-width:26px;text-align:right;">' + saved + '</span>';
+        h += '</div>';
+    });
+    h += '</div>';
+
+    // OI/OBV bar width
+    var _savedBarW = parseInt(localStorage.getItem('GTB_OI_BAR_W') || '60');
+    h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
+    h += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">';
+    h += '<span style="font-size:0.46rem;color:#7d8590;min-width:52px;font-weight:700;">OI BAR WIDTH</span>';
+    h += '<input type="range" id="gtb-oi-bar-slider" min="20" max="100" step="5" value="' + _savedBarW + '" style="flex:1;cursor:pointer;accent-color:#00b4d8;">';
+    h += '<span id="gtb-oi-bar-val" style="font-size:0.46rem;color:#7d8590;min-width:26px;text-align:right;">' + _savedBarW + '%</span>';
+    h += '</div></div>';
 
     // Last refresh time
     h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
@@ -499,14 +851,14 @@ function commonMarkupPlaceHolder() {
     h += '</div>'; // end settings menu
     h += '</div>'; // end settings wrap
 
-    h += '</div>'; // end gtb-topbar-controls
-
-    // Window controls
+    // Window controls — inside topbar-controls so they're always visible at right edge
     h += '<div class="gtb-win-controls">';
     h += '<button class="gtb-win-btn gtb-win-minimize" title="Minimize"><i class="bi bi-dash"></i></button>';
     h += '<button class="gtb-win-btn gtb-win-restore" title="Restore / Maximize"><i class="bi bi-fullscreen"></i></button>';
     h += '<button class="gtb-win-btn gtb-win-close" title="Close"><i class="bi bi-x-lg"></i></button>';
     h += '</div>';
+
+    h += '</div>'; // end gtb-topbar-controls
 
     h += '</div>'; // end topbar
 
@@ -514,7 +866,7 @@ function commonMarkupPlaceHolder() {
 
     // ── Instrument icon map ───────────────────────────────────────────────────
     var instrIcons = {
-        'NIFTY 50':   'bi-graph-up-arrow', 'NIFTY BANK': 'bi-bank2',
+        'NIFTY 50':   'bi-graph-up', 'NIFTY BANK': 'bi-bank2',
         'GIFT NIFTY': 'bi-globe-asia-australia', 'SENSEX': 'bi-globe2',
         'CRUDEOILM':  'bi-droplet-fill',   'USDINR': 'bi-currency-exchange',
         'RELIANCE': 'bi-fuel-pump', 'HDFCBANK': 'bi-building', 'ICICIBANK': 'bi-credit-card'
@@ -545,6 +897,12 @@ function commonMarkupPlaceHolder() {
     h += '<div id="market-final-signal"></div>';
     h += '<div id="trend-scoreboard-outcome" style="margin-top:4px;"></div>';
     h += '</div></div>';
+
+    // Range Scoreboard
+    h += '<div class="gtb-card gtb-widget">';
+    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-bar-chart-line-fill"></i> RANGE SCOREBOARD' + _ii('rangesb') + '</span></div>';
+    h += '<div class="gtb-card-body gtb-widget-body" id="gtb-range-sb" style="padding:6px 8px;"></div>';
+    h += '</div>';
 
     // Entry / Trade
     h += '<div class="gtb-card gtb-widget">';
@@ -669,16 +1027,19 @@ function commonMarkupPlaceHolder() {
     h += '</div>'; // end #gtb-overview
 
     // ════════════════════════════════════════════════════════════════
-    // INSTRUMENT ROWS — one horizontal row per instrument
-    //   [tab] NAME / LTP+chg | wide chart | 9:15 | FUTURES | OI | SL
+    // INSTRUMENT ROWS — sticky Instrument col + horizontal scroll
+    //   NAME(sticky) | CHART | 9:15 | FUTURES | OI MATRIX | OI/OBV | WEIGHTAGE | DETAILS
     // ════════════════════════════════════════════════════════════════
+    h += '<div id="gtb-rows-wrap">';
     h += '<div id="gtb-rows-head">';
-    h +=   '<span class="gtb-rh-instr">INSTRUMENT' + _ii('col-instrument') + '</span>';
+    h +=   '<span class="gtb-rh-instr">INSTRUMENT' + _ii('col-instrument') + '<a id="show-chartgrid" title="Chart Grid — all instruments" style="margin-left:5px;cursor:pointer;color:var(--gtb-muted);font-size:0.72rem;line-height:1;opacity:0.7;flex-shrink:0;" ><i class="bi bi-grid-3x3-gap-fill"></i></a></span>';
     h +=   '<span class="gtb-rh-chart">PRICE ACTION' + _ii('col-price') + '</span>';
     h +=   '<span class="gtb-rh-915">9:15' + _ii('col-915') + '</span>';
     h +=   '<span class="gtb-rh-fut">FUTURES' + _ii('col-futures') + '</span>';
-    h +=   '<span class="gtb-rh-oi">OPEN INTEREST' + _ii('col-oi') + '</span>';
-    h +=   '<span class="gtb-rh-sl">SL / TARGET' + _ii('col-sl') + '</span>';
+    h +=   '<span class="gtb-rh-oi">OI MATRIX' + _ii('col-oi') + '</span>';
+    h +=   '<span class="gtb-rh-oiobv">OI / OBV' + _ii('col-oiobv') + '</span>';
+    h +=   '<span class="gtb-rh-weights">WEIGHTAGE' + _ii('col-weights') + '</span>';
+    h +=   '<span class="gtb-rh-detail">DETAILS' + _ii('col-detail') + '</span>';
     h += '</div>';
 
     h += '<div id="gtb-rows">';
@@ -704,13 +1065,20 @@ function commonMarkupPlaceHolder() {
         h +=   '<div class="gtb-row-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></div>';
         h +=   '<div class="gtb-row-ltp" id="' + tid + '-ltp"></div>';
         h +=   '<div class="gtb-row-id-actions">';
-        h +=     '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
-        h +=     '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+        h +=     '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh chart"><i class="bi bi-arrow-clockwise"></i></button>';
+        h +=     '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize chart"><i class="bi bi-fullscreen"></i></button>';
+        if (hasFut) {
+            h += '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-bar-chart-fill"></i></button>';
+            h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize OI"><i class="bi bi-graph-up"></i></button>';
+        }
         h +=   '</div>';
         h += '</div>';
 
         // ── Wide candlestick chart ─────────────────────────────────────────
-        h += '<div id="' + tid + '-chart" class="gtb-chart-mini gtb-row-chart"></div>';
+        h += '<div class="gtb-row-col-chart">';
+        h +=   '<div id="' + tid + '-chart-levels" class="gtb-chart-levels"></div>';
+        h +=   '<div id="' + tid + '-chart" class="gtb-chart-mini gtb-row-chart"></div>';
+        h += '</div>';
 
         // ── 9:15 ───────────────────────────────────────────────────────────
         h += '<div class="gtb-row-col gtb-row-915"><span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
@@ -728,104 +1096,142 @@ function commonMarkupPlaceHolder() {
         }
         h += '</div>';
 
-        // ── OI ─────────────────────────────────────────────────────────────
-        h += '<div class="gtb-row-col gtb-row-oi">';
+        // ── OI Compare Matrix (same compact heatmap cells as the popup) ───
+        h += '<div class="gtb-row-oimatrix" id="' + tid + '-oimatrix">';
+        if (!hasFut) h += '<span class="gtb-row-na">—</span>';
+        h += '</div>';
+
+        // ── Inline OI/OBV — bar charts + signal row (col 6) ──────────────
+        h += '<div class="gtb-row-oiobv">';
         if (hasFut) {
-            h +=   '<span id="' + tid + '-pcr-probability" class="gtb-pcr-chip"></span>';
-            h +=   '<span id="' + tid + '-oi-score" class="gtb-oi-score-chip"></span>';
+            h += '<div class="gtb-oiobv-lbl">OI</div>';
+            h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
+            h += '<div id="' + tid + '-oi-signal-row" style="display:none;"></div>';
+            h += '<div class="gtb-oiobv-lbl">OBV</div>';
+            h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
+            h += '<div id="' + tid + '-oiobv-xaxis" class="gtb-oiobv-xaxis"></div>';
         } else {
-            h +=   '<span class="gtb-row-na">—</span>';
+            h += '<span class="gtb-row-na" style="margin:auto">—</span>';
         }
         h += '</div>';
 
-        // ── SL / Target ────────────────────────────────────────────────────
-        h += '<div class="gtb-row-col gtb-row-sl"><div id="' + tid + '-atr-sl" class="gtb-cell-sl-wrap"></div></div>';
+        // ── Weightage / score breakdown strip (col 7) ──────────────────────
+        // Index rows: top-6 weighted constituents with score bars
+        // Stock rows: this instrument own sub-score breakdown (9:15/trend/futures/OI)
+        var isNifty = (name === 'NIFTY 50');
+        var isBank  = (name === 'NIFTY BANK');
+        h += '<div class="gtb-row-weights" id="' + tid + '-weights">';
+        if (isNifty || isBank) {
+            var wMap = isNifty ? NIFTY_50_WEIGHTED_STOCKS : NIFTY_BANK_WEIGHTED_STOCKS;
+            var topW = Object.entries(wMap).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+            topW.forEach(function(kv) {
+                var wname = kv[0];
+                var wtid2 = wname.replace(/ /g,'-').replace(/&/g,'-');
+                h += '<div class="gtb-wt-row">' +
+                     '<span class="gtb-wt-name">' + wname + '</span>' +
+                     '<div class="gtb-wt-bar"><b id="' + wtid2 + '-wt-bar" style="width:0%;background:var(--gtb-muted)"></b></div>' +
+                     '<span class="gtb-wt-score" id="' + wtid2 + '-wt-score">—</span>' +
+                     '</div>';
+            });
+        } else if (hasFut) {
+            // Sub-score rows for this stock instrument
+            var subRows = [
+                { lbl:'9:15',  id: tid + '-sub-915'  },
+                { lbl:'Trend', id: tid + '-sub-trend' },
+                { lbl:'Fut',   id: tid + '-sub-fut'   },
+                { lbl:'OI',    id: tid + '-sub-oi'    },
+                { lbl:'Total', id: tid + '-sub-total' },
+            ];
+            subRows.forEach(function(sr) {
+                h += '<div class="gtb-wt-row">' +
+                     '<span class="gtb-wt-name">' + sr.lbl + '</span>' +
+                     '<div class="gtb-wt-bar"><b id="' + sr.id + '-bar" style="width:0%;background:var(--gtb-muted)"></b></div>' +
+                     '<span class="gtb-wt-score" id="' + sr.id + '">—</span>' +
+                     '</div>';
+            });
+        } else {
+            h += '<span class="gtb-row-na" style="margin:auto">—</span>';
+        }
+        h += '</div>';
+
+        // ── Details: SL / PCR / OI score (col 8) ─────────────────────────
+        h += '<div class="gtb-row-detail" id="' + tid + '-detail">';
+        if (hasFut) {
+            h += '<div class="gtb-det-row"><span class="gtb-det-lbl">SL</span><div id="' + tid + '-atr-sl" class="gtb-cell-sl-wrap" style="margin-left:0"></div></div>';
+            h += '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability"></span></div>';
+            h += '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score"></span></div>';
+        } else {
+            h += '<span class="gtb-row-na" style="margin:auto">—</span>';
+        }
+        h += '</div>';
 
         h += '</div>'; // end .gtb-row
     });
     h += '</div>'; // end #gtb-rows
+    h += '</div>'; // end #gtb-rows-wrap
 
     // ── Detail sections — collapsed by default, toggled open ──────────
     h += '<div id="gtb-details-area">';
-    h += '<div id="gtb-detail-toggle-bar" onclick="(function(){var a=document.getElementById(\'gtb-detail-inner\');var open=a.style.display!==\'none\';a.style.display=open?\'none\':\'\';document.getElementById(\'gtb-detail-caret\').style.transform=open?\'rotate(-90deg)\':\'\';})();">';
-    h += '<i class="bi bi-layers"></i> DETAILS — OI / FUTURES / 9:15 / A/D / COMPONENTS' + _ii('details');
+    h += '<div id="gtb-detail-toggle-bar" onclick="(function(){var a=document.getElementById(\&#39;gtb-detail-inner\&#39;);var open=a.style.display!==\&#39;none\&#39;;a.style.display=open?\&#39;none\&#39;:\&#39;\&#39;;document.getElementById(\&#39;gtb-detail-caret\&#39;).style.transform=open?\&#39;rotate(-90deg)\&#39;:\&#39;\&#39;;})();">';
+    h += '<i class="bi bi-layers"></i> DETAILS — 9:15 / A/D / COMPONENTS' + _ii('details');
     h += '<span style="margin-left:auto;font-size:0.7rem;transition:transform 0.2s;" id="gtb-detail-caret">▾</span>';
     h += '</div>';
     h += '<div id="gtb-detail-inner" style="display:none;">';
 
-    // Per-instrument OI / Futures / 9:15 / A/D (only for instruments that have them)
-    var _detailInstruments = [
-        { name: 'NIFTY 50',   oi: true, futures: true, n915: true, ad: true },
-        { name: 'NIFTY BANK', oi: true, futures: true, n915: true, ad: true },
-        { name: 'CRUDEOILM',  oi: true, futures: true },
-        { name: 'USDINR',     oi: true, futures: true },
-        { name: 'RELIANCE',   oi: true, futures: true },
-        { name: 'HDFCBANK',   oi: true, futures: true },
-        { name: 'ICICIBANK',  oi: true, futures: true },
-    ];
-
+    // ── 3-column layout: NIFTY 50 | NIFTY BANK | All-stocks + Components ──
     h += '<div id="gtb-detail-cols">';
-    _detailInstruments.forEach(function(item) {
-        var name = item.name;
-        var tid  = name.replace(/ /g, '-').replace(/&/g, '-');
-        h += '<div class="gtb-detail-col" id="gtb-detail-' + tid + '">';
-        h += '<div class="gtb-detail-col-title">' + name + '</div>';
 
-        if (item.oi) {
-            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-oi-body">';
-            h += '<span><i class="bi bi-bar-chart-fill"></i> OI/OBV</span>';
-            h += '<span class="gtb-detail-meta"></span>';
-            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
-            h += '<div id="' + tid + '-oi-body" class="gtb-collapse-body">';
-            h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
-            h += '<div id="' + tid + '-oi-signal-row" class="gtb-signal-row"></div>';
-            h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
-            h += '<div id="' + tid + '-component-oi-list-table" class="gtb-oi-table"></div>';
-            h += '</div>';
-        }
+    // ── NIFTY 50 column ───────────────────────────────────────────────────
+    h += '<div class="gtb-detail-col" id="gtb-detail-NIFTY-50">';
+    h += '<div class="gtb-detail-col-title">NIFTY 50</div>';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="NIFTY-50-915-body">';
+    h += '<span><i class="bi bi-clock-history"></i> 9:15 CLOSE</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-nine-fifteen" data-name="NIFTY 50" title="Refresh 9:15"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="NIFTY-50-915-body" class="gtb-collapse-body">';
+    h += '<div id="NIFTY-50-nine-fifteen-close" class="gtb-915-strip"></div>';
+    h += '<div id="NIFTY-50-nine-fifteen-close-table" class="gtb-915-table"></div>';
+    h += '</div>';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="NIFTY-50-ad-body">';
+    h += '<span><i class="bi bi-arrows-collapse-vertical"></i> A/D</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="NIFTY 50" title="Spot A/D"><i class="bi bi-arrow-clockwise"></i> S</button><button class="sv-icon-btn refresh-advance-decline-futures" data-name="NIFTY 50" title="Futures A/D"><i class="bi bi-arrow-clockwise"></i> F</button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="NIFTY-50-ad-body" class="gtb-collapse-body">';
+    h += '<div class="gtb-ad-label">SPOT <span id="NIFTY-50-advance-decline-adr" class="gtb-adr-val"></span></div>';
+    h += '<div id="NIFTY-50-advance-decline" class="gtb-chart-ad"></div>';
+    h += '<div class="gtb-ad-label" style="margin-top:4px;">FUTURES <span id="NIFTY-50-advance-decline-adr-future" class="gtb-adr-val"></span></div>';
+    h += '<div id="NIFTY-50-advance-decline-future" class="gtb-chart-ad"></div>';
+    h += '</div>';
+    h += '</div>'; // end NIFTY 50 col
 
-        if (item.futures) {
-            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-fut-body">';
-            h += '<span id="futures-chart-' + tid + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</span>';
-            h += '<span class="gtb-detail-meta"></span>';
-            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-futures" data-name="' + name + '" title="Refresh Futures"><i class="bi bi-arrow-clockwise"></i></button><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
-            h += '<div id="' + tid + '-fut-body" class="gtb-collapse-body">';
-            h += '<div id="' + tid + '-futures-vwap" class="gtb-futures-meta"></div>';
-            h += '</div>';
-        }
+    // ── NIFTY BANK column ─────────────────────────────────────────────────
+    h += '<div class="gtb-detail-col" id="gtb-detail-NIFTY-BANK">';
+    h += '<div class="gtb-detail-col-title">NIFTY BANK</div>';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="NIFTY-BANK-915-body">';
+    h += '<span><i class="bi bi-clock-history"></i> 9:15 CLOSE</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-nine-fifteen" data-name="NIFTY BANK" title="Refresh 9:15"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="NIFTY-BANK-915-body" class="gtb-collapse-body">';
+    h += '<div id="NIFTY-BANK-nine-fifteen-close" class="gtb-915-strip"></div>';
+    h += '<div id="NIFTY-BANK-nine-fifteen-close-table" class="gtb-915-table"></div>';
+    h += '</div>';
+    h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="NIFTY-BANK-ad-body">';
+    h += '<span><i class="bi bi-arrows-collapse-vertical"></i> A/D</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="NIFTY BANK" title="Spot A/D"><i class="bi bi-arrow-clockwise"></i> S</button><button class="sv-icon-btn refresh-advance-decline-futures" data-name="NIFTY BANK" title="Futures A/D"><i class="bi bi-arrow-clockwise"></i> F</button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<div id="NIFTY-BANK-ad-body" class="gtb-collapse-body">';
+    h += '<div class="gtb-ad-label">SPOT <span id="NIFTY-BANK-advance-decline-adr" class="gtb-adr-val"></span></div>';
+    h += '<div id="NIFTY-BANK-advance-decline" class="gtb-chart-ad"></div>';
+    h += '<div class="gtb-ad-label" style="margin-top:4px;">FUTURES <span id="NIFTY-BANK-advance-decline-adr-future" class="gtb-adr-val"></span></div>';
+    h += '<div id="NIFTY-BANK-advance-decline-future" class="gtb-chart-ad"></div>';
+    h += '</div>';
+    h += '</div>'; // end NIFTY BANK col
 
-        if (item.n915) {
-            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-915-body">';
-            h += '<span><i class="bi bi-clock-history"></i> 9:15 CLOSE</span>';
-            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-nine-fifteen" data-name="' + name + '" title="Refresh 9:15"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
-            h += '<div id="' + tid + '-915-body" class="gtb-collapse-body">';
-            h += '<div id="' + tid + '-nine-fifteen-close" class="gtb-915-strip"></div>';
-            h += '<div id="' + tid + '-nine-fifteen-close-table" class="gtb-915-table"></div>';
-            h += '</div>';
-        }
-
-        if (item.ad) {
-            h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="' + tid + '-ad-body">';
-            h += '<span><i class="bi bi-arrows-collapse-vertical"></i> A/D</span>';
-            h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="' + name + '" title="Spot A/D"><i class="bi bi-arrow-clockwise"></i> S</button><button class="sv-icon-btn refresh-advance-decline-futures" data-name="' + name + '" title="Futures A/D"><i class="bi bi-arrow-clockwise"></i> F</button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
-            h += '<div id="' + tid + '-ad-body" class="gtb-collapse-body">';
-            h += '<div class="gtb-ad-label">SPOT <span id="' + tid + '-advance-decline-adr" class="gtb-adr-val"></span></div>';
-            h += '<div id="' + tid + '-advance-decline" class="gtb-chart-ad"></div>';
-            h += '<div class="gtb-ad-label" style="margin-top:4px;">FUTURES <span id="' + tid + '-advance-decline-adr-future" class="gtb-adr-val"></span></div>';
-            h += '<div id="' + tid + '-advance-decline-future" class="gtb-chart-ad"></div>';
-            h += '</div>';
-        }
-
-        h += '</div>'; // end .gtb-detail-col
-    });
-    h += '</div>'; // end #gtb-detail-cols
-
-    // All-stocks A/D + 9:15
-    h += '<div id="gtb-all-ad-section">';
+    // ── All-stocks 9:15 + A/D column ──────────────────────────────────────
+    h += '<div class="gtb-detail-col" id="gtb-detail-ALL" style="flex:2;">';
+    h += '<div class="gtb-detail-col-title">ALL STOCKS</div>';
     h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="gtb-all-ad-body">';
-    h += '<span><i class="bi bi-clock-history"></i> ALL STOCKS — 9:15 &amp; A/D</span>';
-    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="ALL" title="Spot A/D"><i class="bi bi-arrow-clockwise"></i> SPOT</button>';
-    h += '<button class="sv-icon-btn refresh-advance-decline-futures" data-name="ALL" title="Futures A/D"><i class="bi bi-arrow-clockwise"></i> FUT</button>';
+    h += '<span><i class="bi bi-clock-history"></i> 9:15 &amp; A/D</span>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-advance-decline" data-name="ALL" title="Refresh Spot A/D"><i class="bi bi-arrow-clockwise"></i></button>';
+    h += '<span style="font-size:0.44rem;color:var(--gtb-muted);letter-spacing:0.04em;">SPO</span>';
+    h += '<button class="sv-icon-btn refresh-advance-decline-futures" data-name="ALL" title="Refresh Futures A/D"><i class="bi bi-arrow-clockwise"></i></button>';
+    h += '<span style="font-size:0.44rem;color:var(--gtb-muted);letter-spacing:0.04em;">FUT</span>';
     h += '<i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-all-ad-body" class="gtb-collapse-body">';
     h += '<div id="ALL-nine-fifteen-close" class="gtb-915-strip"></div>';
@@ -833,28 +1239,33 @@ function commonMarkupPlaceHolder() {
     h += '<div style="display:flex;gap:8px;margin-top:6px;">';
     h += '<div style="flex:1;"><div class="gtb-ad-label">SPOT <span id="all-advance-decline-adr" class="gtb-adr-val"></span></div><div id="advance-decline-trend" class="gtb-chart-ad"></div></div>';
     h += '<div style="flex:1;"><div class="gtb-ad-label">FUTURES <span id="all-advance-decline-adr-future" class="gtb-adr-val"></span></div><div id="advance-decline-futures-trend" class="gtb-chart-ad"></div></div>';
-    h += '</div></div></div>';
+    h += '</div></div>';
+    h += '</div>'; // end ALL col
 
-    // Components + instrument list
-    h += '<div style="display:flex;border-top:1px solid var(--gtb-border);">';
+    h += '</div>'; // end #gtb-detail-cols (3-col: NIFTY 50 | NIFTY BANK | ALL STOCKS)
 
-    h += '<div style="flex:2;border-right:1px solid var(--gtb-border);">';
+    // ── Components & Instruments — full-width row below the 3 index columns ──
+    h += '<div id="gtb-detail-bottom-row">';
+
+    h += '<div class="gtb-detail-bottom-col">';
     h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="gtb-component-panel">';
     h += '<span><i class="bi bi-bar-chart-steps"></i> WEIGHTED COMPONENTS</span>';
     h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
-    h += '<div id="gtb-component-panel" class="gtb-collapse-body" style="max-height:280px;overflow:auto;">';
+    h += '<div id="gtb-component-panel" class="gtb-collapse-body" style="max-height:180px;overflow:auto;">';
     h += '<div id="gtb-component-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
-    h += '</div></div>';
+    h += '</div>';
+    h += '</div>';
 
-    h += '<div style="flex:1;">';
+    h += '<div class="gtb-detail-bottom-col">';
     h += '<div class="gtb-detail-toggle gtb-collapse-toggle" data-target="gtb-stock-list-body">';
     h += '<span><i class="bi bi-collection"></i> INSTRUMENTS</span>';
     h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-stock-list" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
-    h += '<div id="gtb-stock-list-body" class="gtb-collapse-body" style="max-height:280px;overflow-y:auto;">';
+    h += '<div id="gtb-stock-list-body" class="gtb-collapse-body" style="max-height:180px;overflow-y:auto;">';
     h += '<table class="table display nowrap" id="stock-list-table" style="width:100%;font-size:0.58rem;margin-bottom:0;"></table>';
-    h += '</div></div>';
+    h += '</div>';
+    h += '</div>';
 
-    h += '</div>'; // end components+list row
+    h += '</div>'; // end #gtb-detail-bottom-row
 
     h += '</div>'; // end #gtb-detail-inner
     h += '</div>'; // end #gtb-details-area
@@ -890,7 +1301,13 @@ function commonMarkupPlaceHolder() {
 function showCompoenentPlaceHolders() {
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
     _gtbApplyTheme(localStorage.getItem('GTB_THEME') || 'dark');
-    _gtbApplyGridH(parseInt(localStorage.getItem('GTB_ROW_H') || '84'));
+    _gtbApplyGridH(parseInt(localStorage.getItem('GTB_ROW_H') || '190'));
+    // Restore saved column widths now that the container exists in the DOM
+    var _cwDefs = { chart:260, fut:190, oi:210, oiobv:280, wt:170, detail:130 };
+    Object.keys(_cwDefs).forEach(function(k) {
+        var v = parseInt(localStorage.getItem('GTB_COL_' + k.toUpperCase()) || _cwDefs[k]);
+        _gtbApplyColW(k, v);
+    });
 }
 
 // ── Main Refresh Orchestrator ──────────────────────────────────────────────────
@@ -911,13 +1328,24 @@ function _gtbProgress(text, color) {
     var txt  = jQ('#gtb-progress-text');
     if (!pill.length) return;
     var c = color === 'green' ? '#3fb950' : color === 'orange' ? '#fbbf24' : '#3b82f6';
-    dot.css({ background: c, 'border-color': c });
-    pill.css({ 'border-color': c + '55', display: 'inline-flex' });
+    dot.css({ background: c });
+    pill.css({ 'border-color': c + '55', visibility: 'visible' });
     txt.text(text || '');
 }
 function _gtbProgressHide() {
-    jQ('#gtb-progress-pill').hide();
+    jQ('#gtb-progress-pill').css('visibility', 'hidden');
     jQ('#gtb-progress-text').text('');
+}
+
+function _gtbToast(msg, type) {
+    var color = type === 'success' ? '#3fb950' : type === 'error' ? '#f85149' : '#fbbf24';
+    var icon  = type === 'success' ? 'check-circle-fill' : type === 'error' ? 'x-circle-fill' : 'exclamation-triangle-fill';
+    Toastify({
+        text: '<i class="bi bi-' + icon + '" style="margin-right:6px;color:' + color + ';"></i>' + msg,
+        duration: 4000, gravity: 'bottom', position: 'right', escapeMarkup: false,
+        style: { background: '#161b22', border: '1px solid ' + color + '44', 'border-radius': '6px',
+                 'font-size': '0.7rem', color: '#c9d1d9', padding: '8px 14px' }
+    }).showToast();
 }
 
 async function commonShowPopupWindow() {
@@ -929,183 +1357,71 @@ async function commonShowPopupWindow() {
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
 
-    await callSleepForAWhile(1000)
+    await callSleepForAWhile(200)
 
+    // ── Phase 1: 9:15 breakout (reads localStorage only, no API) ─────────────
     show915Trend('NIFTY 50');
     show915Trend('NIFTY BANK');
     show915Trend('ALL');
 
-    _gtbProgress('Loading charts…');
-    try {
-        await showTopChart('NIFTY 50');
-    } catch (e) {
-        console.log(e)
+    // ── Phase 2: All instruments in parallel ─────────────────────────────────
+    // showPrictionProbabilty now builds its stock entry locally and only writes
+    // stock[0] synchronously just before returning — so parallel calls are safe.
+    _gtbProgress('Charts · Futures · OI…');
+    async function _refreshNSE(name) {
+        await Promise.all([
+            showTopChart(name).catch(function(e) { console.log(name + ' chart', e); }),
+            (async function() {
+                try { var res = await showFutureDetails(name); setFutureDetails(name, res); } catch(e) { console.log(name + ' fut', e); }
+            })(),
+            (async function() {
+                try { await showPrictionProbabilty(name); showOIOBVBarChart(name); } catch(e) { console.log(name + ' oi', e); }
+            })(),
+        ]);
+    }
+    async function _refreshMCX(name) {
+        await Promise.all([
+            showTopChartMCX(name).catch(function(e) { console.log(name + ' chart', e); }),
+            (async function() {
+                try {
+                    var res = await showFutureDetailsMCX(name);
+                    setFutureDetails(name, res);
+                    if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+                    INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(res['REMARK']);
+                    INSTRUMENT_SCORE_MAP[name].oi_obv = 0;
+                    await showPrictionProbabiltyMCX(name, res);
+                    showOIOBVBarChart(name);
+                } catch(e) { console.log(name + ' mcx', e); }
+            })(),
+        ]);
     }
 
-    try {
-        await showTopChart('NIFTY BANK');
-    } catch (e) {
-        console.log(e)
-    }
+    await Promise.all([
+        _refreshNSE('NIFTY 50'),
+        _refreshNSE('NIFTY BANK'),
+        _refreshNSE('RELIANCE'),
+        _refreshNSE('HDFCBANK'),
+        _refreshNSE('ICICIBANK'),
+        showTopChart('GIFT NIFTY').catch(function(e) { console.log('GIFT NIFTY chart', e); }),
+        showTopChart('SENSEX').catch(function(e) { console.log('SENSEX chart', e); }),
+        _refreshMCX('CRUDEOILM'),
+        _refreshMCX('USDINR'),
+    ]);
 
-    try {
-        await showTopChart('GIFT NIFTY');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showTopChart('SENSEX');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showTopChart('RELIANCE');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showTopChart('HDFCBANK');
-    } catch (e) {
-        console.log(e)
-    }
-
-    _gtbProgress('Futures data…');
-    try {
-        let res = await showFutureDetails('NIFTY 50');
-        setFutureDetails('NIFTY 50', res);
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        res = await showFutureDetails('NIFTY BANK');
-        setFutureDetails('NIFTY BANK', res);
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        res = await showFutureDetails('RELIANCE');
-        setFutureDetails('RELIANCE', res);
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        res = await showFutureDetails('HDFCBANK');
-        setFutureDetails('HDFCBANK', res);
-    } catch (e) {
-        console.log(e)
-    }
-
-    _gtbProgress('OI / OBV…');
-    try {
-        await showPrictionProbabilty('NIFTY 50')
-        showOIOBVBarChart('NIFTY 50');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showPrictionProbabilty('NIFTY BANK')
-        showOIOBVBarChart('NIFTY BANK');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showPrictionProbabilty('RELIANCE')
-        showOIOBVBarChart('RELIANCE');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showPrictionProbabilty('HDFCBANK')
-        showOIOBVBarChart('HDFCBANK');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showTopChart('ICICIBANK');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        let res = await showFutureDetails('ICICIBANK');
-        setFutureDetails('ICICIBANK', res);
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showPrictionProbabilty('ICICIBANK')
-        showOIOBVBarChart('ICICIBANK');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showTopChartMCX('CRUDEOILM');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        res = await showFutureDetailsMCX('CRUDEOILM');
-        setFutureDetails('CRUDEOILM', res);
-        if (!INSTRUMENT_SCORE_MAP['CRUDEOILM']) INSTRUMENT_SCORE_MAP['CRUDEOILM'] = {};
-        INSTRUMENT_SCORE_MAP['CRUDEOILM'].futures_trend = getFuturesTrendScore(res['REMARK']);
-        INSTRUMENT_SCORE_MAP['CRUDEOILM'].oi_obv = 0;
-        await showPrictionProbabiltyMCX('CRUDEOILM', res)
-        showOIOBVBarChart('CRUDEOILM');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        await showTopChartMCX('USDINR');
-    } catch (e) {
-        console.log(e)
-    }
-
-    try {
-        res = await showFutureDetailsMCX('USDINR');
-        setFutureDetails('USDINR', res);
-        if (!INSTRUMENT_SCORE_MAP['USDINR']) INSTRUMENT_SCORE_MAP['USDINR'] = {};
-        INSTRUMENT_SCORE_MAP['USDINR'].futures_trend = getFuturesTrendScore(res['REMARK']);
-        INSTRUMENT_SCORE_MAP['USDINR'].oi_obv = 0;
-        await showPrictionProbabiltyMCX('USDINR', res)
-        showOIOBVBarChart('USDINR');
-    } catch (e) {
-        console.log(e)
-    }
-
-    _gtbProgress('A/D scan…');
-    try {
-        await showAdvacenDeclineScanner();
-    } catch (e) {
-        console.log(e)
-    }
-
-    _gtbProgress('Futures trend scan…');
-    try {
-        await showFuturesTrend();
-    } catch (e) {
-        console.log(e)
-    }
-
-    _gtbProgress('Weighted OI scan…');
-    try {
-        await fetchWeightedStocksOIScore();
-    } catch (e) {
-        console.log(e)
-    }
+    // ── Phase 3: Breadth scans ────────────────────────────────────────────────
+    // A/D must complete before Futures Trend: showFuturesTrend merges per-interval
+    // bull/bear counts into GTB_AD_INTERVAL_HISTORY (line 7354) which
+    // showAdvacenDeclineScanner resets and populates. Running them in parallel
+    // would merge into a partially-filled or empty array.
+    // fetchWeightedStocksOIScore writes to different INSTRUMENT_SCORE_MAP[name]
+    // keys (weighted stocks only) — safe to run in parallel with A/D.
+    _gtbProgress('A/D · Weighted OI…');
+    await Promise.all([
+        showAdvacenDeclineScanner().catch(function(e) { console.log('A/D', e); }),
+        fetchWeightedStocksOIScore().catch(function(e) { console.log('weighted OI', e); }),
+    ]);
+    _gtbProgress('Futures trend…');
+    await showFuturesTrend().catch(function(e) { console.log('fut trend', e); });
 
     setScore()
     showStockList([]);
@@ -1124,9 +1440,10 @@ async function commonShowPopupWindow() {
     jQ("#gtb-refresh-statusbar").html(
         '<i class="bi bi-check-circle-fill" style="color:#3fb950;margin-right:4px;"></i>'
       + 'Refresh completed at <b>' + _endTime + '</b>'
-      + ' &nbsp;·&nbsp; '
+      + ' &nbsp; * &nbsp; '
       + '<i class="bi bi-stopwatch" style="margin-right:3px;"></i>Total time: <b>' + _elapsed + 's</b>'
     );
+
 }
 
 
@@ -1739,7 +2056,7 @@ function _oiScoreAtTime(oiData, hhmm) {
 }
 
 // Sum of per-interval OI scores across the 5 scored instruments at time T.
-// Falls back to the instrument's current (snapshot) oi_obv if its per-candle data
+// Falls back to the instrument current (snapshot) oi_obv if its per-candle data
 // is unavailable, so the total never silently drops a contributor.
 function _oiScoreAllAtTime(hhmm) {
     var total = 0;
@@ -1903,7 +2220,7 @@ function renderScoreHistory() {
         html += '<thead><tr style="color:#7d8590;"><th style="text-align:left;padding:2px 8px;"></th><th style="text-align:right;padding:2px 8px;">9:15</th><th style="text-align:right;padding:2px 8px;">A/D</th><th style="text-align:right;padding:2px 8px;">FUT</th><th style="text-align:right;padding:2px 8px;">OI</th><th style="text-align:right;padding:2px 8px;">COMP</th><th style="text-align:right;padding:2px 8px;">TOTAL</th></tr></thead><tbody>';
         html += '<tr><td style="padding:2px 8px;color:#7d8590;">LIVE</td>' + _bd(live.n915) + _bd(live.ad) + _bd(live.ft) + _bd(live.oi) + _bd(live.comp) + _bd(live.total) + '</tr>';
         html += '<tr><td style="padding:2px 8px;color:#7d8590;">' + hb.time + '</td>' + _bd(hb.n915) + _bd(hb.ad) + _bd(hb.ft) + _bd(hb.oi) + _bd(hb.comp) + _bd(hb.total) + '</tr>';
-        html += '<tr style="border-top:1px solid #ffffff15;"><td style="padding:2px 8px;color:#fbbf24;">Δ</td>'
+        html += '<tr style="border-top:1px solid #ffffff15;"><td style="padding:2px 8px;color:#fbbf24;">Delta</td>'
               + _bd(hb.n915 - live.n915) + _bd(hb.ad - live.ad) + _bd(hb.ft - live.ft) + _bd(hb.oi - live.oi) + _bd(hb.comp - live.comp) + _bd(hb.total - live.total) + '</tr>';
         html += '</tbody></table></div>';
     }
@@ -1911,7 +2228,7 @@ function renderScoreHistory() {
     // ── Table ─────────────────────────────────────────────────────────────────
     html += '<div style="font-size:0.55rem;color:#7d8590;padding:3px 5px 2px;border-bottom:1px solid #ffffff10;">'
              + '<i class="bi bi-info-circle"></i>&nbsp;'
-             + '9:15 fixed · A/D, Futures, OI/OBV &amp; Component reconstructed per interval (independent of the live Score panel)'
+             + '9:15 fixed  *  A/D, Futures, OI/OBV &amp; Component reconstructed per interval (independent of the live Score panel)'
              + '</div>';
 
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.6rem;">';
@@ -1953,7 +2270,7 @@ function renderScoreHistory() {
         if (_prevOI !== null) {
             if      (oiAtTime > _prevOI + 0.01) oiArrow = '<span style="color:#3fb950;">▲</span>';
             else if (oiAtTime < _prevOI - 0.01) oiArrow = '<span style="color:#f85149;">▼</span>';
-            else                                oiArrow = '<span style="color:#7d8590;">·</span>';
+            else                                oiArrow = '<span style="color:#7d8590;"> * </span>';
         }
         _prevOI = oiAtTime;
 
@@ -2045,7 +2362,7 @@ function scoreOIStrikeForSignal(item, isATM, priceChange) {
     let score = 0;
     let w = isATM ? 2 : 1; // ATM weighted 2× — highest gamma, most price-sensitive strike
 
-    // Underlying price direction — threshold ±0.1% filters noise
+    // Underlying price direction — threshold +/-0.1% filters noise
     let pc = parseFloat(priceChange) || 0;
     let priceUp   = pc >  0.1; // underlying moved up meaningfully
     let priceDown = pc < -0.1; // underlying moved down meaningfully
@@ -2063,7 +2380,7 @@ function scoreOIStrikeForSignal(item, isATM, priceChange) {
     //   PE OBV > 0 → net buying pressure in puts (bearish for underlying)
     //   PE OBV < 0 → net writing pressure in puts (bullish for underlying — writers building support)
     // NOTE: Using cumulative sign, not delta between last two candles.
-    //   Delta only reflects the most recent 5-min move; cumulative reflects the full day's pressure.
+    //   Delta only reflects the most recent 5-min move; cumulative reflects the full days pressure.
     let ceObvList = item['CE_OBV'];
     let peObvList = item['PE_OBV'];
     let ceObvCumulative = parseFloat(ceObvList[ceObvList.length - 1]['obv']);
@@ -2080,7 +2397,7 @@ function scoreOIStrikeForSignal(item, isATM, priceChange) {
     //   CE IV falling (▼) → call writers increasing supply     = WRITING intent → CE WRITE (resistance)
     //   PE IV rising  (▲) → put buyers paying higher premium   = BUYING intent  → PE BUY  (bearish)
     //   PE IV falling (▼) → put writers increasing supply      = WRITING intent → PE WRITE (support floor)
-    // Threshold ±0.3% filters out noise from small random tick movements.
+    // Threshold +/-0.3% filters out noise from small random tick movements.
     // OBV cannot distinguish delta-driven price moves from actual buying/writing;
     // IV change is model-based and independent of underlying direction.
     let ceIvList = item['CE_IV'] || [];
@@ -2117,8 +2434,8 @@ function scoreOIStrikeForSignal(item, isATM, priceChange) {
     // When CE OI increases (chgCE > 0) — new call positions are being opened:
     //   CE OI↑ + IV↓ (or OBV↓) → CE WRITE — writers selling calls, capping upside = RESISTANCE. Score −w
     //   CE OI↑ + IV↑ (or OBV↑) → CE BUY   — buyers opening calls, expecting rally = BULLISH.  Score +w
-    //   Only IV/OBV signal (price flat/conflicting) → half weight (±w×0.5)
-    //   Only price signal (IV unavailable, OBV flat) → low weight (±w×0.3)
+    //   Only IV/OBV signal (price flat/conflicting) → half weight (+/-w×0.5)
+    //   Only price signal (IV unavailable, OBV flat) → low weight (+/-w×0.3)
     //
     // When CE OI decreases (chgCE < 0) — existing call positions are being closed:
     //   CE OI↓ + price↑ + IV↑ → CE COV    — short-covering: trapped writers buying back = BULLISH SQUEEZE. Score +w
@@ -2208,9 +2525,9 @@ function computeOIScoreFromData(oiData) {
     //
     // Weighted PCR: ATM strike counts 3×, all others 1×.
     // Deep OTM options are often institutional hedges unrelated to intraday direction;
-    // weighting ATM focuses the ratio on the strikes that actually matter for today's move.
+    // weighting ATM focuses the ratio on the strikes that actually matter for todays move.
     //
-    // chPCR = same ratio but using OI change (today's new positions only, not standing OI).
+    // chPCR = same ratio but using OI change (todays new positions only, not standing OI).
     // chPCR rising intraday = fresh money flowing into puts = bearish bias building.
     // chPCR falling intraday = fresh money flowing into calls = bullish bias building.
     let weightedPEOI = 0, weightedCEOI = 0;
@@ -2244,7 +2561,7 @@ function computeOIScoreFromData(oiData) {
 
 // Fetches OI/OBV for all unique weighted stocks that don't already have a full
 // OI computation (NIFTY 50, NIFTY BANK, RELIANCE, HDFCBANK, ICICIBANK are handled
-// separately by showPrictionProbabilty).  Uses ATM ±2 strikes (5 total) to
+// separately by showPrictionProbabilty).  Uses ATM +/-2 strikes (5 total) to
 // balance signal quality against API call volume (~20 calls per stock).
 async function fetchWeightedStocksOIScore() {
     const alreadyComputed = new Set(['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK']);
@@ -2253,36 +2570,121 @@ async function fetchWeightedStocksOIScore() {
         ...Object.keys(NIFTY_BANK_WEIGHTED_STOCKS)
     ]);
 
-    for (let name of weightedNames) {
-        if (alreadyComputed.has(name)) continue;
-        _gtbProgress('OI: ' + name);
+    var names = [...weightedNames].filter(function (n) { return !alreadyComputed.has(n); });
+    var CONC = 4;   // scan 4 stocks concurrently — balances speed vs Kite rate limits
+    var done = 0;
+
+    async function _scanOne(name) {
         try {
             // strikToShowOverride = 2 → ATM-2, ATM-1, ATM, ATM+1, ATM+2 (5 strikes)
             let oiData = await showTrendingOI(name, 2);
-            if (!oiData || !oiData.tableData) continue;
-
+            done++;
+            _gtbProgress('OI: ' + name + ' (' + done + '/' + names.length + ')');
+            if (!oiData || !oiData.tableData) return;
             let oiScore = computeOIScoreFromData(oiData);
-
             if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
-            INSTRUMENT_SCORE_MAP[name].oi_obv  = oiScore;
-            INSTRUMENT_SCORE_MAP[name].pcr     = oiData.pcr;
-            INSTRUMENT_SCORE_MAP[name].chPcr   = oiData.chPcr;
-            INSTRUMENT_SCORE_MAP[name].oiData  = oiData;
-
-            console.log("Weighted OI score for " + name + ": " + oiScore + " PCR: " + oiData.pcr);
+            INSTRUMENT_SCORE_MAP[name].oi_obv = oiScore;
+            INSTRUMENT_SCORE_MAP[name].pcr    = oiData.pcr;
+            INSTRUMENT_SCORE_MAP[name].chPcr  = oiData.chPcr;
+            INSTRUMENT_SCORE_MAP[name].oiData = oiData;
         } catch (e) {
+            done++;
             console.log("OI score error for " + name, e);
         }
+    }
+
+    for (let i = 0; i < names.length; i += CONC) {
+        await Promise.all(names.slice(i, i + CONC).map(_scanOne));
     }
     _gtbProgress('OI scan done', 'green');
 }
 
 // Maps futures REMARK type to a +1/0/-1 score signal
 function getFuturesTrendScore(remark) {
-    if (remark === 'LONG' || remark === 'SHOT_COVERING' || remark === 'BULLS_CONSOLIDATING') return 1;
-    if (remark === 'SHORT' || remark === 'LONG_UNWINDING' || remark === 'BEARS_COMING_SELL_ON_RISE' || remark === 'BEARS_CONSOLIDATING') return -1;
+    // Bullish set must match the futures A/D scanner's BULLISH list
+    // (Long, Short-Covering, Gambling, Defence-Buy-On-Decline, Bulls).
+    // Short-Covering is BULLISH (shorts exiting) and Long-Unwinding is BEARISH
+    // (longs exiting) despite the names containing "Short"/"Long".
+    if (remark === 'LONG' || remark === 'SHOT_COVERING' || remark === 'BULLS_CONSOLIDATING'
+        || remark === 'GAMBLING_BUY_NEWS_AND_EVENTS' || remark === 'DEFENCE_BUY_ON_DECLINE') return 1;
+    if (remark === 'SHORT' || remark === 'LONG_UNWINDING' || remark === 'BEARS_COMING_SELL_ON_RISE'
+        || remark === 'BEARS_CONSOLIDATING' || remark === 'CAUTION_WRITES_ERODING_PREMIUM') return -1;
     return 0;
 }
+
+// ── Unified futures-signal fetcher (NSE stocks/indices + MCX commodities) ──────
+// Auto-detects the instrument type and routes to the right futures loader.
+function _gtbIsMcxFuture(name) {
+    return (typeof COMMODITIES_FUTURE_INSTRUMENT_LIST !== 'undefined')
+        && COMMODITIES_FUTURE_INSTRUMENT_LIST.some(function (f) { return f.name === name; });
+}
+function _gtbHasNseFuture(name) {
+    var n = name === 'NIFTY 50' ? 'NIFTY' : name === 'NIFTY BANK' ? 'BANKNIFTY' : name;
+    return (typeof FUTURE_INTRUMENT_LIST !== 'undefined')
+        && FUTURE_INTRUMENT_LIST.some(function (f) { return f.name === n; });
+}
+// Returns the futures res object (REMARK, trend, vwap, premium, PLUS, MINUS, quote …) or null.
+async function getFuturesSignal(name) {
+    try {
+        if (_gtbIsMcxFuture(name))  return await showFutureDetailsMCX(name);
+        if (_gtbHasNseFuture(name)) return await showFutureDetails(name);
+        console.log('No futures contract (NSE or MCX) for ' + name);
+    } catch (e) { console.log('getFuturesSignal error for ' + name, e); }
+    return null;
+}
+// Renders a futures-signal card for `res` (from getFuturesSignal) into containerId.
+function renderFuturesSignalCard(name, res, containerId) {
+    if (!res) { jQ('#' + containerId).html('<div class="cmd-load" style="color:var(--gtb-red);">No futures contract for ' + name + '</div>'); return; }
+    var sent = getFuturesTrendScore(res.REMARK);
+    var txt = sent > 0 ? 'BULLISH' : sent < 0 ? 'BEARISH' : 'NEUTRAL';
+    var col = sent > 0 ? 'var(--gtb-green)' : sent < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var exch = _gtbIsMcxFuture(name) ? 'MCX' : 'NSE';
+    var h = '<div class="fsig-card">'
+        + '<div class="fsig-hd"><span class="fsig-name">' + name + '</span>'
+        + '<span class="fsig-exch">' + exch + '</span>'
+        + '<span class="fsig-sent" style="color:' + col + ';">' + txt + '</span>'
+        + '<span class="fsig-remark">' + (res.REMARK || '') + '</span></div>'
+        + '<div class="gtb-futures-signals"><div class="gtb-fut-row bull">' + (res.PLUS || '—') + '</div>'
+        + '<div class="gtb-fut-row bear">' + (res.MINUS || '—') + '</div></div>'
+        + '<div class="gtb-futures-meta">' + (res.trend || '') + ' &nbsp; ' + (res.vwap || '') + '</div>'
+        + '</div>';
+    jQ('#' + containerId).html(h);
+}
+
+// Futures-Signal popup — fetch the futures signal for any typed/picked instrument.
+async function _gtbFetchFuturesSignalUI(name) {
+    name = (name || '').trim();
+    if (!name) return;
+    var up = name.toUpperCase();
+    if (up === 'NIFTY') up = 'NIFTY 50';
+    if (up === 'BANKNIFTY' || up === 'BANK NIFTY') up = 'NIFTY BANK';
+    name = up;
+    jQ('#fsig-result').html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading ' + name + '…</div>');
+    try {
+        var res = await getFuturesSignal(name);
+        renderFuturesSignalCard(name, res, 'fsig-result');
+    } catch (e) {
+        jQ('#fsig-result').html('<div class="cmd-load" style="color:var(--gtb-red);">Error: ' + (e && e.message) + '</div>');
+    }
+}
+jQ(document).on('click', '#show-futures-signal', function (e) {
+    e.preventDefault();
+    var picks = ['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS', 'WIPRO', 'SBIN', 'CRUDEOILM', 'USDINR'];
+    var body = '<div class="fsig-wrap">'
+        + '<div class="fsig-bar"><input id="fsig-input" type="text" placeholder="Type an instrument — e.g. INFY, WIPRO, CRUDEOILM, NIFTY 50" autocomplete="off" />'
+        + '<button id="fsig-go" class="oic-mode-btn"><i class="bi bi-search"></i> Get signal</button></div>'
+        + '<div class="fsig-picks">' + picks.map(function (p) { return '<button class="fsig-pick" data-name="' + p + '">' + p + '</button>'; }).join('') + '</div>'
+        + '<div id="fsig-result" class="fsig-result"><div class="cmd-load">Pick an instrument above or type any NSE F&O stock / index / MCX commodity.</div></div>'
+        + '</div>';
+    showMaximizeOverlay('<i class="bi bi-graph-up"></i> Futures Signal — any instrument (NSE / MCX)', body);
+});
+jQ(document).on('click', '#fsig-go', function () { _gtbFetchFuturesSignalUI(jQ('#fsig-input').val()); });
+jQ(document).on('keydown', '#fsig-input', function (e) { if (e.key === 'Enter') _gtbFetchFuturesSignalUI(jQ(this).val()); });
+jQ(document).on('click', '.fsig-pick', function () {
+    var n = jQ(this).data('name');
+    jQ('#fsig-input').val(n);
+    _gtbFetchFuturesSignalUI(n);
+});
 
 // Computes a score breakdown for a single instrument using cached data (no API calls)
 function computeInstrumentScore(name) {
@@ -2442,7 +2844,7 @@ function setScore() {
     HDFCBANK_9_15_CLOSE_SCORE    = get915Score('HDFCBANK');
 
     // ALL_9_15: weighted ratio of bullish vs bearish 9:15 candles across all stocks
-    // AST/BST count double (score ±2), ASO/BSO count once (±1)
+    // AST/BST count double (score +/-2), ASO/BSO count once (+/-1)
     let bullishCount = 0, bearishCount = 0;
     jQ.each(breakOutNineFifteen, function (index, item) {
         let s = get915Score(index);
@@ -2454,6 +2856,20 @@ function setScore() {
         ? parseFloat(((bullishCount - bearishCount) / total915).toFixed(2)) : 0;
 
     computeComponentScores();
+
+    // Update OI matrix mini-tables and weightage bars in the instrument panel
+    try { _gtbRenderOIMatrix('NIFTY 50'); } catch(e) {}
+    try { _gtbRenderOIMatrix('NIFTY BANK'); } catch(e) {}
+    try { _gtbRenderOIMatrix('RELIANCE'); } catch(e) {}
+    try { _gtbRenderOIMatrix('HDFCBANK'); } catch(e) {}
+    try { _gtbRenderOIMatrix('ICICIBANK'); } catch(e) {}
+    try { _gtbUpdateWeightBars('NIFTY 50'); } catch(e) {}
+    try { _gtbUpdateWeightBars('NIFTY BANK'); } catch(e) {}
+    try { _gtbUpdateWeightBars('RELIANCE'); } catch(e) {}
+    try { _gtbUpdateWeightBars('HDFCBANK'); } catch(e) {}
+    try { _gtbUpdateWeightBars('ICICIBANK'); } catch(e) {}
+    try { _gtbUpdateWeightBars('CRUDEOILM'); } catch(e) {}
+    try { _gtbUpdateWeightBars('USDINR'); } catch(e) {}
 
     // Derive OI/OBV globals from INSTRUMENT_SCORE_MAP instead of accumulated mutation.
     // This prevents partial-refresh double-counting when setScore is called mid-cycle
@@ -2491,6 +2907,7 @@ function setScore() {
     SCORE = parseFloat(SCORE.toFixed(2));
 
     _renderGauge('#trend-scoreboard', SCORE, -40, 40);
+    try { renderRangeScoreboard(); } catch(e) {}
 
     let pattern = ['#FF0000', '#F97600', '#F6C600', '#60B044']
 
@@ -2515,7 +2932,7 @@ function setScore() {
     // ── Unified signal card render ────────────────────────────────────────────
     // Maps signal name → accent colour + icon
     const SIG_META = {
-        'STRONG BUY':  { accent: '#3fb950', icon: 'bi-rocket-takeoff-fill',  dimBg: 'rgba(63,185,80,0.12)'  },
+        'STRONG BUY':  { accent: '#3fb950', icon: 'bi-graph-up',  dimBg: 'rgba(63,185,80,0.12)'  },
         'BUY':         { accent: '#3fb950', icon: 'bi-arrow-up-circle-fill', dimBg: 'rgba(63,185,80,0.08)'  },
         'SELL':        { accent: '#f85149', icon: 'bi-arrow-down-circle-fill',dimBg: 'rgba(248,81,73,0.08)' },
         'STRONG SELL': { accent: '#f85149', icon: 'bi-exclamation-octagon-fill',dimBg:'rgba(248,81,73,0.12)'},
@@ -2601,7 +3018,7 @@ function setScore() {
         let dirIcon = cf.direction === 'LONG' ? 'bi-arrow-up-circle-fill' : cf.direction === 'SHORT' ? 'bi-arrow-down-circle-fill' : 'bi-hourglass-split';
 
         let cfHtml = '<div class="gtb-trade-dir ' + dirCls + '"><i class="bi ' + dirIcon + '"></i>&nbsp;' + cf.direction + '</div>';
-        cfHtml += '<div style="font-size:0.58rem;color:#64748b;margin-bottom:3px;">' + cf.reasons.join(' · ') + '</div>';
+        cfHtml += '<div style="font-size:0.58rem;color:#64748b;margin-bottom:3px;">' + cf.reasons.join('  *  ') + '</div>';
         if (cf.pcrWarning) cfHtml += '<div style="font-size:0.58rem;color:#fbbf24;margin-bottom:3px;"><i class="bi bi-exclamation-triangle"></i> ' + cf.pcrWarning + '</div>';
         cfHtml += '<div style="font-size:0.55rem;color:#64748b;margin-bottom:4px;">';
         cfHtml += '<span style="color:#4ade80;"><i class="bi bi-check-circle"></i> ' + cf.bullish + ' bullish</span>';
@@ -2744,7 +3161,8 @@ function showStockComponent() {
 //   #{tempName}-futures-vwap  — VWAP trend label (price vs VWAP = bullish/bearish)
 //   #{tempName}-futures-trend — futures REMARK badge (LONG/SHORT/UNWINDING etc.)
 // Also stores remark in INSTRUMENT_SCORE_MAP[name].futures_trend for composite score.
-function setFutureDetails(name, data) {
+function setFutureDetails(name, data, suffix) {
+    suffix = suffix || '';
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
     // Futures PLUS/MINUS are HTML strings of badge spans — render them as a compact 2-row layout.
@@ -2756,7 +3174,7 @@ function setFutureDetails(name, data) {
     futHtml += '<div class="gtb-fut-row ' + _rowCls + '">' + (data['PLUS'] || '—') + '</div>';
     futHtml += '<div class="gtb-fut-row ' + _rowCls + '">' + (data['MINUS'] || '—') + '</div>';
     futHtml += '</div>';
-    jQ("#" + tempName + "-futures").html(futHtml);
+    jQ("#" + tempName + "-futures" + suffix).html(futHtml);
 
     if (name != "USDINR" && name != "CRUDEOILM") {
         let scriptData = generateTrend(name)
@@ -2771,28 +3189,28 @@ function setFutureDetails(name, data) {
             html += '<span class="sv-badge sv-badge-muted">' + premium.toFixed(0) + '</span>';
         }
 
-        jQ("#" + tempName + "-futures-premium").html(html);
+        jQ("#" + tempName + "-futures-premium" + suffix).html(html);
 
-        html = ''
-
-        html += '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/' + 'NFO-FUT' + '/' + data['tradingsymbol'] + '/' + data['instrument_token'] + '"> '
-        html += 'FUTURES';
-        html += '</a>'
-
-        jQ("#futures-chart-" + tempName).html(html);
-    }
-    jQ("#" + tempName + "-futures-vwap").html(data['vwap']);
-    jQ("#" + tempName + "-futures-trend").html(data['trend']);
-
-    // Update futures strip at bottom
-    try {
-        let premium = 0;
-        if (name !== 'USDINR' && name !== 'CRUDEOILM') {
-            let scriptData = generateTrend(name);
-            premium = parseFloat(data['quote']['close']) - parseFloat(scriptData['ltp']);
+        // Futures chart link — only on main panel (no suffix), not in stock viewer
+        if (!suffix) {
+            let html2 = '<a target="_blank" href="https://kite.zerodha.com/markets/ext/chart/web/tvc/NFO-FUT/' + data['tradingsymbol'] + '/' + data['instrument_token'] + '">FUTURES</a>';
+            jQ("#futures-chart-" + tempName).html(html2);
         }
-        updateFuturesStrip(name, data['REMARK'], data['vwapPrice'] || data['vwap'], premium);
-    } catch(e) {}
+    }
+    jQ("#" + tempName + "-futures-vwap" + suffix).html(data['vwap']);
+    jQ("#" + tempName + "-futures-trend" + suffix).html(data['trend']);
+
+    // Update futures strip at bottom — only on main panel
+    if (!suffix) {
+        try {
+            let premium = 0;
+            if (name !== 'USDINR' && name !== 'CRUDEOILM') {
+                let scriptData = generateTrend(name);
+                premium = parseFloat(data['quote']['close']) - parseFloat(scriptData['ltp']);
+            }
+            updateFuturesStrip(name, data['REMARK'], data['vwapPrice'] || data['vwap'], premium);
+        } catch(e) {}
+    }
 }
 
 function showAdvanceDecline() { return ''; }          // divs now inside tab panes
@@ -2885,6 +3303,44 @@ function _gtbApplyGridH(px) {
 }
 jQ(document).on('input', '#gtb-grid-h-slider', function() {
     _gtbApplyGridH(parseInt(jQ(this).val()));
+});
+
+// ── Column width sliders ────────────────────────────────────────────────────
+function _gtbApplyColW(key, px) {
+    var el = document.getElementById('main-trade-bot-container');
+    if (el) el.style.setProperty('--gtb-col-' + key, px + 'px');
+    jQ('.gtb-col-val[data-col="' + key + '"]').text(px);
+    localStorage.setItem('GTB_COL_' + key.toUpperCase(), px);
+    // Resize LW charts if chart column changed
+    if (key === 'chart') {
+        jQ('#gtb-rows .gtb-row-chart').each(function() {
+            if (this._lwChart) { try { this._lwChart.resize(this.clientWidth, this.clientHeight); } catch(e) {} }
+        });
+    }
+}
+// Apply saved column widths on init
+(function() {
+    var cols = ['chart','fut','oi','oiobv','wt','detail'];
+    var defs = { chart:260, fut:190, oi:210, oiobv:280, wt:170, detail:160 };
+    cols.forEach(function(k) {
+        var v = parseInt(localStorage.getItem('GTB_COL_' + k.toUpperCase()) || defs[k]);
+        _gtbApplyColW(k, v);
+    });
+})();
+jQ(document).on('input', '.gtb-col-slider', function() {
+    _gtbApplyColW(jQ(this).data('col'), parseInt(jQ(this).val()));
+});
+
+// ── OI/OBV bar width slider ─────────────────────────────────────────────────
+jQ(document).on('input', '#gtb-oi-bar-slider', function() {
+    var pct = parseInt(jQ(this).val());
+    localStorage.setItem('GTB_OI_BAR_W', pct);
+    jQ('#gtb-oi-bar-val').text(pct + '%');
+    // Re-render all OI/OBV bar charts using cached data (no API call)
+    var _oiNames = ['NIFTY 50','NIFTY BANK','RELIANCE','HDFCBANK','ICICIBANK','CRUDEOILM','USDINR'];
+    _oiNames.forEach(function(n) {
+        try { showOIOBVBarChart(n); } catch(e) {}
+    });
 });
 
 jQ(document).on("click", ".refresh-scoreboard", function () {
@@ -3036,34 +3492,6 @@ jQ(document).on("click", ".gtb-collapse-toggle", function (e) {
     });
 });
 
-// ── Global OI / Futures toggle ────────────────────────────────────────────────
-let _gtbOIVisible = true;
-jQ(document).on('click', '#gtb-toggle-oi-futures', function() {
-    _gtbOIVisible = !_gtbOIVisible;
-    jQ('.gtb-collapsible').each(function() {
-        let header = jQ(this).find('.gtb-collapse-toggle');
-        let bodyId = header.data('target');
-        let body = jQ('#' + bodyId);
-        if (_gtbOIVisible) {
-            body.removeClass('hidden');
-            header.removeClass('collapsed');
-        } else {
-            body.addClass('hidden');
-            header.addClass('collapsed');
-        }
-    });
-    jQ(this).html(_gtbOIVisible
-        ? '<i class="bi bi-eye-slash"></i> Hide OI/FUT'
-        : '<i class="bi bi-eye"></i> Show OI/FUT');
-    // Resize all LW charts after panels collapse/expand
-    setTimeout(function() {
-        jQ('.gtb-chart-area').each(function() {
-            let lwc = this._lwChart;
-            if (lwc) { try { lwc.resize(jQ(this).width() || 300, 150); } catch(e) {} }
-        });
-    }, 80);
-});
-
 // ── European Market Open Alert ────────────────────────────────────────────────
 // European markets (Frankfurt/London) open ~09:00 CET/BST.
 // In IST: winter (CET=UTC+1) → 13:30 IST; summer (CEST=UTC+2) → 12:30 IST.
@@ -3083,7 +3511,7 @@ jQ(document).on('click', '#gtb-toggle-oi-futures', function() {
                       + '<i class="bi bi-flag-fill" style="font-size:1.2rem;color:#60a5fa;"></i>'
                       + '<div>'
                       + '<div style="font-weight:800;font-size:0.8rem;">🇪🇺 European Market Open</div>'
-                      + '<div style="font-size:0.7rem;color:#94a3b8;">' + label + ' session · ' + key + ' IST</div>'
+                      + '<div style="font-size:0.7rem;color:#94a3b8;">' + label + ' session  *  ' + key + ' IST</div>'
                       + '</div>'
                       + '</div>';
             // Show as a styled overlay alert
@@ -3185,7 +3613,7 @@ function renderPillars() {
     let h = '';
     h += pillarRow('9:15 Breakout',  s.nine_fifteen,   'bi-clock-history');
     h += pillarRow('Current Trend',  s.current_trend,  'bi-graph-up');
-    h += pillarRow('Futures Trend',  futNet,            'bi-rocket-takeoff');
+    h += pillarRow('Futures Trend',  futNet,            'bi-graph-up');
     h += pillarRow('OI / OBV (N50)', oiN50,             'bi-bar-chart-fill');
     h += pillarRow('OI / OBV (BN)',  oiBN,              'bi-bar-chart');
     h += pillarRow('A/D Breadth',    adNet,             'bi-arrows-expand');
@@ -3294,7 +3722,7 @@ function renderExitBanner() {
     } else {
         let trendVal = s.current_trend > 0 ? '+' + s.current_trend : s.current_trend;
         el.attr('class', 'gtb-exit-banner hold')
-          .html('<i class="bi bi-shield-check"></i> HOLD ' + dir + ' — trend ' + trendVal + ' · N50fut ' + n50Fut + ' · BNfut ' + bnFut);
+          .html('<i class="bi bi-shield-check"></i> HOLD ' + dir + ' — trend ' + trendVal + '  *  N50fut ' + n50Fut + '  *  BNfut ' + bnFut);
     }
 }
 
@@ -3325,16 +3753,18 @@ jQ(document).on("click", ".refresh-stock-list", function () {
 var GTB_INFO = {
     score:        { icon:'bi-speedometer2',     title:'Score Gauge',
         body:'The composite market score on a −40…+40 dial. It sums every signal: 9:15 breakouts, advance/decline breadth, futures trend, OI/OBV, and weighted index constituents. Gauge colour: <b style="color:#f85149">red &lt;0</b>, <b style="color:#d29922">orange 1–4</b>, <b style="color:#fbbf24">yellow 5–7</b>, <b style="color:#3fb950">green ≥8</b>. Below it: live N50 &amp; Bank-Nifty advance/decline counts.' },
+    rangesb:      { icon:'bi-bar-chart-line-fill', title:'Range Scoreboard',
+        body:'Each sub-score (9:15, Adv/Dec, Futures, OI/OBV, Component) is shown as a range bar spanning its min/max. The needle shows the live value. The bottom verdict (LONG / WAIT / SHORT) is based on the composite score: <b style="color:#3fb950">LONG ≥ 5</b>, <b style="color:#f85149">SHORT &lt; 0</b>, otherwise WAIT. Bar segments: red (bearish) → yellow (neutral) → green (bullish).' },
     signal:       { icon:'bi-lightning-charge', title:'Trade Signal',
-        body:'The final call — STRONG BUY · BUY · WAIT · SELL · STRONG SELL · NO TRADE — derived from the composite score combined with VIX, any futures conflict, and the 9:15 candle pattern. The sub-line gives the suggested entry level (e.g. “at BSO/BST for long”).' },
+        body:'The final call — STRONG BUY  *  BUY  *  WAIT  *  SELL  *  STRONG SELL  *  NO TRADE — derived from the composite score combined with VIX, any futures conflict, and the 9:15 candle pattern. The sub-line gives the suggested entry level (e.g. "at BSO/BST for long").' },
     entry:        { icon:'bi-crosshair',        title:'Entry / Trade',
         body:'Entry-confluence panel: how strongly 9:15, current trend, futures and OI agree, and the resulting bullish/bearish tilt that supports an entry here.' },
     pillars:      { icon:'bi-bar-chart-steps',  title:'Pillars',
-        body:'The individual scoring pillars and each one’s contribution to the total: 9:15 close, advance/decline, futures trend, OI/OBV, and the weighted index components.' },
+        body:'The individual scoring pillars and each one contribution to the total: 9:15 close, advance/decline, futures trend, OI/OBV, and the weighted index components.' },
     toptrades:    { icon:'bi-stars',            title:'Top Trades',
         body:'The instruments ranked highest (and lowest) by composite score this cycle — your best long and short candidates right now.' },
     scoredetail:  { icon:'bi-table',            title:'Score Detail',
-        body:'Full breakdown table: every score component and each weighted constituent’s contribution, so you can see exactly what drives the total.' },
+        body:'Full breakdown table: every score component and each weighted constituent contribution, so you can see exactly what drives the total.' },
     scorehistory: { icon:'bi-clock-history',    title:'Score History',
         body:'The composite score reconstructed at each 5-minute candle of the day (A/D, futures, OI/OBV and components recomputed per interval) so you can see how the score evolved.' },
     verdict:      { icon:'bi-flag-fill',        title:'Market Verdict',
@@ -3344,7 +3774,7 @@ var GTB_INFO = {
     breadth:      { icon:'bi-distribute-horizontal', title:'Instrument Breadth',
         body:'Of the 9 tracked instruments (GIFT NIFTY, NIFTY 50, NIFTY BANK, SENSEX, CRUDEOILM, USDINR, RELIANCE, HDFCBANK, ICICIBANK), how many are net-bullish ▲ vs net-bearish ▼ by their own composite score. The bar shows the split.' },
     ov915:        { icon:'bi-clock',            title:'9:15 Breakout Count',
-        body:'How many constituents closed their 9:15 candle <b style="color:#00e5a0">above</b> their ASO/AST level (▲ bullish) vs <b style="color:#ff4d6a">below</b> their BSO/BST level (▼ bearish). Shown for NIFTY 50, BANK NIFTY, and ALL scanned stocks. A strong skew sets the day’s opening bias.' },
+        body:'How many constituents closed their 9:15 candle <b style="color:#00e5a0">above</b> their ASO/AST level (▲ bullish) vs <b style="color:#ff4d6a">below</b> their BSO/BST level (▼ bearish). Shown for NIFTY 50, BANK NIFTY, and ALL scanned stocks. A strong skew sets the days opening bias.' },
     keystats:     { icon:'bi-clipboard-data',   title:'Key Stats',
         body:'N50 &amp; Bank-Nifty advance/decline (A = above breakout, D = below, N = within range, net, and the A÷D ratio) plus the live India VIX.' },
     'col-instrument': { icon:'bi-tag',          title:'Instrument',
@@ -3353,12 +3783,16 @@ var GTB_INFO = {
         body:'Intraday candlestick chart with reference levels drawn as solid lines: OPEN, VIX upper/lower range, ASO/AST (breakout above) and BSO/BST (breakdown below).' },
     'col-915':    { icon:'bi-clock',            title:'9:15 Close',
         body:'Where the first 9:15 candle closed vs the strike levels: <b>AST/ASO</b> = above (bullish), <b>BSO/BST</b> = below (bearish), <b>B/W</b> = within range. Sealed at 9:20 and fixed all day.' },
-    'col-futures':{ icon:'bi-rocket-takeoff',   title:'Futures',
+    'col-futures':{ icon:'bi-graph-up',   title:'Futures',
         body:'Futures positioning: LONG / SHORT / Short-Covering / Long-Unwinding etc., the premium/discount vs spot, and a bull/bear tint. Long build-up &amp; short-covering are bullish; shorts &amp; long-unwinding are bearish.' },
-    'col-oi':     { icon:'bi-bar-chart-fill',   title:'Open Interest',
-        body:'Options read for the strike band: PCR plus an OI/OBV score. Put writing builds support (bullish); call writing builds resistance (bearish). Score &gt;0 bullish, &lt;0 bearish.' },
-    'col-sl':     { icon:'bi-shield',           title:'SL / Target',
-        body:'Suggested stop-loss and first target (T1) derived from the instrument’s ATR, with the trade direction badge.' },
+    'col-oi':     { icon:'bi-bar-chart-fill',   title:'OI Matrix',
+        body:'Inline option-chain mini-table for ATM+/-2 strikes. Each row shows CE DeltaOI  *  4-box signal  *  Strike  *  4-box signal  *  PE DeltaOI. <b>Long Buildup</b>=bulls adding, <b>Short Buildup</b>=bears adding, <b>Short Covering</b>=shorts exiting (bullish), <b>Long Unwinding</b>=bulls exiting (bearish). PCR and max-OI wall levels shown below.' },
+    'col-oiobv':  { icon:'bi-bar-chart-fill',   title:'OI / OBV',
+        body:'Inline bar charts: top = CE/PE Change-OI per strike (green=PE bullish, red=CE bearish), bottom = CE/PE OBV momentum. ATM strike highlighted. Signal row below bars shows CE/PE label and score per strike. Click maximize (fullscreen icon) to expand.' },
+    'col-weights':{ icon:'bi-diagram-3',        title:'Weightage Stocks',
+        body:'Top-6 weighted constituents for NIFTY 50 / NIFTY BANK. Bar = relative computed score (green=bullish, red=bearish). These drive the NIFTY_50_COMPONENT_SCORE and NIFTY_BANK_COMPONENT_SCORE in the left panel.' },
+    'col-detail': { icon:'bi-info-circle',      title:'Details',
+        body:'Per-instrument detail strip: SL/Target (ATR-based), PCR, OI score, and ADX regime label. Heavy analysis panels (full OI/OBV charts, futures deep-dive, 9:15, A/D) are in the collapsible DETAILS bar below.' },
     details:      { icon:'bi-layers',           title:'Details',
         body:'Deep-dive panels (click the bar to expand): full OI/OBV charts, futures, 9:15 tables, advance/decline, and the weighted-component breakdown per instrument.' },
 };
@@ -3403,16 +3837,16 @@ jQ(document).on('click', function(e) {
 
 function showNotes() {
     var items = [
-        { i:'bi-1-circle-fill',    t:'9:15 breakout count',  d:'Read the number of ASO/BSO and the 9:15 ASO/BSO together — that combo sets the day’s bias.' },
+        { i:'bi-1-circle-fill',    t:'9:15 breakout count',  d:'Read the number of ASO/BSO and the 9:15 ASO/BSO together — that combo sets the days bias.' },
         { i:'bi-arrow-up-circle',  t:'2 ASO',               d:'Two ASO = strong uptrend.' },
         { i:'bi-arrow-down-circle',t:'2 BSO',               d:'Two BSO = strong downtrend.' },
-        { i:'bi-dash-circle',      t:'Sensex weighting',    d:'Sensex ASO/BSO doesn’t carry much weight — don’t over-rely on it.' },
+        { i:'bi-dash-circle',      t:'Sensex weighting',    d:'Sensex ASO/BSO does not carry much weight — do not over-rely on it.' },
         { i:'bi-building',         t:'Heavyweights',        d:'Always check RELIANCE and HDFC BANK — they move the index.' },
         { i:'bi-bar-chart-fill',   t:'OI / OBV',            d:'Confirm with the OI/OBV read (support vs resistance walls).' },
         { i:'bi-activity',         t:'VIX direction',       d:'Check VIX −ve/+ve and whether price is inside the VIX range.' },
         { i:'bi-distribute-horizontal', t:'ADR',            d:'Check advance/decline breadth across constituents.' },
         { i:'bi-droplet-fill',     t:'Crude oil',           d:'Check CRUDE OIL for risk-on/off cues.' },
-        { i:'bi-rocket-takeoff',   t:'Futures trend',       d:'Check the futures trend for positioning.' },
+        { i:'bi-graph-up',   t:'Futures trend',       d:'Check the futures trend for positioning.' },
         { i:'bi-globe',            t:'Global markets',      d:'Check World / Europe markets around 12:45–1:00 PM.' },
     ];
     var body = '<div class="gtb-notes-grid">';
@@ -3458,7 +3892,7 @@ var GTB_STRAT_LOOKUP = {
     'B/W-B/W-B/W': { outcome:'Sell',     level:'at ASO/AST — all indices in range, bearish bias' }
 };
 
-// Classify a 9:15 close vs strike levels derived from the day's open (same rules
+// Classify a 9:15 close vs strike levels derived from the days open (same rules
 // as scanNineFifteenCandle / setScore.get915Score).
 function _gtbClassify915(name, dayOpen, closeNineFifteen) {
     var sd = getStrikeDetails({ price: dayOpen }, name);
@@ -3472,11 +3906,11 @@ function _gtbClassify915(name, dayOpen, closeNineFifteen) {
 }
 
 // Builds a day-wise 9:15 trend table for NIFTY 50 / SENSEX / NIFTY BANK over the
-// last `lookback` trading days, resolving each day's combo via GTB_STRAT_LOOKUP.
-// Simulate one leg of the entry-level trade on a day's intraday (5-min) candles.
+// last `lookback` trading days, resolving each days combo via GTB_STRAT_LOOKUP.
+// Simulate one leg of the entry-level trade on a days intraday (5-min) candles.
 //   long  → ideal entry at BSO (Buy bias / bullish)
 //   short → ideal entry at ASO (Sell bias / bearish)
-// Two cases, both evaluated (held to the day's close):
+// Two cases, both evaluated (held to the days close):
 //   • entryType 'level' — price reached the strike → entered there. P/L vs that level.
 //   • entryType 'trend' — price NEVER reached the strike (no pullback) but the bias
 //     still ran; treated as entering at the OPEN and riding the trend. P/L vs open.
@@ -3540,7 +3974,7 @@ function _gtbSimLeg(dir, cands, open) {
 }
 
 // Which legs a strategy outcome implies (per the user's bias definitions):
-//   Buy → long only · Sell → short only · Buy/Sell → both legs · Sideways → none
+//   Buy → long only  *  Sell → short only  *  Buy/Sell → both legs  *  Sideways → none
 function _gtbLegsFor(outcome) {
     if (outcome === 'Buy')      return ['long'];
     if (outcome === 'Sell')     return ['short'];
@@ -3548,22 +3982,50 @@ function _gtbLegsFor(outcome) {
     return [];
 }
 
-async function _gtbBuild915Trend(lookback) {
-    lookback = lookback || 60;
-    var instruments = ['NIFTY 50', 'SENSEX', 'NIFTY BANK', 'GIFT NIFTY'];
-    var to   = moment().format('YYYY-MM-DD');
-    // Kite caps the 5-minute interval at 100 days/request → keep the window under that.
-    // ~98 calendar days ≈ 68 trading days, enough to fill a 60-day lookback.
-    var calDays = Math.min(98, Math.ceil(lookback * 1.45) + 6);
-    var from = moment().subtract(calDays, 'days').format('YYYY-MM-DD');
+// Fetch 5-minute candles over an arbitrary range by chunking into ≤95-day windows
+// (Kite caps the 5-minute interval at 100 days per request) and merging in order.
+async function _gtbFetch5minRange(token, fromM, toM) {
+    var all = [];
+    var CHUNK = 95;
+    var start = fromM.clone();
+    while (start.isSameOrBefore(toM)) {
+        var end = moment.min(start.clone().add(CHUNK - 1, 'days'), toM);
+        var res = await getHistoricalDataUsingPromise(token, start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), '5minute');
+        var c = (res && res.data && res.data.candles) ? res.data.candles : [];
+        if (c.length) all = all.concat(c);
+        start = end.clone().add(1, 'days');
+    }
+    return all;
+}
 
+async function _gtbBuild915Trend(lookback) {
+    lookback = lookback || 250;   // ~1 year of trading days
+    var instruments = ['NIFTY 50', 'SENSEX', 'NIFTY BANK', 'GIFT NIFTY'];
+    // Computed rows are cacheable per day (past days don't change) — avoids re-fetching
+    // ~16 chunked requests on every open.
+    var ckey = 'GTB_915TREND_' + moment().format('YYYY-MM-DD') + '_' + lookback + '_v4';  // v4 = + vixu_bank/vixl_bank
+    try { var cached = localStorage.getItem(ckey); if (cached) return JSON.parse(cached); } catch (e) {}
+
+    var toM   = moment();
+    // Calendar span to cover `lookback` trading days (~5 trading days per 7 calendar days).
+    var fromM = moment().subtract(Math.ceil(lookback * 1.5) + 10, 'days');
+
+    // India VIX (token 264969) daily — for VIX-regime classification of each day
+    var vixMap = {};
+    try {
+        var vixTok = (typeof INSTRUMENT_TOKENS !== 'undefined' && INSTRUMENT_TOKENS['INDIA VIX']) || 264969;
+        var vres = await getHistoricalDataUsingPromise(vixTok, fromM.format('YYYY-MM-DD'), toM.format('YYYY-MM-DD'), 'day');
+        var vc = (vres && vres.data && vres.data.candles) ? vres.data.candles : [];
+        vc.forEach(function (c) { vixMap[moment(c[0]).format('YYYY-MM-DD')] = parseFloat(c[1]); }); // day open VIX
+    } catch (e) {}
+
+    // Fetch each instrument chunked 5-min history in parallel (chunks stay
+    // sequential within an instrument; the 4 instruments run concurrently).
     var byInstr = {};
-    for (var i = 0; i < instruments.length; i++) {
-        var name = instruments[i];
+    await Promise.all(instruments.map(async function (name) {
         var token = INSTRUMENT_TOKENS[name];
-        if (!token) { byInstr[name] = {}; continue; }
-        var res = await getHistoricalDataUsingPromise(token, from, to, '5minute');
-        var candles = (res && res.data && res.data.candles) ? res.data.candles : [];
+        if (!token) { byInstr[name] = {}; return; }
+        var candles = await _gtbFetch5minRange(token, fromM, toM);
         var dayMap = {};
         candles.forEach(function (c) {
             var d = moment(c[0]).format('YYYY-MM-DD');
@@ -3582,32 +4044,75 @@ async function _gtbBuild915Trend(lookback) {
             dayMap[d].close12 = c12;
         });
         byInstr[name] = dayMap;
-    }
+    }));
 
     // Strategy needs NIFTY/SENSEX/BANK; GIFT NIFTY is an extra reference column.
+    // Sort ascending to compute prev-day close, then reverse for display.
     var allDates = Object.keys(byInstr['NIFTY 50'] || {}).filter(function (d) {
         return byInstr['SENSEX'][d] && byInstr['NIFTY BANK'][d];
-    }).sort().reverse().slice(0, lookback);
+    }).sort();  // ascending — needed for prev-day lookup
 
-    var rows = allDates.map(function (d) {
+    var _sqrt252 = Math.sqrt(252);   // VIX annualised → daily: ÷ sqrt(252)
+    var niftyDates = allDates;       // ascending order
+
+    var rows = allDates.slice().reverse().slice(0, lookback).map(function (d) {
         var n = byInstr['NIFTY 50'][d], s = byInstr['SENSEX'][d], b = byInstr['NIFTY BANK'][d];
         var g = (byInstr['GIFT NIFTY'] || {})[d];
         var key = _gtbNorm915(n.cls) + '-' + _gtbNorm915(s.cls) + '-' + _gtbNorm915(b.cls);
         var strat = GTB_STRAT_LOOKUP[key] || { outcome: 'Sideways', level: 'No trade' };
-        var c12 = (n.close12 !== undefined) ? n.close12 : n.dayClose;   // close at noon (pre-Europe)
+        var c12 = (n.close12 !== undefined) ? n.close12 : n.dayClose;
         var move = c12 >= n.open ? 'UP' : 'DOWN';
         var movePct = n.open ? ((c12 - n.open) / n.open * 100) : 0;
         var legs = _gtbLegsFor(strat.outcome).map(function (dir) { return _gtbSimLeg(dir, n.cands, n.open); }).filter(Boolean);
+        var vix = (vixMap[d] != null && !isNaN(vixMap[d])) ? vixMap[d] : null;
+
+        // VIXU / VIXL: computed from each instrument's own PREVIOUS day close × (VIX/100 / sqrt(252))
+        var vixu = null, vixl = null, vixu_bank = null, vixl_bank = null;
+        var dIdx = niftyDates.indexOf(d);
+        if (dIdx > 0 && vix != null) {
+            var prevDay = niftyDates[dIdx - 1];
+            var prevN   = byInstr['NIFTY 50'][prevDay];
+            var prevB   = byInstr['NIFTY BANK'][prevDay];
+            if (prevN) {
+                var _rng = prevN.dayClose * (vix / 100) / _sqrt252;
+                vixu = parseFloat((prevN.dayClose + _rng).toFixed(2));
+                vixl = parseFloat((prevN.dayClose - _rng).toFixed(2));
+            }
+            if (prevB) {
+                var _rngB = prevB.dayClose * (vix / 100) / _sqrt252;
+                vixu_bank = parseFloat((prevB.dayClose + _rngB).toFixed(2));
+                vixl_bank = parseFloat((prevB.dayClose - _rngB).toFixed(2));
+            }
+        }
+
         return { date: d, n: n.cls, s: s.cls, b: b.cls, g: g ? g.cls : '—', key: key,
-                 outcome: strat.outcome, level: strat.level, move: move, movePct: movePct, legs: legs };
+                 outcome: strat.outcome, level: strat.level, move: move, movePct: movePct, legs: legs,
+                 vix: vix, vixu: vixu, vixl: vixl, vixu_bank: vixu_bank, vixl_bank: vixl_bank };
     });
+    try { localStorage.setItem(ckey, JSON.stringify(rows)); } catch (e) {}
     return rows;
 }
+
+var GTB_LAST_FUT_REMARK = {};   // name → {remark, dir, ts} — futures-trend persistence (#5)
+var _GTB_915_ROWS = [];   // last-built day rows, for the combo-charts popup
+var _GTB_OIC_LIST = [];   // last OI-compare instrument list, for the detailed/compact toggle
 
 function _render915Trend(rows) {
     if (!rows || !rows.length) {
         return '<div style="padding:24px;text-align:center;color:var(--gtb-muted);"><i class="bi bi-exclamation-triangle"></i> No data</div>';
     }
+    _GTB_915_ROWS = rows;
+    // Todays 9:15 combo (same classification the live dashboard uses) — for highlighting.
+    var _tb915 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
+    var _t915n = (_tb915['NIFTY 50']   || {}).CLOSE_9_15;
+    var _t915s = (_tb915['SENSEX']     || {}).CLOSE_9_15;
+    var _t915b = (_tb915['NIFTY BANK'] || {}).CLOSE_9_15;
+    // Normalized key (AST→ASO, BST→BSO) for the strategy-bucket combo table
+    var todayKey = _gtbNorm915(_t915n) + '-' + _gtbNorm915(_t915s) + '-' + _gtbNorm915(_t915b);
+    var hasToday = todayKey.indexOf('undefined') === -1;
+    // Raw key (exact AST/ASO/BSO/BST/B-W) for day-by-day exact-match highlighting
+    var todayKeyRaw = _t915n + '-' + _t915s + '-' + _t915b;
+    var hasTodayRaw = !!(_t915n && _t915s && _t915b);
     // Aggregate per-leg P/L stats (each Buy/Sell day = 2 legs)
     var win = 0, loss = 0, levelN = 0, trendN = 0, legCount = 0, totPnl = 0, totMfe = 0, totMae = 0, tpN = 0, slN = 0;
     rows.forEach(function (r) {
@@ -3625,18 +4130,29 @@ function _render915Trend(rows) {
     var tpslN  = tpN + slN;
     var tpPct  = tpslN ? Math.round(tpN / tpslN * 100) : 0;   // target-before-stop hit rate (1:1)
 
+    // VIX-regime threshold = median day-open VIX across the sample (adaptive split)
+    var _vv = rows.map(function (r) { return r.vix; }).filter(function (v) { return v != null && !isNaN(v); }).sort(function (a, b) { return a - b; });
+    var vixThresh = _vv.length ? _vv[Math.floor(_vv.length / 2)] : null;
+
     // ── Per-combo performance (which 9:15 combos actually have an edge) ──────────
     var combo = {};
     rows.forEach(function (r) {
-        if (!combo[r.key]) combo[r.key] = { key: r.key, outcome: r.outcome, days: 0, legs: 0, win: 0, pnl: 0, mfe: 0 };
+        if (!combo[r.key]) combo[r.key] = { key: r.key, outcome: r.outcome, level: r.level, days: 0, legs: 0, win: 0, pnl: 0, mfe: 0, loWin: 0, loLegs: 0, hiWin: 0, hiLegs: 0 };
         var c = combo[r.key]; c.days++;
-        (r.legs || []).forEach(function (lg) { c.legs++; if (lg.win) c.win++; c.pnl += lg.pnl; c.mfe += (lg.mfe || 0); });
+        var regime = (vixThresh != null && r.vix != null) ? (r.vix <= vixThresh ? 'lo' : 'hi') : null;
+        (r.legs || []).forEach(function (lg) {
+            c.legs++; if (lg.win) c.win++; c.pnl += lg.pnl; c.mfe += (lg.mfe || 0);
+            if (regime === 'lo') { c.loLegs++; if (lg.win) c.loWin++; }
+            else if (regime === 'hi') { c.hiLegs++; if (lg.win) c.hiWin++; }
+        });
     });
     var comboRows = Object.keys(combo).map(function (k) {
         var c = combo[k];
         c.winPct = c.legs ? Math.round(c.win / c.legs * 100) : 0;
         c.avgPnl = c.legs ? (c.pnl / c.legs) : 0;
         c.avgMfe = c.legs ? (c.mfe / c.legs) : 0;
+        c.loPct  = c.loLegs ? Math.round(c.loWin / c.loLegs * 100) : null;
+        c.hiPct  = c.hiLegs ? Math.round(c.hiWin / c.hiLegs * 100) : null;
         return c;
     }).sort(function (a, b) { return b.winPct - a.winPct || b.days - a.days; });
 
@@ -3681,11 +4197,14 @@ function _render915Trend(rows) {
     }
 
     var html = '<div class="gtb-t915-wrap">';
-    html += '<div class="gtb-t915-sub">Daily 9:15 combo for <b>NIFTY · SENSEX · BANK</b> (with <b>GIFT NIFTY</b> reference) over the last <b>'
+    html += '<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">'
+         +  '<button id="gtb-915-clear" class="oic-mode-btn" title="Clear the cached backtest data and rebuild from fresh candles"><i class="bi bi-arrow-clockwise"></i> Clear cache &amp; rebuild</button>'
+         +  '</div>';
+    html += '<div class="gtb-t915-sub">Daily 9:15 combo for <b>NIFTY  *  SENSEX  *  BANK</b> (with <b>GIFT NIFTY</b> reference) over the last <b>'
          +  rows.length + '</b> trading days. The <b>Result</b> enters NIFTY per bias — '
          +  '<b style="color:var(--gtb-green)">long @ BSO</b> (Buy), <b style="color:var(--gtb-red)">short @ ASO</b> (Sell), '
-         +  'or <b>both</b> (Buy/Sell). If price reaches the level it’s an <b>lvl</b> entry; if it never pulled back but the bias '
-         +  'still ran, it’s a <b>trd</b> entry taken at the open. Evaluated in the <b>morning session till 12:00</b> (pre-Europe); P/L marked at the 12:00 close. '
+         +  'or <b>both</b> (Buy/Sell). If price reaches the level its an <b>lvl</b> entry; if it never pulled back but the bias '
+         +  'still ran, its a <b>trd</b> entry taken at the open. Evaluated in the <b>morning session till 12:00</b> (pre-Europe); P/L marked at the 12:00 close. '
          +  '<b>Max Fav</b>/<b>Max Adv</b> are the best favourable (MFE) and worst adverse (MAE) swings from the entry; '
          +  '<b>1:1 TP/SL</b> is whether a one-strike-step (' + (rows[0] && rows[0].legs[0] ? rows[0].legs[0].target : 's1') + '-pt) target was hit before an equal stop.</div>';
     html += '<div class="gtb-t915-stats">'
@@ -3698,22 +4217,37 @@ function _render915Trend(rows) {
          +  (totPnl >= 0 ? '+' : '') + totPnl.toFixed(0) + ' pts</b></span>'
          +  '<span class="gtb-t915-stat">Avg max-fav <b style="color:var(--gtb-green)">+' + avgMfe.toFixed(1) + '</b> / max-adv <b style="color:var(--gtb-red)">−' + avgMae.toFixed(1) + ' pts</b></span>'
          +  '<span class="gtb-t915-stat">1:1 target hit <b>' + tpPct + '%</b> (' + tpN + ' TP / ' + slN + ' SL)</span>'
-         +  '<span class="gtb-t915-stat">' + levelN + ' lvl · ' + trendN + ' trd entries</span>'
+         +  '<span class="gtb-t915-stat">' + levelN + ' lvl  *  ' + trendN + ' trd entries</span>'
          +  '</div>';
 
     // ── Per-combo edge table ────────────────────────────────────────────────────
+    var vixTxt = vixThresh != null ? vixThresh.toFixed(2) : '—';
     html += '<div class="gtb-t915-combo-h"><i class="bi bi-trophy"></i> Per-combo edge '
-         +  '<span style="font-weight:400;color:var(--gtb-muted);">(NIFTY-SENSEX-BANK · sorted by win-rate · low N = unreliable)</span></div>';
+         +  '<span style="font-weight:400;color:var(--gtb-muted);">(NIFTY-SENSEX-BANK  *  sorted by win-rate  *  low N = unreliable  *  VIX split at median ' + vixTxt + ')</span></div>';
+    if (hasToday) html += '<div class="gtb-t915-today-note"><i class="bi bi-star-fill"></i> Today\&#39;s 9:15 combo: <b>' + todayKey + '</b> — highlighted below</div>';
     html += '<table class="gtb-t915-table gtb-t915-combo"><thead><tr>'
-         +  '<th>Combo</th><th>Bias</th><th>Days</th><th>Win-rate</th><th>Avg P/L</th><th>Avg Max-Fav</th></tr></thead><tbody>';
+         +  '<th>Combo</th><th>Bias</th><th>Entry Level</th><th>Days</th><th>Win-rate</th>'
+         +  '<th title="Win-rate on days with VIX ≤ ' + vixTxt + '">Low-VIX</th>'
+         +  '<th title="Win-rate on days with VIX > ' + vixTxt + '">High-VIX</th>'
+         +  '<th>Avg P/L</th><th>Avg Max-Fav</th></tr></thead><tbody>';
+    function _vixCell(pct, n) {
+        if (pct === null) return '<td class="gtb-t915-date" style="color:var(--gtb-muted);">—</td>';
+        var col = pct >= 60 ? 'var(--gtb-green)' : pct <= 40 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+        return '<td style="font-family:var(--gtb-mono);color:' + col + ';font-weight:700;">' + pct + '% <span style="color:var(--gtb-muted);font-weight:400;">(' + n + ')</span></td>';
+    }
     comboRows.forEach(function (c) {
         var wc = c.winPct >= 60 ? 'var(--gtb-green)' : c.winPct <= 40 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
-        var lowN = c.days < 4 ? ' style="opacity:0.5;"' : '';
-        html += '<tr' + lowN + '>'
-            + '<td class="gtb-t915-date" style="font-family:var(--gtb-mono);">' + c.key + '</td>'
+        var isToday = hasToday && c.key === todayKey;
+        var cls = 'gtb-combo-row' + (isToday ? ' gtb-t915-today' : '');
+        var lowN = (!isToday && c.days < 4) ? ' style="opacity:0.5;"' : '';
+        html += '<tr class="' + cls + '" data-key="' + c.key + '" title="Click to view the NIFTY chart for every day with this combo"' + lowN + '>'
+            + '<td class="gtb-t915-date" style="font-family:var(--gtb-mono);">' + (isToday ? '★ ' : '') + c.key + ' <i class="bi bi-grid-3x3-gap" style="opacity:0.6;"></i></td>'
             + '<td>' + _out(c.outcome) + '</td>'
+            + '<td class="gtb-t915-lvl">' + (c.level || '—') + '</td>'
             + '<td class="gtb-t915-date">' + c.days + '</td>'
             + '<td style="color:' + wc + ';font-weight:800;font-family:var(--gtb-mono);">' + c.winPct + '%</td>'
+            + _vixCell(c.loPct, c.loLegs)
+            + _vixCell(c.hiPct, c.hiLegs)
             + '<td style="color:' + (c.avgPnl >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + ';font-family:var(--gtb-mono);">'
             + (c.avgPnl >= 0 ? '+' : '') + c.avgPnl.toFixed(1) + '</td>'
             + '<td style="color:var(--gtb-green);font-family:var(--gtb-mono);">+' + c.avgMfe.toFixed(1) + '</td>'
@@ -3721,9 +4255,16 @@ function _render915Trend(rows) {
     });
     html += '</tbody></table>';
 
-    html += '<div class="gtb-t915-combo-h"><i class="bi bi-calendar3"></i> Day-by-day</div>';
+    var _matchN = hasTodayRaw ? rows.filter(function (r) { return (r.n + '-' + r.s + '-' + r.b) === todayKeyRaw; }).length : 0;
+    html += '<div class="gtb-t915-combo-h"><i class="bi bi-calendar3"></i> Day-by-day'
+         +  (hasTodayRaw ? '<span style="font-weight:400;color:var(--gtb-muted);"> — ★ ' + _matchN + ' day(s) exactly matched today\&#39;s 9:15 (' + todayKeyRaw + ')</span>' : '')
+         +  '</div>';
     html += '<table class="gtb-t915-table"><thead><tr>'
-         +  '<th>Date</th><th>GIFT</th><th>NIFTY</th><th>SENSEX</th><th>BANK</th><th>Strategy</th><th>Entry Level</th><th>Nifty →12pm</th><th>Result (P/L)</th><th>Max Fav</th><th>Max Adv</th><th>1:1 TP/SL</th><th>Entry @</th><th>Peak @</th>'
+         +  '<th>Date</th><th>GIFT</th><th>NIFTY</th><th>SENSEX</th><th>BANK</th><th>Strategy</th><th>Entry Level</th><th>Nifty →12pm</th>'
+         +  '<th title="India VIX day-open">VIX</th>'
+         +  '<th title="VIX upper band (prev close + daily range)">VIXU</th>'
+         +  '<th title="VIX lower band (prev close − daily range)">VIXL</th>'
+         +  '<th>Result (P/L)</th><th>Max Fav</th><th>Max Adv</th><th>1:1 TP/SL</th><th>Entry @</th><th>Peak @</th>'
          +  '</tr></thead><tbody>';
     rows.forEach(function (r) {
         var mvColor = r.move === 'UP' ? 'var(--gtb-green)' : 'var(--gtb-red)';
@@ -3734,13 +4275,36 @@ function _render915Trend(rows) {
         var tpslHtml= (r.legs && r.legs.length) ? r.legs.map(_legTpsl).join(' ') : empty;
         var entHtml = (r.legs && r.legs.length) ? r.legs.map(function (lg) { return _legTime(lg, 'entryTime'); }).join(' ') : empty;
         var pkHtml  = (r.legs && r.legs.length) ? r.legs.map(function (lg) { return _legTime(lg, 'peakTime'); }).join(' ') : empty;
-        html += '<tr>'
-            + '<td class="gtb-t915-date">' + moment(r.date).format('DD MMM') + '</td>'
+        var rowMatch = hasTodayRaw && (r.n + '-' + r.s + '-' + r.b) === todayKeyRaw;
+
+        // VIX band cells
+        var vixCell = r.vix != null
+            ? '<td style="font-family:var(--gtb-mono);font-size:0.58rem;color:var(--gtb-amber);">' + r.vix.toFixed(2) + '</td>'
+            : '<td style="color:var(--gtb-muted);">—</td>';
+
+        var vixuCell, vixlCell;
+        if (r.vixu != null && r.vixl != null) {
+            // Colour VIXU/VIXL by whether today's open is above/below/within band
+            var nOpen = (function() {
+                // Use NIFTY 9:15 open as a proxy for whether range was relevant
+                return null; // just show the level values — no live open available in history
+            })();
+            vixuCell = '<td style="font-family:var(--gtb-mono);font-size:0.58rem;color:var(--gtb-red);">' + r.vixu.toFixed(2) + '</td>';
+            vixlCell = '<td style="font-family:var(--gtb-mono);font-size:0.58rem;color:var(--gtb-green);">' + r.vixl.toFixed(2) + '</td>';
+        } else {
+            vixuCell = '<td style="color:var(--gtb-muted);">—</td>';
+            vixlCell = '<td style="color:var(--gtb-muted);">—</td>';
+        }
+
+        html += '<tr' + (rowMatch ? ' class="gtb-t915-today"' : '') + '>'
+            + '<td class="gtb-t915-date">' + (rowMatch ? '★ ' : '') + moment(r.date).format('DD MMM')
+            + ' <button class="gtb-day-chart-btn" data-date="' + r.date + '" title="View NIFTY chart for this day"><i class="bi bi-bar-chart-line"></i></button></td>'
             + '<td>' + _cls(r.g) + '</td><td>' + _cls(r.n) + '</td><td>' + _cls(r.s) + '</td><td>' + _cls(r.b) + '</td>'
             + '<td>' + _out(r.outcome) + '</td>'
             + '<td class="gtb-t915-lvl">' + r.level + '</td>'
             + '<td style="color:' + mvColor + ';font-weight:700;font-family:var(--gtb-mono);">'
             + (r.move === 'UP' ? '▲' : '▼') + ' ' + (r.movePct >= 0 ? '+' : '') + r.movePct.toFixed(2) + '%</td>'
+            + vixCell + vixuCell + vixlCell
             + '<td>' + resHtml + '</td>'
             + '<td>' + mfeHtml + '</td>'
             + '<td>' + maeHtml + '</td>'
@@ -3753,22 +4317,448 @@ function _render915Trend(rows) {
     return html;
 }
 
-jQ(document).on('click', '#show-915-backtest', async function (e) {
-    e.preventDefault();
-    showMaximizeOverlay('<i class="bi bi-calendar-week"></i> 9:15 Opening-Trend + Entry-Level P/L Backtest — 60-Day, till 12:00 (GIFT · NIFTY · SENSEX · BANK)',
+async function _gtbShow915Backtest() {
+    showMaximizeOverlay('<i class="bi bi-calendar-week"></i> 9:15 Opening-Trend + Entry-Level P/L Backtest — 1-Year, till 12:00 (GIFT  *  NIFTY  *  SENSEX  *  BANK)',
         '<div style="padding:30px;text-align:center;color:var(--gtb-muted);font-size:0.85rem;">'
-        + '<i class="bi bi-hourglass-split"></i> Building last 60 days of 9:15 trend…</div>');
+        + '<i class="bi bi-hourglass-split"></i> Building ~1 year of 9:15 trend (chunked 5-min fetch, may take ~20–30s)…</div>');
     try {
-        var rows = await _gtbBuild915Trend(60);
+        var rows = await _gtbBuild915Trend(250);
         jQ('#groot-maximize-body').html(_render915Trend(rows));
     } catch (err) {
         jQ('#groot-maximize-body').html('<div style="padding:24px;color:var(--gtb-red);">Error: ' + (err && err.message) + '</div>');
     }
+}
+jQ(document).on('click', '#show-915-backtest', function (e) { e.preventDefault(); _gtbShow915Backtest(); });
+
+// Clear cached backtest data (per-day rows + strike-prob) and rebuild fresh.
+jQ(document).on('click', '#gtb-915-clear', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    try {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && (k.indexOf('GTB_915TREND_') === 0 || k.indexOf('GTB_STRIKEPROB_') === 0)) keys.push(k);
+        }
+        keys.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (er) {}
+    _gtbShow915Backtest();   // rebuild from fresh candles
+});
+
+// ── Day chart popup (from the 9:15 day-by-day table) ──────────────────────────
+function _gtbDayChartPopup() {
+    var el = document.getElementById('gtb-daychart-overlay');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'gtb-daychart-overlay';
+        el.innerHTML = '<div id="gtb-daychart-panel">'
+            + '<div id="gtb-daychart-hd"><span class="gtb-daychart-title"></span>'
+            + '<i class="bi bi-x-lg gtb-daychart-close"></i></div>'
+            + '<div id="gtb-daychart-body"></div></div>';
+        document.body.appendChild(el);
+    }
+    jQ(el).toggleClass('gtb-light', jQ('#main-trade-bot-container').hasClass('gtb-light'));
+    return jQ(el);
+}
+jQ(document).on('click', '.gtb-daychart-close, #gtb-daychart-overlay', function (e) {
+    if (e.target.id === 'gtb-daychart-overlay' || jQ(e.target).closest('.gtb-daychart-close').length) {
+        jQ('#gtb-daychart-overlay').removeClass('active');
+        jQ('#gtb-daychart-body').html('');
+    }
+});
+jQ(document).on('click', '#gtb-daychart-panel', function (e) { e.stopPropagation(); });
+
+// Render one instrument intraday chart (with its strike ref-lines) for a date.
+async function _gtbRenderDayChart(name, date, containerId, height) {
+    var token = INSTRUMENT_TOKENS[name];
+    if (!token) { jQ('#' + containerId).html('<div class="cmd-load">no token</div>'); return; }
+    var res = await getHistoricalDataUsingPromise(token, date, date, '5minute');
+    var candles = (res && res.data && res.data.candles) ? res.data.candles : [];
+    if (!candles.length) { jQ('#' + containerId).html('<div class="cmd-load" style="color:var(--gtb-red);">no data</div>'); return; }
+    var open = parseFloat(candles[0][1]);
+    var sd = getStrikeDetails({ price: open }, name);
+    var refLines = [
+        { key: 'OPEN', value: open },
+        { key: 'AST', value: sd.ustrikeTwo }, { key: 'ASO', value: sd.ustrikeOne },
+        { key: 'BSO', value: sd.bstrikeOne }, { key: 'BST', value: sd.bstrikeTwo },
+    ];
+
+    // Add VIXU / VIXL from the cached backtest rows — values use each instrument's own
+    // PREVIOUS day close (not today's open), so the range is correct.
+    var row915 = _GTB_915_ROWS && _GTB_915_ROWS.filter(function(r){ return r.date === date; })[0];
+    if (row915) {
+        var _vu = (name === 'NIFTY BANK') ? row915.vixu_bank : row915.vixu;
+        var _vl = (name === 'NIFTY BANK') ? row915.vixl_bank : row915.vixl;
+        if (_vu != null) refLines.push({ key: 'VIXU', value: _vu, text: 'VIXU ' + _vu.toFixed(0) });
+        if (_vl != null) refLines.push({ key: 'VIXL', value: _vl, text: 'VIXL ' + _vl.toFixed(0) });
+    }
+
+    _renderLWChart(containerId, candles, refLines, height || 300, { topBar: true });
+}
+
+jQ(document).on('click', '.gtb-day-chart-btn', async function (e) {
+    e.preventDefault(); e.stopPropagation();
+    var date = jQ(this).data('date');
+    var ov = _gtbDayChartPopup();
+    ov.find('.gtb-daychart-title').html('<i class="bi bi-candlestick"></i> NIFTY 50 &amp; BANK NIFTY — ' + moment(date).format('ddd, DD MMM YYYY'));
+    ov.find('#gtb-daychart-body').html(
+        '<div class="gtb-daychart-pair">'
+        + '<div><div class="aoi-chart-t">NIFTY 50</div><div id="gtb-daychart-n50" style="width:100%;height:340px;"></div></div>'
+        + '<div><div class="aoi-chart-t">NIFTY BANK</div><div id="gtb-daychart-bn" style="width:100%;height:340px;"></div></div>'
+        + '</div>');
+    ov.addClass('active');
+    try { await _gtbRenderDayChart('NIFTY 50', date, 'gtb-daychart-n50', 340); } catch (e1) {}
+    try { await _gtbRenderDayChart('NIFTY BANK', date, 'gtb-daychart-bn', 340); } catch (e2) {}
+});
+
+// ── Combo charts popup — every days NIFTY chart for a given 9:15 combo ────────
+function _gtbComboChartPopup() {
+    var el = document.getElementById('gtb-combochart-overlay');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'gtb-combochart-overlay';
+        el.innerHTML = '<div id="gtb-combochart-panel">'
+            + '<div id="gtb-combochart-hd"><span class="gtb-combochart-title"></span>'
+            + '<i class="bi bi-x-lg gtb-combochart-close"></i></div>'
+            + '<div id="gtb-combochart-body"></div></div>';
+        document.body.appendChild(el);
+    }
+    jQ(el).toggleClass('gtb-light', jQ('#main-trade-bot-container').hasClass('gtb-light'));
+    return jQ(el);
+}
+jQ(document).on('click', '.gtb-combochart-close, #gtb-combochart-overlay', function (e) {
+    if (e.target.id === 'gtb-combochart-overlay' || jQ(e.target).closest('.gtb-combochart-close').length) {
+        jQ('#gtb-combochart-overlay').removeClass('active');
+        jQ('#gtb-combochart-body').html('');
+    }
+});
+jQ(document).on('click', '#gtb-combochart-panel', function (e) { e.stopPropagation(); });
+
+jQ(document).on('click', '.gtb-combo-row', async function (e) {
+    e.stopPropagation();
+    var key = jQ(this).data('key');
+    var matches = _GTB_915_ROWS.filter(function (r) { return r.key === key; });
+    if (!matches.length) return;
+    var CAP = 12;                                   // most-recent N charts to limit fetches
+    var show = matches.slice(0, CAP);
+    var ov = _gtbComboChartPopup();
+    ov.find('.gtb-combochart-title').html('<i class="bi bi-grid-3x3-gap"></i> Combo ' + key + ' — ' + matches.length + ' day(s)'
+        + (matches.length > CAP ? ' (showing recent ' + CAP + ')' : ''));
+    ov.addClass('active');
+
+    var grid = '<div class="gtb-combochart-grid">';
+    show.forEach(function (r, i) {
+        var mc = r.move === 'UP' ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        var res = (r.legs || []).map(function (lg) {
+            var t = lg.dir === 'long' ? 'L' : 'S';
+            return '<span style="color:' + (lg.win ? 'var(--gtb-green)' : 'var(--gtb-red)') + ';">' + t + ' ' + (lg.pnl >= 0 ? '+' : '') + lg.pnl.toFixed(0) + '</span>';
+        }).join('  *  ');
+        grid += '<div class="gtb-combochart-cell">'
+            + '<div class="gtb-combochart-lbl"><b>' + moment(r.date).format('DD MMM YY') + '</b>'
+            + ' <span style="color:' + mc + ';font-family:var(--gtb-mono);">' + (r.move === 'UP' ? '▲' : '▼') + ' ' + (r.movePct >= 0 ? '+' : '') + r.movePct.toFixed(2) + '%</span>'
+            + (res ? ' &nbsp;' + res : '') + '</div>'
+            + '<div class="gtb-combochart-sublbl">NIFTY 50</div><div id="gtb-cchart-' + i + '-n" class="gtb-combochart-canvas"></div>'
+            + '<div class="gtb-combochart-sublbl">NIFTY BANK</div><div id="gtb-cchart-' + i + '-b" class="gtb-combochart-canvas"></div>'
+            + '</div>';
+    });
+    grid += '</div>';
+    ov.find('#gtb-combochart-body').html(grid);
+
+    // Fetch + render each days NIFTY + BANK charts sequentially (avoids hammering the API)
+    for (var j = 0; j < show.length; j++) {
+        try { await _gtbRenderDayChart('NIFTY 50',   show[j].date, 'gtb-cchart-' + j + '-n', 175); } catch (e1) {}
+        try { await _gtbRenderDayChart('NIFTY BANK', show[j].date, 'gtb-cchart-' + j + '-b', 175); } catch (e2) {}
+    }
+});
+
+// ── Futures remark-accuracy (#6, reconstructed from 5-min intraday candles) ────
+// Fetches an instrument NSE futures intraday candles and replays the analyzer at
+// EVERY 5-min candle (calling it WITHOUT a name → no side-effects), scoring each
+// remark against the NEXT candle's move. Builds the full days accuracy in one pass.
+async function _gtbFetchFutCandles(name) {
+    var instName = name === 'NIFTY 50' ? 'NIFTY' : name === 'NIFTY BANK' ? 'BANKNIFTY' : name;
+    var fut = null;
+    jQ.each(FUTURE_INTRUMENT_LIST, function (i, it) { if (it.name === instName) fut = it; });
+    if (!fut) return null;
+    var pres = await getHistoricalDataUsingPromise(fut.instrument_token, _gtbPrevDay(), _gtbPrevDay(), 'day');
+    var cres = await getHistoricalDataUsingPromise(fut.instrument_token, _gtbCurrDay(), _gtbCurrDayTo(), '5minute');
+    var map = function (it) { return { date: moment(it[0]).format('HH:mm'), open: it[1], high: it[2], low: it[3], close: it[4], volume: it[5], oi: it[6] }; };
+    var intr = (cres && cres.data && cres.data.candles) ? _gtbTrimCandles(cres.data.candles).map(map) : [];
+    var pcs  = (pres && pres.data && pres.data.candles) ? pres.data.candles.map(map) : [];
+    if (intr.length < 3 || !pcs.length) return null;
+    return { lotSize: fut.lot_size, prevDay: pcs[pcs.length - 1], intraday: intr };
+}
+
+function _gtbReconstructFutAccuracy(cd, vix, accMap) {
+    var intr = cd.intraday, prevDay = cd.prevDay, lot = cd.lotSize;
+    for (var i = 1; i < intr.length - 1; i++) {            // need prev (momentum) and next (outcome)
+        var upTo = intr.slice(0, i + 1);
+        var hi = 0, lo = Infinity, vol = 0;
+        for (var j = 0; j <= i; j++) { hi = Math.max(hi, parseFloat(intr[j].high)); lo = Math.min(lo, parseFloat(intr[j].low)); vol += parseFloat(intr[j].volume) || 0; }
+        var synth = { date: intr[i].date, open: intr[0].open, high: hi, low: lo, close: intr[i].close, volume: vol, oi: intr[i].oi };
+        var res = _gtbClassifyFutures(synth, prevDay, lot, upTo, { vix: vix, baselineVix: 13 }); // pure, no HTML
+        var dir = res.dir;
+        if (dir === 0) continue;
+        var realized = parseFloat(intr[i + 1].close) - parseFloat(intr[i].close);  // next 5-min move
+        var a = accMap[res.remark] || { hits: 0, total: 0, pts: 0 };
+        a.total++; if ((dir > 0 && realized > 0) || (dir < 0 && realized < 0)) a.hits++;
+        a.pts += (dir > 0 ? realized : -realized);
+        accMap[res.remark] = a;
+    }
+}
+
+jQ(document).on('click', '#show-fut-accuracy', async function (e) {
+    e.preventDefault();
+    showMaximizeOverlay('<i class="bi bi-bullseye"></i> Futures Remark Accuracy — 5-min intraday reconstruction',
+        '<div style="padding:30px;text-align:center;color:var(--gtb-muted);font-size:0.85rem;"><i class="bi bi-hourglass-split"></i> Replaying today\&#39;s 5-min candles…</div>');
+    var instruments = ['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK'];
+    var vix = 0; try { vix = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['INDIA VIX'] || {}).ltp) || 0; } catch (er) {}
+    var accMap = {}, used = [];
+    // Fetch all instruments' futures candles in parallel, then reconstruct (CPU) in order
+    var cds = await Promise.all(instruments.map(function (nm) {
+        return _gtbFetchFutCandles(nm).catch(function () { return null; });
+    }));
+    cds.forEach(function (cd, idx) {
+        if (cd) { try { _gtbReconstructFutAccuracy(cd, vix, accMap); used.push(instruments[idx]); } catch (err) {} }
+    });
+    var rows = Object.keys(accMap).map(function (key) {
+        var a = accMap[key];
+        return { remark: key, total: a.total, hits: a.hits, win: a.total ? Math.round(a.hits / a.total * 100) : 0,
+                 avgPts: a.total ? (a.pts / a.total) : 0, dir: getFuturesTrendScore(key) };
+    }).sort(function (x, y) { return y.total - x.total; });
+
+    var body;
+    if (!rows.length) {
+        body = '<div style="padding:24px;color:var(--gtb-red);">No intraday futures data available to reconstruct.</div>';
+    } else {
+        body = '<div class="gtb-t915-sub">Replayed every 5-min candle today across <b>' + used.join(', ') + '</b>. For each futures REMARK: how often its predicted direction matched the <b>next 5-min candle</b>. '
+             + 'Higher win-rate + positive avg-pts = reliable; dimmed rows are low-sample.</div>';
+        body += '<table class="gtb-t915-table"><thead><tr><th>Remark</th><th>Bias</th><th>Samples</th><th>Win-rate</th><th>Avg pts (5-min)</th></tr></thead><tbody>';
+        rows.forEach(function (r) {
+            var bc = r.dir > 0 ? 'up' : r.dir < 0 ? 'down' : 'flat';
+            var wc = r.win >= 60 ? 'var(--gtb-green)' : r.win <= 40 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+            body += '<tr' + (r.total < 8 ? ' style="opacity:0.55;"' : '') + '>'
+                + '<td><span class="gtb-t915-out ' + bc + '">' + r.remark + '</span></td>'
+                + '<td style="font-family:var(--gtb-mono);color:' + (r.dir > 0 ? 'var(--gtb-green)' : r.dir < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)') + ';">' + (r.dir > 0 ? '▲' : r.dir < 0 ? '▼' : '—') + '</td>'
+                + '<td class="gtb-t915-date">' + r.total + '</td>'
+                + '<td style="font-family:var(--gtb-mono);font-weight:800;color:' + wc + ';">' + r.win + '%</td>'
+                + '<td style="font-family:var(--gtb-mono);color:' + (r.avgPts >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + ';">' + (r.avgPts >= 0 ? '+' : '') + r.avgPts.toFixed(1) + '</td>'
+                + '</tr>';
+        });
+        body += '</tbody></table>';
+    }
+    jQ('#groot-maximize-body').html('<div class="gtb-t915-wrap">' + body + '</div>');
+});
+
+// ── OI Scan — all instruments (incl. weighted constituents) ───────────────────
+// Reuses the OI data already cached in INSTRUMENT_SCORE_MAP[name].oiData (no fetch).
+function _gtbAllOIInstruments() {
+    var mainOrder = ['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'CRUDEOILM', 'USDINR'];
+    var seen = {}, list = [];
+    function _has(n) { var od = INSTRUMENT_SCORE_MAP[n] && INSTRUMENT_SCORE_MAP[n].oiData; return od && od.tableData && od.tableData.length; }
+    mainOrder.forEach(function (n) { if (_has(n)) { list.push({ name: n, group: 'Index / Stock' }); seen[n] = 1; } });
+    // Weighted constituents (Nifty 50 + Bank Nifty), de-duped, sorted by name
+    var w = Object.keys(NIFTY_50_WEIGHTED_STOCKS || {}).concat(Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {}));
+    w.sort().forEach(function (n) { if (!seen[n] && _has(n)) { list.push({ name: n, group: 'Weighted constituent' }); seen[n] = 1; } });
+    return list;
+}
+
+// Builds the compact OI list table HTML directly from oiData (works for any instrument).
+function _gtbOITableHtml(oiData, pc) {
+    var h = '<table class="aoi-tbl"><thead><tr>'
+        + '<th>Strike</th><th>DeltaCE OI</th><th>CE OBV</th><th>DeltaPE OI</th><th>PE OBV</th><th>CE Signal</th><th>PE Signal</th><th>Score</th>'
+        + '</tr></thead><tbody>';
+    jQ.each(oiData.tableData, function (i, item) {
+        var r = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], pc);
+        var c = item['CE_OBV'], p = item['PE_OBV'];
+        var ceObv = parseFloat(c[c.length - 1].obv), peObv = parseFloat(p[p.length - 1].obv);
+        var ceCh = parseFloat(item['CHG_OI_CE']), peCh = parseFloat(item['CHG_OI_PE']);
+        var sc = r.score > 0 ? 'var(--gtb-green)' : r.score < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        h += '<tr' + (item['ATM_STRIKE'] ? ' class="atm"' : '') + '>'
+            + '<td><b>' + item['STRIKE'] + (item['ATM_STRIKE'] ? ' ★' : '') + '</b></td>'
+            + '<td style="color:' + (ceCh > 0 ? 'var(--gtb-red)' : ceCh < 0 ? 'var(--gtb-green)' : 'inherit') + '">' + item['CHG_OI_CE'] + '</td>'
+            + '<td style="color:' + (ceObv > 0 ? 'var(--gtb-red)' : ceObv < 0 ? 'var(--gtb-green)' : 'inherit') + '">' + ceObv.toFixed(1) + '</td>'
+            + '<td style="color:' + (peCh > 0 ? 'var(--gtb-green)' : peCh < 0 ? 'var(--gtb-red)' : 'inherit') + '">' + item['CHG_OI_PE'] + '</td>'
+            + '<td style="color:' + (peObv > 0 ? 'var(--gtb-green)' : peObv < 0 ? 'var(--gtb-red)' : 'inherit') + '">' + peObv.toFixed(1) + '</td>'
+            + '<td>' + r.ceLabel + '</td><td>' + r.peLabel + '</td>'
+            + '<td style="color:' + sc + ';font-weight:700;">' + (r.score > 0 ? '+' : '') + r.score.toFixed(2) + '</td>'
+            + '</tr>';
+    });
+    h += '</tbody></table>';
+    return h;
+}
+
+// One strike cell in the comparison matrix: CE/PE DeltaOI, OBV, CE/PE signal, score.
+function _gtbOICell(item, pc, isATM) {
+    if (!item) return '<td class="oic-cell empty">—</td>';
+    var r = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], pc);
+    var c = item['CE_OBV'], p = item['PE_OBV'];
+    var ceObv = parseFloat(c[c.length - 1].obv), peObv = parseFloat(p[p.length - 1].obv);
+    var ceCh = parseFloat(item['CHG_OI_CE']), peCh = parseFloat(item['CHG_OI_PE']);
+    var sc = r.score > 0 ? 'var(--gtb-green)' : r.score < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var ceLC = (r.ceLabel.indexOf('WRITE') >= 0 || r.ceLabel.indexOf('UNWIND') >= 0) ? 'var(--gtb-red)' : (r.ceLabel.indexOf('BUY') >= 0 || r.ceLabel.indexOf('COV') >= 0) ? 'var(--gtb-green)' : 'var(--gtb-muted)';
+    var peLC = (r.peLabel.indexOf('WRITE') >= 0 || r.peLabel.indexOf('UNWIND') >= 0) ? 'var(--gtb-green)' : (r.peLabel.indexOf('BUY') >= 0 || r.peLabel.indexOf('COV') >= 0) ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    return '<td class="oic-cell' + (isATM ? ' atm' : '') + '">'
+        + '<div class="oic-strike">' + item['STRIKE'] + (isATM ? ' ★' : '') + '</div>'
+        + '<div class="oic-kv"><span>CEDelta</span> <b style="color:' + (ceCh > 0 ? 'var(--gtb-red)' : ceCh < 0 ? 'var(--gtb-green)' : 'inherit') + '">' + item['CHG_OI_CE'] + '</b>'
+        + ' &nbsp;<span>PEDelta</span> <b style="color:' + (peCh > 0 ? 'var(--gtb-green)' : peCh < 0 ? 'var(--gtb-red)' : 'inherit') + '">' + item['CHG_OI_PE'] + '</b></div>'
+        + '<div class="oic-kv"><span>OBV</span> C<b style="color:' + (ceObv > 0 ? 'var(--gtb-red)' : ceObv < 0 ? 'var(--gtb-green)' : 'inherit') + '">' + ceObv.toFixed(0) + '</b>'
+        + ' P<b style="color:' + (peObv > 0 ? 'var(--gtb-green)' : peObv < 0 ? 'var(--gtb-red)' : 'inherit') + '">' + peObv.toFixed(0) + '</b></div>'
+        + '<div class="oic-sig"><span style="color:' + ceLC + '">' + r.ceLabel + '</span> / <span style="color:' + peLC + '">' + r.peLabel + '</span></div>'
+        + '<div class="oic-score" style="color:' + sc + '">' + (r.score > 0 ? '+' : '') + r.score.toFixed(2) + '</div>'
+        + '</td>';
+}
+
+// Compact cell — score-only heatmap (strike + score, background tinted by score).
+function _gtbOICellCompact(item, pc, isATM) {
+    if (!item) return '<td class="oic-cell-c empty">—</td>';
+    var r = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], pc);
+    var s = r.score, mag = Math.min(1, Math.abs(s) / 4.5);
+    var bg = s > 0 ? 'rgba(0,229,160,' + (0.12 + mag * 0.5).toFixed(2) + ')'
+           : s < 0 ? 'rgba(255,77,106,' + (0.12 + mag * 0.5).toFixed(2) + ')' : 'transparent';
+    var col = s > 0 ? 'var(--gtb-green)' : s < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    return '<td class="oic-cell-c' + (isATM ? ' atm' : '') + '" style="background:' + bg + ';" '
+        + 'title="' + item['STRIKE'] + '  *  CE ' + r.ceLabel + ' / PE ' + r.peLabel + '  *  DeltaCE ' + item['CHG_OI_CE'] + ' DeltaPE ' + item['CHG_OI_PE'] + '">'
+        + '<div class="oic-c-strike">' + item['STRIKE'] + (isATM ? '★' : '') + '</div>'
+        + '<div class="oic-c-score" style="color:' + col + '">' + (s > 0 ? '+' : '') + s.toFixed(1) + '</div></td>';
+}
+
+// Horizontal comparison matrix — one row per instrument, strike columns centred on ATM.
+function _gtbOICompareTableHtml(list, mode) {
+    var cellFn = (mode === 'compact') ? _gtbOICellCompact : _gtbOICell;
+    var OFFS = [-2, -1, 0, 1, 2];
+    var h = '<table class="oic-matrix"><thead><tr>'
+        + '<th class="oic-sticky">Instrument</th><th>OI</th><th>PCR</th>'
+        + OFFS.map(function (o) { return '<th>' + (o === 0 ? 'ATM' : 'ATM' + (o > 0 ? '+' + o : o)) + '</th>'; }).join('')
+        + '</tr></thead><tbody>';
+    var lastGroup = '';
+    list.forEach(function (it) {
+        if (it.group !== lastGroup) { h += '<tr class="oic-grouprow"><td colspan="' + (3 + OFFS.length) + '">' + it.group + '</td></tr>'; lastGroup = it.group; }
+        var name = it.name, sm = INSTRUMENT_SCORE_MAP[name] || {}, oiData = sm.oiData;
+        var td = oiData.tableData, atmIdx = -1;
+        for (var i = 0; i < td.length; i++) { if (td[i]['ATM_STRIKE']) { atmIdx = i; break; } }
+        if (atmIdx < 0) atmIdx = Math.floor(td.length / 2);
+        var pc = 0; try { pc = parseFloat(generateTrend(name).change) || 0; } catch (e) {}
+        var oiScore = (sm.oi_obv != null) ? sm.oi_obv : 0;
+        var scColor = oiScore > 0 ? 'var(--gtb-green)' : oiScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        h += '<tr><td class="oic-sticky"><b>' + name + '</b></td>'
+            + '<td style="color:' + scColor + ';font-weight:700;font-family:var(--gtb-mono);">' + (oiScore > 0 ? '+' : '') + (typeof oiScore === 'number' ? oiScore.toFixed(1) : oiScore) + '</td>'
+            + '<td style="font-family:var(--gtb-mono);">' + (oiData.pcr != null ? oiData.pcr : '—') + '</td>';
+        OFFS.forEach(function (off) {
+            var idx = atmIdx + off;
+            h += cellFn((idx >= 0 && idx < td.length) ? td[idx] : null, pc, off === 0);
+        });
+        h += '</tr>';
+    });
+    h += '</tbody></table>';
+    return h;
+}
+
+jQ(document).on('click', '#show-all-oi', function (e) {
+    e.preventDefault();
+    var list = _gtbAllOIInstruments();
+    if (!list.length) {
+        showMaximizeOverlay('<i class="bi bi-layers-fill"></i> OI Compare — All Instruments',
+            '<div style="padding:30px;text-align:center;color:var(--gtb-muted);">No OI data scanned yet. Run a refresh (with OI scan) first.</div>');
+        return;
+    }
+    _GTB_OIC_LIST = list;
+    var mode = localStorage.getItem('GTB_OIC_MODE') || 'detailed';
+    var html = '<div class="aoi-wrap">'
+        + '<div class="oic-toolbar">'
+        + '<span class="aoi-note" style="margin:0;"><i class="bi bi-info-circle"></i> ' + list.length
+        + ' instruments  *  rows = instruments, columns = strikes around ATM (★).</span>'
+        + '<div class="oic-modes">'
+        + '<button class="oic-mode-btn' + (mode !== 'compact' ? ' active' : '') + '" data-mode="detailed"><i class="bi bi-table"></i> Detailed</button>'
+        + '<button class="oic-mode-btn' + (mode === 'compact' ? ' active' : '') + '" data-mode="compact"><i class="bi bi-grid-3x3"></i> Compact</button>'
+        + '</div></div>'
+        + '<div id="oic-table-wrap" style="overflow:auto;">' + _gtbOICompareTableHtml(list, mode) + '</div></div>';
+    showMaximizeOverlay('<i class="bi bi-layers-fill"></i> OI Compare Matrix — All Instruments (' + list.length + ')', html);
+});
+
+// Detailed / Compact toggle
+jQ(document).on('click', '.oic-mode-btn', function () {
+    var m = jQ(this).data('mode');
+    localStorage.setItem('GTB_OIC_MODE', m);
+    jQ('.oic-mode-btn').removeClass('active');
+    jQ(this).addClass('active');
+    jQ('#oic-table-wrap').html(_gtbOICompareTableHtml(_GTB_OIC_LIST, m));
+});
+
+// ── Commodities popup — GIFT NIFTY + Crude (chart, OI, futures) ────────────────
+// Renders OI/OBV bar charts into the given containers from cached oiData.
+function _cmdRenderOI(oiData, oiSel, obvSel) {
+    var x = ['x'], ceCh = ['CH CE OI'], peCh = ['CH PE OI'], ceObv = ['CE OBV'], peObv = ['PE OBV'], atm = -1;
+    jQ.each(oiData.tableData, function (i, item) {
+        x.push(item['STRIKE']); ceCh.push(item['CHG_OI_CE']); peCh.push(item['CHG_OI_PE']);
+        var c = item['CE_OBV'], p = item['PE_OBV'];
+        ceObv.push(parseFloat(c[c.length - 1].obv).toFixed(1));
+        peObv.push(parseFloat(p[p.length - 1].obv).toFixed(1));
+        if (item['ATM_STRIKE']) atm = i;
+    });
+    var strikes = x.slice(1);
+    _renderBarChart(oiSel,  { labels: strikes, atm: atm, height: 170, series: [
+        { label: 'CH CE OI', color: OI_COLORS.CE_OI, values: ceCh.slice(1) },
+        { label: 'CH PE OI', color: OI_COLORS.PE_OI, values: peCh.slice(1) } ] });
+    _renderBarChart(obvSel, { labels: strikes, atm: atm, height: 170, series: [
+        { label: 'CE OBV', color: OI_COLORS.CE_OBV, values: ceObv.slice(1) },
+        { label: 'PE OBV', color: OI_COLORS.PE_OBV, values: peObv.slice(1) } ] });
+}
+
+jQ(document).on('click', '#show-commodities', function (e) {
+    e.preventDefault();
+    var body = ''
+        + '<div class="cmd-grid">'
+        + '<div class="cmd-cell"><div class="cmd-t"><i class="bi bi-globe-asia-australia"></i> GIFT NIFTY</div><div id="cmd-gift-chart" style="height:300px;"></div></div>'
+        + '<div class="cmd-cell"><div class="cmd-t"><i class="bi bi-droplet-fill"></i> CRUDEOILM</div><div id="cmd-crude-chart" style="height:300px;"></div></div>'
+        + '</div>'
+        + '<div class="cmd-t"><i class="bi bi-bar-chart-fill"></i> CRUDEOILM — OI / OBV</div>'
+        + '<div class="cmd-oi-charts"><div><div class="cmd-st">OI Change (CE/PE)</div><div id="cmd-crude-oi"></div></div>'
+        + '<div><div class="cmd-st">OBV (CE/PE)</div><div id="cmd-crude-obv"></div></div></div>'
+        + '<div id="cmd-crude-oi-table" style="overflow-x:auto;margin-top:6px;"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading OI…</div></div>'
+        + '<div class="cmd-t"><i class="bi bi-graph-up"></i> CRUDEOILM — Futures Trend</div>'
+        + '<div id="cmd-crude-fut" class="cmd-fut"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading futures…</div></div>';
+    showMaximizeOverlay('<i class="bi bi-droplet-fill"></i> Commodities — GIFT NIFTY &amp; Crude', body);
+
+    setTimeout(async function () {
+        // Charts
+        try { await showTopChart('GIFT NIFTY', '#cmd-gift-chart', 300); } catch (e1) {}
+        try { await showTopChartMCX('CRUDEOILM', 300, '#cmd-crude-chart'); } catch (e2) {}
+
+        // ── Load CRUDEOILM futures fresh ──────────────────────────────────────
+        var fres = null;
+        try {
+            fres = await showFutureDetailsMCX('CRUDEOILM');
+            setFutureDetails('CRUDEOILM', fres);
+            if (!INSTRUMENT_SCORE_MAP['CRUDEOILM']) INSTRUMENT_SCORE_MAP['CRUDEOILM'] = {};
+            INSTRUMENT_SCORE_MAP['CRUDEOILM'].futures_trend = getFuturesTrendScore(fres['REMARK']);
+        } catch (e3) {}
+        var prem  = jQ('#CRUDEOILM-futures-premium').html() || '';
+        var fut   = jQ('#CRUDEOILM-futures').html() || '';
+        var trend = jQ('#CRUDEOILM-futures-trend').html() || '';
+        var vwap  = jQ('#CRUDEOILM-futures-vwap').html() || '';
+        jQ('#cmd-crude-fut').html((prem || fut || trend || vwap)
+            ? ('<div class="cmd-fut-prem">' + prem + '</div>' + fut + '<div class="cmd-fut-meta">' + trend + ' ' + vwap + '</div>')
+            : '<div class="cmd-load" style="color:var(--gtb-red);">Futures unavailable.</div>');
+
+        // ── Load CRUDEOILM OI fresh ───────────────────────────────────────────
+        try {
+            if (fres) await showPrictionProbabiltyMCX('CRUDEOILM', fres);
+            showOIOBVBarChart('CRUDEOILM');   // populates INSTRUMENT_SCORE_MAP['CRUDEOILM'].oiData
+        } catch (e4) {}
+        var oiData = INSTRUMENT_SCORE_MAP['CRUDEOILM'] && INSTRUMENT_SCORE_MAP['CRUDEOILM'].oiData;
+        if (oiData && oiData.tableData && oiData.tableData.length) {
+            var pc = 0; try { pc = parseFloat(generateTrend('CRUDEOILM').change) || 0; } catch (e5) {}
+            try { _cmdRenderOI(oiData, '#cmd-crude-oi', '#cmd-crude-obv'); } catch (e6) {}
+            jQ('#cmd-crude-oi-table').html(_gtbOITableHtml(oiData, pc));
+        } else {
+            jQ('#cmd-crude-oi-table').html('<div class="cmd-load" style="color:var(--gtb-red);">CRUDEOILM OI unavailable.</div>');
+        }
+    }, 80);
 });
 
 // ── Strike-level probability backtest ─────────────────────────────────────────
 // Backtests how price behaves once it touches each strike level, using daily OHLC.
-// Levels are deterministic from the day's open + fixed strike steps (NSE_STRIKE_DIFF):
+// Levels are deterministic from the days open + fixed strike steps (NSE_STRIKE_DIFF):
 //   ASO = open+s1, AST = open+s1+s2, BSO = open−s1, BST = open−s1−s2.
 // For each past day we check if a level was *touched* (high≥ up-level / low≤ down-level)
 // and whether the day *closed* on the bullish or bearish side of that level:
@@ -3855,8 +4845,8 @@ function _renderStrikeProb(name, r) {
     });
     html += '</tbody></table>';
     html += '<div class="gtb-prob-foot"><i class="bi bi-info-circle"></i> '
-         +  'Low “Touched” counts = small sample, treat the % with caution. Levels use a fixed strike step ('
-         +  r.s1 + '/' + r.s2 + '), computed from each day’s open.</div>';
+         +  'Low "Touched" counts = small sample, treat the % with caution. Levels use a fixed strike step ('
+         +  r.s1 + '/' + r.s2 + '), computed from each days open.</div>';
     html += '</div>';
     return html;
 }
@@ -3980,7 +4970,8 @@ function showComponentOI(name) {
     return html;
 }
 
-function showComponentOITable(name) {
+function showComponentOITable(name, suffix) {
+    suffix = suffix || '';
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
@@ -4071,9 +5062,9 @@ function showComponentOITable(name) {
     html += '</tr>'
 
     // Row 2 — Column sub-headers with interpretation subtitle
-    //   Layout per strike group: CE Δ | CE OBV | CE IV% | STRIKE | PE IV% | PE OBV | PE Δ
+    //   Layout per strike group: CE Delta | CE OBV | CE IV% | STRIKE | PE IV% | PE OBV | PE Delta
     let colDefs = [
-        { label: 'CE Δ',   hint: 'OI Change',   hintColor: '#f85149',
+        { label: 'CE Delta',   hint: 'OI Change',   hintColor: '#f85149',
           title: 'CE OI Change: +ve = new call positions (resistance). −ve = positions closed.' },
         { label: 'CE OBV', hint: 'Vol Pressure', hintColor: '#f85149',
           title: 'CE OBV: cumulative volume on up-ticks vs down-ticks today. +ve = call buying (bearish).' },
@@ -4085,7 +5076,7 @@ function showComponentOITable(name) {
           title: 'PE Implied Volatility %. ▲ = put buyers paying up (PE BUY / bearish). ▼ = put writers active (PE WRITE / support floor).' },
         { label: 'PE OBV', hint: 'Vol Pressure', hintColor: '#3fb950',
           title: 'PE OBV: cumulative volume on up-ticks vs down-ticks today. +ve = put buying (bearish).' },
-        { label: 'PE Δ',   hint: 'OI Change',   hintColor: '#3fb950',
+        { label: 'PE Delta',   hint: 'OI Change',   hintColor: '#3fb950',
           title: 'PE OI Change: +ve = new put positions (support). −ve = positions closed.' },
     ];
     html += '<tr>'
@@ -4170,7 +5161,7 @@ function showComponentOITable(name) {
     html += '</tr>'
 
     html += '</tbody></table></div>'
-    jQ("#" + tempName + "-component-oi-list-table").html(html);
+    jQ("#" + tempName + "-component-oi-list-table" + suffix).html(html);
 }
 
 function showComponent(name, index) {
@@ -4222,7 +5213,6 @@ async function commonRefershChart(name, that) {
         } else {
             await showTopChartMCX(name);
         }
-
         that.attr("disabled", false)
     } catch (e) {
         console.log(e)
@@ -4252,7 +5242,6 @@ async function commonRefershFutures(name, that) {
     }
 }
 
-
 jQ(document).on("click", ".refresh-oi-obv", function () {
     let name = jQ(this).attr("data-name");
     let that = jQ(this)
@@ -4278,7 +5267,6 @@ async function commonRefershOIOBV(name, that) {
     }
 }
 
-
 jQ(document).on("click", ".refresh-advance-decline", function () {
     let name = jQ(this).attr("data-name");
     let that = jQ(this)
@@ -4294,7 +5282,6 @@ async function commonRefershAdvanceDecline(name, that) {
         console.log(e)
     }
 }
-
 
 jQ(document).on("click", ".refresh-advance-decline-futures", function () {
     let name = jQ(this).attr("data-name");
@@ -4369,7 +5356,7 @@ jQ(document).on("click", ".show-info", function () {
 });
 
 // ── Candlestick chart helper (LightweightCharts v5) ─────────────────────────
-function _renderLWChart(containerId, candles, refLines, chartHeight) {
+function _renderLWChart(containerId, candles, refLines, chartHeight, opts) {
     let container = document.getElementById(containerId.replace('#', ''));
     if (!container) return;
     container.innerHTML = '';
@@ -4437,8 +5424,24 @@ function _renderLWChart(containerId, candles, refLines, chartHeight) {
             title: '',
         });
     });
-    // Overlay legend — tiny table in the top-right corner listing all ref levels
-    if (refLines && refLines.length) {
+    // opts.topBar  — horizontal strip overlaid at the top of the chart
+    // opts.hideLegend — suppress the corner legend (used when caller has its own strip)
+    if (refLines && refLines.length && opts && opts.topBar) {
+        var _tbEl = document.createElement('div');
+        _tbEl.className = 'lw-ref-topbar';
+        _tbEl.innerHTML = (refLines || []).map(function(rl) {
+            var key   = rl.key || rl.text.split(':')[0].trim();
+            var label = _shortLabel[key] || key;
+            var color = lineColors[key] || '#7d8590';
+            var val   = parseFloat(rl.value);
+            var valStr = val >= 1000 ? val.toLocaleString('en-IN', {maximumFractionDigits: 0}) : val.toFixed(1);
+            return '<span class="lw-ref-tb-item">'
+                + '<span class="lw-ref-tb-lbl" style="color:' + color + ';">' + label + '</span>'
+                + '<span class="lw-ref-tb-val">' + valStr + '</span>'
+                + '</span>';
+        }).join('');
+        container.appendChild(_tbEl);
+    } else if (refLines && refLines.length && !(opts && opts.hideLegend)) {
         var _legendEl = document.createElement('div');
         _legendEl.className = 'lw-ref-legend';
         var _legendHtml = '';
@@ -4650,7 +5653,21 @@ async function showTopChart(name, bindtoDivId, chartHeight) {
         let containerId = (bindtoDivId || ('#' + tempName + '-chart')).replace('#', '');
         let _chartCandles = _gtbTrimCandles(data.data.candles);
         // No explicit height → let _renderLWChart fill the row cell via clientHeight
-        _renderLWChart(containerId, _chartCandles, refLines, chartHeight);
+        _renderLWChart(containerId, _chartCandles, refLines, chartHeight, { hideLegend: true });
+
+        // Populate levels strip in the row title bar (if it exists)
+        var _levelsRow = document.getElementById(tempName + '-chart-levels');
+        if (_levelsRow) {
+            var _lMeta = { OPEN:{s:'O',c:'#ffbe0b'}, VIXU:{s:'V↑',c:'#38bdf8'}, VIXL:{s:'V↓',c:'#38bdf8'},
+                           AST:{s:'A+',c:'#3fb950'}, ASO:{s:'A',c:'#3fb950'}, BSO:{s:'B',c:'#f85149'}, BST:{s:'B-',c:'#f85149'} };
+            var _fmt = function(v) { v=parseFloat(v); return v>=1000?v.toLocaleString('en-IN',{maximumFractionDigits:1}):v.toFixed(1); };
+            _levelsRow.innerHTML = refLines.map(function(rl) {
+                var m = _lMeta[rl.key] || {s:rl.key,c:'#7d8590'};
+                return '<span style="display:inline-flex;align-items:center;gap:1px;white-space:nowrap;">'
+                    + '<span style="font-size:0.44rem;font-weight:700;color:'+m.c+';letter-spacing:0.02em;">'+m.s+'</span>'
+                    + '<span style="font-size:0.44rem;color:var(--gtb-muted,#7d8590);">'+_fmt(rl.value)+'</span></span>';
+            }).join('<span style="color:#30363d;font-size:0.4rem;"> · </span>');
+        }
 
         let ltp = _chartCandles[_chartCandles.length - 1][4];
         jQ('#' + tempName + '-ltp').html(parseFloat(ltp).toLocaleString('en-IN'));
@@ -4721,6 +5738,106 @@ function _renderBarChart(containerId, config) {
     });
     chart.render();
     el._apexChart = chart;
+}
+
+// ── Range Scoreboard ──────────────────────────────────────────────────────────
+// Renders one row: label | tri-color range bar with needle | signed value
+function _rsbRow(label, val, min, max, unit) {
+    var pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+    var zeroPct = Math.max(0, Math.min(100, ((0 - min) / (max - min)) * 100));
+    var valColor = val > 0 ? '#3fb950' : val < 0 ? '#f85149' : '#7d8590';
+    var signed = (val > 0 ? '+' : '') + (Number.isInteger(val) ? val : parseFloat(val).toFixed(1));
+
+    // Three-segment gradient bar: left=red, center=yellow at zero, right=green
+    var barHtml = '<div style="position:relative;height:6px;background:linear-gradient(to right,#f8514960 0%,#fbbf2460 '
+        + zeroPct + '%,#3fb95060 100%);border-radius:3px;flex:1;">'
+        // Zero line
+        + '<div style="position:absolute;left:' + zeroPct + '%;top:-2px;width:1px;height:10px;background:#ffffff30;"></div>'
+        // Needle
+        + '<div style="position:absolute;left:' + pct + '%;top:-3px;width:3px;height:12px;background:' + valColor + ';border-radius:2px;transform:translateX(-50%);box-shadow:0 0 4px ' + valColor + '88;"></div>'
+        + '</div>';
+
+    return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">'
+        + '<span style="font-size:0.48rem;color:var(--gtb-muted);font-weight:700;width:46px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.3px;">' + label + '</span>'
+        + barHtml
+        + '<span style="font-size:0.52rem;font-weight:700;color:' + valColor + ';width:30px;text-align:right;flex-shrink:0;">' + signed + (unit || '') + '</span>'
+        + '</div>';
+}
+
+function renderRangeScoreboard() {
+    var el = document.getElementById('gtb-range-sb');
+    if (!el) return;
+
+    // Gather sub-scores
+    var s915 = (ALL_9_15_CLOSE_SCORE      || 0)
+             + (NIFTY_50_9_15_CLOSE_SCORE || 0)
+             + (NIFTY_BANK_9_15_CLOSE_SCORE || 0)
+             + (GIFT_NIFTY_9_15_CLOSE_SCORE || 0)
+             + (SENSEX_9_15_CLOSE_SCORE   || 0)
+             + (RELIANCE_9_15_CLOSE_SCORE || 0)
+             + (HDFCBANK_9_15_CLOSE_SCORE || 0);
+
+    var sAD = (ALL_ADVANCE_DECLINE_SCORE       || 0)
+            + (NIFTY_50_ADVANCE_DECLINE_SCORE  || 0)
+            + (NIFTY_BANK_ADVANCE_DECLINE_SCORE|| 0);
+
+    var sFT = (ALL_FUTURES_TREND_SCORE        || 0)
+            + (NIFTY_50_FUTURES_TREND_SCORE   || 0)
+            + (NIFTY_BANK_FUTURES_TREND_SCORE || 0);
+
+    var sOI = (NIFTY_50_OI_OBV_SCORE  || 0)
+            + (NIFTY_BANK_OI_OBV_SCORE|| 0)
+            + (RELIANCE_OI_OBV_SCORE  || 0)
+            + (HDFCBANK_OI_OBV_SCORE  || 0)
+            + (ICICIBANK_OI_OBV_SCORE || 0);
+
+    var sCOMP = (NIFTY_50_COMPONENT_SCORE  || 0)
+              + (NIFTY_BANK_COMPONENT_SCORE || 0);
+
+    var total = parseFloat((s915 + sAD + sFT + sOI + sCOMP).toFixed(2));
+
+    // Verdict
+    var verdict, vColor, vIcon, vBg;
+    if (total >= 5) {
+        verdict = 'LONG'; vColor = '#3fb950'; vIcon = 'bi-arrow-up-circle-fill'; vBg = 'rgba(63,185,80,0.12)';
+    } else if (total < 0) {
+        verdict = 'SHORT'; vColor = '#f85149'; vIcon = 'bi-arrow-down-circle-fill'; vBg = 'rgba(248,81,73,0.12)';
+    } else {
+        verdict = 'WAIT'; vColor = '#fbbf24'; vIcon = 'bi-hourglass-split'; vBg = 'rgba(251,191,36,0.08)';
+    }
+
+    // Confidence bar (0–100%) based on how far from 0
+    var maxScore = 40;
+    var confPct = Math.min(100, Math.round(Math.abs(total) / maxScore * 100));
+    var html = '';
+    html += _rsbRow('9:15',     s915,  -7,   7);
+    html += _rsbRow('ADV/DEC',  sAD,   -3,   3);
+    html += _rsbRow('FUTURES',  sFT,   -3,   3);
+    html += _rsbRow('OI/OBV',   sOI,  -10,  10);
+    html += _rsbRow('COMP WT',  sCOMP, -5,   5);
+
+    // Divider
+    html += '<div style="border-top:1px solid var(--gtb-border2);margin:4px 0 6px;"></div>';
+
+    // Verdict panel
+    html += '<div style="background:' + vBg + ';border:1px solid ' + vColor + '44;border-radius:6px;padding:5px 8px;'
+          + 'display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          // Left: icon + label
+          + '<div style="display:flex;align-items:center;gap:5px;">'
+          + '  <i class="bi ' + vIcon + '" style="font-size:1rem;color:' + vColor + ';"></i>'
+          + '  <span style="font-size:0.9rem;font-weight:900;color:' + vColor + ';letter-spacing:0.5px;">' + verdict + '</span>'
+          + '</div>'
+          // Right: confidence bar + score
+          + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">'
+          + '  <span style="font-size:0.58rem;color:' + vColor + ';font-weight:700;">' + (total > 0 ? '+' : '') + total + '</span>'
+          + '  <div style="width:60px;height:4px;background:#ffffff10;border-radius:2px;">'
+          + '    <div style="width:' + confPct + '%;height:100%;background:' + vColor + ';border-radius:2px;"></div>'
+          + '  </div>'
+          + '  <span style="font-size:0.44rem;color:var(--gtb-muted);">confidence ' + confPct + '%</span>'
+          + '</div>'
+          + '</div>';
+
+    el.innerHTML = html;
 }
 
 function _renderGauge(containerId, value, min, max) {
@@ -4857,7 +5974,8 @@ function getOISignal(score, atmCeLabel, atmPeLabel) {
     else                  return { signal: 'NEUTRAL',       color: '#383d41', bg: '#e2e3e5' };
 }
 
-function updateScoresOfTrend(name, score, atmCeLabel, atmPeLabel) {
+function updateScoresOfTrend(name, score, atmCeLabel, atmPeLabel, suffix) {
+    suffix = suffix || '';
     let sig = getOISignal(score, atmCeLabel, atmPeLabel);
     let scoreCls = score > 0 ? 'sv-badge sv-badge-green' : 'sv-badge sv-badge-red';
     let signalCls = sig.signal === 'BUY' || sig.signal === 'STRONG BUY' ? 'sv-badge sv-badge-green'
@@ -4865,7 +5983,87 @@ function updateScoresOfTrend(name, score, atmCeLabel, atmPeLabel) {
                   : 'sv-badge sv-badge-amber';
     let scoreHtml = '<span class="' + scoreCls + '"><i class="bi bi-speedometer"></i> ' + (score > 0 ? '+' : '') + parseFloat(score).toFixed(2) + '</span>'
     scoreHtml += '<span class="' + signalCls + '">' + sig.signal + '</span>'
-    jQ("#" + name.replaceAll(" ", "-") + "-oi-score").html(scoreHtml)
+    jQ("#" + name.replaceAll(" ", "-").replaceAll("&", "-") + "-oi-score" + suffix).html(scoreHtml)
+}
+
+// ── OI Compare Matrix inline render ────────────────────────────────────────
+// Uses _gtbOICellCompact — same compact heatmap cells as the popup OI matrix.
+// ATM-2 to ATM+2 as horizontal columns inside the instrument row.
+function _gtbRenderOIMatrix(name, suffix) {
+    suffix = suffix || '';
+    var entry = INSTRUMENT_SCORE_MAP[name];
+    if (!entry || !entry.oiData || !entry.oiData.tableData || !entry.oiData.tableData.length) return;
+    var oiData = entry.oiData, td = oiData.tableData;
+    var tid = name.replace(/ /g, '-').replace(/&/g, '-');
+
+    var atmIdx = -1;
+    for (var i = 0; i < td.length; i++) { if (td[i]['ATM_STRIKE']) { atmIdx = i; break; } }
+    if (atmIdx < 0) atmIdx = Math.floor(td.length / 2);
+
+    var pc = 0; try { pc = parseFloat(generateTrend(name).change) || 0; } catch(e) {}
+
+    var OFFS = [-2, -1, 0, 1, 2];
+    var header = '<tr>' + OFFS.map(function(o) {
+        return '<th>' + (o === 0 ? 'ATM' : 'ATM' + (o > 0 ? '+' + o : o)) + '</th>';
+    }).join('') + '</tr>';
+    var cells = '<tr>' + OFFS.map(function(off) {
+        var idx = atmIdx + off;
+        return _gtbOICellCompact((idx >= 0 && idx < td.length) ? td[idx] : null, pc, off === 0);
+    }).join('') + '</tr>';
+
+    var pcr = oiData.pcr, oiScore = entry.oi_obv || 0;
+    var pcrCol = (pcr >= 1) ? 'var(--gtb-green)' : 'var(--gtb-red)';
+    var oiCol  = oiScore > 0 ? 'var(--gtb-green)' : oiScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var meta = '<div class="gtb-oim-meta">'
+        + 'PCR <b style="color:' + pcrCol + '">' + (pcr != null ? parseFloat(pcr).toFixed(2) : '—') + '</b>'
+        + ' &nbsp; OI <b style="color:' + oiCol + '">' + (oiScore > 0 ? '+' : '') + parseFloat(oiScore).toFixed(1) + '</b>'
+        + '</div>';
+
+    jQ('#' + tid + '-oimatrix' + suffix).html(
+        '<table class="oic-matrix"><thead>' + header + '</thead><tbody>' + cells + '</tbody></table>' + meta
+    );
+}
+
+// ── Weightage / sub-score bar update ──────────────────────────────────────
+// For index rows: renders top-6 constituent score bars.
+// For stock rows: renders own sub-score breakdown (9:15/trend/futures/OI/total).
+function _gtbUpdateWeightBars(nameOrIndex, suffix) {
+    suffix = suffix || '';
+    var wMap = nameOrIndex === 'NIFTY 50' ? NIFTY_50_WEIGHTED_STOCKS
+             : nameOrIndex === 'NIFTY BANK' ? NIFTY_BANK_WEIGHTED_STOCKS : null;
+
+    function _setBar(barId, valId, val, maxAbs) {
+        var barEl = document.getElementById(barId);
+        var valEl = document.getElementById(valId);
+        if (!barEl || !valEl) return;
+        var col = val > 0.3 ? 'var(--gtb-green)' : val < -0.3 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+        barEl.style.width = Math.min(100, Math.abs(val) / maxAbs * 100) + '%';
+        barEl.style.background = col;
+        valEl.textContent = (val > 0 ? '+' : '') + (Number.isInteger(val) ? val : val.toFixed(1));
+        valEl.style.color = col;
+    }
+
+    if (wMap) {
+        // Index row — constituent bars
+        var top6 = Object.entries(wMap).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+        top6.forEach(function(kv) {
+            var wname = kv[0];
+            var wtid  = wname.replace(/ /g,'-').replace(/&/g,'-');
+            var s = INSTRUMENT_SCORE_MAP[wname] && INSTRUMENT_SCORE_MAP[wname].score;
+            if (!s) return;
+            _setBar(wtid + '-wt-bar' + suffix, wtid + '-wt-score' + suffix, s.total, 8);
+        });
+    } else {
+        // Stock row — own sub-score breakdown
+        var tid  = nameOrIndex.replace(/ /g,'-').replace(/&/g,'-');
+        var s = INSTRUMENT_SCORE_MAP[nameOrIndex] && INSTRUMENT_SCORE_MAP[nameOrIndex].score;
+        if (!s) return;
+        _setBar(tid+'-sub-915'+suffix+'-bar',   tid+'-sub-915'+suffix,   s.nine_fifteen || 0, 1);
+        _setBar(tid+'-sub-trend'+suffix+'-bar', tid+'-sub-trend'+suffix, s.current_trend || 0, 1);
+        _setBar(tid+'-sub-fut'+suffix+'-bar',   tid+'-sub-fut'+suffix,   s.futures_trend || 0, 1);
+        _setBar(tid+'-sub-oi'+suffix+'-bar',    tid+'-sub-oi'+suffix,    s.oi_obv || 0, 3);
+        _setBar(tid+'-sub-total'+suffix+'-bar', tid+'-sub-total'+suffix, s.total || 0, 8);
+    }
 }
 
 function show915Trend(name) {
@@ -4948,7 +6146,189 @@ function show915Trend(name) {
     jQ("#" + tempName + "-nine-fifteen-close-table").html(summaryHtml + chipHtml);
 }
 
-function showOIOBVBarChart(name) {
+// ── Signal label matrix only (no chart) — used in stock viewer card ───────────
+function _buildOISignalRow(signals) {
+    let html = '<div class="sv-oi-matrix">';
+    signals.forEach(function(s) {
+        let res = s.res;
+        let ceBg = (res.ceLabel === 'CE WRITE' || res.ceLabel === 'CE UNWIND') ? '#6b1a1a'
+                 : (res.ceLabel === 'CE BUY'   || res.ceLabel === 'CE COV')    ? '#1a4a1a' : '#1c2128';
+        let peBg = (res.peLabel === 'PE WRITE' || res.peLabel === 'PE UNWIND') ? '#1a4a1a'
+                 : (res.peLabel === 'PE BUY'   || res.peLabel === 'PE COV')    ? '#6b1a1a' : '#1c2128';
+        let ceColor = ceBg === '#1a4a1a' ? '#3fb950' : ceBg === '#6b1a1a' ? '#f85149' : '#7d8590';
+        let peColor = peBg === '#1a4a1a' ? '#3fb950' : peBg === '#6b1a1a' ? '#f85149' : '#7d8590';
+        let scoreColor = res.score > 0 ? '#3fb950' : res.score < 0 ? '#f85149' : '#7d8590';
+        let ivHtml = (s.ceIV || s.peIV)
+            ? '<div class="sv-oi-m-iv"><span>' + (s.ceIV || '—') + '</span><span style="color:var(--gtb-muted);">IV</span><span>' + (s.peIV || '—') + '</span></div>' : '';
+        html += '<div class="sv-oi-m-cell' + (s.isATM ? ' sv-oi-m-atm' : '') + '">'
+            + '<div class="sv-oi-m-strike">' + s.strike + (s.isATM ? ' ★' : '') + '</div>'
+            + '<div class="sv-oi-m-label" style="background:' + ceBg + ';color:' + ceColor + ';">' + (res.ceLabel || '—') + '</div>'
+            + '<div class="sv-oi-m-label" style="background:' + peBg + ';color:' + peColor + ';margin-top:2px;">' + (res.peLabel || '—') + '</div>'
+            + ivHtml
+            + '<div class="sv-oi-m-score" style="color:' + scoreColor + ';">' + (res.score > 0 ? '+' : '') + parseFloat(res.score).toFixed(1) + '</div>'
+            + '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// ── Shared: build OI+OBV bar chart SVG + signal row from pre-computed signals ──
+// opts: { svgW, svgH, padL, padR, padT, padB, sigRowClass, labelFontSize }
+function _buildOIChartHtml(signals, opts) {
+    opts = opts || {};
+    let n = signals.length;
+    let svgW  = opts.svgW  || 300;
+    let svgH  = opts.svgH  || 110;
+    let padL  = opts.padL  || 22;
+    let padR  = opts.padR  || 6;
+    let padT  = opts.padT  || 8;
+    let padB  = opts.padB  || 14;
+    let sigRowClass = opts.sigRowClass || 'sv-oi-sig-row';
+    let labelFs = opts.labelFontSize || 5;
+    let sigRowPad = opts.sigRowPad || '2px 28px 4px 28px';
+
+    let totalH    = svgH - padT - padB;
+    let oiH_total = Math.floor(totalH * 0.55);
+    let obvH_total= Math.floor(totalH * 0.40);
+    let splitGap  = totalH - oiH_total - obvH_total;
+    let oiTop  = padT;
+    let obvTop = padT + oiH_total + splitGap;
+    let chartW = svgW - padL - padR;
+    let groupW = chartW / n;
+    let barW   = Math.max(2, groupW / 5 - 1);
+
+    let maxOI  = Math.max(1, Math.max.apply(null, signals.map(function(s) { return Math.max(Math.abs(s.ceChg), Math.abs(s.peChg)); })));
+    function _oiBarH(v)  { return oiH_total  * Math.abs(v) / maxOI; }
+
+    let obvVals = [];
+    signals.forEach(function(s) { if (s.ceOBV !== null) obvVals.push(Math.abs(s.ceOBV)); if (s.peOBV !== null) obvVals.push(Math.abs(s.peOBV)); });
+    let obvMax = obvVals.length ? Math.max.apply(null, obvVals) : 1;
+    function _obvBarH(v) { return v !== null ? obvH_total * Math.abs(v) / (obvMax || 1) : 0; }
+
+    let svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:' + svgH + 'px;display:block;">';
+
+    svg += '<text x="1" y="' + (oiTop + 5) + '" fill="#7d8590" font-size="4.5" font-family="monospace">OI</text>';
+    svg += '<text x="1" y="' + (obvTop + 5) + '" fill="#7d8590" font-size="4.5" font-family="monospace">OBV</text>';
+    svg += '<line x1="' + padL + '" y1="' + (oiTop + oiH_total) + '" x2="' + (svgW - padR) + '" y2="' + (oiTop + oiH_total) + '" stroke="#3d444d" stroke-width="0.5"/>';
+    svg += '<line x1="' + padL + '" y1="' + (obvTop + obvH_total) + '" x2="' + (svgW - padR) + '" y2="' + (obvTop + obvH_total) + '" stroke="#3d444d" stroke-width="0.5"/>';
+
+    signals.forEach(function(s, i) {
+        let cx = padL + i * groupW + groupW / 2;
+        let totalBarsW = barW * 4 + 3;
+        let x0 = cx - totalBarsW / 2;
+
+        if (s.isATM) svg += '<rect x="' + (padL + i * groupW) + '" y="' + padT + '" width="' + groupW + '" height="' + totalH + '" fill="#fbbf2408"/>';
+
+        let ceOIH = _oiBarH(s.ceChg), peOIH = _oiBarH(s.peChg);
+        svg += '<rect x="' + x0 + '" y="' + (oiTop + oiH_total - ceOIH) + '" width="' + barW + '" height="' + ceOIH + '" fill="#f85149" opacity="0.9"><title>CE OI Δ: ' + (s.ceChg >= 0 ? '+' : '') + s.ceChg.toFixed(0) + '</title></rect>';
+        svg += '<rect x="' + (x0 + barW + 1) + '" y="' + (oiTop + oiH_total - peOIH) + '" width="' + barW + '" height="' + peOIH + '" fill="#3fb950" opacity="0.9"><title>PE OI Δ: ' + (s.peChg >= 0 ? '+' : '') + s.peChg.toFixed(0) + '</title></rect>';
+
+        let ceOBVH = _obvBarH(s.ceOBV), peOBVH = _obvBarH(s.peOBV);
+        svg += '<rect x="' + (x0 + barW * 2 + 2) + '" y="' + (obvTop + obvH_total - ceOBVH) + '" width="' + barW + '" height="' + ceOBVH + '" fill="#58a6ff" opacity="0.85"><title>CE OBV: ' + (s.ceOBV !== null ? s.ceOBV.toFixed(0) : '—') + '</title></rect>';
+        svg += '<rect x="' + (x0 + barW * 3 + 3) + '" y="' + (obvTop + obvH_total - peOBVH) + '" width="' + barW + '" height="' + peOBVH + '" fill="#bc8cff" opacity="0.85"><title>PE OBV: ' + (s.peOBV !== null ? s.peOBV.toFixed(0) : '—') + '</title></rect>';
+
+        let labelColor = s.isATM ? '#fbbf24' : '#7d8590';
+        svg += '<text x="' + cx + '" y="' + (svgH - 2) + '" fill="' + labelColor + '" font-size="' + labelFs + '" font-family="monospace" text-anchor="middle" font-weight="' + (s.isATM ? 'bold' : 'normal') + '">' + s.strike + (s.isATM ? '★' : '') + '</text>';
+    });
+
+    let lgY = padT + 1;
+    svg += '<rect x="' + padL + '" y="' + lgY + '" width="5" height="3" fill="#f85149" opacity="0.85"/><text x="' + (padL + 6) + '" y="' + (lgY + 3) + '" fill="#f85149" font-size="4.5">CE OI</text>';
+    svg += '<rect x="' + (padL + 28) + '" y="' + lgY + '" width="5" height="3" fill="#3fb950" opacity="0.85"/><text x="' + (padL + 34) + '" y="' + (lgY + 3) + '" fill="#3fb950" font-size="4.5">PE OI</text>';
+    svg += '<rect x="' + (padL + 56) + '" y="' + lgY + '" width="5" height="3" fill="#58a6ff" opacity="0.85"/><text x="' + (padL + 62) + '" y="' + (lgY + 3) + '" fill="#58a6ff" font-size="4.5">CE OBV</text>';
+    svg += '<rect x="' + (padL + 92) + '" y="' + lgY + '" width="5" height="3" fill="#bc8cff" opacity="0.85"/><text x="' + (padL + 98) + '" y="' + (lgY + 3) + '" fill="#bc8cff" font-size="4.5">PE OBV</text>';
+    svg += '</svg>';
+
+    let rowHtml = '<div class="' + sigRowClass + '" style="padding:' + sigRowPad + ';">';
+    signals.forEach(function(s) {
+        let res = s.res;
+        let ceBg = (res.ceLabel === 'CE WRITE' || res.ceLabel === 'CE UNWIND') ? '#6b1a1a'
+                 : (res.ceLabel === 'CE BUY'   || res.ceLabel === 'CE COV')    ? '#1a4a1a' : '#1c2128';
+        let peBg = (res.peLabel === 'PE WRITE' || res.peLabel === 'PE UNWIND') ? '#1a4a1a'
+                 : (res.peLabel === 'PE BUY'   || res.peLabel === 'PE COV')    ? '#6b1a1a' : '#1c2128';
+        let ceColor = ceBg === '#1a4a1a' ? '#3fb950' : ceBg === '#6b1a1a' ? '#f85149' : '#7d8590';
+        let peColor = peBg === '#1a4a1a' ? '#3fb950' : peBg === '#6b1a1a' ? '#f85149' : '#7d8590';
+        let scoreColor = res.score > 0 ? '#3fb950' : res.score < 0 ? '#f85149' : '#7d8590';
+        let ivHtml = (s.ceIV || s.peIV)
+            ? '<div class="sv-oi-m-iv"><span>' + (s.ceIV || '—') + '</span><span style="color:var(--gtb-muted);">IV</span><span>' + (s.peIV || '—') + '</span></div>' : '';
+        rowHtml += '<div class="sv-oi-m-cell' + (s.isATM ? ' sv-oi-m-atm' : '') + '">'
+            + '<div class="sv-oi-m-label" style="background:' + ceBg + ';color:' + ceColor + ';">' + (res.ceLabel || '—') + '</div>'
+            + '<div class="sv-oi-m-label" style="background:' + peBg + ';color:' + peColor + ';margin-top:2px;">' + (res.peLabel || '—') + '</div>'
+            + ivHtml
+            + '<div class="sv-oi-m-score" style="color:' + scoreColor + ';">' + (res.score > 0 ? '+' : '') + parseFloat(res.score).toFixed(1) + '</div>'
+            + '</div>';
+    });
+    rowHtml += '</div>';
+
+    return '<div style="padding:4px 6px 0;">' + svg + '</div>' + rowHtml;
+}
+
+// ── Compact OI matrix for stock viewer ────────────────────────────────────────
+function _svRenderOIMatrix(name, tempName, oiData, suffix) {
+    let tableData = oiData.tableData || [];
+    if (!tableData.length) return;
+
+    let priceChange = 0;
+    try { priceChange = parseFloat(generateTrend(name).change) || 0; } catch(e) {}
+
+    let oiScore = 0, atmCeLabel = null, atmPeLabel = null;
+    let signals = [];
+
+    function _latestOBV(obvList) {
+        if (!obvList || !obvList.length) return null;
+        for (let j = obvList.length - 1; j >= 0; j--) {
+            let v = (typeof obvList[j] === 'object') ? (obvList[j].obv != null ? obvList[j].obv : null) : obvList[j];
+            if (v !== null && v !== undefined) return parseFloat(v);
+        }
+        return null;
+    }
+    function _latestIV(ivList) {
+        if (!ivList || !ivList.length) return null;
+        for (let j = ivList.length - 1; j >= 0; j--) {
+            if (ivList[j] && ivList[j].iv !== null && ivList[j].iv !== undefined) return parseFloat(ivList[j].iv).toFixed(1);
+        }
+        return null;
+    }
+
+    tableData.forEach(function(item) {
+        let res = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], priceChange);
+        let isATM = !!item['ATM_STRIKE'];
+        oiScore += res.score;
+        if (isATM) { atmCeLabel = res.ceLabel; atmPeLabel = res.peLabel; }
+        signals.push({
+            strike: item['STRIKE'], isATM: isATM,
+            ceChg: parseFloat(item['CHG_OI_CE']) || 0,
+            peChg: parseFloat(item['CHG_OI_PE']) || 0,
+            ceOBV: _latestOBV(item['CE_OBV']),
+            peOBV: _latestOBV(item['PE_OBV']),
+            ceIV: _latestIV(item['CE_IV']),
+            peIV: _latestIV(item['PE_IV']),
+            res: res
+        });
+    });
+
+    let mHtml = _buildOIChartHtml(signals);
+
+    // PCR
+    let pcr = parseFloat(oiData.pcr || 0).toFixed(2);
+    let pcrColor = parseFloat(pcr) > 1.3 ? '#3fb950' : parseFloat(pcr) > 0.7 ? '#fbbf24' : '#f85149';
+    let pcrHtml = '<span style="font-size:0.48rem;padding:1px 5px;border-radius:3px;border:1px solid ' + pcrColor + '44;color:' + pcrColor + ';font-weight:700;">PCR ' + pcr + '</span>';
+    jQ('#' + tempName + '-pcr-probability' + suffix).html(pcrHtml);
+
+    // Score badge
+    updateScoresOfTrend(name, oiScore, atmCeLabel, atmPeLabel, suffix);
+
+    // Render matrix into the oi body (replaces the bar charts)
+    jQ('#' + tempName + '-oi' + suffix).html(mHtml);
+    jQ('#' + tempName + '-obv' + suffix).html('');
+    jQ('#' + tempName + '-oi-signal-row' + suffix).html('');
+
+    // Update the INSTRUMENT_SCORE_MAP oi_obv for scoring
+    if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+    INSTRUMENT_SCORE_MAP[name].oi_obv = oiScore;
+}
+
+function showOIOBVBarChart(name, suffix) {
+    suffix = suffix || '';
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
 
@@ -4975,6 +6355,7 @@ function showOIOBVBarChart(name) {
     if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
     INSTRUMENT_SCORE_MAP[name].oiData = oiData;
 
+
     let pcrHtml = ''
     let chPcrHtml = ''
 
@@ -4985,8 +6366,8 @@ function showOIOBVBarChart(name) {
         return '<span title="' + tip + ' PCR" class="sv-badge ' + cls + '">' + label + ':' + val + '</span>';
     }
     pcrHtml = pcrBadge(oiData['pcr'], 'P');
-    chPcrHtml = pcrBadge(oiData['chPcr'], 'Δ');
-    jQ("#" + tempName + "-pcr-probability").html(pcrHtml + chPcrHtml)
+    chPcrHtml = pcrBadge(oiData['chPcr'], 'Delta');
+    jQ("#" + tempName + "-pcr-probability" + suffix).html(pcrHtml + chPcrHtml)
 
     let priceChange = 0;
     try {
@@ -5037,7 +6418,7 @@ function showOIOBVBarChart(name) {
     });
 
     let atmSignal = strikeSignals.find(function(s) { return s.isATM; });
-    updateScoresOfTrend(name, oiScore, atmSignal ? atmSignal.ceLabel : null, atmSignal ? atmSignal.peLabel : null);
+    updateScoresOfTrend(name, oiScore, atmSignal ? atmSignal.ceLabel : null, atmSignal ? atmSignal.peLabel : null, suffix);
 
     columnsOi.push(x)
     columnsOi.push(oiCECH)
@@ -5048,22 +6429,73 @@ function showOIOBVBarChart(name) {
     columnsObv.push(oiPEOBV)
 
     let strikes = x.slice(1); // strip 'x' header
-    _renderBarChart('#' + tempName + '-oi', {
-        labels: strikes,
-        series: [
-            { label: 'CH CE OI', color: OI_COLORS.CE_OI, values: oiCECH.slice(1) },
-            { label: 'CH PE OI', color: OI_COLORS.PE_OI, values: oiPECH.slice(1) },
-        ],
-        atm: atmIndex, height: 110,
-    });
-    _renderBarChart('#' + tempName + '-obv', {
-        labels: strikes,
-        series: [
-            { label: 'CE OBV', color: OI_COLORS.CE_OBV, values: oiCEOBV.slice(1) },
-            { label: 'PE OBV', color: OI_COLORS.PE_OBV, values: oiPEOBV.slice(1) },
-        ],
-        atm: atmIndex, height: 110,
-    });
+
+    // Inline row: use compact SVG bars (ApexCharts needs ~100px min, unusable at row scale)
+    function _svgMiniBar(containerId, seriesList, atmIdx) {
+        let el = document.getElementById(containerId.replace(/^#/, ''));
+        if (!el) return;
+        let W = el.clientWidth || 260, H = 56;
+        let n = seriesList[0].values.length;
+        if (!n) { el.innerHTML = '<span style="color:#7d8590;font-size:0.5rem;padding:2px;">no data</span>'; return; }
+        // max abs across all series
+        let maxV = 0;
+        seriesList.forEach(function(s) { s.values.forEach(function(v) { let a = Math.abs(+v||0); if (a>maxV) maxV=a; }); });
+        if (!maxV) maxV = 1;
+        let barWPct = parseInt(localStorage.getItem('GTB_OI_BAR_W') || '60') / 100;
+        let barW = Math.max(2, Math.floor((W / n) / seriesList.length * barWPct));
+        let groupW = barW * seriesList.length + 1;
+        let svg = '<svg width="' + W + '" height="' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">';
+        let midY = Math.round(H / 2);
+        // zero line
+        svg += '<line x1="0" y1="' + midY + '" x2="' + W + '" y2="' + midY + '" stroke="#30363d" stroke-width="1"/>';
+        for (let i = 0; i < n; i++) {
+            let gx = Math.round(i * (W / n));
+            // ATM highlight
+            if (i === atmIdx) svg += '<rect x="' + gx + '" y="0" width="' + Math.round(W/n) + '" height="' + H + '" fill="#fbbf2418" rx="1"/>';
+            seriesList.forEach(function(s, si) {
+                let v = +s.values[i] || 0;
+                let bh = Math.round((Math.abs(v) / maxV) * (midY - 2));
+                let by = v >= 0 ? midY - bh : midY;
+                let bx = gx + si * (barW + 1);
+                svg += '<rect x="' + bx + '" y="' + by + '" width="' + barW + '" height="' + Math.max(1,bh) + '" fill="' + s.color + '" opacity="0.85" rx="1"/>';
+            });
+            // ATM tick below
+            if (i === atmIdx) svg += '<text x="' + (gx + Math.round(W/n)/2) + '" y="' + (H-1) + '" text-anchor="middle" font-size="5" fill="#fbbf24">▲</text>';
+        }
+        svg += '</svg>';
+        el.innerHTML = svg;
+    }
+
+    _svgMiniBar('#' + tempName + '-oi' + suffix, [
+        { label: 'CH CE OI', color: OI_COLORS.CE_OI, values: oiCECH.slice(1) },
+        { label: 'CH PE OI', color: OI_COLORS.PE_OI, values: oiPECH.slice(1) },
+    ], atmIndex);
+    _svgMiniBar('#' + tempName + '-obv' + suffix, [
+        { label: 'CE OBV', color: OI_COLORS.CE_OBV, values: oiCEOBV.slice(1) },
+        { label: 'PE OBV', color: OI_COLORS.PE_OBV, values: oiPEOBV.slice(1) },
+    ], atmIndex);
+
+    // Shared x-axis labels (strikes) below both charts — rendered once
+    (function() {
+        let axEl = document.getElementById(tempName + '-oiobv-xaxis');
+        if (!axEl || !strikes.length) return;
+        let W = axEl.clientWidth || 260;
+        let n = strikes.length;
+        let slotW = W / n;
+        let svg = '<svg width="' + W + '" height="14" xmlns="http://www.w3.org/2000/svg" style="display:block;">';
+        for (let i = 0; i < n; i++) {
+            let cx = Math.round(i * slotW + slotW / 2);
+            let lbl = String(strikes[i]);
+            // Abbreviate: drop last 3 zeros if present (e.g. 24500 → 24.5k or just last digits)
+            let short = lbl.length > 5 ? lbl.slice(-4) : lbl;
+            let isAtm = (i === atmIndex);
+            svg += '<text x="' + cx + '" y="10" text-anchor="middle" font-size="' + (isAtm ? '6' : '5.5') + '" '
+                 + 'fill="' + (isAtm ? '#fbbf24' : '#7d8590') + '" font-weight="' + (isAtm ? '700' : '400') + '">'
+                 + short + '</text>';
+        }
+        svg += '</svg>';
+        axEl.innerHTML = svg;
+    })();
 
     // Strike signal annotation row — shows CE/PE interpretation per strike below the charts
     let signalRowHtml = '<div style="display:flex;gap:2px;margin-top:4px;flex-wrap:nowrap;overflow-x:auto;">';
@@ -5085,20 +6517,21 @@ function showOIOBVBarChart(name) {
         signalRowHtml += '</div>';
     }
     signalRowHtml += '</div>';
-    jQ("#" + tempName + "-oi-signal-row").html(signalRowHtml);
+    jQ("#" + tempName + "-oi-signal-row" + suffix).html(signalRowHtml);
 
-    showComponentOITable(name)
+    showComponentOITable(name, suffix);
 }
 
 // ── Futures Data Fetcher ───────────────────────────────────────────────────────
 // Fetches futures intraday (5-min) and previous day candles for an instrument.
 // Computes VWAP (volume-weighted avg price) from intraday candles.
-// Determines futures remark (LONG / SHORT / LONG_UNWINDING / SHORT_COVERING /
-// BULLS_CONSOLIDATING / BEARS_CONSOLIDATING etc.) from OI + price change:
-//   Price↑ + OI↑ → LONG (fresh longs)
-//   Price↓ + OI↓ → SHORT_COVERING (longs exiting)
-//   Price↓ + OI↑ → SHORT (fresh shorts = bearish)
-//   Price↑ + OI↓ → LONG_UNWINDING (longs exiting on rise)
+// Determines futures remark (LONG / SHORT / SHORT_COVERING / LONG_UNWINDING /
+// BULLS_CONSOLIDATING / BEARS_CONSOLIDATING etc.) from OI + price change — the
+// standard OI matrix:
+//   Price↑ + OI↑ → LONG           (fresh longs = bullish)
+//   Price↓ + OI↑ → SHORT          (fresh shorts = bearish)
+//   Price↑ + OI↓ → SHORT_COVERING (shorts buying back = bullish)
+//   Price↓ + OI↓ → LONG_UNWINDING (longs exiting = bearish)
 // Also computes futures premium = futures LTP − spot LTP.
 // USDINR / CRUDEOILM: premium skipped (no spot traded on same exchange).
 // Returns data passed to setFutureDetails() for UI render and to INSTRUMENT_SCORE_MAP.
@@ -5120,6 +6553,7 @@ async function showFutureDetails(name) {
             futures = item;
         }
     })
+    if (!futures) { console.log('No NSE future contract for ' + name); return null; }
     let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbPrevDay(), _gtbPrevDay(), 'day');
     // Fetch intraday 5-minute candles for real VWAP calculation
     let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbCurrDay(), _gtbCurrDayTo(), '5minute');
@@ -5164,12 +6598,11 @@ async function showFutureDetails(name) {
         oi: lastCandle.oi
     };
 
-    let resp = {}
-    if (tempName == "BANKNIFTY") {
-        resp = showTableAiBankNiftyPrediction(dailyCandle, prevDayCandle, futures['lot_size'], intradayCandles)
-    } else {
-        resp = showTableAiNiftyPrediction(dailyCandle, prevDayCandle, futures['lot_size'], intradayCandles)
-    }
+    // Single unified futures-remark analyzer for all instrument types (NIFTY / BANK / stocks / MCX)
+    var _vixLtp = 0;
+    try { _vixLtp = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['INDIA VIX'] || {}).ltp) || 0; } catch (e) {}
+    let resp = showTableAiNiftyPrediction(dailyCandle, prevDayCandle, futures['lot_size'], intradayCandles,
+        { vix: _vixLtp, baselineVix: 13, name: name })
     resp['quote'] = dailyCandle
     resp['instrument_token'] = futures['instrument_token']
     resp['tradingsymbol'] = futures['tradingsymbol']
@@ -5188,42 +6621,119 @@ async function showFutureDetails(name) {
 
 // Computes price signal, OI signal, and short-covering flag from futures data.
 // Uses VWAP position + recent candle trend as primary signals — not just pChange vs prevClose.
-function computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, changeinOpenInterest, pchangeinOpenInterest) {
-    // Recent candle trend: last 5 candles (25 min) — count consecutive closes up vs down
-    let last5 = (intradayCandles && intradayCandles.length >= 2) ? intradayCandles.slice(-5) : [];
-    let upCandles = 0, downCandles = 0;
-    for (let ci = 1; ci < last5.length; ci++) {
-        if (parseFloat(last5[ci].close) > parseFloat(last5[ci - 1].close)) upCandles++;
-        else if (parseFloat(last5[ci].close) < parseFloat(last5[ci - 1].close)) downCandles++;
+// opts (all optional — absent = legacy behavior):
+//   vix, baselineVix → volatility-adaptive thresholds
+//   dayOpenOI, currOI → intraday OI build (current vs day-open), blended with day-over-day
+//   premium, prevPremium → premium-trend confirmation (exposed in result)
+function computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, changeinOpenInterest, pchangeinOpenInterest, opts) {
+    opts = opts || {};
+
+    // ── #4 VIX-adaptive thresholds — scale base thresholds by relative volatility ──
+    var volScale = 1;
+    if (opts.vix && opts.baselineVix && opts.baselineVix > 0) {
+        volScale = Math.max(0.6, Math.min(2.5, opts.vix / opts.baselineVix));
     }
-    let recentBullish = upCandles >= 3;   // 3 of last 4 transitions closing higher
-    let recentBearish = downCandles >= 3;
+    var oiThresh    = 0.5 * volScale;   // % OI change to be meaningful
+    var oiUnwind    = 1.0 * volScale;   // % OI fall = covering/unwinding
+    var priceThresh = 0.1 * volScale;   // % price tie-breaker
+
+    // ── #2 Recent candle trend (last 5) WITH volume confirmation ──
+    let last5 = (intradayCandles && intradayCandles.length >= 2) ? intradayCandles.slice(-5) : [];
+    let upCandles = 0, downCandles = 0, upVol = 0, downVol = 0;
+    for (let ci = 1; ci < last5.length; ci++) {
+        var cc = parseFloat(last5[ci].close), pp = parseFloat(last5[ci - 1].close), vv = parseFloat(last5[ci].volume) || 0;
+        if (cc > pp) { upCandles++; upVol += vv; }
+        else if (cc < pp) { downCandles++; downVol += vv; }
+    }
+    // require the dominant direction to also carry the volume (no-volume moves discounted)
+    let recentBullish = upCandles >= 3 && upVol >= downVol;
+    let recentBearish = downCandles >= 3 && downVol >= upVol;
 
     // VWAP position — is current price above institutional average?
     let aboveVwap = parseFloat(lastPrice) >= parseFloat(vwap);
 
-    // Price signal: VWAP is primary, candle trend confirms, pChange breaks ties
+    // Price signal: VWAP primary, candle+volume trend confirms, pChange breaks ties
     let price;
-    if      (aboveVwap && recentBullish)                     price = "+";   // above VWAP + trending up
-    else if (aboveVwap && pChange > 0.1 && !recentBearish)   price = "+";   // above VWAP + day positive + not reversing
-    else if (!aboveVwap && recentBearish)                    price = "-";   // below VWAP + trending down
-    else if (!aboveVwap && pChange < -0.1 && !recentBullish) price = "-";   // below VWAP + day negative + not recovering
-    else if (aboveVwap && recentBearish)                     price = "-";   // above VWAP but last 5 candles turning — weakening
-    else if (!aboveVwap && recentBullish)                    price = "+-";  // below VWAP but recovering — mixed
-    else                                                     price = "+-";  // no conviction
+    if      (aboveVwap && recentBullish)                              price = "+";
+    else if (aboveVwap && pChange > priceThresh && !recentBearish)    price = "+";
+    else if (!aboveVwap && recentBearish)                             price = "-";
+    else if (!aboveVwap && pChange < -priceThresh && !recentBullish)  price = "-";
+    else if (aboveVwap && recentBearish)                              price = "-";
+    else if (!aboveVwap && recentBullish)                             price = "+-";
+    else                                                              price = "+-";
 
-    // OI signal: require at least 0.5% change to be meaningful — filters out noise
+    // ── #3 OI signal: blend day-over-day with intraday OI build ──
     let oiPct = parseFloat(pchangeinOpenInterest);
     let oiAbs = parseFloat(changeinOpenInterest);
+    let intradayOiPct = null;
+    if (opts.dayOpenOI && opts.currOI && opts.dayOpenOI > 0) {
+        intradayOiPct = (opts.currOI - opts.dayOpenOI) / opts.dayOpenOI * 100;
+    }
+    // effective OI% = the stronger-magnitude of the two reads (fresher intraday wins when bigger)
+    let effOiPct = oiPct;
+    if (intradayOiPct !== null && Math.abs(intradayOiPct) > Math.abs(oiPct)) effOiPct = intradayOiPct;
+
     let oi;
-    if      (oiAbs > 0 && oiPct >= 0.5)  oi = "+";   // meaningful new positions added
-    else if (oiAbs < 0 && oiPct <= -0.5) oi = "-";   // meaningful positions unwound
-    else                                  oi = "+-";  // OI flat / noise — no directional conviction
+    if      (effOiPct >= oiThresh)  oi = "+";
+    else if (effOiPct <= -oiThresh) oi = "-";
+    else                            oi = "+-";
 
-    // Short covering / long unwinding: OI falling by > 1% (significant, not noise)
-    let shortCoveringOrLongUnwinding = (oiAbs < 0 && Math.abs(oiPct) > 1);
+    // covering/unwinding when OI falling meaningfully (day-over-day OR intraday)
+    let shortCoveringOrLongUnwinding = (oiAbs < 0 && Math.abs(oiPct) > oiUnwind)
+        || (intradayOiPct !== null && intradayOiPct < -oiUnwind);
 
-    return { price: price, oi: oi, shortCoveringOrLongUnwinding: shortCoveringOrLongUnwinding, aboveVwap: aboveVwap, recentBullish: recentBullish, recentBearish: recentBearish };
+    // premium-trend confirmation (exposed for the score layer; doesn't alter the remark)
+    let premiumTrend = 0;
+    if (opts.premium != null && opts.prevPremium != null) {
+        premiumTrend = opts.premium > opts.prevPremium ? 1 : opts.premium < opts.prevPremium ? -1 : 0;
+    }
+
+    return { price: price, oi: oi, shortCoveringOrLongUnwinding: shortCoveringOrLongUnwinding,
+             aboveVwap: aboveVwap, recentBullish: recentBullish, recentBearish: recentBearish,
+             volScale: volScale, intradayOiPct: intradayOiPct, premiumTrend: premiumTrend };
+}
+
+// Pure signal→REMARK mapping (no HTML). MUST stay in sync with the if/else in
+// showTableAiNiftyPrediction(), which builds the same RemarkType + badge markup.
+function _gtbRemarkFromSignals(signals, pChangeOIpct) {
+    var price = signals.price, oi = signals.oi, sc = signals.shortCoveringOrLongUnwinding, av = signals.aboveVwap;
+    if (price == "+" && oi == "+") return "LONG";
+    if (price == "-" && oi == "+") return "SHORT";
+    if (price == "+" && oi == "-" && sc) return "SHOT_COVERING";
+    if (price == "-" && oi == "-" && sc) return "LONG_UNWINDING";
+    if (price == "-" && oi == "-" && !sc) return "BEARS_COMING_SELL_ON_RISE";
+    if (price == "+-" && oi == "+" && !sc && av && pChangeOIpct >= 10) return "GAMBLING_BUY_NEWS_AND_EVENTS";
+    if (price == "+-" && oi == "+" && !sc && av && pChangeOIpct < 10)  return "CAUTION_WRITES_ERODING_PREMIUM";
+    if (price == "+" && oi == "+-") return "BULLS_CONSOLIDATING";
+    if (price == "-" && oi == "+-") return "BEARS_CONSOLIDATING";
+    return "DEFENCE_BUY_ON_DECLINE";
+}
+
+// Compute-only futures classifier — same logic as showTableAiNiftyPrediction but
+// builds NO HTML. Use this in hot loops (e.g. the 5-min accuracy reconstruction).
+function _gtbClassifyFutures(quote, prevQuote, lotSize, intradayCandles, opts) {
+    opts = opts || {};
+    var vwap;
+    if (intradayCandles && intradayCandles.length > 1) {
+        vwap = computeIntradayVwap(intradayCandles);
+    } else {
+        var pTP = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3;
+        var cTP = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3;
+        var dv = parseFloat(quote.volume) + parseFloat(prevQuote.volume);
+        vwap = dv > 0 ? ((cTP * parseFloat(quote.volume) + pTP * parseFloat(prevQuote.volume)) / dv) : cTP;
+    }
+    var lastPrice = parseFloat(quote.close);
+    var prevClose = parseFloat(prevQuote.close);
+    var pChange = prevClose ? ((lastPrice - prevClose) / prevClose) * 100 : 0;
+    var oiNow = parseFloat(quote.oi) / lotSize, oiPrev = parseFloat(prevQuote.oi) / lotSize;
+    var chgOI = (oiNow - oiPrev).toFixed(2);
+    var pChgOI = oiPrev ? (((oiNow - oiPrev) / oiPrev) * 100).toFixed(2) : "0";
+    var dayOpenOI = (intradayCandles && intradayCandles.length && intradayCandles[0].oi)
+        ? (parseFloat(intradayCandles[0].oi) / lotSize) : null;
+    var signals = computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, chgOI, pChgOI,
+        { vix: opts.vix, baselineVix: opts.baselineVix, dayOpenOI: dayOpenOI, currOI: oiNow });
+    var remark = _gtbRemarkFromSignals(signals, parseFloat(pChgOI));
+    return { remark: remark, dir: getFuturesTrendScore(remark), signals: signals, vwap: vwap, pChange: pChange };
 }
 
 // Computes true intraday VWAP from 5-minute candles: Σ(typicalPrice × volume) / Σvolume
@@ -5240,7 +6750,10 @@ function computeIntradayVwap(intradayCandles) {
     return sumVol > 0 ? parseFloat((sumTP / sumVol).toFixed(2)) : 0;
 }
 
-function showTableAiNiftyPrediction(quote, prevQuote, lotSize, intradayCandles) {
+// Unified futures-remark analyzer for ALL instruments (NSE indices/stocks + MCX).
+// Single source of truth for the REMARK; no per-instrument (NIFTY/BANK/CRUDE) variant.
+function showTableAiNiftyPrediction(quote, prevQuote, lotSize, intradayCandles, opts) {
+    opts = opts || {};
     let data = {}
     quote.volume = parseInt(quote.volume)
 
@@ -5288,7 +6801,14 @@ function showTableAiNiftyPrediction(quote, prevQuote, lotSize, intradayCandles) 
     var openInterestChangeMarkup = '';
     var openInterestChangePercMarkup = '';
 
-    let signals = computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, changeinOpenInterest, pchangeinOpenInterest);
+    // Intraday OI build (current vs day-open OI) for the blended OI read
+    var dayOpenOI = (intradayCandles && intradayCandles.length && intradayCandles[0].oi)
+        ? (parseFloat(intradayCandles[0].oi) / lotSize) : null;
+    let signals = computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, changeinOpenInterest, pchangeinOpenInterest, {
+        vix: opts.vix, baselineVix: opts.baselineVix,
+        dayOpenOI: dayOpenOI, currOI: openInterest,
+        premium: opts.premium, prevPremium: opts.prevPremium
+    });
     price = signals.price;
     oi = signals.oi;
     shortCoveringOrLongUnwinding = signals.shortCoveringOrLongUnwinding;
@@ -5368,6 +6888,20 @@ function showTableAiNiftyPrediction(quote, prevQuote, lotSize, intradayCandles) 
 
     data.REMARK = RemarkType
 
+    // ── #5 Trend persistence — does this remark confirm the prior interval? ──
+    // (informational: doesn't alter the remark, exposed for the score/UI layer)
+    data.volScale     = signals.volScale;
+    data.intradayOiPct = signals.intradayOiPct;
+    data.premiumTrend = signals.premiumTrend;
+    if (opts.name) {
+        var dir = getFuturesTrendScore(RemarkType);
+        var prev = GTB_LAST_FUT_REMARK[opts.name];
+        data.persisted = !!(prev && prev.dir === dir && dir !== 0);   // same direction 2 intervals running
+        GTB_LAST_FUT_REMARK[opts.name] = { remark: RemarkType, dir: dir, ts: Date.now() };
+        // Remark accuracy is reconstructed on demand from 5-min candles (see the
+        // #show-fut-accuracy viewer) rather than forward-collected per refresh.
+    }
+
     var bullRemark = remark;
     var bearRemark = remark;
     var marketTrendPlus = ""
@@ -5437,216 +6971,6 @@ function showTableAiNiftyPrediction(quote, prevQuote, lotSize, intradayCandles) 
         bearRemark = ""
     }
 
-    data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
-
-    return data;
-}
-
-function showTableAiBankNiftyPrediction(quote, prevQuote, lotSize, intradayCandles) {
-
-    let data = {}
-
-    quote.volume = parseInt(quote.volume)
-
-    // Use real intraday VWAP when 5-minute candles are provided; fall back to 2-point approximation
-    var vwapPrice;
-    if (intradayCandles && intradayCandles.length > 1) {
-        vwapPrice = computeIntradayVwap(intradayCandles);
-    } else {
-        var pTypicalPrice = (parseFloat(prevQuote.high) + parseFloat(prevQuote.low) + parseFloat(prevQuote.close)) / 3
-        var cTypicalPrice = (parseFloat(quote.high) + parseFloat(quote.low) + parseFloat(quote.close)) / 3
-        var cVolumePrice = cTypicalPrice * parseFloat(quote.volume)
-        var pVolumePrice = pTypicalPrice * parseFloat(prevQuote.volume)
-        vwapPrice = ((cVolumePrice + pVolumePrice) / (parseInt(quote.volume) + parseInt(prevQuote.volume))).toFixed(2)
-    }
-
-    var vwap = vwapPrice ? vwapPrice : 0;
-
-
-    var openPrice = quote.open;
-    var highPrice = quote.high;
-    var lowPrice = quote.low;
-    var close = quote.close;
-    var lastPrice = quote.close;
-
-    var previousClose = prevQuote['close']
-    var pChange = ((lastPrice - previousClose) / previousClose) * 100
-    var change = (lastPrice - previousClose).toFixed(2)
-    var shortCoveringOrLongUnwinding = false;
-    var price;
-    var oi;
-    var booleanValue = false;
-    var correctedVwap = vwap;
-    correctedVwap = correctedVwap; // price spike adjustment
-    var lastPrice = lastPrice;
-    if (correctedVwap <= lastPrice) {
-        booleanValue = true;
-    } else {
-        booleanValue = false;
-    }
-    var openInterest = quote['oi'] / lotSize;
-    var previousOI = prevQuote['oi'] / lotSize
-    var changeinOpenInterest = (openInterest - previousOI).toFixed(2)
-    var pchangeinOpenInterest = (((openInterest - previousOI) / previousOI) * 100).toFixed(2);
-    var changeEvo1 = change;
-    var pChangeEvo = pchangeinOpenInterest;
-    var changeEvo = changeinOpenInterest;
-    var bottomTriangle = '<i class="bi bi-caret-down">DOWN</i>'
-    var upTriangle = '<i class="bi bi-caret-up">UP</i>'
-    var openInterestMarkup = '';
-    var openInterestDirectionMarkup = '';
-    var openInterestChangeMarkup = '';
-    var openInterestChangePercMarkup = '';
-
-    let signals = computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, changeinOpenInterest, pchangeinOpenInterest);
-    price = signals.price;
-    oi = signals.oi;
-    shortCoveringOrLongUnwinding = signals.shortCoveringOrLongUnwinding;
-    booleanValue = signals.aboveVwap;
-
-    let oiDisplayClass = (parseFloat(changeinOpenInterest) >= 0) ? 'bg-success' : 'bg-danger';
-    openInterestMarkup = '<div class="badge ' + oiDisplayClass + '">' + openInterest + '</div>'
-    openInterestDirectionMarkup = '<div class="badge ' + oiDisplayClass + '">' + (parseFloat(changeinOpenInterest) >= 0 ? upTriangle : bottomTriangle) + '</div>'
-    openInterestChangeMarkup = '<div class="badge ' + oiDisplayClass + '">' + changeinOpenInterest + '</div>'
-    openInterestChangePercMarkup = '<div class="badge ' + oiDisplayClass + '">' + pchangeinOpenInterest + '%</div>'
-
-    var remark = "No Clear Trend, Bulls are still waiting";
-
-
-    var dogImgContainer = '<span class="">' + dogImage + '</span>'
-    var bullImageImgContainer = '<span class="">' + bullImage + '</span>'
-    var bearImageImgContainer = '<span class="">' + bearImage + '</span>'
-    var hulkImageImgContainer = '<span class="">' + hulkImage + '</span>'
-    var captainImgContainer = '<span class="">' + captain + '</span>'
-    var lokiImgContainer = '<span class="">' + loki + '</span>'
-    var ironManImgContainer = '<span class="">' + ironMan + '</span>'
-    var thorImgContainer = '<span class="">' + thor + '</span>'
-    var hulNewImgContainer = '<span class="">' + hulkImageNew + '</span>'
-    var doctorStrangeImgContainer = '<span class="">' + doctor_strange + '</span>'
-    remark += dogImgContainer
-    var display = "+";
-
-    var aiStatus = ""
-
-    if (price == "+" && oi == "+") {
-        remark = '<div class="badge bg-success">Long</div>'
-        display = "+";
-        aiStatus = "LONG"
-    } else if (price == "-" && oi == "+") {
-        remark = '<div class="badge bg-danger">Short</div>'
-        display = "-";
-        aiStatus = "SHORT"
-    } else if (price == "+" && oi == "-"
-        && shortCoveringOrLongUnwinding) {
-        remark = '<div class="badge bg-success">Short Covering</div>'
-        display = "+";
-        aiStatus = "SHOT_COVERING"
-    } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding) {
-        remark = dogImgContainer + '<div class="badge bg-danger">Long Unwinding</div>'
-        display = "-";
-        aiStatus = "LONG_UNWINDING"
-    } else if (price == "-" && oi == "-"
-        && shortCoveringOrLongUnwinding == false) {
-        remark = dogImgContainer + lokiImgContainer + '<div class="badge bg-danger">Bears Coming,Sell On Rise</div>'
-        display = "-";
-        aiStatus = "BEARS_COMING_SELL_ON_RISE"
-    } else if (price == "+-" && oi == "+"
-        && shortCoveringOrLongUnwinding == false
-        && booleanValue == true && pChangeEvo >= 10) {
-        remark = '<div class="badge bg-danger">Gambling! Buy,News & Events</div>'
-        display = "+";
-        aiStatus = "GAMBLING_BUY_NEWS_AND_EVENTS"
-    } else if (price == "+-" && oi == "+"
-        && shortCoveringOrLongUnwinding == false
-        && booleanValue == true && pChangeEvo < 10) {
-        remark = '<div class="badge bg-danger">Caution! Writers Eroding Premium</div>'
-        display = "+";
-        aiStatus = "CAUTION_WRITES_ERODING_PREMIUM"
-    } else if (price == "+" && oi == "+-") {
-        remark = '<div class="badge bg-warning text-dark">Bulls Consolidating</div>'
-        display = "+";
-        aiStatus = "BULLS_CONSOLIDATING"
-    } else if (price == "-" && oi == "+-") {
-        remark = '<div class="badge bg-warning text-dark">Bears Consolidating</div>'
-        display = "-";
-        aiStatus = "BEARS_CONSOLIDATING"
-    } else {
-        remark = captainImgContainer + '<div class="badge bg-danger">Defence,Buy On Decline</div>'
-        display = "+";
-        aiStatus = "DEFENCE_BUY_ON_DECLINE"
-    }
-
-    data.REMARK = aiStatus
-
-    var bullRemark = remark;
-    var bearRemark = remark;
-    var marketTrendPlus = ""
-    var imageBullPlus = "";
-
-    var openInterestMarkupBull = openInterestMarkup
-    var openInterestDirectionMarkupBull = openInterestDirectionMarkup
-    var openInterestChangeMarkupBull = openInterestChangeMarkup
-    var openInterestChangePercMarkupBull = openInterestChangePercMarkup
-    var niftyOILabelPlusBull = "NIFTY-OI"
-    var otherRemarkType = ""
-    var otherTrendRemarks = ""
-    if (display == "+") {
-        marketTrendPlus = '<div class=" badge bg-success">Hulk Arrived (+)</div>'
-        otherTrendRemarks += '<div class="row">'
-        otherTrendRemarks += '<div class="col-md-12">'
-        otherTrendRemarks += "Hulk Arrived (+)"
-        otherTrendRemarks += '</div>'
-        otherTrendRemarks += '</div>'
-        if (pChangeEvo >= 4 && price != "+-") {
-            imageBullPlus = thorImgContainer + hulNewImgContainer + bullImageImgContainer
-            otherRemarkType = "HULK_THOR_BULL_ARRIVED"
-        } else if (pChangeEvo >= 4 && price == "+-") {
-            marketTrendPlus = '<div class=" badge bg-warning">Doctor Strange Arrived (+)</div>'
-            otherTrendRemarks = ''
-            otherTrendRemarks += '<div class="row">'
-            otherTrendRemarks += '<div class="col-md-12">'
-            otherTrendRemarks += "Doctor Strange Arrived (+))"
-            otherTrendRemarks += '</div>'
-            otherTrendRemarks += '</div>'
-            imageBullPlus = doctorStrangeImgContainer
-            otherRemarkType = "DOCTOR_STRANGE_ARRIVED"
-        } else {
-            imageBullPlus = bullImageImgContainer;
-        }
-    } else {
-        marketTrendPlus = '<div class="  badge bg-danger">Strongly Not Recommended to buy Calls</div>'
-        imageBullPlus = ""
-        openInterestMarkupBull = ""
-        openInterestDirectionMarkupBull = ""
-        openInterestChangeMarkupBull = ""
-        openInterestChangePercMarkupBull = ""
-        niftyOILabelPlusBull = ""
-        bullRemark = ""
-    }
-
-    data.PLUS = imageBullPlus + bullRemark + marketTrendPlus
-
-    var marketTrendMinus = ""
-    var imageBearMinus = "";
-    var openInterestMarkupBear = openInterestMarkup
-    var openInterestDirectionMarkupBear = openInterestDirectionMarkup
-    var openInterestChangeMarkupBear = openInterestChangeMarkup
-    var openInterestChangePercMarkupBear = openInterestChangePercMarkup
-    var bankNiftyOILabelPlusBear = "NIFTY-OI"
-
-    if (display == "-") {
-        marketTrendMinus = '<div class=" badge bg-danger">Chitauri Army Arrived (-)</div>'
-        imageBearMinus = bearImageImgContainer
-    } else {
-        marketTrendMinus = '<div class="  badge bg-danger">Strongly Not Recommended to Short Calls</div>'
-        openInterestMarkupBear = ""
-        openInterestDirectionMarkupBear = ""
-        openInterestChangeMarkupBear = ""
-        openInterestChangePercMarkupBear = ""
-        bankNiftyOILabelPlusBear = ""
-        bearRemark = ""
-    }
     data.MINUS = imageBearMinus + bearRemark + marketTrendMinus
 
     return data;
@@ -6008,8 +7332,8 @@ async function showAdvacenDeclineScanner() {
             allAdv: _cumAAdv, allDec: _cumADec
         });
     });
-    // Futures trend per-interval is captured separately in showFuturesTrendScanner
-    // and merged into GTB_AD_INTERVAL_HISTORY by _gtbMergeIntervalFutures().
+    // Futures trend per-interval is merged into GTB_AD_INTERVAL_HISTORY
+    // inline at the end of showFuturesTrend() — which must run after this.
 
     // Normalize to ratio: (advances - declines) / total, range -1 to +1
     // Gives proportional signal: 45/50 advancing = +0.8, not just +1
@@ -6393,11 +7717,7 @@ async function showFuturesTrend() {
             jQ.each(data, function (index, item) {
                 let time = item.date
                 let resp = {};
-                if (name == "BANKNIFTY") {
-                    resp = showTableAiBankNiftyPrediction(item, prevData, futures['lot_size'])
-                } else {
-                    resp = showTableAiNiftyPrediction(item, prevData, futures['lot_size'])
-                }
+                resp = showTableAiNiftyPrediction(item, prevData, futures['lot_size'])
 
                 globalFuturesTrend[name] = resp;
                 if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};

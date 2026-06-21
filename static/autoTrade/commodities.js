@@ -32,7 +32,7 @@
 // Fetches intraday 5-min candles (MCX_CURRENT_DAY) + prev day close for strike levels.
 // Draws ASO/AST/BSO/BST + VIXL/VIXU reference lines using _renderLWChart.
 // Updates LTP display and ATR/stop-loss badges via _buildATRBadges.
-async function showTopChartMCX(name, chartHeight) {
+async function showTopChartMCX(name, chartHeight, bindtoDivId) {
     try {
 
         let futures;
@@ -158,9 +158,16 @@ async function showTopChartMCX(name, chartHeight) {
             { key: 'BST',  value: parseFloat(strikeMap.bstrikeTwo), text: 'BST '  + strikeMap.bstrikeTwo },
         ];
 
+        // Cache strike+vix map so chart grid and other callers can use it without re-fetching
+        if (typeof INSTRUMENT_SCORE_MAP !== 'undefined') {
+            if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+            INSTRUMENT_SCORE_MAP[name].strikeMap = strikeMap;
+            INSTRUMENT_SCORE_MAP[name].open      = open;
+        }
+
         // Use LightweightCharts candlestick (defined in grootTradeBot.js)
         if (typeof _renderLWChart === 'function') {
-            _renderLWChart(tempName + '-chart', data.data.candles, refLines, chartHeight || 150);
+            _renderLWChart((bindtoDivId ? bindtoDivId.replace('#', '') : (tempName + '-chart')), data.data.candles, refLines, chartHeight || 150, { hideLegend: true });
         }
 
         let ltp = data.data.candles[data.data.candles.length - 1][4];
@@ -214,7 +221,9 @@ async function showFutureDetailsMCX(name) {
     });
 
     prevData = prevData[prevData.length - 1];
-    let resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'])
+    // MCX: pass instrument name for trend-persistence; vix (OVX/GVZ) optional — left
+    // unscaled here so commodity thresholds stay at their legacy baseline.
+    let resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'], null, { name: name })
     resp['ltp'] = data[data.length - 1]['close']
     resp['open'] = data[0]['close']
     resp['vwap'] = getVwapTrend(data[data.length - 1], prevData);

@@ -43,12 +43,12 @@ function buildHelpHTML() {
         { id: 'overview',  icon: 'bi-house-fill',          label: 'Overview'      },
         { id: 'trend',     icon: 'bi-arrow-up-right-square', label: 'Trend Labels' },
         { id: 'oi',        icon: 'bi-bar-chart-fill',       label: 'OI Analysis'  },
-        { id: 'obv',       icon: 'bi-graph-up-arrow',       label: 'OBV'          },
+        { id: 'obv',       icon: 'bi-graph-up',       label: 'OBV'          },
         { id: 'iv',        icon: 'bi-lightning-fill',       label: 'IV'           },
         { id: 'signals',   icon: 'bi-signpost-2-fill',      label: 'Signals'      },
         { id: 'score',     icon: 'bi-speedometer',          label: 'Score'        },
         { id: 'pcr',       icon: 'bi-pie-chart-fill',       label: 'PCR'          },
-        { id: 'futures',   icon: 'bi-rocket-takeoff-fill',  label: 'Futures'      },
+        { id: 'futures',   icon: 'bi-graph-up',  label: 'Futures'      },
         { id: 'vix',       icon: 'bi-activity',             label: 'VIX Range'    },
         { id: 'tradeplan', icon: 'bi-journal-check',         label: 'Trade Plan'   },
     ];
@@ -180,7 +180,7 @@ function buildHelpHTML() {
     `);
 
     // ── OBV ──────────────────────────────────────────────────────────────────────
-    h += hlpPanel('obv', '<i class="bi bi-graph-up-arrow"></i> OBV', `
+    h += hlpPanel('obv', '<i class="bi bi-graph-up"></i> OBV', `
       <p class="hlp-intro"><strong>On-Balance Volume (OBV)</strong> is a cumulative volume indicator applied to
       the option's 5-min candles. It tracks whether volume is flowing in on up-ticks or down-ticks
       throughout the trading day.</p>
@@ -420,7 +420,7 @@ function buildHelpHTML() {
     `);
 
     // ── FUTURES ──────────────────────────────────────────────────────────────────
-    h += hlpPanel('futures', '<i class="bi bi-rocket-takeoff-fill"></i> Futures Trend', `
+    h += hlpPanel('futures', '<i class="bi bi-graph-up"></i> Futures Trend', `
       <p class="hlp-intro">Futures OI and price change together reveal the <em>intent</em> behind each move.
       The <strong>remark system</strong> classifies each instrument into one of these states every refresh.</p>
 
@@ -597,7 +597,7 @@ function buildHelpHTML() {
         </tbody>
       </table>
 
-      <h4 class="hlp-h4"><i class="bi bi-graph-up-arrow"></i> Score Direction — more important than the number</h4>
+      <h4 class="hlp-h4"><i class="bi bi-graph-up"></i> Score Direction — more important than the number</h4>
       <table class="hlp-table">
         <thead><tr><th>Pattern</th><th>Interpretation</th></tr></thead>
         <tbody>

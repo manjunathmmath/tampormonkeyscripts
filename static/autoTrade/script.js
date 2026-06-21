@@ -479,7 +479,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
     html += '<div class="sv-card-header">'
     html += '  <div class="sv-header-left"></div>'
-    html += '  <div class="sv-header-title" id="futures-chart-' + tempName + '"><i class="bi bi-rocket-takeoff"></i> FUTURES</div>'
+    html += '  <div class="sv-header-title" id="futures-chart-' + tempName + '"><i class="bi bi-graph-up"></i> FUTURES</div>'
     html += '  <div class="sv-header-right">'
     html += '    <span id="' + tempName + '-futures-premium" style="font-size:0.58rem;"></span>'
     html += '  </div>'
@@ -496,7 +496,7 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     // Title bar content
     let title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
     title += '<span style="font-size:0.7rem;font-weight:800;color:#e6edf3;white-space:nowrap;">'
-    title += '<i class="bi bi-graph-up-arrow"></i> ' + symbol + ' — Individual View'
+    title += '<i class="bi bi-graph-up"></i> ' + symbol + ' — Individual View'
     title += '</span>'
     title += '<input checked title="Enable auto-refresh" type="checkbox" id="enable-auto-refresh-individual" style="cursor:pointer;vertical-align:middle;">'
     title += popupWinControls("popup-custom-style-groot-trade-bot-stock")
