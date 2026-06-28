@@ -19,6 +19,7 @@ function showHelpPopup() {
         + '</div>';
     jQ('.' + divId).find('.popupwindow_titlebar_text').html(title);
     hideNativePopupButtons(divId);
+    jQ('.' + divId).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
 
     // Activate first tab
     jQ('#help-tab-overview').addClass('hlp-tab-active');
@@ -51,6 +52,8 @@ function buildHelpHTML() {
         { id: 'futures',   icon: 'bi-graph-up',  label: 'Futures'      },
         { id: 'vix',       icon: 'bi-activity',             label: 'VIX Range'    },
         { id: 'tradeplan', icon: 'bi-journal-check',         label: 'Trade Plan'   },
+        { id: 'tools',     icon: 'bi-tools',                 label: 'Tools'        },
+        { id: 'exit',      icon: 'bi-door-open-fill',        label: 'Exit Signal'  },
     ];
     tabs.forEach(function(t) {
         h += '<button class="hlp-tab" id="help-tab-' + t.id + '" data-target="' + t.id + '">'
@@ -82,15 +85,24 @@ function buildHelpHTML() {
         <span>Always use the score as a <strong>filter</strong>, not a signal. High score = conditions aligned for a trade, not a guarantee. Confirm with price action on the chart.</span>
       </div>
 
-      <h4 class="hlp-h4">Popups at a Glance</h4>
+      <h4 class="hlp-h4">Floating Toolbar — Tools at a Glance</h4>
       <table class="hlp-table">
-        <thead><tr><th>Popup</th><th>Opened Via</th><th>Purpose</th></tr></thead>
+        <thead><tr><th>Icon</th><th>Tool</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td>Groot Dashboard</td><td>Nav "Groot"</td><td>Main panel — charts, score gauge, futures strip, advance/decline</td></tr>
-          <tr><td>OI Viewer</td><td><i class="bi bi-eye"></i> icon</td><td>DataTables OI/OBV/IV% across all strikes for every F&amp;O stock</td></tr>
-          <tr><td>Stock Viewer</td><td><i class="bi bi-list-ul"></i> icon</td><td>Side-by-side chart + OI + futures for filtered stock list</td></tr>
-          <tr><td>Individual Stock</td><td>Kite chart page</td><td>Auto-opens for the instrument on any Kite chart page</td></tr>
-          <tr><td>Data Settings</td><td><i class="bi bi-database"></i> icon</td><td>Trading dates, load prices, clear storage, external links</td></tr>
+          <tr><td><i class="bi bi-grid-3x3-gap-fill"></i></td><td>Chart Grid</td><td>Multi-instrument chart grid for side-by-side price comparison</td></tr>
+          <tr><td><i class="bi bi-calendar-week"></i></td><td>9:15 Backtest</td><td>~1 year day-wise backtest of 9:15 opening candle combo edge (win rate, P/L, VIX split)</td></tr>
+          <tr><td><i class="bi bi-layers-fill"></i></td><td>OI Scanner</td><td>All-instrument OI compare matrix — CE/PE ΔOI + OBV + signal across all strikes</td></tr>
+          <tr><td><i class="bi bi-bullseye"></i></td><td>Futures Accuracy</td><td>Historical accuracy of futures REMARK classification vs actual price move</td></tr>
+          <tr><td><i class="bi bi-flag-fill"></i></td><td>Instrument Detail View</td><td>Deep-dive popup per instrument: price map, OI/OBV charts, OI matrix, futures, trade analysis</td></tr>
+          <tr><td><i class="bi bi-droplet-fill"></i></td><td>Commodities</td><td>GIFT NIFTY + CRUDEOILM intraday chart with ASO/AST/VIXL/VIXU level labels + OI table</td></tr>
+          <tr><td><i class="bi bi-eye"></i></td><td>OI Viewer</td><td>DataTables OI/OBV/IV% across all strikes for every F&amp;O stock</td></tr>
+          <tr><td><i class="bi bi-list-ul"></i></td><td>Stock Viewer</td><td>Side-by-side chart + OI + futures for filtered stock list</td></tr>
+          <tr><td><i class="bi bi-graph-up"></i></td><td>Market Quotes</td><td>Live quote analyzer with sector/index breadth view</td></tr>
+          <tr><td><i class="bi bi-bar-chart-steps"></i></td><td>Max Pain / GEX</td><td>Max pain level and gamma exposure chart across strikes</td></tr>
+          <tr><td><i class="bi bi-clipboard-check"></i></td><td>Pre-Trade Checklist</td><td>Step-by-step checklist before entering a trade + per-instrument score table + trade recommendation</td></tr>
+          <tr><td><i class="bi bi-gear-fill"></i></td><td>Settings</td><td>Theme, row height, refresh interval, display options</td></tr>
+          <tr><td><i class="bi bi-question-circle-fill"></i></td><td>Help</td><td>This popup</td></tr>
+          <tr><td><i class="bi bi-sliders"></i></td><td>Data Settings</td><td>Trading dates, load prices, clear storage, external links</td></tr>
         </tbody>
       </table>
     `);
@@ -508,6 +520,11 @@ function buildHelpHTML() {
         all point the same way at the same time.</span>
       </div>
 
+      <div class="hlp-callout hlp-callout-blue" style="margin-bottom:10px;">
+        <i class="bi bi-clipboard-check"></i>
+        <span>Use the <strong>Pre-Trade Checklist</strong> (<i class="bi bi-clipboard-check"></i> in the floating toolbar) before every trade — it runs all 7 checks automatically and shows the market signal + per-instrument score table in one view.</span>
+      </div>
+
       <h4 class="hlp-h4"><i class="bi bi-sunrise"></i> Step 1 — Pre-market (before 9:15)</h4>
       <table class="hlp-table">
         <thead><tr><th>Check</th><th>Action</th></tr></thead>
@@ -626,6 +643,93 @@ function buildHelpHTML() {
         <span>The alignment of <strong>score + SIGNAL + ATR direction + A/D ratio + strategyMap level</strong>
         all pointing the same way happens only <strong>2–3 times a week</strong>. Those are the only trades worth taking.</span>
       </div>
+    `);
+
+    // ── TOOLS ────────────────────────────────────────────────────────────────────
+    h += hlpPanel('tools', '<i class="bi bi-tools"></i> Tools Reference', `
+
+      <h4 class="hlp-h4"><i class="bi bi-clipboard-check"></i> Pre-Trade Checklist</h4>
+      <p style="font-size:0.72rem;">Opens via the <i class="bi bi-clipboard-check"></i> button in the floating toolbar. Reads all live score globals — no API call needed. Shows three sections:</p>
+      <table class="hlp-table">
+        <thead><tr><th>Section</th><th>Content</th></tr></thead>
+        <tbody>
+          <tr><td><strong>A · Market Checklist</strong></td><td>7 numbered steps with green/amber/red dot: VIX regime → 9:15 candle alignment → Advance/Decline → Futures Trend → OI/OBV → Component Score → Composite Score</td></tr>
+          <tr><td><strong>B · Trade Recommendation</strong></td><td>Market signal (STRONG BUY / BUY / WAIT / SELL / STRONG SELL / NO TRADE) with reason + plain-English trade action (e.g. "Buy NIFTY CE at pullback to ASO/BSO")</td></tr>
+          <tr><td><strong>C · Instrument Scores</strong></td><td>Table for all 9 instruments: 9:15 / Trend / Futures / OI/OBV / Total columns + Action. Thresholds: total ≥ 4 → BUY CE, ≥ 2 → CE (wait ASO), ≥ 0 → WAIT, ≥ −3 → PE (wait BSO), &lt; −3 → BUY PE</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="hlp-h4"><i class="bi bi-flag-fill"></i> Instrument Detail View</h4>
+      <p style="font-size:0.72rem;">Opens via <i class="bi bi-flag-fill"></i> or from any instrument row's expand button. Shows panels in this order:</p>
+      <ol class="hlp-list" style="font-size:0.72rem;">
+        <li><strong>Identity</strong> — name, LTP, zone badge (sticky at top of column while scrolling)</li>
+        <li><strong>Price Action</strong> — LightweightCharts intraday chart with OPEN/ASO/AST/BSO/BST/VIXL/VIXU lines</li>
+        <li><strong>OI/OBV</strong> — bar charts: CE ΔOI, PE ΔOI, CE OBV, PE OBV per strike, with x-axis strike labels</li>
+        <li><strong>OI Matrix</strong> — compact signal heatmap across strikes (CE/PE ΔOI + signal + score per cell)</li>
+        <li><strong>9:15 Breakout, Trend Probability, Futures, Weightage, Details, Trade Analysis, Risk Manager</strong></li>
+      </ol>
+
+      <h4 class="hlp-h4"><i class="bi bi-calendar-week"></i> 9:15 Backtest</h4>
+      <p style="font-size:0.72rem;">~250 trading days (~1 year). For each day, classifies NIFTY/SENSEX/BANK 9:15 candle close into a 3-key combo (e.g. ASO-ASO-BSO). Looks up the combo in <code>GTB_STRAT_LOOKUP</code> and simulates an entry at that level.<br><br>
+      <strong>Per-combo edge table</strong>: win rate, avg P/L, avg max-favourable, Low-VIX vs High-VIX split at median VIX.<br>
+      <strong>Day-by-day table</strong>: actual P/L at 12:00, MFE/MAE, whether 1:1 TP or SL was hit first, entry and peak times.<br>
+      Today's combo is highlighted. Fetches 5-min data in ≤95-day chunks (Kite 5-min limit = 100 days). Cached in localStorage.</p>
+
+      <h4 class="hlp-h4"><i class="bi bi-layers-fill"></i> OI Scanner (OI Compare Matrix)</h4>
+      <p style="font-size:0.72rem;">All instruments (main + weighted Nifty 50 / Bank Nifty constituents) in one horizontal table. Rows = instruments, columns = strikes around ATM. Each cell shows CE/PE ΔOI + OBV + signal badge + score.<br>
+      Toggle between <strong>Detailed</strong> (full numbers) and <strong>Compact</strong> (heatmap colour only). Reads cached <code>INSTRUMENT_SCORE_MAP[name].oiData</code> — no fresh fetch on open.</p>
+
+      <h4 class="hlp-h4"><i class="bi bi-droplet-fill"></i> Commodities</h4>
+      <p style="font-size:0.72rem;">Shows GIFT NIFTY and CRUDEOILM panels. Level labels (OPEN / VIXL / VIXU / BST / BSO / ASO / AST) appear above each chart once the futures data is loaded. OI table shows CE/PE ΔOI per strike for CRUDEOILM. Popup is non-draggable (clicking titlebar won't move it).</p>
+    `);
+
+    // ── EXIT SIGNAL ───────────────────────────────────────────────────────────────
+    h += hlpPanel('exit', '<i class="bi bi-door-open-fill"></i> Exit Signal', `
+      <p class="hlp-intro">The <strong>EXIT signal banner</strong> appears below the LONG / SHORT position buttons in the left panel. It evaluates your declared position direction every refresh and fires when the market turns against it.</p>
+
+      <h4 class="hlp-h4">How to Use</h4>
+      <ol class="hlp-list">
+        <li>Click <strong>LONG</strong> or <strong>SHORT</strong> after you enter a trade to declare your direction.</li>
+        <li>The banner monitors conditions every 5-min refresh.</li>
+        <li>When an exit condition is met, the banner turns red with a reason (e.g. "EXIT LONG — trend bearish (−1)").</li>
+        <li>Click <strong>—</strong> (NONE) to reset after exiting.</li>
+      </ol>
+
+      <h4 class="hlp-h4">Exit Conditions</h4>
+      <table class="hlp-table">
+        <thead><tr><th>Position</th><th>Exit Fires When</th><th>Reason Shown</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="hlp-pill hlp-green">LONG</span></td>
+            <td>NIFTY 50 <code>current_trend &lt; 0</code> (LTP below BSO or BST)<br><em>OR</em><br>Both NIFTY 50 AND BANK NIFTY futures bearish (<code>n50Fut &lt; 0 &amp;&amp; bnFut &lt; 0</code>)</td>
+            <td>"trend bearish (−1)" / "N50+BN futures bearish"</td>
+          </tr>
+          <tr>
+            <td><span class="hlp-pill hlp-red">SHORT</span></td>
+            <td>NIFTY 50 <code>current_trend &gt; 0</code> (LTP above ASO or AST)<br><em>OR</em><br>Both NIFTY 50 AND BANK NIFTY futures bullish (<code>n50Fut &gt; 0 &amp;&amp; bnFut &gt; 0</code>)</td>
+            <td>"trend bullish (+1)" / "N50+BN futures bullish"</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="hlp-callout hlp-callout-amber">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>Only <strong>one index futures</strong> going bearish does not trigger EXIT LONG — both must flip. This prevents false exits from temporary divergence between NIFTY 50 and BANK NIFTY.</span>
+      </div>
+
+      <h4 class="hlp-h4">How futures_trend is Determined</h4>
+      <p style="font-size:0.72rem;">The NSE futures API returns a <strong>REMARK</strong> string per instrument based on intraday OI + price change. <code>getFuturesTrendScore(remark)</code> maps it:</p>
+      <table class="hlp-table">
+        <thead><tr><th>REMARK</th><th>Score</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>LONG, SHOT_COVERING, BULLS_CONSOLIDATING, GAMBLING_BUY_NEWS_AND_EVENTS, DEFENCE_BUY_ON_DECLINE</td><td>+1</td><td>SHOT_COVERING = shorts exiting = bullish despite "short" in name</td></tr>
+          <tr><td>SHORT, LONG_UNWINDING, BEARS_COMING_SELL_ON_RISE, BEARS_CONSOLIDATING, CAUTION_WRITES_ERODING_PREMIUM</td><td>−1</td><td>LONG_UNWINDING = longs exiting = bearish despite "long" in name</td></tr>
+          <tr><td>Anything else</td><td>0</td><td>Neutral / inconclusive</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="hlp-h4">HOLD banner</h4>
+      <p style="font-size:0.72rem;">When no exit condition is met, the banner shows: <code>HOLD LONG — trend +1 * N50fut +1 * BNfut +1</code> — gives a live snapshot of the three values driving the exit check.</p>
     `);
 
     h += '</div>'; // .hlp-body

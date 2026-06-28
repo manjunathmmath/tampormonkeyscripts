@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Groot Bot
 // @namespace    Groot Bot
-// @version      16.2
+// @version      24.29
 // @description  Groot Bot
 // @author       Manjunath
 // @match        https://kite.zerodha.com/*
@@ -12,6 +12,8 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_setClipboard
 // @grant        GM_getClipboard
+// @grant        GM_xmlhttpRequest
+// @connect      www.nseindia.com
 // @resource     BOOTSTRAP_CSS http://localhost:3000/autoTrade/dist/css/bootstrap.css
 // @resource     DATATABLE_CSS http://localhost:3000/autoTrade/global/vendor/datatables/datatables.min.css
 // @resource     BOOTSTRAP_ICON_CSS http://localhost:3000/autoTrade/dist/font/bootstrap-icons.css
@@ -88,6 +90,10 @@
 
 // @require      http://localhost:3000/autoTrade/help.js
 // @require      http://localhost:3000/autoTrade/grootTradeBot.js
+// @require      http://localhost:3000/autoTrade/bloombergDashboard.js
+// @require      http://localhost:3000/autoTrade/bloombergAnalysis.js
+// @require      http://localhost:3000/autoTrade/bloombergOpportunities.js
+// @require      http://localhost:3000/autoTrade/grootDashboard.js
 // @downloadURL  http://localhost:3000/autoTrade/autotrade.user.js
 // @updateURL    http://localhost:3000/autoTrade/autotrade.meta.js
 // ==/UserScript==

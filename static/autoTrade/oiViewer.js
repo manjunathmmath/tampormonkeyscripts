@@ -129,6 +129,8 @@ function showOiViewer() {
     var divId = "popup-custom-style-oi-viewer-scanner";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     hideNativePopupButtons(divId);
+    var _isLight = (localStorage.getItem('GTB_THEME') || 'dark') === 'light';
+    jQ('.' + divId).toggleClass('gtb-light', _isLight);
     generateStockDataTable();
 }
 

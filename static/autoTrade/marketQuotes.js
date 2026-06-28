@@ -41,6 +41,8 @@ async function showMarketQuoteAnalyzer() {
     var divId = "popup-custom-style-quick-quote-analyzer";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     hideNativePopupButtons(divId);
+    var _isLight = (localStorage.getItem('GTB_THEME') || 'dark') === 'light';
+    jQ('.' + divId).toggleClass('gtb-light', _isLight);
 
     jQ("." + divId).on("close.popupwindow", function () {
     });

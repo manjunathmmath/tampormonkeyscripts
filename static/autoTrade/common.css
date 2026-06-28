@@ -24,7 +24,10 @@
   border-radius: 12px;
   width: 96vw;
   max-width: 1400px;
-  min-height: 70vh;
+  min-height: 88vh;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
   position: relative;
   padding: 0;
   box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px var(--gtb-border);
@@ -41,6 +44,7 @@
   border-radius: 12px 12px 0 0;
   letter-spacing: 0.5px;
   display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
 }
 #groot-maximize-body {
   padding: 14px 16px 20px;
@@ -48,6 +52,9 @@
   box-sizing: border-box;
   background: var(--gtb-surface);
   color: var(--gtb-text);
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
 }
 #groot-maximize-close,
 #groot-maximize-refresh {
@@ -116,6 +123,10 @@
   transition: color .15s, border-color .15s;
 }
 .gtb-prob-btn:hover { color: var(--gtb-accent); border-color: var(--gtb-accent); }
+.gtb-fut-refresh-btn:hover { color: var(--gtb-accent) !important; border-color: var(--gtb-accent) !important; }
+.gtb-fut-refresh-btn:disabled { opacity: 0.4; cursor: default; }
+@keyframes gtb-spin { to { transform: rotate(360deg); } }
+.gtb-fut-refresh-btn .spin { display: inline-block; animation: gtb-spin 0.7s linear infinite; }
 
 .gtb-prob-wrap { font-size: 0.72rem; color: var(--gtb-text); }
 .gtb-prob-sub { color: var(--gtb-muted); margin-bottom: 12px; line-height: 1.5; font-size: 0.7rem; }
@@ -341,7 +352,7 @@
 /* ── OI Compare matrix (instruments × strikes) ─────────────────── */
 .oic-matrix { border-collapse: collapse; font-size: 0.6rem; color: var(--gtb-text); }
 .oic-matrix th {
-  background: var(--gtb-surface2); color: var(--gtb-muted); font-weight: 800;
+  background: var(--gtb-bg); color: var(--gtb-muted); font-weight: 800;
   font-size: 0.56rem; letter-spacing: 0.04em; text-transform: uppercase;
   padding: 5px 8px; white-space: nowrap; border: 1px solid var(--gtb-border2);
   position: sticky; top: 0; z-index: 3;
@@ -349,9 +360,9 @@
 .oic-matrix td { border: 1px solid var(--gtb-border2); padding: 4px 6px; vertical-align: top; }
 .oic-sticky {
   position: sticky; left: 0; z-index: 2;
-  background: var(--gtb-surface) !important; min-width: 110px; white-space: nowrap;
+  background: var(--gtb-bg) !important; min-width: 110px; white-space: nowrap;
 }
-.oic-matrix th.oic-sticky { z-index: 4; background: var(--gtb-surface2) !important; }
+.oic-matrix th.oic-sticky { z-index: 4; background: var(--gtb-bg) !important; }
 .oic-grouprow td {
   background: var(--gtb-bg); color: var(--gtb-muted); font-weight: 800;
   font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px;
@@ -385,8 +396,12 @@
 
 /* ── Commodities popup ─────────────────────────────────────────── */
 .cmd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Commodities popup content area */
+.popup-custom-style-commodities-panel .popupwindow_content { background: var(--gtb-bg) !important; overflow-y: auto !important; }
+.popup-custom-style-commodities-panel .popupwindow_statusbar { display: none !important; }
 @media (max-width: 800px) { .cmd-grid { grid-template-columns: 1fr; } }
-.cmd-cell { border: 1px solid var(--gtb-border2); background: var(--gtb-bg); }
+.cmd-cell { border: 1px solid var(--gtb-border2); background: #ffffff; }
+.gtb-light .cmd-cell { background: #ffffff; }
 .cmd-t {
   font-size: 0.72rem; font-weight: 800; color: var(--gtb-text);
   margin: 14px 0 6px; display: flex; align-items: center; gap: 6px;
@@ -394,8 +409,9 @@
 .cmd-t i { color: var(--gtb-accent); }
 .cmd-cell .cmd-t { margin: 0; padding: 6px 8px; background: var(--gtb-surface); border-bottom: 1px solid var(--gtb-border2); }
 .cmd-st { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gtb-muted); margin: 4px 0 2px; }
-.cmd-oi-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 800px) { .cmd-oi-charts { grid-template-columns: 1fr; } }
+.cmd-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: stretch; margin-top: 16px; padding-top: 12px; border-top: 2px solid var(--gtb-border2); }
+.cmd-3col-cell { min-width: 0; background: var(--gtb-bg); border: 1px solid var(--gtb-border2); padding: 8px; height: 210px; overflow: hidden; box-sizing: border-box; }
+.cmd-3col-scroll { overflow-y: auto !important; }
 .cmd-fut { border: 1px solid var(--gtb-border2); background: var(--gtb-bg); padding: 8px 10px; }
 .cmd-fut img { max-width: 26px !important; max-height: 26px !important; vertical-align: middle; }
 .cmd-fut-prem { margin-bottom: 6px; }
@@ -441,9 +457,9 @@
   padding: 2px 7px; border-radius: 20px; font-size: 0.58rem;
   font-weight: 700; border: 1px solid transparent; white-space: nowrap;
 }
-.gtb-915-chip.above { background: #0d3320; color: #3fb950; border-color: #1a5c38; }
-.gtb-915-chip.below { background: #3d0d0d; color: #f85149; border-color: #7f1d1d; }
-.gtb-915-chip.flat  { background: #1f2937; color: #7d8590; border-color: #30363d; }
+.gtb-915-chip.above { background: var(--gtb-green-dim, #0d3320); color: var(--gtb-green, #3fb950); border-color: var(--gtb-green, #3fb950); }
+.gtb-915-chip.below { background: var(--gtb-red-dim, #3d0d0d); color: var(--gtb-red, #f85149); border-color: var(--gtb-red, #f85149); }
+.gtb-915-chip.flat  { background: var(--gtb-surface2, #1f2937); color: var(--gtb-muted, #7d8590); border-color: var(--gtb-border2, #30363d); }
 
 /* ── A/D donut / bar section ───────────────────────────────── */
 .gtb-ad-summary {
@@ -1220,6 +1236,14 @@ code {
 
 /* WebKit (Chrome, Edge) */
 /* ── Thin 2px overlay scrollbars across the whole dashboard ─────────── */
+/* Thin scrollbar everywhere */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gtb-border2, #30363d); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gtb-muted, #7d8590); }
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: var(--gtb-border2, #30363d) transparent; }
+
 .popupwindow_container ::-webkit-scrollbar,
 .popupwindow_content::-webkit-scrollbar,
 #main-trade-bot-container ::-webkit-scrollbar,
@@ -1235,8 +1259,8 @@ code {
 .gtb-collapse-body::-webkit-scrollbar,
 #gtb-score-detail::-webkit-scrollbar,
 [class*="popup-custom-style-"] .popupwindow_content::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
+  width: 3px;
+  height: 3px;
 }
 /* Invisible track — thumb floats over content */
 .popupwindow_container ::-webkit-scrollbar-track,
@@ -1546,11 +1570,20 @@ td.details-control {
   cursor: pointer;
 }
 
+/* Default popup library elements — light colors (library default) */
 .popupwindow_statusbar,
 .popupwindow,
 .popupwindow_titlebar {
   background-color: #fff !important;
 }
+/* Dark theme overrides for popup library elements */
+:root .popupwindow_statusbar { background-color: var(--gtb-surface2) !important; color: var(--gtb-muted) !important; border-top: 1px solid var(--gtb-border) !important; }
+:root .popupwindow_titlebar  { background-color: var(--gtb-surface) !important; color: var(--gtb-text) !important; border-bottom: 1px solid var(--gtb-border) !important; }
+:root .popupwindow           { background-color: var(--gtb-bg) !important; }
+/* Light theme — restore white when gtb-light class is present on any ancestor */
+.gtb-light .popupwindow_statusbar { background-color: #f3f6fa !important; color: #5a6678 !important; border-top: 1px solid #c5d0de !important; }
+.gtb-light .popupwindow_titlebar  { background-color: #ffffff !important; color: #16202e !important; border-bottom: 1px solid #c5d0de !important; }
+.gtb-light .popupwindow           { background-color: #ffffff !important; }
 
 .blink-soft {
   animation: blinker 1.5s linear infinite;
@@ -1660,6 +1693,9 @@ td.details-control {
   box-shadow: 0 2px 16px rgba(0,0,0,0.6);
   flex-shrink: 0; overflow: visible;   /* visible so the settings dropdown can extend below the bar */
 }
+#gtb-holiday-badge { display: flex; }
+.gtb-light #gtb-holiday-badge { border-color: #c5d0de; background: #f3f6fa; }
+.gtb-light #gtb-holiday-badge span { color: #5a6678 !important; }
 .gtb-topbar-controls {
   display: flex; align-items: center; gap: 6px;
   margin-left: auto; flex-shrink: 0;  /* always visible at right edge — tickers shrink instead */
@@ -1703,6 +1739,28 @@ td.details-control {
   overflow: hidden !important;
 }
 .popup-custom-style-groot-trade-bot .popupwindow_content:after { height: 0 !important; }
+
+/* ── Individual View popup (groot-trade-bot-stock) — theme-aware ── */
+.popup-custom-style-groot-trade-bot-stock.popupwindow {
+  background: var(--gtb-bg) !important;
+  border: 1px solid var(--gtb-border) !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5) !important;
+  overflow: hidden !important;
+}
+.popup-custom-style-groot-trade-bot-stock .popupwindow_titlebar {
+  background: var(--gtb-surface2) !important;
+  border-bottom: 1px solid var(--gtb-border) !important;
+  color: var(--gtb-text) !important;
+}
+.popup-custom-style-groot-trade-bot-stock .popupwindow_titlebar_text { color: var(--gtb-text) !important; }
+.popup-custom-style-groot-trade-bot-stock .popupwindow_titlebar_button { color: var(--gtb-muted) !important; background: transparent !important; border: none !important; }
+.popup-custom-style-groot-trade-bot-stock .popupwindow_content {
+  padding: 0 !important;
+  background: var(--gtb-bg) !important;
+  border-top: none !important;
+  overflow: hidden !important;
+}
+.popup-custom-style-groot-trade-bot-stock .popupwindow_statusbar { background: var(--gtb-surface2) !important; border-top: 1px solid var(--gtb-border) !important; }
 
 /* ── Window control buttons (minimize / restore / close) ────── */
 .gtb-win-controls {
@@ -2592,6 +2650,37 @@ td.details-control {
   --gtb-col-wt:      170px;
   --gtb-col-detail:  160px;
 }
+
+/* ── Individual View popup — same layout as main panel, scaled to 1400px wide ── */
+/* Column totals: 140+330+56+200+180+210+140+144 = 1400px                         */
+.sv-indiv-view {
+  --gtb-col-instr:   140px;
+  --gtb-col-chart:   330px;
+  --gtb-col-915:      56px;
+  --gtb-col-fut:     200px;
+  --gtb-col-oi:      180px;
+  --gtb-col-oiobv:   210px;
+  --gtb-col-wt:      140px;
+  --gtb-col-detail:  144px;
+  --gtb-row-h:       390px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--gtb-bg);
+  overflow: hidden;
+}
+.sv-indiv-view #sv-rows-head { position: static; }
+.sv-indiv-view .gtb-row { flex: 1 1 0; height: 100%; }
+/* Futures column — premium chip at top, then signals and remark stacked */
+.sv-indiv-view .gtb-row-fut {
+  flex-direction: column;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 3px;
+  padding: 6px 8px;
+}
+.sv-indiv-view .gtb-row-fut .gtb-cell-fut-signals,
+.sv-indiv-view .gtb-row-fut .gtb-cell-fut-remark { width: 100%; flex: unset; }
 #gtb-rows-head,
 .gtb-row {
   display: grid;
@@ -2682,6 +2771,12 @@ td.details-control {
 .gtb-row-ltp {
   font-family: var(--gtb-mono); font-size: 0.78rem; font-weight: 700;
   color: var(--gtb-text); letter-spacing: -0.02em; line-height: 1.1;
+}
+.gtb-trend-zone { min-height: 14px; }
+.gtb-tz-badge {
+  display: inline-block; font-size: 0.52rem; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px; letter-spacing: 0.04em;
+  font-family: var(--gtb-mono); line-height: 1.4;
 }
 .gtb-row-id-actions { display: flex; gap: 2px; }
 .gtb-row-id-actions .sv-icon-btn { font-size: 0.56rem; padding: 0 2px; color: var(--gtb-muted); }
@@ -2811,8 +2906,8 @@ td.details-control {
   min-width: 0; overflow: hidden; gap: 2px;
 }
 .gtb-det-row {
-  display: flex; align-items: center; gap: 3px;
-  font-size: 0.44rem; white-space: nowrap; overflow: hidden;
+  display: flex; align-items: flex-start; flex-direction: column; gap: 3px;
+  font-size: 0.44rem; overflow: hidden;
 }
 .gtb-det-lbl { color: var(--gtb-muted); font-size: 0.4rem; font-weight: 700; min-width: 28px; text-transform: uppercase; }
 .gtb-det-val { font-family: var(--gtb-mono); font-weight: 700; font-size: 0.48rem; }
@@ -2892,9 +2987,9 @@ td.details-control {
 }
 
 /* ── SL/T1 wrap inside data bar ─────────────────────────────────────── */
-.gtb-cell-sl-wrap { display: flex; align-items: center; margin-left: auto; }
-.gtb-cell-sl-wrap .gtb-atr-row { background: transparent; border: none; padding: 0; }
-.gtb-cell-sl-wrap .gtb-atr-strip { padding: 0; gap: 2px; flex-wrap: nowrap; }
+.gtb-cell-sl-wrap { display: flex; align-items: flex-start; width: 100%; }
+.gtb-cell-sl-wrap .gtb-atr-row { background: transparent; border: none; padding: 0; width: 100%; }
+.gtb-cell-sl-wrap .gtb-atr-strip { padding: 0; gap: 2px; flex-wrap: wrap; width: 100%; }
 .gtb-cell-sl-wrap .gtb-sl-badge.atr { display: none; }
 .gtb-cell-sl-wrap .gtb-sl-badge.t2  { display: none; }
 .gtb-cell-sl-wrap .gtb-atr-strip .gtb-sl-badge { padding: 1px 4px; min-width: 30px; }
@@ -4104,7 +4199,9 @@ td.details-control {
 .popup-custom-style-quick-quote-analyzer  .popupwindow_titlebar_button,
 .popup-custom-style-quick-scanner         .popupwindow_titlebar_button,
 .popup-custom-style-groot-trade-bot-stock .popupwindow_titlebar_button,
-.popup-custom-style-data-settings         .popupwindow_titlebar_button {
+.popup-custom-style-data-settings         .popupwindow_titlebar_button,
+.popup-custom-style-help-popup            .popupwindow_titlebar_button,
+.popup-custom-style-commodities-panel     .popupwindow_titlebar_button {
   display: none !important;
 }
 
@@ -4221,3 +4318,2013 @@ td.details-control {
 /* Tick animations on new bg */
 @keyframes tick-up   { 0% { background: var(--gtb-green-dim); } 100% { background: var(--gtb-bg); } }
 @keyframes tick-down { 0% { background: var(--gtb-red-dim);   } 100% { background: var(--gtb-bg); } }
+
+/* ── Bloomberg Market Terminal ──────────────────────────────────────────────── */
+.popup-custom-style-bloomberg-dash .popupwindow_titlebar_button { display: none !important; }
+.popup-custom-style-bloomberg-dash .popupwindow_content { overflow: hidden !important; padding: 0 !important; }
+.popup-custom-style-bloomberg-dash .popupwindow_statusbar { display: none !important; }
+
+#bt-wrap {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px; height: 100%; box-sizing: border-box;
+  overflow-y: auto; font-family: var(--gtb-mono);
+  font-size: 0.62rem; color: var(--gtb-text);
+}
+
+/* Ticker tape */
+.bt-tape-wrap {
+  border: 1px solid var(--gtb-border2); border-radius: 3px;
+  background: var(--gtb-surface2); flex-shrink: 0;
+}
+.bt-tape-hdr {
+  padding: 2px 8px; margin-bottom: 0;
+  border-bottom: 1px solid var(--gtb-border2);
+  overflow: visible; /* so .gtb-info-pop opens correctly */
+}
+.bt-tape-scroll { overflow: hidden; height: 22px; display: flex; align-items: center; }
+.bt-tape-inner {
+  display: flex; align-items: center; gap: 0;
+  white-space: nowrap; animation: bt-scroll 30s linear infinite;
+}
+@keyframes bt-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.bt-tape-item { display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; }
+.bt-ti-name   { font-weight: 700; color: var(--gtb-muted); font-size: 0.58rem; letter-spacing: .06em; }
+.bt-ti-ltp    { color: var(--gtb-text); }
+.bt-ti-pct    { font-size: 0.58rem; }
+.bt-tape-sep  { color: var(--gtb-border2); padding: 0 2px; }
+
+/* 4-column row */
+.bt-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; flex-shrink: 0; }
+.bt-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-shrink: 0; }
+
+.bt-panel {
+  border: 1px solid var(--gtb-border2); border-radius: 3px;
+  background: var(--gtb-surface); padding: 6px 8px; min-height: 0;
+}
+.bt-ph {
+  font-size: 0.5rem; font-weight: 700; letter-spacing: .1em;
+  color: var(--gtb-muted); text-transform: uppercase;
+  border-bottom: 1px solid var(--gtb-border2); padding-bottom: 4px; margin-bottom: 6px;
+}
+.bt-hint { color: var(--gtb-muted); font-size: 0.62rem; font-style: italic; }
+
+/* Heat map */
+.bt-hm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.bt-hm-cell {
+  border: 1px solid transparent; border-radius: 3px;
+  padding: 4px 5px; display: flex; flex-direction: column; gap: 1px;
+}
+.bt-hm-name  { font-size: 0.55rem; font-weight: 700; color: var(--gtb-muted); letter-spacing: .04em; }
+.bt-hm-ltp   { font-size: 0.62rem; color: var(--gtb-text); }
+.bt-hm-pct   { font-size: 0.58rem; }
+.bt-hm-score { font-size: 0.65rem; font-weight: 700; }
+
+/* Relative strength */
+.bt-rs-row   { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+.bt-rs-name  { width: 28px; font-size: 0.56rem; font-weight: 700; color: var(--gtb-muted); flex-shrink: 0; }
+.bt-rs-track { flex: 1; height: 8px; background: var(--gtb-surface2); border-radius: 2px; overflow: hidden; }
+.bt-rs-bar   { height: 100%; border-radius: 2px; transition: width .3s; }
+.bt-rs-val   { width: 44px; text-align: right; font-size: 0.6rem; flex-shrink: 0; }
+
+/* Market breadth */
+.bt-br-gauge { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
+.bt-br-seg   { transition: width .3s; }
+.bt-br-row   { display: flex; justify-content: space-between; font-size: 0.6rem; margin-bottom: 2px; }
+.bt-br-muted { color: var(--gtb-muted); }
+.bt-br-label { color: var(--gtb-muted); font-size: 0.52rem; text-transform: uppercase; letter-spacing: .06em; }
+.bt-br-divider { border-top: 1px solid var(--gtb-border2); margin: 5px 0; }
+.bt-br-bar-wrap { margin-top: 3px; }
+
+/* VIX */
+.bt-vx-num    { font-size: 1.6rem; font-weight: 900; line-height: 1; margin-bottom: 2px; }
+.bt-vx-regime { font-size: 0.65rem; font-weight: 700; letter-spacing: .1em; margin-bottom: 2px; }
+.bt-vx-desc   { font-size: 0.55rem; color: var(--gtb-muted); margin-bottom: 6px; line-height: 1.4; }
+.bt-vx-gauge  { margin-bottom: 6px; }
+.bt-vx-track  { position: relative; height: 8px; background: var(--gtb-surface2); border-radius: 4px; margin-bottom: 2px; }
+.bt-vx-needle {
+  position: absolute; top: -3px; width: 2px; height: 14px;
+  background: var(--gtb-text); border-radius: 1px; transform: translateX(-50%);
+}
+.bt-vx-ticks { display: flex; justify-content: space-between; font-size: 0.5rem; color: var(--gtb-muted); }
+.bt-vx-range { display: flex; justify-content: space-between; font-size: 0.6rem; }
+.bt-vx-rl    { color: var(--gtb-muted); margin-right: 3px; font-size: 0.52rem; }
+
+/* Options flow */
+.bt-flow-panel { flex-shrink: 0; }
+.bt-flow-grid  { display: flex; gap: 8px; flex-wrap: wrap; }
+.bt-fl-col     { flex: 1 1 100px; min-width: 80px; }
+.bt-fl-name    { font-size: 0.56rem; font-weight: 700; color: var(--gtb-muted); margin-bottom: 4px; letter-spacing: .04em; }
+.bt-fl-bars    { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
+.bt-fl-label   { width: 16px; font-size: 0.52rem; font-weight: 700; flex-shrink: 0; }
+.bt-fl-track   { flex: 1; height: 7px; background: var(--gtb-surface2); border-radius: 2px; overflow: hidden; }
+.bt-fl-val     { width: 36px; text-align: right; font-size: 0.55rem; flex-shrink: 0; }
+
+/* Correlation matrix */
+.bt-corr-tbl { border-collapse: collapse; font-size: 0.6rem; width: 100%; }
+.bt-corr-tbl th, .bt-corr-tbl td {
+  padding: 3px 6px; border: 1px solid var(--gtb-border2);
+}
+.bt-corr-tbl th { color: var(--gtb-muted); font-weight: 700; background: var(--gtb-surface2); }
+.bt-corr-na { color: var(--gtb-muted); text-align: center; }
+
+/* Intraday snapshot table */
+.bt-st-tbl { border-collapse: collapse; font-size: 0.6rem; width: 100%; table-layout: fixed; }
+.bt-st-tbl th, .bt-st-tbl td {
+  padding: 3px 5px; border-bottom: 1px solid var(--gtb-border2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bt-st-tbl th { color: var(--gtb-muted); font-size: 0.52rem; text-transform: uppercase; }
+.bt-st-tbl th:last-child, .bt-st-tbl td:last-child { width: 28px; text-align: center; }
+.bt-st-name { text-align: left !important; font-weight: 700; width: 36px; }
+.bt-st-mono { font-family: var(--gtb-mono); }
+.bt-tz {
+  display: inline-block; font-size: 0.52rem; font-weight: 700;
+  padding: 1px 4px; border-radius: 2px; border: 1px solid transparent;
+  font-family: var(--gtb-mono); letter-spacing: .03em;
+}
+
+/* spin animation for refresh button */
+@keyframes bt-spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: bt-spin .5s linear infinite; }
+
+/* light theme */
+.gtb-light #bt-wrap { background: var(--gtb-bg); }
+
+/* ── Trend Prediction Panel ─────────────────────────────────────────────────── */
+.bt-pred-panel { flex-shrink: 0; }
+.bt-pred-wrap  { display: flex; gap: 12px; align-items: flex-start; }
+
+/* Left: gauge + verdict */
+.bt-pred-left  { flex-shrink: 0; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bt-pred-gauge { width: 140px; }
+.bt-pred-verdict {
+  font-size: 0.68rem; font-weight: 900; letter-spacing: .07em;
+  text-align: center; line-height: 1.3;
+}
+.bt-pred-probs { font-size: 0.65rem; display: flex; gap: 6px; align-items: center; }
+.bt-pred-sep   { color: var(--gtb-muted); }
+.bt-pred-conf  { width: 100%; margin-top: 3px; }
+.bt-pred-conf-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.bt-pred-conf-track { height: 5px; background: var(--gtb-surface2); border-radius: 3px; overflow: hidden; }
+.bt-pred-conf-bar   { height: 100%; border-radius: 3px; transition: width .4s; }
+
+/* Right: signal table */
+.bt-pred-right { flex: 1; min-width: 0; }
+.bt-pred-sig-hdr {
+  display: grid;
+  grid-template-columns: 16px 110px 80px 90px 1fr;
+  gap: 6px; padding: 2px 4px;
+  font-size: 0.5rem; font-weight: 700; letter-spacing: .07em;
+  color: var(--gtb-muted); text-transform: uppercase;
+  border-bottom: 1px solid var(--gtb-border2); margin-bottom: 4px;
+}
+.bt-pred-sig-row {
+  display: grid;
+  grid-template-columns: 16px 110px 80px 90px 1fr;
+  gap: 6px; padding: 3px 4px; align-items: center;
+  border-bottom: 1px solid var(--gtb-border2);
+  font-size: 0.6rem;
+}
+.bt-pred-sig-row:last-child { border-bottom: none; }
+.bt-pred-sig-icon  { font-size: 0.65rem; color: var(--gtb-muted); }
+.bt-pred-sig-label { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt-pred-sig-badge {
+  font-size: 0.52rem; font-weight: 700; padding: 1px 5px;
+  border-radius: 2px; border: 1px solid transparent; white-space: nowrap;
+  font-family: var(--gtb-mono); letter-spacing: .03em;
+}
+.bt-pred-bar-wrap { height: 6px; background: var(--gtb-surface2); border-radius: 3px; overflow: hidden; }
+.bt-pred-bar      { height: 100%; border-radius: 3px; transition: width .4s; }
+.bt-pred-val    { font-family: var(--gtb-mono); font-size: 0.58rem; white-space: nowrap; }
+.bt-pred-detail { color: var(--gtb-muted); font-size: 0.56rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Per-Instrument Trade Analysis Overlay ───────────────────────────────────── */
+.bt-ta-overlay-content { padding: 12px 16px; font-family: var(--gtb-mono); font-size: 0.62rem; }
+
+/* Header */
+.bt-ta-header   { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--gtb-border2); margin-bottom: 10px; }
+.bt-ta-title    { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bt-ta-name     { font-size: 1rem; font-weight: 900; letter-spacing: .06em; color: var(--gtb-accent); }
+.bt-ta-ltp      { font-size: 0.85rem; font-weight: 700; }
+.bt-ta-pills    { display: flex; flex-wrap: wrap; gap: 5px; }
+.bt-ta-pill     { font-size: 0.55rem; font-weight: 700; padding: 2px 7px; border-radius: 3px; border: 1px solid transparent; font-family: var(--gtb-mono); letter-spacing: .04em; }
+
+/* Cards */
+.bt-ta-full     { margin-bottom: 8px; }
+.bt-ta-row3     { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.bt-ta-row2     { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
+.bt-ta-card     { border: 1px solid var(--gtb-border2); border-radius: 4px; background: var(--gtb-surface); padding: 8px 10px; min-height: 0; }
+.bt-ta-card-hdr { font-size: 0.52rem; font-weight: 700; letter-spacing: .1em; color: var(--gtb-muted); text-transform: uppercase; border-bottom: 1px solid var(--gtb-border2); padding-bottom: 5px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+
+/* Level Map */
+.bt-lm-wrap     { padding: 24px 10px 8px; }
+.bt-lm-bar      { position: relative; height: 14px; background: var(--gtb-surface2); border-radius: 4px; margin-bottom: 28px; }
+.bt-lm-zone     { position: absolute; top: 0; height: 100%; }
+.bt-lm-marker   { position: absolute; top: -4px; transform: translateX(-50%); }
+.bt-lm-line     { width: 1.5px; height: 22px; margin: 0 auto; }
+.bt-lm-tag      { text-align: center; font-size: 0.48rem; font-weight: 700; white-space: nowrap; margin-top: 1px; line-height: 1.3; }
+.bt-lm-val      { font-weight: 400; color: var(--gtb-muted); }
+.bt-lm-ltp      { position: absolute; top: -28px; transform: translateX(-50%); text-align: center; }
+.bt-lm-ltp-val  { font-size: 0.56rem; font-weight: 700; white-space: nowrap; }
+.bt-lm-ltp-line { width: 2px; height: 40px; margin: 0 auto; }
+.bt-lm-ltp-arrow{ width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid; margin: 0 auto 1px; }
+.bt-lm-legend   { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.bt-lm-leg-item { display: flex; align-items: center; gap: 4px; font-size: 0.55rem; }
+.bt-lm-dot      { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.bt-lm-dist     { color: var(--gtb-muted); font-size: 0.5rem; margin-left: 2px; }
+
+/* Confluence */
+.bt-conf-rows   { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.bt-conf-row    { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid var(--gtb-border2); cursor: default; }
+.bt-conf-label  { flex: 1; }
+.bt-conf-val    { font-weight: 700; font-size: 0.62rem; text-align: right; }
+.bt-conf-summary{ border: 1px solid; border-radius: 3px; padding: 5px 8px; display: flex; flex-direction: column; gap: 3px; }
+.bt-conf-bar-wrap{ height: 4px; background: var(--gtb-surface2); border-radius: 2px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; }
+.bt-conf-bar-fill{ height: 4px; border-radius: 2px; transition: width .3s; }
+
+/* Strategy */
+.bt-ta-direction { font-size: 0.78rem; font-weight: 900; letter-spacing: .08em; margin-bottom: 7px; }
+.bt-ta-strat-row { padding: 5px 0; border-bottom: 1px solid var(--gtb-border2); }
+.bt-ta-strat-row:last-child { border-bottom: none; }
+.bt-ta-strat-name{ font-size: 0.63rem; margin-bottom: 3px; }
+.bt-ta-strat-meta{ display: flex; gap: 5px; margin-bottom: 3px; }
+.bt-ta-risk-tag  { font-size: 0.5rem; font-weight: 700; padding: 1px 5px; border-radius: 2px; border: 1px solid transparent; }
+.bt-ta-strat-note{ font-size: 0.56rem; color: var(--gtb-muted); line-height: 1.5; }
+.bt-ta-warning   { font-size: 0.56rem; color: #fbbf24; background: #fbbf2415; border: 1px solid #fbbf2440; border-radius: 3px; padding: 3px 7px; margin-bottom: 5px; display: flex; align-items: flex-start; gap: 5px; }
+
+/* Entry triggers */
+.bt-ta-triggers  { display: flex; flex-direction: column; gap: 3px; }
+.bt-ta-trig-hdr  { font-size: 0.55rem; font-weight: 700; letter-spacing: .06em; margin-top: 2px; }
+.bt-ta-trig-row  { font-size: 0.58rem; color: var(--gtb-text); display: flex; align-items: flex-start; gap: 5px; line-height: 1.5; padding: 1px 0; }
+
+/* R/R & OI grids */
+.bt-ta-rr-grid, .bt-ta-oi-grid { display: flex; flex-direction: column; gap: 3px; }
+.bt-ta-rr-row    { display: flex; justify-content: space-between; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--gtb-border2); font-size: 0.6rem; gap: 6px; }
+.bt-ta-rr-row:last-child { border-bottom: none; }
+.bt-ta-rr-lbl    { color: var(--gtb-muted); flex-shrink: 0; }
+.bt-ta-rr-highlight { background: var(--gtb-surface2); padding: 4px 6px; border-radius: 3px; margin-top: 2px; }
+
+/* Scenarios */
+.bt-ta-scenario-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.bt-ta-scenario-card { border: 1px solid; border-radius: 4px; padding: 8px 10px; }
+.bt-ta-sc-title  { font-size: 0.65rem; font-weight: 700; margin-bottom: 6px; }
+.bt-ta-sc-row    { font-size: 0.58rem; line-height: 1.6; color: var(--gtb-text); }
+.bt-ta-sc-action { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--gtb-border2); }
+
+/* Analyze button in snapshot table */
+.bt-analyze-btn  { font-size: 0.52rem; padding: 1px 6px; white-space: nowrap; }
+
+/* ── Analyze All Instruments ─────────────────────────────────────────────────── */
+.bt-all-wrap { display: flex; flex-direction: column; gap: 10px; }
+
+/* Summary table */
+.bt-all-summary-card { border: 1px solid var(--gtb-border2); border-radius: 4px; background: var(--gtb-surface); padding: 8px 10px; }
+.bt-all-tbl-wrap { overflow-x: auto; }
+.bt-all-tbl { border-collapse: collapse; font-size: 0.58rem; white-space: nowrap; width: 100%; }
+.bt-all-tbl th, .bt-all-tbl td { padding: 3px 8px; border-bottom: 1px solid var(--gtb-border2); text-align: right; }
+.bt-all-tbl th { color: var(--gtb-muted); font-size: 0.5rem; text-transform: uppercase; background: var(--gtb-surface2); position: sticky; top: 0; }
+.bt-all-tbl td:nth-child(1), .bt-all-tbl td:nth-child(2) { text-align: left; }
+.bt-all-tbl tr:hover td { background: var(--gtb-surface2); }
+
+/* Cards grid */
+.bt-all-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+/* Instrument card */
+.bt-ic-card {
+  border: 1px solid var(--gtb-border2); border-radius: 5px;
+  background: var(--gtb-surface); display: flex; flex-direction: column; gap: 0;
+  font-family: var(--gtb-mono); font-size: 0.6rem; overflow: hidden;
+}
+.bt-ic-empty { padding: 12px; align-items: center; color: var(--gtb-muted); }
+
+/* Card header */
+.bt-ic-header { padding: 8px 10px 6px; border-bottom: 1px solid; }
+.bt-ic-name-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.bt-ic-name  { font-size: 0.78rem; font-weight: 900; letter-spacing: .04em; color: var(--gtb-accent); }
+.bt-ic-ltp   { font-size: 0.72rem; font-weight: 700; }
+.bt-ic-score-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bt-ic-dir   { font-size: 0.58rem; font-weight: 700; letter-spacing: .05em; }
+.bt-ic-score { font-size: 0.68rem; font-weight: 700; }
+
+/* Section label */
+.bt-ic-section-label {
+  font-size: 0.47rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gtb-muted); padding: 5px 10px 2px; border-top: 1px solid var(--gtb-border2); margin-top: 2px;
+}
+
+/* Mini level map */
+.bt-mini-map { padding: 2px 10px 4px; }
+.bt-mini-map-na { padding: 4px 10px; color: var(--gtb-muted); font-size: 0.54rem; }
+
+/* Signal dots */
+.bt-ic-sigs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px 10px 4px; }
+.bt-ic-sig  { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px; background: var(--gtb-surface2); border-radius: 3px; }
+.bt-ic-sig-label { font-size: 0.44rem; color: var(--gtb-muted); text-transform: uppercase; }
+.bt-ic-sig-val   { font-size: 0.5rem; font-weight: 700; }
+
+/* Confluence bars */
+.bt-ic-conf-bars { padding: 2px 10px 4px; display: flex; flex-direction: column; gap: 3px; }
+.bt-ic-conf-bar-row { display: flex; align-items: center; gap: 5px; }
+.bt-ic-conf-track { flex: 1; height: 5px; background: var(--gtb-surface2); border-radius: 3px; overflow: hidden; }
+
+/* Strategy */
+.bt-ic-strat   { padding: 2px 10px; font-size: 0.62rem; font-weight: 700; }
+.bt-ic-trigger { padding: 1px 10px 4px; font-size: 0.54rem; color: var(--gtb-muted); line-height: 1.5; }
+.bt-ic-conflict { padding: 2px 10px; font-size: 0.52rem; color: #fbbf24; display: flex; align-items: center; gap: 4px; }
+
+/* R:R grid */
+.bt-ic-rr-grid { padding: 2px 10px 4px; display: grid; grid-template-columns: repeat(5,1fr); gap: 2px; }
+.bt-ic-rr-row  { display: flex; flex-direction: column; align-items: center; background: var(--gtb-surface2); border-radius: 3px; padding: 3px 2px; }
+.bt-ic-rr-row > span:first-child { font-size: 0.44rem; color: var(--gtb-muted); text-transform: uppercase; }
+.bt-ic-rr-row > span:last-child  { font-size: 0.58rem; font-weight: 600; margin-top: 1px; }
+.bt-ic-neutral-note { padding: 4px 10px; font-size: 0.54rem; color: var(--gtb-muted); line-height: 1.6; }
+
+/* Scenarios */
+.bt-ic-scenarios { display: flex; gap: 4px; padding: 2px 10px 4px; }
+.bt-ic-scen {
+  flex: 1; text-align: center; font-size: 0.46rem; font-weight: 700;
+  padding: 3px 4px; border-radius: 3px; border: 1px solid transparent; line-height: 1.5;
+  letter-spacing: .03em;
+}
+
+/* Footer */
+.bt-ic-footer { padding: 6px 8px; border-top: 1px solid var(--gtb-border2); margin-top: auto; }
+
+/* Analyze All button */
+.bt-analyze-all-btn { font-size: 0.52rem; padding: 1px 8px; white-space: nowrap; }
+
+/* ── Analyze All toolbar ──────────────────────────────────────────────────────── */
+.bt-all-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 6px 10px; background: var(--gtb-surface); border: 1px solid var(--gtb-border2);
+  border-radius: 4px; font-family: var(--gtb-mono); font-size: 0.58rem;
+}
+.bt-all-stat { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.bt-all-filter-wrap { position: relative; flex: 1; min-width: 160px; max-width: 260px; }
+.bt-all-filter-inp {
+  width: 100%; padding: 3px 8px 3px 22px; font-size: 0.6rem;
+  background: var(--gtb-surface2); border: 1px solid var(--gtb-border2); border-radius: 3px;
+  color: var(--gtb-text); font-family: var(--gtb-mono); outline: none; box-sizing: border-box;
+}
+.bt-all-filter-inp:focus { border-color: var(--gtb-accent); }
+.bt-all-filter-sel {
+  padding: 3px 6px; font-size: 0.56rem; background: var(--gtb-surface2);
+  border: 1px solid var(--gtb-border2); border-radius: 3px; color: var(--gtb-text);
+  font-family: var(--gtb-mono); cursor: pointer; outline: none;
+}
+
+.bt-all-tbl-row { cursor: pointer; }
+.bt-all-tbl-row:hover td { background: var(--gtb-accent-dim, #1f6feb22) !important; }
+
+/* ── Opportunities Popup ──────────────────────────────────────────────────────── */
+#bto-wrap { display: flex; flex-direction: column; height: 100%; font-family: var(--gtb-mono); font-size: 0.6rem; gap: 0; overflow: hidden; }
+
+/* Tabs */
+.bto-tabs { display: flex; gap: 2px; padding: 6px 8px 0; background: var(--gtb-surface2); border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0; }
+.bto-tab  { padding: 4px 12px; font-size: 0.6rem; font-family: var(--gtb-mono); font-weight: 700; letter-spacing: .06em; cursor: pointer; background: transparent; border: 1px solid transparent; border-bottom: none; border-radius: 3px 3px 0 0; color: var(--gtb-muted); display: flex; align-items: center; gap: 5px; transition: color 0.15s; }
+.bto-tab:hover  { color: var(--gtb-text); background: var(--gtb-surface); }
+.bto-tab.active { color: var(--gtb-accent); background: var(--gtb-surface); border-color: var(--gtb-border2); }
+
+/* Panels */
+.bto-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.bto-panel.active { display: flex; }
+
+/* Toolbar */
+.bto-scanner-toolbar, .bto-load-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--gtb-surface2); border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0; flex-wrap: wrap; }
+.bto-btn { padding: 3px 10px; font-size: 0.58rem; font-family: var(--gtb-mono); font-weight: 700; border-radius: 3px; border: 1px solid var(--gtb-border2); background: var(--gtb-surface); color: var(--gtb-text); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: opacity 0.15s; }
+.bto-btn:hover { opacity: 0.8; }
+.bto-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.bto-btn-green { border-color: #3fb95066; color: #3fb950; background: #3fb95011; }
+.bto-btn-red   { border-color: #f8514966; color: #f85149; background: #f8514911; }
+.bto-btn-blue  { border-color: #58a6ff66; color: #58a6ff; background: #58a6ff11; }
+.bto-sel  { padding: 3px 6px; font-size: 0.56rem; font-family: var(--gtb-mono); background: var(--gtb-surface2); border: 1px solid var(--gtb-border2); color: var(--gtb-text); border-radius: 3px; outline: none; cursor: pointer; }
+.bto-status { font-size: 0.58rem; display: flex; align-items: center; gap: 5px; }
+.bto-scan-stats { font-size: 0.56rem; color: var(--gtb-muted); display: flex; gap: 6px; align-items: center; }
+.bto-hint-inline { font-size: 0.52rem; color: var(--gtb-muted); }
+
+/* Scan legend */
+.bto-scan-legend { display: flex; gap: 12px; padding: 4px 10px; border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0; background: var(--gtb-surface); }
+.bto-leg { display: flex; align-items: center; gap: 4px; font-size: 0.52rem; }
+.bto-leg.bull { color: #3fb950; }
+.bto-leg.bear { color: #f85149; }
+.bto-leg.warn { color: #fbbf24; }
+.bto-leg.info { color: #7d8590; }
+
+/* Events */
+.bto-events-wrap { flex: 1; overflow-y: auto; padding: 4px 0; }
+.bto-empty-msg   { padding: 20px; color: var(--gtb-muted); text-align: center; font-size: 0.62rem; }
+.bto-event {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; border-bottom: 1px solid var(--gtb-border2);
+  border-left: 3px solid transparent; transition: background 0.1s;
+}
+.bto-event:hover { background: var(--gtb-surface2) !important; }
+.bto-ev-ts     { font-size: 0.52rem; color: var(--gtb-muted); flex-shrink: 0; min-width: 52px; }
+.bto-ev-name   { font-weight: 900; font-size: 0.66rem; min-width: 90px; }
+.bto-ev-title  { font-weight: 700; font-size: 0.58rem; min-width: 120px; }
+.bto-ev-detail { font-size: 0.56rem; color: var(--gtb-muted); flex: 1; }
+.bto-ev-score  { font-size: 0.62rem; font-weight: 700; min-width: 40px; text-align: right; }
+.bto-ev-btn    { padding: 1px 6px; font-size: 0.52rem; }
+.bto-pulse { animation: bto-blink 1.2s ease-in-out infinite; }
+@keyframes bto-blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* Content body (liquidity / divergence / feed) */
+.bto-content-body { flex: 1; overflow-y: auto; padding: 10px; }
+
+/* Section headers */
+.bto-section-hdr { font-size: 0.62rem; font-weight: 700; letter-spacing: .08em; color: var(--gtb-accent); padding: 4px 0 6px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--gtb-border2); margin-bottom: 8px; }
+.bto-section-sub { font-size: 0.5rem; font-weight: 400; color: var(--gtb-muted); letter-spacing: 0; }
+
+/* Liquidity grid */
+.bto-liq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-bottom: 4px; }
+.bto-liq-card { border: 1px solid var(--gtb-border2); border-radius: 4px; padding: 6px 8px; background: var(--gtb-surface2); display: flex; flex-direction: column; gap: 2px; }
+.bto-liq-name { font-weight: 900; font-size: 0.6rem; }
+.bto-liq-pcr  { font-size: 1.1rem; font-weight: 900; line-height: 1; }
+.bto-liq-bar-wrap { height: 4px; background: var(--gtb-surface); border-radius: 2px; overflow: hidden; margin: 2px 0; }
+.bto-liq-bar  { height: 100%; border-radius: 2px; }
+.bto-liq-label { font-size: 0.48rem; }
+.bto-liq-chg   { font-size: 0.48rem; }
+
+/* Tables */
+.bto-wall-tbl, .bto-div-tbl { border-collapse: collapse; font-size: 0.58rem; width: 100%; }
+.bto-wall-tbl th, .bto-div-tbl th { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--gtb-border2); color: var(--gtb-muted); font-size: 0.5rem; text-transform: uppercase; background: var(--gtb-surface2); }
+.bto-wall-tbl td, .bto-div-tbl td { padding: 3px 8px; border-bottom: 1px solid var(--gtb-border2); }
+.bto-wall-tbl tr:hover td, .bto-div-tbl tr:hover td { background: var(--gtb-surface2); }
+
+/* Divergence */
+.bto-div-block  { margin-bottom: 18px; }
+.bto-div-summary { display: flex; gap: 16px; padding: 10px 0 10px; border-bottom: 1px solid var(--gtb-border2); margin-bottom: 8px; flex-wrap: wrap; }
+.bto-div-metric { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }
+.bto-div-label  { font-size: 0.48rem; color: var(--gtb-muted); text-transform: uppercase; letter-spacing: .08em; }
+.bto-div-val    { font-size: 1rem; font-weight: 900; line-height: 1.1; }
+.bto-div-sub    { font-size: 0.52rem; color: var(--gtb-muted); }
+
+/* Feed */
+.bto-feed-header { display: flex; gap: 14px; align-items: center; padding: 6px 0 10px; font-size: 0.58rem; border-bottom: 1px solid var(--gtb-border2); margin-bottom: 8px; flex-wrap: wrap; }
+.bto-feed-ts     { color: var(--gtb-muted); font-size: 0.52rem; }
+.bto-feed-list   { display: flex; flex-direction: column; gap: 4px; }
+.bto-feed-item   {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 4px; border: 1px solid var(--gtb-border2);
+  border-left: 3px solid transparent;
+}
+.bto-feed-item:hover { background: var(--gtb-surface2) !important; }
+.bto-feed-rank   { font-size: 0.52rem; color: var(--gtb-muted); min-width: 18px; text-align: right; }
+.bto-feed-main   { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.bto-feed-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bto-feed-name   { font-size: 0.78rem; font-weight: 900; }
+.bto-feed-sigs   { display: flex; gap: 4px; flex-wrap: wrap; }
+.bto-feed-sig    { font-size: 0.48rem; padding: 1px 5px; border-radius: 2px; border: 1px solid transparent; font-weight: 700; }
+.bto-feed-score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 80px; }
+.bto-feed-opp-score { font-size: 1.1rem; font-weight: 900; line-height: 1; }
+.bto-feed-str-label { font-size: 0.46rem; letter-spacing: .05em; text-transform: uppercase; }
+
+/* ── Groot Pro Dashboard (grootDashboard.js) ─────────────────────────────── */
+#gdb-overlay {
+    position: fixed; inset: 0; z-index: 99990;
+    background: var(--gtb-bg); color: var(--gtb-text);
+    display: flex; flex-direction: column; font-family: var(--gtb-mono), monospace;
+    font-size: 0.6rem; overflow: hidden;
+}
+.gdb-topbar {
+    height: 36px; min-height: 36px;
+    background: var(--gtb-surface); border-bottom: 1px solid var(--gtb-border2);
+    display: flex; align-items: center; gap: 8px; padding: 0 10px; flex-shrink: 0;
+}
+.gdb-brand { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; color: var(--gtb-accent); white-space: nowrap; }
+.gdb-tb-pills { display: flex; gap: 4px; overflow: hidden; flex: 1; }
+.gdb-pill { display: flex; align-items: center; gap: 3px; padding: 2px 6px; background: var(--gtb-surface2); border-radius: 3px; white-space: nowrap; }
+.gdb-pill-sym { color: var(--gtb-muted); font-size: 0.5rem; }
+.gdb-pill-val { font-weight: 700; font-size: 0.58rem; }
+.gdb-pill-pct { font-size: 0.5rem; }
+.gdb-tb-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: auto; }
+.gdb-tb-btn {
+    background: transparent; border: 1px solid var(--gtb-border2); border-radius: 3px;
+    color: var(--gtb-text); padding: 3px 7px; cursor: pointer; font-size: 0.62rem;
+}
+.gdb-tb-btn:hover { background: var(--gtb-surface2); }
+.gdb-tb-btn.active { background: var(--gtb-accent); color: #fff; border-color: var(--gtb-accent); }
+.gdb-close-btn:hover { background: #f8514920; color: #f85149; border-color: #f85149; }
+.gdb-tb-muted { color: var(--gtb-muted); font-size: 0.5rem; }
+.gdb-hash-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--gtb-border2); transition: background 0.4s, box-shadow 0.4s; }
+
+/* Grid */
+.gdb-grid {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    display: grid; grid-template-columns: repeat(12, 1fr);
+    gap: 4px; padding: 4px; align-content: start;
+}
+.gdb-span-3  { grid-column: span 3; }
+.gdb-span-4  { grid-column: span 4; }
+.gdb-span-6  { grid-column: span 6; }
+.gdb-span-8  { grid-column: span 8; }
+.gdb-span-12 { grid-column: span 12; }
+
+/* Widget shell */
+.gdb-widget {
+    background: var(--gtb-surface); border: 1px solid var(--gtb-border2); border-radius: 0;
+    display: flex; flex-direction: column; min-height: 120px;
+}
+.gdb-widget-hdr {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 8px; border-bottom: 1px solid var(--gtb-border2);
+    font-size: 0.55rem; font-weight: 700; color: var(--gtb-muted);
+    text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0;
+}
+.gdb-widget-actions { margin-left: auto; display: flex; gap: 2px; }
+.gdb-widget-body { flex: 1; padding: 6px 8px; overflow-y: auto; }
+.gdb-loading { color: var(--gtb-muted); font-size: 0.6rem; }
+.gdb-hint { color: var(--gtb-muted); font-size: 0.52rem; }
+.gdb-mini-btn {
+    background: transparent; border: 1px solid var(--gtb-border2); border-radius: 2px;
+    color: var(--gtb-muted); padding: 1px 4px; cursor: pointer; font-size: 0.5rem;
+}
+
+/* Market Pulse widget */
+.gdb-pulse-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gdb-pulse-card {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 4px 8px; background: var(--gtb-surface2); border-radius: 3px; min-width: 52px;
+}
+.gdb-pc-sym  { font-size: 0.48rem; color: var(--gtb-muted); font-weight: 700; }
+.gdb-pc-ltp  { font-size: 0.7rem; font-weight: 700; font-family: var(--gtb-mono); }
+.gdb-pc-pct  { font-size: 0.48rem; }
+.gdb-pc-score { font-size: 0.6rem; font-weight: 700; }
+.gdb-pc-zone { font-size: 0.44rem; padding: 1px 4px; border-radius: 2px; border: 1px solid; }
+.gdb-pulse-divider { width: 1px; height: 36px; background: var(--gtb-border2); flex-shrink: 0; }
+.gdb-pulse-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 6px; }
+.gdb-ps-label { font-size: 0.42rem; color: var(--gtb-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.gdb-ps-val   { font-size: 0.75rem; font-weight: 700; font-family: var(--gtb-mono); }
+.gdb-ps-sub   { font-size: 0.44rem; color: var(--gtb-muted); }
+
+/* Score matrix */
+.gdb-sm-tbl { width: 100%; border-collapse: collapse; font-size: 0.52rem; }
+.gdb-sm-tbl th { color: var(--gtb-muted); font-weight: 600; padding: 3px 6px; border-bottom: 1px solid var(--gtb-border2); text-align: left; font-size: 0.48rem; white-space: nowrap; }
+.gdb-sm-tbl td { padding: 3px 6px; border-bottom: 1px solid var(--gtb-border2); white-space: nowrap; }
+.gdb-sm-tbl tr:last-child td { border-bottom: none; }
+.gdb-mono { font-family: var(--gtb-mono); }
+
+/* Opportunity Ranker */
+.gdb-opp-section-lbl { font-size: 0.52rem; font-weight: 700; padding: 3px 0; border-bottom: 1px solid var(--gtb-border2); }
+.gdb-opp-row { display: flex; align-items: center; gap: 5px; padding: 3px 0; border-bottom: 1px solid var(--gtb-border2); }
+.gdb-opp-rank { font-weight: 700; font-size: 0.56rem; min-width: 12px; }
+.gdb-opp-name { font-weight: 700; font-size: 0.54rem; min-width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Divergence */
+.gdb-div-block { margin-bottom: 10px; }
+.gdb-div-title { font-size: 0.56rem; font-weight: 700; margin-bottom: 4px; }
+.gdb-div-row { display: flex; align-items: center; gap: 5px; font-size: 0.5rem; padding: 2px 0; }
+.gdb-div-row span:first-child { min-width: 52px; color: var(--gtb-muted); }
+.gdb-div-track { flex: 1; height: 5px; background: var(--gtb-surface2); border-radius: 3px; overflow: hidden; }
+.gdb-div-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.gdb-div-verdict { border: 1px solid; border-radius: 3px; padding: 4px 6px; margin-top: 5px; }
+
+/* Level Maps */
+.gdb-lm-sels { display: flex; gap: 6px; margin-bottom: 6px; }
+.gdb-lm-grid { display: flex; flex-direction: column; gap: 14px; }
+.gdb-lm-card { padding-bottom: 4px; }
+.gdb-lm-name-row { display: flex; align-items: center; gap: 6px; font-size: 0.52rem; margin-bottom: 4px; }
+.gdb-lm-name { font-weight: 700; }
+.gdb-lm-no-data { color: var(--gtb-muted); font-size: 0.52rem; padding: 6px 0; }
+
+/* OI Flow */
+.gdb-oi-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--gtb-border2); font-size: 0.52rem; }
+.gdb-oi-name { min-width: 70px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gdb-oi-flow-bars { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.gdb-oi-track { height: 4px; background: var(--gtb-surface2); border-radius: 2px; overflow: hidden; }
+.gdb-oi-net { min-width: 38px; font-weight: 700; }
+.gdb-oi-val { color: var(--gtb-muted); font-size: 0.46rem; }
+
+/* Risk Manager */
+.gdb-risk-positions { margin-bottom: 5px; }
+.gdb-risk-pos { display: flex; align-items: center; gap: 5px; padding: 2px 0; border-bottom: 1px solid var(--gtb-border2); font-size: 0.5rem; }
+.gdb-rp-name { font-weight: 700; min-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+.gdb-rp-type { min-width: 50px; }
+.gdb-rp-pl   { flex: 1; font-weight: 700; }
+.gdb-risk-stat { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid var(--gtb-border2); font-size: 0.52rem; }
+.gdb-risk-add-form { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; align-items: center; }
+.gdb-r-inp { background: var(--gtb-surface2); border: 1px solid var(--gtb-border2); border-radius: 2px; color: var(--gtb-text); font-size: 0.5rem; padding: 2px 4px; }
+.gdb-add-btn { font-size: 0.5rem; padding: 2px 7px; }
+
+/* Scanner Feed */
+.gdb-sc-row { display: flex; align-items: baseline; gap: 5px; padding: 3px 0 3px 5px; border-bottom: 1px solid var(--gtb-border2); border-left: 2px solid transparent; font-size: 0.5rem; }
+.gdb-sc-ts   { color: var(--gtb-muted); min-width: 34px; flex-shrink: 0; }
+.gdb-sc-name { font-weight: 700; min-width: 60px; flex-shrink: 0; }
+.gdb-sc-detail { flex: 1; color: var(--gtb-muted); }
+.gdb-sc-score { font-weight: 700; min-width: 30px; text-align: right; flex-shrink: 0; }
+
+/* Market Breadth */
+.gdb-br-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 0.5rem; }
+.gdb-br-label { min-width: 58px; color: var(--gtb-muted); }
+.gdb-br-track { flex: 1; height: 5px; background: var(--gtb-surface2); border-radius: 3px; overflow: hidden; }
+.gdb-br-val { min-width: 52px; text-align: right; }
+.gdb-br-adrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 0.5rem; }
+
+/* Backtest */
+.gdb-bt-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--gtb-border2); font-size: 0.52rem; }
+.gdb-bt-row.bt-highlight { background: var(--gtb-surface2); padding: 3px 5px; margin-bottom: 3px; border-radius: 2px; }
+
+/* Customize */
+.gdb-cust-note { color: var(--gtb-muted); font-size: 0.5rem; padding: 3px 0; margin-bottom: 6px; }
+.gdb-cust-tbl { width: 100%; border-collapse: collapse; font-size: 0.52rem; }
+.gdb-cust-tbl th { color: var(--gtb-muted); font-size: 0.48rem; padding: 2px 5px; border-bottom: 1px solid var(--gtb-border2); text-align: left; }
+.gdb-cust-tbl td { padding: 3px 5px; border-bottom: 1px solid var(--gtb-border2); }
+
+/* ── Unified Tab System (grootTradeBot.js) ───────────────────────────────── */
+#gtb-tab-strip {
+    display: flex; align-items: center; gap: 2px;
+    padding: 3px 6px; background: var(--gtb-surface);
+    border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0;
+    overflow-x: auto; white-space: nowrap;
+}
+.gtb-tab {
+    background: transparent; border: 1px solid transparent;
+    border-radius: 3px; color: var(--gtb-muted);
+    font-size: 0.56rem; font-weight: 600; padding: 3px 9px;
+    cursor: pointer; white-space: nowrap; letter-spacing: 0.04em;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.gtb-tab:hover { color: var(--gtb-text); background: var(--gtb-surface2); }
+.gtb-tab.active {
+    color: var(--gtb-accent); background: var(--gtb-surface2);
+    border-color: var(--gtb-accent); font-weight: 700;
+}
+
+/* Tab panes — fill remaining height in #gtb-right */
+#gtb-pane-main {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+}
+.gtb-tab-pane {
+    flex: 1; min-height: 0;
+}
+#gtb-right {
+    display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;
+}
+
+/* Tab grid for non-main panes */
+.gtb-tp-grid {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; height: 100%; align-content: flex-start;
+}
+.gtb-tp-col {
+    flex: 1; min-width: 220px; background: var(--gtb-surface);
+    border: 1px solid var(--gtb-border2); border-radius: 0; display: flex; flex-direction: column;
+}
+.gtb-tp-wide  { flex: 2; min-width: 320px; }
+.gtb-tp-wide2 { flex: 3; min-width: 400px; }
+.gtb-tp-hdr {
+    padding: 5px 8px; font-size: 0.52rem; font-weight: 700;
+    color: var(--gtb-muted); text-transform: uppercase; letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0;
+}
+.gtb-tp-body { flex: 1; overflow-y: auto; padding: 5px 7px; font-size: 0.58rem; }
+
+/* ── Analyze Drawer ─────────────────────────────────────────────────────────── */
+#gtb-analyze-drawer {
+    width: 0; min-width: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+    background: var(--gtb-surface); border-left: 1px solid var(--gtb-border2);
+    transition: width 0.22s ease, min-width 0.22s ease;
+    flex-shrink: 0;
+}
+#gtb-analyze-drawer.open {
+    width: 500px; min-width: 320px;
+}
+#gtb-analyze-drawer-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 10px; border-bottom: 1px solid var(--gtb-border2);
+    font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
+    background: var(--gtb-surface2);
+}
+#gtb-analyze-drawer-close {
+    background: none; border: none; color: var(--gtb-muted); cursor: pointer;
+    font-size: 0.9rem; padding: 2px 6px; border-radius: 3px;
+}
+#gtb-analyze-drawer-close:hover { color: #f85149; background: #f8514920; }
+#gtb-analyze-drawer-body {
+    flex: 1; overflow-y: auto; padding: 6px 10px; font-size: 0.6rem;
+}
+
+/* ── Groot Bot popup window (replaces jQuery popup library) ─────────────── */
+#gtb-popup-win {
+    position: fixed;
+    z-index: 99999;
+    background: var(--gtb-bg);
+    border: 1px solid var(--gtb-border2);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+/* Topbar shows move cursor when windowed so user knows it's draggable */
+#gtb-popup-win:not(.gtb-fullscreen) #gtb-topbar {
+    cursor: move;
+}
+
+/* ── Z-index layering: groot popup < other popups < maximize overlay ───── */
+/* Lower groot bot so other tool popups appear above it */
+#gtb-popup-win { z-index: 5000 !important; }
+/* Popup library windows have no z-index; set explicitly so they float above groot bot */
+.popupwindow { z-index: 9000 !important; }
+.popupwindow_overlay { z-index: 8999 !important; }
+/* Maximize overlay stays highest */
+#groot-maximize-overlay { z-index: 99999 !important; }
+
+/* ── Win control buttons: force visible even if host page resets buttons ─ */
+.popup-win-close, .popup-win-minimize, .popup-win-restore {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 24px !important; height: 24px !important;
+    background: var(--gtb-surface2) !important;
+    color: var(--gtb-muted) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.7rem !important;
+    padding: 0 !important;
+}
+.popup-win-close:hover   { background: #5a1a1a !important; color: #f85149 !important; }
+.popup-win-minimize:hover { background: var(--gtb-amber-dim) !important; color: var(--gtb-amber) !important; }
+.popup-win-restore:hover  { background: var(--gtb-blue-dim) !important; color: var(--gtb-blue) !important; }
+
+/* Analysis tab pane: flex column so header stays fixed, bt-wrap scrolls */
+#gtb-pane-analysis { display: flex; flex-direction: column; overflow: hidden; }
+#gtb-pane-analysis #bt-wrap { flex: 1; overflow-y: auto; }
+
+/* ── Groot window control buttons (outside main-trade-bot-container) ────── */
+#gtb-winctrl {
+    position: absolute;
+    top: 9px;
+    right: 10px;
+    display: flex;
+    gap: 4px;
+    z-index: 20;
+    pointer-events: all;
+}
+
+/* ── Win controls: fixed on body, above ALL groot content ───────────────── */
+#gtb-winctrl {
+    position: fixed !important;
+    display: flex !important;
+    gap: 4px !important;
+    z-index: 9500 !important;
+    pointer-events: all !important;
+}
+
+/* ── Popup library container above groot bot window ─────────────────────── */
+/* .popupwindow_container is the single fixed wrapper all popups live inside.
+   Must be above #gtb-popup-win (z-index:5000) so commodities, OI viewer,
+   settings etc. appear on top of the groot bot. */
+.popupwindow_container { z-index: 9500 !important; }
+
+/* ── Instrument card grid (Overview tab) ─────────────────────────────────── */
+#gtb-rows.gtb-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 8px;
+    overflow-y: auto;
+    align-content: start;
+}
+
+.gtb-instr-card {
+    background: var(--gtb-surface2);
+    border: 1px solid var(--gtb-border2);
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+.gtb-instr-card.cat-index  { border-left: 3px solid #3b82f6; }
+.gtb-instr-card.cat-stock  { border-left: 3px solid #a855f7; }
+.gtb-instr-card.cat-cmdty  { border-left: 3px solid #f59e0b; }
+
+/* Card header */
+.gtb-ic-hdr {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--gtb-border2);
+    flex-wrap: wrap;
+    min-height: 28px;
+}
+.gtb-ic-name {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.gtb-ic-hdr .gtb-row-ltp {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--gtb-text);
+    margin-left: 2px;
+}
+.gtb-ic-actions {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.gtb-ic-actions .sv-icon-btn {
+    padding: 1px 4px;
+    font-size: 0.55rem;
+}
+
+/* Chart */
+.gtb-ic-chart-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+.gtb-instr-card .gtb-row-chart {
+    height: 140px !important;
+    width: 100% !important;
+}
+
+/* Stats strip */
+.gtb-ic-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-top: 1px solid var(--gtb-border2);
+    flex-shrink: 0;
+}
+.gtb-ic-stat {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+    border-right: 1px solid var(--gtb-border2);
+    font-size: 0.5rem;
+}
+.gtb-ic-stat:last-child { border-right: none; }
+.gtb-ic-sl {
+    color: var(--gtb-muted);
+    font-size: 0.44rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Weights inside card */
+.gtb-ic-weights {
+    padding: 4px 6px;
+    border-top: 1px solid var(--gtb-border2);
+    flex-shrink: 0;
+}
+.gtb-ic-weights .gtb-wt-row { padding: 0; }
+.gtb-ic-weights .gtb-wt-name { min-width: 60px; font-size: 0.44rem; }
+.gtb-ic-weights .gtb-wt-score { font-size: 0.44rem; }
+
+/* ATR/SL row */
+.gtb-ic-sl-row {
+    padding: 2px 6px;
+    border-top: 1px solid var(--gtb-border2);
+    flex-shrink: 0;
+    font-size: 0.5rem;
+}
+
+/* ── Card sections (9:15 / Futures / OI Matrix / OI-OBV / Weightage / Details) */
+.gtb-ic-section {
+    border-top: 1px solid var(--gtb-border2);
+    flex-shrink: 0;
+}
+.gtb-ic-sec-hdr {
+    display: flex;
+    align-items: center;
+    padding: 2px 6px;
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    color: var(--gtb-muted);
+    text-transform: uppercase;
+    background: var(--gtb-surface);
+    border-bottom: 1px solid var(--gtb-border2);
+    min-height: 18px;
+}
+.gtb-ic-sec-body {
+    padding: 4px 6px;
+}
+.gtb-ic-oimatrix-wrap {
+    overflow-x: auto;
+    padding: 2px 4px;
+}
+.gtb-ic-oimatrix-wrap .gtb-row-oimatrix {
+    min-width: 0;
+}
+.gtb-ic-weights {
+    padding: 3px 6px;
+}
+.gtb-ic-weights .gtb-wt-name { min-width: 54px; font-size: 0.44rem; }
+.gtb-ic-weights .gtb-wt-score { font-size: 0.44rem; }
+
+/* ── Instrument card row layout (v2: full-width cards, horizontal columns) ── */
+#gtb-rows.gtb-card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 8px;
+    overflow-y: auto;
+}
+
+.gtb-instr-card {
+    display: flex;
+    flex-direction: row;
+    background: var(--gtb-surface2);
+    border: 1px solid var(--gtb-border2);
+    border-radius: 0;
+    overflow: visible;
+    min-height: 0;
+    flex-shrink: 0;
+}
+.gtb-instr-card.cat-index { border-left: 3px solid #3b82f6; }
+.gtb-instr-card.cat-stock { border-left: 3px solid #a855f7; }
+.gtb-instr-card.cat-cmdty { border-left: 3px solid #f59e0b; }
+
+/* Column base */
+.gtb-ic-col {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--gtb-border2);
+    min-width: 0;
+    flex-shrink: 0;
+}
+.gtb-ic-col:last-child { border-right: none; }
+
+.gtb-ic-col-hdr {
+    display: flex;
+    align-items: center;
+    padding: 2px 5px;
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--gtb-muted);
+    background: var(--gtb-surface);
+    border-bottom: 1px solid var(--gtb-border2);
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 17px;
+}
+
+.gtb-ic-col-body {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 5px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Column widths */
+.gtb-ic-col-id       { width: 160px; flex-shrink: 0; }
+.gtb-ic-col-chart    { flex: 1; min-width: 220px; }
+.gtb-ic-col-915      { width: 80px; }
+.gtb-ic-col-fut      { width: 160px; }
+.gtb-ic-col-oimatrix { width: 180px; overflow-x: auto; }
+.gtb-ic-col-oiobv    { width: 130px; }
+.gtb-ic-col-weights  { width: 150px; }
+.gtb-ic-col-detail   { width: 110px; }
+
+/* Identity column internals */
+.gtb-ic-name {
+    font-size: 0.58rem;
+    font-weight: 700;
+    white-space: nowrap;
+    margin-bottom: 2px;
+}
+.gtb-ic-ltp-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 3px;
+}
+.gtb-ic-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: auto;
+}
+.gtb-ic-btns .sv-icon-btn { font-size: 0.52rem; padding: 1px 4px; }
+
+/* Chart column */
+.gtb-ic-col-chart .gtb-row-chart {
+    height: 100% !important;
+    min-height: 130px !important;
+    width: 100% !important;
+}
+
+/* 9:15 column */
+.gtb-ic-col-915 .gtb-ic-col-body {
+    align-items: flex-start;
+    gap: 4px;
+}
+
+/* OI matrix column */
+.gtb-ic-col-oimatrix .gtb-ic-col-body { padding: 2px 3px; overflow-x: auto; }
+.gtb-ic-col-oimatrix .gtb-row-oimatrix { min-width: 0; }
+
+/* Weights column */
+.gtb-ic-col-weights .gtb-wt-name  { min-width: 48px; font-size: 0.42rem; }
+.gtb-ic-col-weights .gtb-wt-score { font-size: 0.42rem; }
+.gtb-ic-col-weights .gtb-wt-row   { padding: 0; }
+
+/* ── Card layout v3: use existing CSS vars so sliders work ──────────────── */
+#gtb-rows.gtb-card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 6px 8px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.gtb-instr-card {
+    display: grid;
+    grid-template-columns:
+        var(--gtb-col-instr, 140px)
+        var(--gtb-col-chart, 260px)
+        var(--gtb-col-915,    56px)
+        var(--gtb-col-fut,   190px)
+        var(--gtb-col-oi,    210px)
+        var(--gtb-col-oiobv, 280px)
+        var(--gtb-col-wt,    170px)
+        var(--gtb-col-detail,160px);
+    height: var(--gtb-row-h, 190px);
+    background: var(--gtb-surface2);
+    border: 1px solid var(--gtb-border2);
+    border-radius: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.gtb-instr-card.cat-index { border-left: 3px solid #3b82f6; }
+.gtb-instr-card.cat-stock { border-left: 3px solid #a855f7; }
+.gtb-instr-card.cat-cmdty { border-left: 3px solid #f59e0b; }
+
+/* Each column is a flex-column */
+.gtb-ic-col {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--gtb-border2);
+    min-width: 0;
+    overflow: hidden;
+}
+.gtb-ic-col:last-child { border-right: none; }
+
+/* Column label header — matches bt-ph style */
+.gtb-ic-col-hdr {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 5px;
+    height: 18px;
+    font-size: 0.42rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--gtb-muted);
+    background: var(--gtb-surface);
+    border-bottom: 1px solid var(--gtb-border2);
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Column body fills remaining height */
+.gtb-ic-col-body {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 5px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Identity column */
+.gtb-ic-col-id .gtb-ic-col-body { padding: 5px 6px; gap: 3px; }
+.gtb-ic-name  { font-size: 0.58rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gtb-ic-ltp-row { display: flex; align-items: baseline; gap: 4px; }
+.gtb-ic-btns  { display: flex; flex-wrap: wrap; gap: 2px; margin-top: auto; }
+.gtb-ic-btns .sv-icon-btn { font-size: 0.5rem; padding: 1px 3px; }
+
+/* Chart column — body fills full height */
+.gtb-ic-col-chart .gtb-ic-col-body { padding: 0; position: relative; }
+.gtb-ic-col-chart .gtb-row-chart {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 9:15 column */
+.gtb-ic-col-915 .gtb-ic-col-body { align-items: flex-start; justify-content: flex-start; gap: 5px; }
+
+/* Futures column */
+.gtb-ic-col-fut .gtb-ic-col-body { gap: 3px; overflow-y: auto; }
+
+/* OI matrix column */
+.gtb-ic-col-oimatrix .gtb-ic-col-body { padding: 2px 3px; overflow: auto; }
+.gtb-ic-col-oimatrix .gtb-row-oimatrix { min-width: 0; }
+
+/* OI/OBV column */
+.gtb-ic-col-oiobv .gtb-ic-col-body { gap: 1px; overflow: hidden; }
+.gtb-ic-col-oiobv .gtb-chart-oi    { flex: 1; min-height: 30px; }
+.gtb-ic-col-oiobv .gtb-oiobv-xaxis { flex-shrink: 0; }
+
+/* Weightage column */
+.gtb-ic-col-weights .gtb-ic-col-body { overflow-y: auto; gap: 1px; padding: 3px 5px; }
+.gtb-ic-col-weights .gtb-wt-name  { min-width: 46px; font-size: 0.42rem; }
+.gtb-ic-col-weights .gtb-wt-score { font-size: 0.42rem; }
+.gtb-ic-col-weights .gtb-wt-row   { padding: 0; min-height: 0; }
+
+/* Details column */
+.gtb-ic-col-detail .gtb-ic-col-body { gap: 3px; overflow-y: auto; }
+
+/* Chart levels overlay inside card chart column */
+.gtb-ic-col-chart .gtb-chart-levels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+.gtb-ic-col-chart .gtb-row-chart {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 1;
+}
+
+/* ── Card v4: flex layout so CSS order + display:none work cleanly ────────── */
+.gtb-instr-card {
+    display: flex !important;
+    flex-direction: row !important;
+    height: var(--gtb-row-h, 190px);
+    overflow: hidden;
+}
+
+/* Each column: fixed width from CSS var, ordered by inline style */
+.gtb-ic-col-id       { flex: 0 0 var(--gtb-col-instr, 140px) !important; width: var(--gtb-col-instr, 140px) !important; }
+.gtb-ic-col-chart    { flex: 0 0 var(--gtb-col-chart, 260px) !important; width: var(--gtb-col-chart, 260px) !important; overflow: hidden; }
+.gtb-ic-col-915      { flex: 0 0 var(--gtb-col-915,    56px) !important; width: var(--gtb-col-915,    56px) !important; }
+.gtb-ic-col-fut      { flex: 0 0 var(--gtb-col-fut,   190px) !important; width: var(--gtb-col-fut,   190px) !important; }
+.gtb-ic-col-oimatrix { flex: 0 0 var(--gtb-col-oi,    210px) !important; width: var(--gtb-col-oi,    210px) !important; }
+.gtb-ic-col-oiobv    { flex: 0 0 var(--gtb-col-oiobv, 280px) !important; width: var(--gtb-col-oiobv, 280px) !important; }
+.gtb-ic-col-weights  { flex: 0 0 var(--gtb-col-wt,    170px) !important; width: var(--gtb-col-wt,    170px) !important; }
+.gtb-ic-col-detail   { flex: 0 0 var(--gtb-col-detail,160px) !important; width: var(--gtb-col-detail,160px) !important; }
+
+/* Settings panel rows */
+.gtb-cfg-row button:disabled { opacity: 0.25; cursor: default !important; }
+
+/* ── Bug fixes: chart bg, overflow, show/hide ─────────────────────────────── */
+
+/* 1. Chart background — match GTB theme, never show white */
+.gtb-ic-col-chart .gtb-ic-col-body { background: var(--gtb-bg) !important; }
+.gtb-ic-col-chart .gtb-row-chart    { background: var(--gtb-bg) !important; }
+
+/* 2. Card overflow — let columns overflow so #gtb-rows scrolls horizontally */
+.gtb-instr-card { overflow: visible !important; flex-shrink: 0; }
+#gtb-rows.gtb-card-grid { overflow-x: auto !important; }
+
+/* 3. Show/hide via class (inline style loses to !important) */
+.gtb-col-hidden   { display: none !important; }
+.gtb-instr-hidden { display: none !important; }
+
+/* ── Chart background — ID-scoped to beat Kite's global CSS ─────────────── */
+#main-trade-bot-container .gtb-ic-col-chart .gtb-ic-col-body,
+#main-trade-bot-container .gtb-row-chart,
+#main-trade-bot-container .gtb-chart-mini,
+#main-trade-bot-container .gtb-row-col-chart {
+    background-color: #060a12 !important;
+}
+#main-trade-bot-container.gtb-light .gtb-ic-col-chart .gtb-ic-col-body,
+#main-trade-bot-container.gtb-light .gtb-row-chart,
+#main-trade-bot-container.gtb-light .gtb-chart-mini,
+#main-trade-bot-container.gtb-light .gtb-row-col-chart {
+    background-color: #f3f6fa !important;
+}
+
+/* ── Column clip + button sizes in headers ────────────────────────────────── */
+/* Clip each column so chart levels don't bleed into adjacent columns */
+.gtb-ic-col { overflow: hidden !important; }
+/* Chart col body must clip its absolute children */
+.gtb-ic-col-chart .gtb-ic-col-body { overflow: hidden !important; }
+
+/* Action buttons inside column headers — small, no fill */
+.gtb-col-btns .sv-icon-btn {
+    font-size: 0.48rem !important;
+    padding: 0 3px !important;
+    height: 14px !important;
+    line-height: 14px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--gtb-muted) !important;
+}
+.gtb-col-btns .sv-icon-btn:hover { color: var(--gtb-accent) !important; }
+
+/* ── ApexCharts OI/OBV transparent background ───────────────────────────── */
+#main-trade-bot-container .gtb-chart-oi,
+#main-trade-bot-container .gtb-chart-oi .apexcharts-canvas,
+#main-trade-bot-container .gtb-chart-oi .apexcharts-canvas svg,
+#main-trade-bot-container .gtb-chart-oi .apexcharts-canvas svg rect:first-child {
+    background: transparent !important;
+    background-color: transparent !important;
+    fill: transparent !important;
+}
+
+/* ── LightweightCharts transparent canvas — bg comes from CSS ────────────── */
+#main-trade-bot-container .gtb-row-chart,
+#main-trade-bot-container .gtb-chart-mini {
+    background-color: #060a12 !important;
+}
+#main-trade-bot-container.gtb-light .gtb-row-chart,
+#main-trade-bot-container.gtb-light .gtb-chart-mini {
+    background-color: #f3f6fa !important;
+}
+/* LW injects a <canvas> — ensure it is also transparent */
+#main-trade-bot-container .gtb-row-chart canvas,
+#main-trade-bot-container .gtb-chart-mini canvas {
+    background: transparent !important;
+}
+
+/* ── Floating quick-access toolbar ─────────────────────────────────── */
+#gtb-float-bar {
+    position: fixed !important;
+    right: 0 !important;
+    z-index: 8500 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0 !important;
+    background: #0b1220 !important;
+    border: 1px solid #1e2f46 !important;
+    border-right: none !important;
+    border-radius: 6px 0 0 6px !important;
+    padding: 3px 2px !important;
+    box-shadow: -2px 0 12px rgba(0,0,0,0.65) !important;
+    user-select: none !important;
+    font-family: inherit !important;
+    box-sizing: border-box !important;
+    width: 28px !important;
+}
+#gtb-float-bar.gtb-light {
+    background: #f0f2f5 !important;
+    border-color: #c8cdd6 !important;
+    box-shadow: -2px 0 12px rgba(0,0,0,0.18) !important;
+}
+.gtb-fb-handle {
+    color: #2d4160 !important;
+    font-size: 10px !important;
+    cursor: move !important;
+    padding: 1px 0 3px !important;
+    line-height: 1 !important;
+    letter-spacing: -1px !important;
+    text-align: center !important;
+    width: 100% !important;
+    display: block !important;
+    box-sizing: border-box !important;
+}
+#gtb-float-bar.gtb-light .gtb-fb-handle { color: #aab0bc !important; }
+.gtb-fb-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #4e6a8a !important;
+    font-size: 11px !important;
+    width: 24px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 1px 0 !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+    transition: color 0.12s, background 0.12s !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+}
+#gtb-float-bar.gtb-light .gtb-fb-btn { color: #5a7399 !important; }
+.gtb-fb-btn:hover {
+    color: #4cc9e0 !important;
+    background: rgba(76,201,224,0.13) !important;
+}
+#gtb-float-bar.gtb-light .gtb-fb-btn:hover {
+    color: #1a6fa8 !important;
+    background: rgba(26,111,168,0.12) !important;
+}
+.gtb-fb-btn:active {
+    background: rgba(76,201,224,0.22) !important;
+}
+.gtb-fb-groot {
+    margin-top: 3px !important;
+    border-top: 1px solid #1e2f46 !important;
+    padding-top: 3px !important;
+    color: #3a7fd5 !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+}
+#gtb-float-bar.gtb-light .gtb-fb-groot { border-top-color: #c8cdd6 !important; color: #1a6fa8 !important; }
+.gtb-fb-groot:hover {
+    color: #6cb4ff !important;
+    background: rgba(108,180,255,0.13) !important;
+}
+#gtb-float-bar.gtb-light .gtb-fb-groot:hover {
+    color: #0d5c94 !important;
+    background: rgba(26,111,168,0.12) !important;
+}
+
+/* ── Commodities popup v2 ──────────────────────────────────────────── */
+.cmd-wrap { display: flex; flex-direction: column; height: 100%; gap: 0; }
+
+.cmd-toolbar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; flex-shrink: 0;
+    background: var(--gtb-surface2, #161b22);
+    border-bottom: 1px solid var(--gtb-border, #21262d);
+}
+
+.cmd-twin-grid {
+    display: flex; flex: 1; min-height: 0;
+    overflow: auto; gap: 1px;
+    background: var(--gtb-border, #21262d);
+}
+.cmd-twin-col {
+    flex: 1; min-width: 0;
+    padding: 8px 10px;
+    background: var(--gtb-bg, #0b1220);
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0;
+}
+.cmd-col-hdr {
+    font-size: 0.6rem; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gtb-accent, #00b4d8);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--gtb-border, #21262d);
+    margin-bottom: 6px;
+}
+
+/* Trend probability card */
+.cmd-prob {
+    background: var(--gtb-surface2, #161b22);
+    border: 1px solid var(--gtb-border2, #30363d);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 8px 0;
+}
+.cmd-prob-top {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 6px;
+}
+.cmd-prob-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.cmd-prob-verdict {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.04em;
+}
+.cmd-prob-pcts { font-size: 0.55rem; color: var(--gtb-muted, #7d8590); }
+.cmd-prob-pcts b { font-size: 0.6rem; }
+.cmd-prob-conf { display: flex; align-items: center; gap: 5px; font-size: 0.5rem; color: var(--gtb-muted, #7d8590); margin-top: 2px; }
+.cmd-prob-conf-bar-bg { flex: 1; height: 4px; background: var(--gtb-surface3, #1c2433); border-radius: 2px; overflow: hidden; }
+
+/* Signal rows */
+.cmd-sig-list { display: flex; flex-direction: column; gap: 3px; }
+.cmd-sig-row {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.52rem; color: var(--gtb-text, #cdd9e5);
+}
+.cmd-sig-lbl { flex: 0 0 90px; white-space: nowrap; font-size: 0.52rem; }
+.cmd-sig-badge {
+    flex-shrink: 0;
+    font-size: 0.48rem; font-weight: 700;
+    border: 1px solid; border-radius: 3px;
+    padding: 0 4px; white-space: nowrap;
+}
+.cmd-sig-bar-bg {
+    flex: 1; height: 4px; min-width: 30px;
+    background: var(--gtb-surface3, #1c2433);
+    border-radius: 2px; overflow: hidden;
+}
+.cmd-sig-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.cmd-sig-val {
+    flex-shrink: 0; width: 56px; text-align: right;
+    font-size: 0.5rem; color: var(--gtb-muted, #7d8590);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Max Pain / GEX ──────────────────────────────────────────────────── */
+.mp-popup-wrap  { padding: 12px; overflow: auto; height: 100%; }
+.mp-section-label {
+    font-size: 0.55rem; font-weight: 800; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--gtb-accent, #00b4d8);
+    margin-bottom: 6px;
+}
+.mp-summary-tbl td, .mp-summary-tbl th { white-space: nowrap; }
+
+/* Per-instrument full card */
+.mp-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 10px;
+}
+.mp-instr-card {
+    background: var(--gtb-surface2, #161b22);
+    border: 1px solid var(--gtb-border2, #30363d);
+    border-radius: 6px; padding: 10px;
+}
+.mp-instr-name {
+    font-size: 0.62rem; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--gtb-accent, #00b4d8);
+    margin-bottom: 8px;
+}
+
+/* Stat blocks in full view */
+.mp-wrap { display: flex; flex-direction: column; gap: 8px; }
+.mp-header {
+    display: flex; gap: 10px; flex-wrap: wrap;
+}
+.mp-block {
+    flex: 1; min-width: 130px;
+    background: var(--gtb-surface3, #1c2433);
+    border: 1px solid var(--gtb-border, #21262d);
+    border-radius: 5px; padding: 8px 10px;
+}
+.mp-label {
+    font-size: 0.48rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gtb-muted, #7d8590); margin-bottom: 3px;
+}
+.mp-value  { font-size: 0.85rem; font-weight: 800; line-height: 1; }
+.mp-sub    { font-size: 0.5rem; color: var(--gtb-muted, #7d8590); margin-top: 3px; }
+
+.mp-chart-legend {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    font-size: 0.48rem; color: var(--gtb-muted, #7d8590);
+}
+.mp-gex-chart {
+    background: var(--gtb-surface3, #1c2433);
+    border: 1px solid var(--gtb-border, #21262d);
+    border-radius: 4px; padding: 4px; overflow: hidden;
+}
+.mp-flip-list { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.mp-flip-pill {
+    font-size: 0.48rem; font-weight: 700;
+    background: #a78bfa22; color: #a78bfa;
+    border: 1px solid #a78bfa55;
+    border-radius: 3px; padding: 1px 5px; white-space: nowrap;
+}
+
+/* Compact view inside detail column */
+.gtb-det-mp { margin-top: 5px; }
+.mp-compact { display: flex; flex-direction: column; gap: 2px; }
+.mp-compact-row {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.5rem; flex-wrap: wrap;
+}
+.mp-compact-label {
+    font-size: 0.48rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--gtb-muted, #7d8590);
+    flex: 0 0 42px;
+}
+
+/* ── Commodities OI+OBV single panel ──────────────────────────────── */
+.cmd-2col {
+    display: flex; gap: 1px;
+    background: var(--gtb-border, #21262d);
+    border: 1px solid var(--gtb-border, #21262d);
+    border-radius: 4px; overflow: hidden;
+}
+.cmd-2col-cell {
+    flex: 1; min-width: 0; padding: 6px 8px;
+    background: var(--gtb-bg, #0b1220);
+}
+.cmd-2col-cell.cmd-3col-scroll { flex: 0 0 200px; overflow-y: auto; }
+
+/* OI+OBV merged cell spans 2 of the 3 equal columns */
+.cmd-oiobv-merged { grid-column: span 2; }
+
+/* Merged OI+OBV cell — override fixed height so both charts show */
+.cmd-oiobv-merged { height: auto !important; overflow: visible !important; }
+
+/* Futures + Trend Probability side by side in CRUDEOILM column */
+.cmd-fut-prob-row {
+    display: flex; gap: 6px; margin-top: 8px; align-items: stretch;
+}
+.cmd-fut-prob-cell {
+    flex: 1; min-width: 0;
+    background: var(--gtb-surface2, #161b22);
+    border: 1px solid var(--gtb-border2, #30363d);
+    border-radius: 5px; padding: 6px 8px;
+    overflow-y: auto; max-height: 240px;
+}
+
+/* Force identical height on all prob/futures side panels */
+.cmd-fut-prob-cell { height: 220px !important; max-height: 220px !important; }
+
+/* ── Vertical instrument card (new layout) ───────────────────────── */
+.gtb-instr-card-v {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Identity bar */
+.gtb-ic-v-id {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--gtb-border2);
+    background: var(--gtb-surface3, var(--gtb-surface2));
+    flex-shrink: 0;
+    min-height: 26px;
+    flex-wrap: wrap;
+}
+.gtb-ic-v-id-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+.gtb-ic-v-id-btns {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.gtb-ic-v-id-btns .sv-icon-btn,
+.gtb-ic-v-id-btns .gtb-prob-btn {
+    width: 18px !important;
+    height: 17px !important;
+    min-height: 17px !important;
+    max-height: 17px !important;
+    padding: 0 !important;
+    font-size: 0.5rem !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Section */
+.gtb-ic-v-section {
+    border-top: 1px solid var(--gtb-border2);
+    padding: 4px 6px;
+    flex-shrink: 0;
+}
+.gtb-ic-v-section[data-col="chart"] {
+    padding: 0;
+}
+.gtb-ic-v-section[data-col="fut"] {
+    padding: 4px 6px;
+}
+
+/* Section sub-header */
+.gtb-ic-v-sec-hdr {
+    display: flex;
+    align-items: center;
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--gtb-muted);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+.gtb-ic-v-sec-hdr .gtb-col-btns {
+    display: flex;
+    gap: 2px;
+}
+.gtb-ic-v-sec-hdr .sv-icon-btn {
+    width: 16px !important;
+    height: 14px !important;
+    min-height: 14px !important;
+    max-height: 14px !important;
+    font-size: 0.44rem !important;
+    padding: 0 !important;
+}
+
+/* Chart inside vertical card — use --gtb-row-h CSS variable */
+.gtb-instr-card-v .gtb-row-chart {
+    height: var(--gtb-row-h, 190px) !important;
+    width: 100% !important;
+}
+
+/* Futures + Probability cells inside a card: shorter than commodities */
+.gtb-instr-card-v .cmd-fut-prob-cell {
+    height: auto !important;
+    max-height: 180px !important;
+    overflow-y: auto;
+}
+.gtb-instr-card-v .cmd-fut-prob-row {
+    margin-top: 0 !important;
+}
+
+/* Hidden section via col config */
+.gtb-ic-v-section.gtb-col-hidden { display: none !important; }
+.gtb-ic-v-id.gtb-col-hidden { display: none !important; }
+
+/* OI/OBV charts inside vertical card */
+.gtb-instr-card-v .gtb-chart-oi {
+    width: 100%;
+}
+
+/* ── Vertical card grid — override earlier single-column layout ───── */
+#gtb-rows.gtb-card-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)) !important;
+    grid-auto-rows: max-content !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    overflow-y: auto !important;
+    align-content: start !important;
+    flex-direction: unset !important;
+}
+
+/* ── Instrument panel system ─────────────────────────────────────── */
+.gtb-ic-panel {
+    border-top: 1px solid var(--gtb-border2);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex-shrink: 0;
+}
+.gtb-ic-panel:first-child { border-top: none; }
+.gtb-ic-panel.gtb-col-hidden { display: none !important; }
+
+.gtb-ic-panel-hdr {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    background: transparent;
+    border-bottom: 1px solid var(--gtb-border2);
+    min-height: 22px;
+    flex-shrink: 0;
+}
+.gtb-ic-panel-identity .gtb-ic-panel-hdr {
+    background: transparent;
+    min-height: 26px;
+    flex-wrap: wrap;
+}
+.gtb-ic-panel-title {
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--gtb-muted);
+    text-transform: uppercase;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.gtb-ic-panel-btns {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.gtb-ic-panel-btns .sv-icon-btn,
+.gtb-ic-panel-btns .gtb-prob-btn {
+    width: 18px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+    padding: 0 !important;
+    font-size: 0.5rem !important;
+}
+/* Identity panel — name/LTP/badges in hdr, no separate body */
+.gtb-ic-panel-identity .gtb-instr-link {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--gtb-text);
+}
+.gtb-ic-panel-identity .gtb-row-ltp { font-size: 0.65rem; }
+.gtb-ic-panel-identity .gtb-trend-zone { font-size: 0.5rem; }
+.gtb-ic-panel-identity .gtb-cell-fut-remark { font-size: 0.5rem; }
+
+.gtb-ic-panel-body {
+    padding: 4px 6px;
+    min-width: 0;
+}
+.gtb-ic-sub-hdr {
+    font-size: 0.42rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--gtb-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+/* Chart panel — no padding, chart fills edge-to-edge */
+.gtb-ic-panel[data-col="chart"] .gtb-row-chart {
+    height: var(--gtb-row-h, 190px) !important;
+    width: 100% !important;
+}
+
+/* OI / OBV charts fill panel width */
+.gtb-ic-panel[data-col="oiobv"] .gtb-chart-oi { width: 100%; }
+
+/* Trend Probability panel — contains SVG gauge */
+.gtb-ic-panel[data-col="prob"] .gtb-ic-panel-body { padding: 6px; }
+
+/* ── Horizontal-scroll stock strip ──────────────────────────────── */
+.gtb-hscroll-strip-hdr {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--gtb-muted);
+    text-transform: uppercase;
+    border-top: 1px solid var(--gtb-border2);
+    flex-shrink: 0;
+}
+#gtb-rows-hscroll.gtb-hscroll-strip {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    flex-shrink: 0;
+    align-items: flex-start;
+    /* custom scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--gtb-border) transparent;
+}
+#gtb-rows-hscroll .gtb-instr-card-v {
+    flex: 0 0 320px !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+}
+
+/* ── Instrument column scroll layout ────────────────────────────── */
+#gtb-rows.gtb-col-scroll {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    /* thin scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--gtb-border) transparent;
+}
+#gtb-rows.gtb-col-scroll .gtb-instr-card-v {
+    flex: 0 0 300px !important;
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    border-right: 1px solid var(--gtb-border2) !important;
+    border-bottom: none !important;
+    overflow-y: auto;
+    height: 100%;
+    min-height: 0;
+}
+#gtb-rows.gtb-col-scroll .gtb-instr-card-v:last-child {
+    border-right: none !important;
+}
+/* Category colour stripe on top instead of left */
+#gtb-rows.gtb-col-scroll .gtb-instr-card-v.cat-index { border-top: 3px solid #3b82f6 !important; }
+#gtb-rows.gtb-col-scroll .gtb-instr-card-v.cat-stock  { border-top: 3px solid #a855f7 !important; }
+#gtb-rows.gtb-col-scroll .gtb-instr-card-v.cat-cmdty  { border-top: 3px solid #f59e0b !important; }
+
+/* Card width driven by --gtb-card-w CSS variable (set by slider) */
+#gtb-rows.gtb-col-scroll .gtb-instr-card-v {
+    flex: 0 0 var(--gtb-card-w, 300px) !important;
+    width: var(--gtb-card-w, 300px) !important;
+    min-width: var(--gtb-card-w, 300px) !important;
+    max-width: var(--gtb-card-w, 300px) !important;
+}
+
+/* Panels must be in a flex-column so CSS order property resequences them */
+.gtb-instr-card-v {
+    display: flex !important;
+    flex-direction: column !important;
+}
+/* Identity panel always first; sticky within its own scroll container (main dashboard cards) */
+.gtb-ic-panel-identity {
+    order: -1 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 8 !important;
+    background: var(--gtb-surface) !important;
+    border-bottom: 2px solid var(--gtb-border) !important;
+}
+
+/* Override display:flex on cards when hidden — higher specificity wins */
+.gtb-instr-card-v.gtb-instr-hidden { display: none !important; }
+
+/* ── Settings popup window ───────────────────────────────────────── */
+.popup-custom-style-gtb-settings { background: var(--gtb-bg) !important; color: var(--gtb-text) !important; }
+.popup-custom-style-gtb-settings .popupwindow_titlebar { background: var(--gtb-surface3, #1a2030) !important; border-bottom: 1px solid var(--gtb-border2) !important; }
+.popup-custom-style-gtb-settings .popupwindow_titlebar_text { color: var(--gtb-text) !important; }
+.popup-custom-style-gtb-settings .popupwindow_content { background: var(--gtb-bg) !important; overflow-y: auto !important; }
+.popup-custom-style-gtb-settings .popupwindow_titlebar_button,
+.popup-custom-style-gtb-settings .popupwindow_statusbar { display: none !important; }
+
+.gtb-settings-popup { padding: 6px 8px; font-size: 0.6rem; color: var(--gtb-text); }
+.gtb-sp-section { padding: 6px 0; border-bottom: 1px solid var(--gtb-border2); }
+.gtb-sp-section:last-child { border-bottom: none; }
+.gtb-sp-hdr { font-size: 0.5rem; font-weight: 700; letter-spacing: .08em; color: var(--gtb-muted); text-transform: uppercase; margin-bottom: 5px; display: flex; align-items: center; }
+.gtb-sp-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 0.6rem; color: var(--gtb-text); cursor: pointer; }
+.gtb-sp-slider-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 0.5rem; color: var(--gtb-muted); }
+.gtb-sp-slider-row span:first-child { min-width: 60px; }
+.gtb-sp-slider-row input[type=range] { flex: 1; cursor: pointer; accent-color: #00b4d8; }
+.gtb-sp-slider-row span:last-child { min-width: 28px; text-align: right; }
+
+/* ── Instrument Detail View (fullscreen overlay) ─────────────────── */
+.gtb-dv-card { display: flex; flex-direction: column; gap: 0; }
+.gtb-dv-identity {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 12px; background: var(--gtb-surface3, #1a2030);
+    border-bottom: 2px solid var(--gtb-border2); position: sticky; top: 0; z-index: 10;
+}
+.gtb-dv-name { font-size: 1rem; font-weight: 800; letter-spacing: .04em; color: var(--gtb-text); }
+.gtb-dv-section {
+    padding: 6px 12px 10px;
+    border-bottom: 1px solid var(--gtb-border2);
+}
+.gtb-dv-hdr {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.5rem; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--gtb-muted);
+    margin-bottom: 6px; padding-top: 4px;
+}
+.gtb-dv-chart { height: 280px; width: 100%; }
+.gtb-dv-2col { display: flex; gap: 0; }
+.gtb-dv-2col > .gtb-dv-section { flex: 1; border-right: 1px solid var(--gtb-border2); }
+.gtb-dv-2col > .gtb-dv-section:last-child { border-right: none; }
+.gtb-dv-915 { display: flex; align-items: center; justify-content: center; min-height: 60px; }
+.gtb-dv-weights { display: flex; flex-direction: column; gap: 3px; }
+
+/* Maximize overlay scroll for detail view */
+#groot-maximize-overlay .popup-overlay-body { overflow-y: auto; }
+
+/* ── Panel N/A and waiting placeholders ─────────────────────────── */
+.gtb-panel-na {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 60px;
+    color: var(--gtb-muted);
+    font-size: 0.48rem;
+    letter-spacing: .04em;
+    text-align: center;
+    padding: 8px;
+}
+.gtb-panel-na i { font-size: 0.85rem; opacity: 0.4; }
+.gtb-panel-waiting {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+    color: var(--gtb-muted);
+    font-size: 0.48rem;
+    font-style: italic;
+}
+
+/* Fixed panel heights — identical across all instruments regardless of data availability */
+.gtb-ic-panel[data-col="oiobv"]   .gtb-ic-panel-body { height: 260px; overflow-y: auto; }
+.gtb-ic-panel[data-col="oimatrix"] .gtb-ic-panel-body { height: 90px;  overflow-x: auto; overflow-y: hidden; }
+.gtb-ic-panel[data-col="915"]     .gtb-ic-panel-body { height: 60px; }
+.gtb-ic-panel[data-col="prob"]    .gtb-ic-panel-body { height: 90px;  overflow: hidden; }
+.gtb-ic-panel[data-col="fut"]     .gtb-ic-panel-body { height: 110px; overflow-y: auto; }
+.gtb-ic-panel[data-col="detail"]  .gtb-ic-panel-body { height: 90px;  overflow-y: auto; }
+.gtb-ic-panel[data-col="weights"] .gtb-ic-panel-body { height: 110px; overflow-y: auto; }
+
+/* ── Instrument detail view — multi-instrument horizontal row ─────────────── */
+.fsig-multi-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px;
+    overflow-x: auto;
+    overflow-y: auto;
+    flex: 1;
+    align-items: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gtb-border) transparent;
+}
+.fsig-multi-row .gtb-dv-col {
+    flex: 0 0 420px;
+    width: 420px;
+    min-width: 420px;
+    display: block; /* block context makes position:sticky on identity panel reliable */
+}
+/* Override fixed panel heights inside the detail view columns */
+.fsig-multi-row .gtb-ic-panel[data-col="chart"] .gtb-row-chart { height: 190px !important; }
+.fsig-multi-row .gtb-ic-panel[data-col="oiobv"] .gtb-ic-panel-body { height: auto; min-height: 240px; }
+.fsig-multi-row .gtb-ic-panel[data-col="915"]   .gtb-ic-panel-body { height: auto; min-height: 40px; }
+.fsig-multi-row .gtb-ic-panel[data-col="prob"]  .gtb-ic-panel-body { height: auto; min-height: 80px; overflow: visible; }
+.fsig-multi-row .gtb-ic-panel[data-col="fut"]   .gtb-ic-panel-body { height: auto; min-height: 80px; }
+.fsig-multi-row .gtb-ic-panel[data-col="oimatrix"] .gtb-ic-panel-body { height: auto; min-height: 55px; overflow-x: auto; }
+.fsig-multi-row .gtb-ic-panel[data-col="weights"]  .gtb-ic-panel-body { height: auto; min-height: 80px; }
+.fsig-multi-row .gtb-ic-panel[data-col="detail"]   .gtb-ic-panel-body { height: auto; min-height: 60px; }
+.fsig-multi-row .gtb-ic-panel.gtb-ic-panel-identity {
+    position: relative; /* JS translateY scroll-sync keeps this pinned at top */
+    z-index: 15;
+    background: var(--gtb-surface);
+    border-bottom: 2px solid var(--gtb-border);
+}
+.fsig-multi-row .gtb-ic-panel.gtb-ic-panel-identity .gtb-ic-panel-hdr {
+    flex-wrap: wrap; gap: 4px;
+}
+/* fsig-wrap fills the popup (or maximize overlay) */
+.fsig-wrap { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+#fsig-multi-row { flex: 1; min-height: 0; }
+/* Popup content area must also be a flex column so fsig-wrap can stretch */
+.popup-custom-style-gtb-instr-detail .popupwindow_content {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+.popup-custom-style-gtb-instr-detail .popupwindow_content > * {
+    flex: 1;
+    min-height: 0;
+}
+/* Prevent text-select mousedown from triggering popup drag */
+.popup-custom-style-gtb-instr-detail .popupwindow_content,
+.popup-custom-style-gtb-instr-detail .fsig-wrap,
+.popup-custom-style-gtb-instr-detail .fsig-multi-row {
+    user-select: text;
+}
+
+/* ── Instrument detail view — panel overrides (inside #fsig-result) ──────── */
+#fsig-result .gtb-instr-card-v {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+/* Chart taller in detail view */
+#fsig-result .gtb-ic-panel[data-col="chart"] .gtb-row-chart {
+    height: 220px !important;
+}
+/* OI/OBV panel taller — has more content */
+#fsig-result .gtb-ic-panel[data-col="oiobv"] .gtb-ic-panel-body { height: auto; min-height: 260px; }
+/* All other panels — auto height in detail view so content isn't clipped */
+#fsig-result .gtb-ic-panel[data-col="915"]     .gtb-ic-panel-body { height: auto; min-height: 50px; }
+#fsig-result .gtb-ic-panel[data-col="prob"]    .gtb-ic-panel-body { height: auto; min-height: 90px; }
+#fsig-result .gtb-ic-panel[data-col="fut"]     .gtb-ic-panel-body { height: auto; min-height: 80px; }
+#fsig-result .gtb-ic-panel[data-col="oimatrix"].gtb-ic-panel-body { height: auto; min-height: 60px; overflow-x: auto; }
+#fsig-result .gtb-ic-panel[data-col="weights"] .gtb-ic-panel-body { height: auto; min-height: 80px; }
+#fsig-result .gtb-ic-panel[data-col="detail"]  .gtb-ic-panel-body { height: auto; min-height: 60px; }
+/* Identity panel: flat header row */
+#fsig-result .gtb-ic-panel.gtb-ic-panel-identity .gtb-ic-panel-hdr {
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 8px;
+}
+
+/* ── Instrument detail view — futures images cap ───────────────── */
+#fsig-result .gtb-fut-row img,
+#groot-maximize-overlay .gtb-fut-row img,
+.popup-custom-style-gtb-instr-detail .gtb-fut-row img,
+.fsig-multi-row .gtb-fut-row img {
+    max-width: 100px;
+    max-height: 50px;
+    object-fit: contain;
+}
+#fsig-result .gtb-cell-fut-signals .gtb-futures-content,
+.popup-custom-style-gtb-instr-detail .gtb-cell-fut-signals .gtb-futures-content,
+.fsig-multi-row .gtb-cell-fut-signals .gtb-futures-content { padding: 0; }
+#fsig-result .gtb-cell-fut-signals .gtb-futures-signals,
+.popup-custom-style-gtb-instr-detail .gtb-cell-fut-signals .gtb-futures-signals,
+.fsig-multi-row .gtb-cell-fut-signals .gtb-futures-signals { flex-direction: row; flex-wrap: wrap; gap: 3px; padding: 0; }
+#fsig-result .gtb-cell-fut-signals .gtb-fut-row,
+.popup-custom-style-gtb-instr-detail .gtb-cell-fut-signals .gtb-fut-row,
+.fsig-multi-row .gtb-cell-fut-signals .gtb-fut-row {
+    padding: 2px 6px; min-height: 0; border-radius: 3px;
+    border-left-width: 2px; font-size: 0.55rem;
+}
+
+/* ── Panel body flex so N/A placeholder stretches to fill panel height ── */
+.gtb-ic-panel-body {
+    display: flex;
+    flex-direction: column;
+}
+.gtb-panel-na {
+    flex: 1;
+}

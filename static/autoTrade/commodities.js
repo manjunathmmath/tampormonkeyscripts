@@ -49,6 +49,12 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
         let data = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), HISTORICAL_DATA_INTERVAL);
         let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
         data.data.candles = _gtbTrimCandles(data.data.candles, MCX_CURRENT_DAY);
+        if (!data.data.candles || !data.data.candles.length) {
+            console.warn('showTopChartMCX: no candles for', name, '— check MCX_CURRENT_DAY config');
+            var _el = document.getElementById(tempName + '-chart');
+            if (_el) _el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.55rem;color:#f85149;">No data — check MCX date config</div>';
+            return;
+        }
 
         let strikeDiff = MCX_FUTURE_STRIKE_DIFF[name];
         if (!strikeDiff) {
@@ -167,14 +173,89 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
 
         // Use LightweightCharts candlestick (defined in grootTradeBot.js)
         if (typeof _renderLWChart === 'function') {
-            _renderLWChart((bindtoDivId ? bindtoDivId.replace('#', '') : (tempName + '-chart')), data.data.candles, refLines, chartHeight || 150, { hideLegend: true });
+            var _noYAxis = (name === 'CRUDEOILM' || name === 'USDINR');
+            _renderLWChart((bindtoDivId ? bindtoDivId.replace('#', '') : (tempName + '-chart')), data.data.candles, refLines, chartHeight || 150, { hideLegend: true, hideYAxis: _noYAxis });
+        }
+
+        // Derive suffix: if bindtoDivId is e.g. '#CRUDEOILM-chart-dv-CRUDEOILM',
+        // the suffix is everything after '{tempName}-chart' → '-dv-CRUDEOILM'
+        var _mcxSfx = '';
+        if (bindtoDivId) {
+            var _bid = bindtoDivId.replace('#', '');
+            var _sfxIdx = _bid.indexOf(tempName + '-chart');
+            if (_sfxIdx !== -1) _mcxSfx = _bid.slice(_sfxIdx + (tempName + '-chart').length);
         }
 
         let ltp = data.data.candles[data.data.candles.length - 1][4];
+        // Update LTP in both overview card and any detail view using the suffix
         jQ('#' + tempName + '-ltp').html(parseFloat(ltp).toLocaleString('en-IN'));
+        if (_mcxSfx) jQ('#' + tempName + '-ltp' + _mcxSfx).html(parseFloat(ltp).toLocaleString('en-IN'));
         if (typeof _buildATRBadges === 'function') {
             _buildATRBadges(ltp, name, data.data.candles);
         }
+
+        // 9:15 breakout — classify first candle close vs strike levels
+        try {
+            var _c915 = parseFloat(data.data.candles[0][4]);
+            var _aso = parseFloat(strikeMap.ustrikeOne);
+            var _ast = parseFloat(strikeMap.ustrikeTwo);
+            var _bso = parseFloat(strikeMap.bstrikeOne);
+            var _bst = parseFloat(strikeMap.bstrikeTwo);
+            var _zone915;
+            if      (_c915 >= _ast) _zone915 = 'AST';
+            else if (_c915 >= _aso) _zone915 = 'ASO';
+            else if (_c915 <= _bst) _zone915 = 'BST';
+            else if (_c915 <= _bso) _zone915 = 'BSO';
+            else                    _zone915 = 'BTW';
+            var _isBull915 = (_zone915 === 'ASO' || _zone915 === 'AST');
+            var _isBear915 = (_zone915 === 'BSO' || _zone915 === 'BST');
+            var _cls915 = _isBull915 ? 'gtb-915-bull' : _isBear915 ? 'gtb-915-bear' : 'gtb-915-neutral';
+            var _badgeHtml = '<span class="' + _cls915 + '">' + _zone915 + '</span>';
+            var _detailHtml = '<span class="' + _cls915 + '" style="font-weight:700;">' + _zone915 + '</span>'
+                + ' <span style="color:var(--gtb-muted);">close: ' + _c915.toFixed(2)
+                + ' | ASO ' + _aso.toFixed(2) + ' / BSO ' + _bso.toFixed(2) + '</span>';
+            // Write to all known targets (overview + any detail suffix)
+            jQ('#' + tempName + '-915-badge').html(_badgeHtml);
+            jQ('#' + tempName + '-915-detail').html(_detailHtml);
+            if (_mcxSfx) {
+                jQ('#' + tempName + '-915-badge'  + _mcxSfx).html(_badgeHtml);
+                jQ('#' + tempName + '-915-detail' + _mcxSfx).html(_detailHtml);
+            }
+            // Save to localStorage for cross-module use
+            try {
+                var _vb = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
+                _vb[name] = { CLOSE_9_15: _zone915, close: _c915, open: parseFloat(open) };
+                localStorage.setItem('VALID_BREAKOUT_NINE_FIFTEEN', JSON.stringify(_vb));
+            } catch(e2) {}
+        } catch(e) {}
+
+        // Levels strip
+        var _ltpN = parseFloat(ltp);
+        var _sm   = strikeMap;
+        function _lbl(key, val, isBull) {
+            var v = parseFloat(val);
+            var hit = isBull ? (_ltpN >= v) : (_ltpN <= v);
+            var col = hit ? (isBull ? 'var(--gtb-green,#3fb950)' : 'var(--gtb-red,#f85149)') : 'var(--gtb-muted,#7d8590)';
+            return '<span style="font-size:0.5rem;white-space:nowrap;color:' + col + '"><b>' + key + '</b> ' + v.toFixed(2) + '</span>';
+        }
+        var _levelsHtml = ''
+            + _lbl('O',   open,            true)
+            + _lbl('V↑',  _sm.vixDDUpper,  true)
+            + _lbl('V↓',  _sm.vixDDLower,  false)
+            + _lbl('A+',  _sm.ustrikeTwo,  true)
+            + _lbl('A',   _sm.ustrikeOne,  true)
+            + _lbl('B',   _sm.bstrikeOne,  false)
+            + _lbl('B-',  _sm.bstrikeTwo,  false);
+        // Write levels to every known target
+        var _ids = [
+            tempName + '-chart-levels',
+            'max-' + tempName + '-chart-levels',
+        ];
+        if (_mcxSfx) _ids.push(tempName + '-chart-levels' + _mcxSfx);
+        _ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.innerHTML = _levelsHtml;
+        });
     } catch (error) {
         console.error('Error in showTopChartMCX for ' + name, error);
     }

@@ -148,7 +148,7 @@ async function _gtbChartGridLoad() {
           + 'display:flex;flex-direction:column;overflow:hidden;min-height:0;">'
           + '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;flex-shrink:0;'
           + 'border-bottom:1px solid var(--gtb-border,#21262d);">'
-          + '<span style="font-size:0.58rem;font-weight:700;color:var(--gtb-muted,#7d8590);flex-shrink:0;">' + inst.label + '</span>'
+          + '<span style="font-size:0.58rem;font-weight:700;color:var(--gtb-muted);flex-shrink:0;">' + inst.label + '</span>'
           + '<span id="gtb-cg-levels-' + tid + '" style="display:flex;flex-wrap:nowrap;gap:4px;overflow:hidden;"></span>'
           + '</div>'
           + '<div id="gtb-cg-chart-' + tid + '" style="flex:1;min-height:0;position:relative;"></div>'
@@ -208,7 +208,7 @@ async function _gtbChartGridLoad() {
         if (!el) return;
 
         if (r.err || !r.candles.length) {
-            el.innerHTML = '<div style="color:var(--gtb-muted,#7d8590);font-size:0.58rem;padding:8px;">'
+            el.innerHTML = '<div style="color:var(--gtb-muted);font-size:0.58rem;padding:8px;">'
                 + (r.err || 'No data') + '</div>';
             return;
         }
@@ -283,7 +283,7 @@ async function _gtbChartGridLoad() {
                 var m = metaMap[rl.key] || { short: rl.key, color: '#7d8590' };
                 return '<span style="display:inline-flex;align-items:center;gap:1px;white-space:nowrap;">'
                     + '<span style="font-size:0.44rem;font-weight:700;color:' + m.color + ';letter-spacing:0.02em;">' + m.short + '</span>'
-                    + '<span style="font-size:0.44rem;color:var(--gtb-muted,#7d8590);">' + fmt(rl.value) + '</span>'
+                    + '<span style="font-size:0.44rem;color:var(--gtb-muted);">' + fmt(rl.value) + '</span>'
                     + '</span>';
             }).join('<span style="color:#30363d;font-size:0.4rem;"> · </span>');
         }
@@ -330,6 +330,61 @@ jQ(document).on('click', '.maximize-component-btn', function() {
     let name = jQ(this).attr('data-name');
     let type = jQ(this).attr('data-type');
     maximizeComponent(name, type);
+});
+
+// Per-card Max Pain / GEX button → maximize overlay for that instrument
+jQ(document).on('click', '.mp-gex-btn', function(e) {
+    e.stopPropagation();
+    var name = jQ(this).data('name');
+    showMaximizeOverlay(
+        '<i class="bi bi-bar-chart-steps"></i> Max Pain &amp; GEX — ' + name,
+        '<div style="padding:12px;overflow:auto;height:100%;">' + _gtbMaxPainGEXHtml(name, false) + '</div>'
+    );
+});
+
+// Refresh compact Max Pain cards in all visible instrument rows
+function _gtbRefreshMPCards() {
+    jQ('.gtb-det-mp').each(function() {
+        var tid  = this.id.replace('-mp-gex', '');
+        var name = jQ('#gtb-pane-' + tid).data('instr') || tid.replace(/-/g, ' ');
+        this.innerHTML = _gtbMaxPainGEXHtml(name, true);
+    });
+}
+
+function _gtbRefreshProbCards() {
+    // Render trend probability gauge into each vertical instrument card
+    jQ('.gtb-instr-card-v').each(function() {
+        var name = jQ(this).data('instr');
+        if (!name) return;
+        var tid = name.replace(/ /g, '-').replace(/&/g, '-');
+        var el  = document.getElementById(tid + '-prob');
+        if (el) el.innerHTML = _cmdTrendProb(name, null);
+    });
+}
+
+jQ(document).on('click', '.gtb-left-max-btn', function(e) {
+    e.stopPropagation(); // don't trigger collapse-toggle
+    var panel = jQ(this).data('panel');
+    var titles = {
+        score:       '<i class="bi bi-speedometer2"></i> Score',
+        signal:      '<i class="bi bi-lightning-charge"></i> Signal',
+        rangesb:     '<i class="bi bi-bar-chart-line-fill"></i> Range Scoreboard',
+        pillars:     '<i class="bi bi-bar-chart-steps"></i> Pillars',
+        toptrades:   '<i class="bi bi-stars"></i> Top Trades',
+        scoredetail: '<i class="bi bi-table"></i> Score Detail',
+        scorehistory:'<i class="bi bi-clock-history"></i> Score History',
+    };
+    var bodyMap = {
+        score:       function() { return jQ('#gtb-score-gauge').html(); },
+        signal:      function() { return jQ('#market-final-signal').parent().html(); },
+        rangesb:     function() { return jQ('#gtb-range-sb').html(); },
+        pillars:     function() { return jQ('#gtb-pillars-body').html(); },
+        toptrades:   function() { return jQ('#gtb-top-trades-list').html(); },
+        scoredetail: function() { return jQ('#trend-scoreboard-table').html(); },
+        scorehistory:function() { return jQ('#gtb-score-history-table').html(); },
+    };
+    var body = bodyMap[panel] ? bodyMap[panel]() : '';
+    showMaximizeOverlay(titles[panel] || panel, '<div style="padding:12px;overflow:auto;height:100%;">' + body + '</div>');
 });
 
 var _gtbMaxRefreshFn = null;   // callback set by each maximize caller
@@ -441,7 +496,7 @@ function renderOIOBVMaximized(name, tempName, oiData) {
         let ceLabelColor = (s.ceLabelColor === '#28a745' || s.ceLabelColor === '#85c785') ? '#3fb950' : (s.ceLabelColor === '#dc3545' || s.ceLabelColor === '#e08080') ? '#f85149' : '#7d8590';
         let peLabelColor = (s.peLabelColor === '#28a745' || s.peLabelColor === '#85c785') ? '#3fb950' : (s.peLabelColor === '#dc3545' || s.peLabelColor === '#e08080') ? '#f85149' : '#7d8590';
         let scoreColor = s.score > 0 ? '#3fb950' : s.score < 0 ? '#f85149' : '#7d8590';
-        srHtml += '<div style="flex:1;min-width:80px;text-align:center;border:' + border + ';border-radius:5px;padding:5px 3px;background:#161b22;">';
+        srHtml += '<div style="flex:1;min-width:80px;text-align:center;border:' + border + ';border-radius:5px;padding:5px 3px;background:var(--gtb-bg,#161b22);">';
         srHtml += '<div style="font-size:0.7rem;color:' + strikeColor + ';font-weight:' + (s.isATM ? '900' : '600') + ';">' + s.strike + (s.isATM ? ' ★' : '') + '</div>';
         srHtml += '<div style="font-size:0.68rem;color:' + ceLabelColor + ';">' + s.ceLabel + '</div>';
         srHtml += '<div style="font-size:0.68rem;color:' + peLabelColor + ';">' + s.peLabel + '</div>';
@@ -473,7 +528,14 @@ async function maximizeChart(name) {
 
     function _buildBody() {
         let b = '';
-        b += '<div id="max-' + tempName + '-chart" style="width:100%;min-width:0;height:520px;border-radius:8px;overflow:hidden;display:block;"></div>';
+        // Levels strip — populated by showTopChart once candles are loaded
+        b += '<div id="max-' + tempName + '-chart-levels"'
+            + ' style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;'
+            + 'padding:6px 10px;background:var(--gtb-surface2,#161b22);'
+            + 'border:1px solid var(--gtb-border2,#30363d);border-radius:6px;margin-bottom:8px;min-height:28px;">'
+            + '<span style="font-size:0.52rem;color:var(--gtb-muted);">Loading levels…</span>'
+            + '</div>';
+        b += '<div id="max-' + tempName + '-chart" style="width:100%;min-width:0;height:500px;border-radius:8px;overflow:hidden;display:block;"></div>';
         b += '<div id="max-' + tempName + '-atr-sl" style="margin-top:8px;"></div>';
         return b;
     }
@@ -569,20 +631,26 @@ jQ(document).on("click", "#show-groot-trade-bot", function (e) {
 });
 
 
-async function showGrootTradeBot() {
-    let html = '<div id="main-trade-bot-container"></div>';
+function _gtbApplyFullscreen(on) {
+    var $win = jQ('#gtb-popup-win');
+    if (on) {
+        $win.css({ top: '0', left: '0', width: '100vw', height: '100vh' })
+            .addClass('gtb-fullscreen');
+    } else {
+        $win.css({ top: '48px', left: '1vw', width: '98vw', height: 'calc(100vh - 56px)' })
+            .removeClass('gtb-fullscreen');
+    }
+    $win.data('gtb-fullscreen', on);
+}
 
-    showPopUpWindow('groot-trade-bot', html, 'Groot', 950, 550);
-    let divId = 'popup-custom-style-groot-trade-bot';
-    jQ('.' + divId).find('.popupwindow_titlebar_button_maximize').trigger('click');
-
-    // Hide the popup title bar and status bar — the new #gtb-topbar replaces both
-    jQ('.' + divId).find('.popupwindow_titlebar').hide();
-    jQ('.' + divId).find('.popupwindow_statusbar').hide();
-
-    // Make the content fill 100% with no top gap
-    jQ('.' + divId).find('.popupwindow_content').css({ top: '0', bottom: '0' });
-
+function showGrootTradeBot() {
+    if (jQ('#gtb-popup-win').length) {
+        jQ('#gtb-popup-win').css('z-index', '5000');
+        return;
+    }
+    jQ('body').append('<div id="gtb-popup-win"><div id="main-trade-bot-container"></div></div>');
+    jQ('body').css('overflow', 'hidden');
+    _gtbApplyFullscreen(true); // open maximized by default
     showCompoenentPlaceHolders();
 }
 
@@ -636,6 +704,7 @@ jQ(document).on("click", "#data-load", function () {
         + '</div>';
     jQ("." + divId).find(".popupwindow_titlebar_text").html(dsTitle);
     hideNativePopupButtons(divId);
+    jQ('.' + divId).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
 });
 
 
@@ -707,10 +776,140 @@ async function scanNineFifteenCandle() {
     }
 }
 
+// Module-level instrument list — populated by commonMarkupPlaceHolder before each render
+var _allInstruments = [];
+
+// Icons used by both _buildCardStandalone and commonMarkupPlaceHolder/_buildCard
+var _instrIcons = {
+    'NIFTY 50':'bi-graph-up','NIFTY BANK':'bi-bank2','GIFT NIFTY':'bi-globe-asia-australia',
+    'SENSEX':'bi-globe2','CRUDEOILM':'bi-droplet-fill','USDINR':'bi-currency-exchange',
+    'RELIANCE':'bi-fuel-pump','HDFCBANK':'bi-building','ICICIBANK':'bi-credit-card',
+};
+
+// Builds a single instrument card HTML string usable outside commonMarkupPlaceHolder
+function _buildCardStandalone(item) {
+    var name    = item.name;
+    var tid     = name.replace(/ /g,'-').replace(/&/g,'-');
+    var icon    = _instrIcons[name] || 'bi-bar-chart';
+    var isMcx   = !!item.mcx;
+    var isNifty = name === 'NIFTY 50';
+    var isBank  = name === 'NIFTY BANK';
+    var exchLink = isMcx ? 'MCX' : 'NSE';
+    var mcxEntry  = isMcx ? (typeof COMMODITIES_FUTURE_INSTRUMENT_LIST !== 'undefined'
+        ? COMMODITIES_FUTURE_INSTRUMENT_LIST.find(function(f){return f.name===name;}) : null) : null;
+    var linkToken  = mcxEntry ? mcxEntry.instrument_token : (INSTRUMENT_TOKENS[name] || '');
+    var linkSymbol = mcxEntry ? mcxEntry.tradingsymbol    : name;
+    var kiteLink   = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
+
+    // Re-use _buildCard logic by injecting the item into commonMarkupPlaceHolder-scope is complex,
+    // so we duplicate the essential outer wrapper. The panel structure mirrors _buildCard exactly.
+    var h = '<div class="gtb-instr-card-v" id="gtb-pane-' + tid + '" data-name="' + name + '" data-mcx="' + (isMcx?'1':'0') + '">';
+
+    // Identity strip
+    h += '<div class="gtb-ic-v-id">'
+       + '<div class="gtb-ic-v-id-left">'
+       + '<i class="bi ' + icon + '" style="font-size:0.55rem;color:var(--gtb-muted);"></i>'
+       + '<a href="' + kiteLink + '" target="_blank" class="gtb-instr-link" style="font-weight:800;">' + name + '</a>'
+       + '<span class="gtb-row-ltp" id="' + tid + '-ltp"></span>'
+       + '<span class="gtb-trend-zone" id="' + tid + '-trend-zone"></span>'
+       + '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>'
+       + '<span class="gtb-cell-premium-chip" id="' + tid + '-futures-premium"></span>'
+       + '<span class="gtb-cell-fut-remark" id="' + tid + '-futures-trend"></span>'
+       + '</div>'
+       + '<button class="sv-icon-btn gtb-single-refresh" data-name="' + name + '" data-mcx="' + (isMcx?'1':'0') + '" title="Refresh ' + name + '" style="margin-left:auto;">'
+       + '<i class="bi bi-arrow-clockwise"></i></button>'
+       + '</div>';
+
+    // 8 panels — identical to _buildCard (abbreviated to identity + placeholders)
+    // Panel: chart
+    h += '<div class="gtb-ic-panel" data-col="chart"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-line-fill"></i> PRICE ACTION' + _ii('dv-chart') + '</span>'
+       + '<span class="gtb-ic-panel-btns"><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button></span></div>'
+       + '<div class="gtb-ic-panel-body" style="padding:0;">'
+       + '<div id="' + tid + '-chart-levels" class="gtb-chart-levels"></div>'
+       + '<div id="' + tid + '-chart" class="gtb-chart-mini gtb-row-chart"></div>'
+       + '</div></div>';
+
+    // Panel: oiobv
+    h += '<div class="gtb-ic-panel" data-col="oiobv"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-layers-fill"></i> OI / OBV' + _ii('dv-oiobv') + '</span>'
+       + '<span class="gtb-ic-panel-btns">'
+       + '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>'
+       + '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>'
+       + '</span></div>'
+       + '<div class="gtb-ic-panel-body">'
+       + '<div id="' + tid + '-oi" class="gtb-chart-oi" style="height:110px;"></div>'
+       + '<div id="' + tid + '-obv" class="gtb-chart-oi" style="height:110px;"></div>'
+       + '<div id="' + tid + '-oiobv-xaxis" class="gtb-oiobv-xaxis"></div>'
+       + '</div></div>';
+
+    // Panel: 915
+    h += '<div class="gtb-ic-panel" data-col="915"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-alarm"></i> 9:15 BREAKOUT' + _ii('dv-915') + '</span>'
+       + '<span class="gtb-ic-panel-btns"><button class="gtb-prob-btn sv-icon-btn" data-name="' + name + '"><i class="bi bi-percent"></i></button></span></div>'
+       + '<div class="gtb-ic-panel-body"><span id="' + tid + '-915-detail" style="font-size:0.52rem;color:var(--gtb-muted);">—</span></div></div>';
+
+    // Panel: prob
+    h += '<div class="gtb-ic-panel" data-col="prob"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-speedometer2"></i> TREND PROBABILITY' + _ii('dv-prob') + '</span></div>'
+       + '<div class="gtb-ic-panel-body" id="' + tid + '-prob"></div></div>';
+
+    // Panel: fut
+    h += '<div class="gtb-ic-panel" data-col="fut"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> FUTURES' + _ii('dv-futures') + '</span>'
+       + '<span class="gtb-ic-panel-btns"><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures"><i class="bi bi-fullscreen"></i></button></span></div>'
+       + '<div class="gtb-ic-panel-body">'
+       + '<div id="' + tid + '-futures" class="gtb-cell-fut-signals"></div>'
+       + '<div id="' + tid + '-atr-sl" class="gtb-cell-sl-wrap" style="margin-top:4px;"></div>'
+       + '<div id="' + tid + '-futures-vwap" style="font-size:0.5rem;margin-top:2px;"></div>'
+       + '</div></div>';
+
+    // Panel: oimatrix
+    h += '<div class="gtb-ic-panel" data-col="oimatrix"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-table"></i> OI MATRIX' + _ii('dv-oimatrix') + '</span>'
+       + '<span id="' + tid + '-oimatrix-lbl" style="font-size:0.42rem;color:var(--gtb-muted);margin-left:4px;"></span></div>'
+       + '<div class="gtb-ic-panel-body" style="overflow-x:auto;padding:0 4px;">'
+       + '<div id="' + tid + '-oimatrix" class="gtb-row-oimatrix"></div>'
+       + '</div></div>';
+
+    // Panel: weights
+    h += '<div class="gtb-ic-panel" data-col="weights"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-steps"></i> WEIGHTAGE' + _ii('dv-weights') + '</span></div>'
+       + '<div class="gtb-ic-panel-body" id="' + tid + '-weights">';
+    if (isNifty || isBank) {
+        var wMap2 = isNifty ? NIFTY_50_WEIGHTED_STOCKS : NIFTY_BANK_WEIGHTED_STOCKS;
+        Object.entries(wMap2).sort(function(a,b){return b[1]-a[1];}).slice(0,6).forEach(function(kv){
+            var wn = kv[0], wtid3 = wn.replace(/ /g,'-').replace(/&/g,'-');
+            h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + wn + '</span>'
+               + '<div class="gtb-wt-bar"><b id="' + wtid3 + '-wt-bar" style="width:0%;background:var(--gtb-muted)"></b></div>'
+               + '<span class="gtb-wt-score" id="' + wtid3 + '-wt-score">—</span></div>';
+        });
+    } else {
+        [['9:15',tid+'-sub-915'],['Trend',tid+'-sub-trend'],['Fut',tid+'-sub-fut'],['OI',tid+'-sub-oi'],['Total',tid+'-sub-total']].forEach(function(sr){
+            h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + sr[0] + '</span>'
+               + '<div class="gtb-wt-bar"><b id="' + sr[1] + '-bar" style="width:0%;background:var(--gtb-muted)"></b></div>'
+               + '<span class="gtb-wt-score" id="' + sr[1] + '">—</span></div>';
+        });
+    }
+    h += '</div></div>';
+
+    // Panel: detail
+    h += '<div class="gtb-ic-panel" data-col="detail"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-info-circle-fill"></i> DETAILS' + _ii('dv-detail') + '</span></div>'
+       + '<div class="gtb-ic-panel-body">'
+       + '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability"></span></div>'
+       + '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score"></span></div>'
+       + '<div id="' + tid + '-mp-gex" class="gtb-det-mp"></div>'
+       + '</div></div>';
+
+    h += '</div>'; // end .gtb-instr-card-v
+    return h;
+}
+
+// Single-card refresh handler wired to Refresh button on dynamically added cards
+jQ(document).on('click', '.gtb-single-refresh', function() {
+    var name  = jQ(this).data('name');
+    var isMcx = jQ(this).data('mcx') == '1' || jQ(this).data('mcx') === 1;
+    _gtbToast('Refreshing ' + name + '…', 'info');
+    if (isMcx) _refreshMCX(name); else _refreshNSE(name);
+});
+
+function _ii(k) { return ' <i class="bi bi-info-circle gtb-info-i" data-info="' + k + '" title="What does this show?"></i>'; }
+
 function commonMarkupPlaceHolder() {
     let h = '';
-    // Info icon — click opens a styled popover explaining the section (see GTB_INFO map)
-    function _ii(k) { return ' <i class="bi bi-info-circle gtb-info-i" data-info="' + k + '" title="What does this show?"></i>'; }
 
     // ── TOP BAR ──────────────────────────────────────────────────────────────
     h += '<div id="gtb-topbar">';
@@ -763,114 +962,33 @@ function commonMarkupPlaceHolder() {
     h += '<a id="show-915-backtest" class="gtb-ctrl-link" title="9:15 Trend — 1-year day-wise backtest (NIFTY/SENSEX/BANK)"><i class="bi bi-calendar-week"></i></a>';
     h += '<a id="show-all-oi" class="gtb-ctrl-link" title="OI Scan — all instruments incl. weighted constituents"><i class="bi bi-layers-fill"></i></a>';
     h += '<a id="show-fut-accuracy" class="gtb-ctrl-link" title="Futures remark accuracy (5-min reconstruction)"><i class="bi bi-bullseye"></i></a>';
-    h += '<a id="show-futures-signal" class="gtb-ctrl-link" title="Futures signal — any instrument (NSE stocks / index / MCX)"><i class="bi bi-flag-fill"></i></a>';
+    h += '<a id="show-futures-signal" class="gtb-ctrl-link" title="Instrument Detail View — price action, OI, futures, score for any instrument"><i class="bi bi-layers-fill"></i></a>';
     h += '<a id="show-commodities" class="gtb-ctrl-link" title="Commodities — GIFT NIFTY &amp; Crude (chart, OI, futures)"><i class="bi bi-droplet-fill"></i></a>';
     h += '<a id="show-oi-viewer" class="gtb-ctrl-link" title="OI Analyzer"><i class="bi bi-eye"></i></a>';
     h += '<a id="show-stock-viewer" class="gtb-ctrl-link" title="Stock Viewer"><i class="bi bi-list-ul"></i></a>';
     h += '<a id="show-market-quote-analyzer" class="gtb-ctrl-link" title="Quotes"><i class="bi bi-graph-up"></i></a>';
+    h += '<a id="show-maxpain-gex" class="gtb-ctrl-link" title="Max Pain &amp; GEX — all instruments"><i class="bi bi-bar-chart-steps"></i></a>';
     h += '<a id="show-help" class="gtb-ctrl-link" title="Help"><i class="bi bi-question-circle-fill"></i></a>';
 
-    // ⚙ Settings dropdown — secondary options
-    h += '<div class="gtb-settings-wrap" style="position:relative;display:inline-block;">';
+    // ➕ Add instrument dynamically
+    h += '<a class="gtb-ctrl-link" id="gtb-add-instr-btn" title="Add instrument to overview"><i class="bi bi-plus-circle-fill"></i></a>';
+
+    // ⚙ Settings — opens as a draggable popup window
     h += '<a class="gtb-ctrl-link" id="gtb-settings-toggle" title="Settings"><i class="bi bi-gear-fill"></i></a>';
-    h += '<div id="gtb-settings-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;'
-       + 'background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 10px;z-index:9999;'
-       + 'min-width:190px;box-shadow:0 4px 16px #000a;">';
 
-    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:6px;font-weight:600;letter-spacing:.04em;">SETTINGS</div>';
-
-    // Auto-refresh
-    h += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.62rem;color:#c9d1d9;padding:3px 0;">'
-       + '<input type="checkbox" id="enable-auto-refresh" style="cursor:pointer;">'
-       + '<span>Auto-refresh</span></label>';
-
-    // Weighted only
-    h += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.62rem;color:#c9d1d9;padding:3px 0;" '
-       + 'title="Scan only weighted Nifty 50 + Bank Nifty stocks">'
-       + '<input type="checkbox" id="scan-weighted-only" style="cursor:pointer;"'
-       + (localStorage.getItem('GTB_SCAN_WEIGHTED') === '1' ? ' checked' : '') + '>'
-       + '<span>Weighted only</span></label>';
-
-    // Data settings
-    h += '<div style="margin-top:4px;">';
-    h += '<a id="data-load" class="gtb-ctrl-link" style="font-size:0.62rem;"><i class="bi bi-sliders"></i> Data settings</a>';
-    h += '</div>';
-
-
-    // Theme toggle (dark / light)
-    var _savedTheme = localStorage.getItem('GTB_THEME') || 'dark';
-    h += '<div style="margin-top:4px;padding-top:6px;border-top:1px solid #ffffff10;">';
-    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;">THEME</div>';
-    h += '<div style="display:flex;gap:4px;">';
-    h += '<button class="gtb-theme-btn" data-theme="dark" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_savedTheme==='dark'?'#00b4d8':'transparent') + ';color:' + (_savedTheme==='dark'?'#fff':'#7d8590') + ';"><i class="bi bi-moon-stars-fill"></i> Dark</button>';
-    h += '<button class="gtb-theme-btn" data-theme="light" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_savedTheme==='light'?'#00b4d8':'transparent') + ';color:' + (_savedTheme==='light'?'#fff':'#7d8590') + ';"><i class="bi bi-sun-fill"></i> Light</button>';
-    h += '</div></div>';
-
-    // Row height + column width sliders
-    var _savedRowH = parseInt(localStorage.getItem('GTB_ROW_H') || '190');
-    h += '<div style="margin-top:4px;">';
-    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;">ROW HEIGHT <span id="gtb-grid-h-val">' + _savedRowH + '</span>px</div>';
-    h += '<input type="range" id="gtb-grid-h-slider" min="120" max="320" step="10" value="' + _savedRowH + '" style="width:100%;cursor:pointer;accent-color:#00b4d8;">';
-    h += '</div>';
-
-    // Column width sliders (each sets a CSS var on the container)
-    var _colDefs = [
-        { key:'chart',  label:'CHART',      min:140, max:600, step:10, def:260 },
-        { key:'fut',    label:'FUTURES',    min:120, max:400, step:10, def:190 },
-        { key:'oi',     label:'OI MATRIX',  min:120, max:400, step:10, def:210 },
-        { key:'oiobv',  label:'OI / OBV',   min:160, max:500, step:10, def:280 },
-        { key:'wt',     label:'WEIGHTAGE',  min:100, max:300, step:10, def:170 },
-        { key:'detail', label:'DETAILS',    min: 80, max:280, step:10, def:130 },
-    ];
-    h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
-    h += '<div style="font-size:0.6rem;color:#7d8590;margin-bottom:4px;font-weight:600;letter-spacing:0.08em;">COLUMN WIDTHS</div>';
-    _colDefs.forEach(function(c) {
-        var saved = parseInt(localStorage.getItem('GTB_COL_' + c.key.toUpperCase()) || c.def);
-        h += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">';
-        h += '<span style="font-size:0.46rem;color:#7d8590;min-width:52px;font-weight:700;">' + c.label + '</span>';
-        h += '<input type="range" class="gtb-col-slider" data-col="' + c.key + '" min="' + c.min + '" max="' + c.max + '" step="' + c.step + '" value="' + saved + '" style="flex:1;cursor:pointer;accent-color:#00b4d8;">';
-        h += '<span class="gtb-col-val" data-col="' + c.key + '" style="font-size:0.46rem;color:#7d8590;min-width:26px;text-align:right;">' + saved + '</span>';
-        h += '</div>';
-    });
-    h += '</div>';
-
-    // OI/OBV bar width
-    var _savedBarW = parseInt(localStorage.getItem('GTB_OI_BAR_W') || '60');
-    h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
-    h += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">';
-    h += '<span style="font-size:0.46rem;color:#7d8590;min-width:52px;font-weight:700;">OI BAR WIDTH</span>';
-    h += '<input type="range" id="gtb-oi-bar-slider" min="20" max="100" step="5" value="' + _savedBarW + '" style="flex:1;cursor:pointer;accent-color:#00b4d8;">';
-    h += '<span id="gtb-oi-bar-val" style="font-size:0.46rem;color:#7d8590;min-width:26px;text-align:right;">' + _savedBarW + '%</span>';
-    h += '</div></div>';
-
-    // Last refresh time
-    h += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ffffff10;">';
-    h += '<span id="last-refresh-time" style="font-size:0.58rem;color:#7d8590;">—</span>';
-    h += '</div>';
-
-    h += '</div>'; // end settings menu
-    h += '</div>'; // end settings wrap
-
-    // Window controls — inside topbar-controls so they're always visible at right edge
-    h += '<div class="gtb-win-controls">';
-    h += '<button class="gtb-win-btn gtb-win-minimize" title="Minimize"><i class="bi bi-dash"></i></button>';
-    h += '<button class="gtb-win-btn gtb-win-restore" title="Restore / Maximize"><i class="bi bi-fullscreen"></i></button>';
-    h += '<button class="gtb-win-btn gtb-win-close" title="Close"><i class="bi bi-x-lg"></i></button>';
-    h += '</div>';
-
+    // Window controls at the right end of the topbar
+    h += '<span class="gtb-win-controls" data-popup="popup-custom-style-groot-trade-bot" style="margin-left:6px;flex-shrink:0;display:flex;gap:4px;">'
+       + '<button class="gtb-win-btn popup-win-minimize" title="Minimize" style="width:26px;height:26px;background:#2a3040;color:#c9d1d9;border:1px solid #444c5a;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.75rem;"><i class="bi bi-dash"></i></button>'
+       + '<button class="gtb-win-btn popup-win-restore"  title="Maximize" style="width:26px;height:26px;background:#2a3040;color:#c9d1d9;border:1px solid #444c5a;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.75rem;"><i class="bi bi-fullscreen"></i></button>'
+       + '<button class="gtb-win-btn popup-win-close"    title="Close"    style="width:26px;height:26px;background:#2a3040;color:#c9d1d9;border:1px solid #444c5a;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.75rem;"><i class="bi bi-x-lg"></i></button>'
+       + '</span>';
     h += '</div>'; // end gtb-topbar-controls
-
     h += '</div>'; // end topbar
 
     h += '<div id="gtb-main">';
 
     // ── Instrument icon map ───────────────────────────────────────────────────
-    var instrIcons = {
-        'NIFTY 50':   'bi-graph-up', 'NIFTY BANK': 'bi-bank2',
-        'GIFT NIFTY': 'bi-globe-asia-australia', 'SENSEX': 'bi-globe2',
-        'CRUDEOILM':  'bi-droplet-fill',   'USDINR': 'bi-currency-exchange',
-        'RELIANCE': 'bi-fuel-pump', 'HDFCBANK': 'bi-building', 'ICICIBANK': 'bi-credit-card'
-    };
+    var instrIcons = _instrIcons;
 
     // ════════════════════════════════════════════════════════════════
     // LEFT PANEL — Score, Signal, Pillars, Entry, History
@@ -880,7 +998,7 @@ function commonMarkupPlaceHolder() {
     // Score gauge
     h += '<div class="gtb-card gtb-widget" id="gtb-score-gauge">';
     h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-speedometer2"></i> SCORE' + _ii('score') + '</span>';
-    h += '<button class="sv-icon-btn show-notes" title="Trading notes"><i class="bi bi-journal-text"></i></button></div>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="score" title="Maximize"><i class="bi bi-fullscreen"></i></button><button class="sv-icon-btn show-notes" title="Trading notes"><i class="bi bi-journal-text"></i></button></span></div>';
     h += '<div class="gtb-card-body gtb-widget-body" style="height:120px;">';
     h += '<div id="trend-scoreboard" style="height:110px;"></div>';
     h += '<div id="score-board-number" style="text-align:center;margin-top:-4px;"></div>';
@@ -892,7 +1010,7 @@ function commonMarkupPlaceHolder() {
 
     // Signal + outcome
     h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-lightning-charge"></i> SIGNAL' + _ii('signal') + '</span></div>';
+    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-lightning-charge"></i> SIGNAL' + _ii('signal') + '</span><span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="signal" title="Maximize"><i class="bi bi-fullscreen"></i></button></span></div>';
     h += '<div class="gtb-card-body gtb-widget-body" style="height:120px;overflow-y:auto;">';
     h += '<div id="market-final-signal"></div>';
     h += '<div id="trend-scoreboard-outcome" style="margin-top:4px;"></div>';
@@ -900,7 +1018,7 @@ function commonMarkupPlaceHolder() {
 
     // Range Scoreboard
     h += '<div class="gtb-card gtb-widget">';
-    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-bar-chart-line-fill"></i> RANGE SCOREBOARD' + _ii('rangesb') + '</span></div>';
+    h += '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-bar-chart-line-fill"></i> RANGE SCOREBOARD' + _ii('rangesb') + '</span><span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="rangesb" title="Maximize"><i class="bi bi-fullscreen"></i></button></span></div>';
     h += '<div class="gtb-card-body gtb-widget-body" id="gtb-range-sb" style="padding:6px 8px;"></div>';
     h += '</div>';
 
@@ -924,7 +1042,7 @@ function commonMarkupPlaceHolder() {
     h += '<div class="gtb-card gtb-widget">';
     h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-pillars-body">';
     h += '<span class="gtb-card-title"><i class="bi bi-bar-chart-steps"></i> PILLARS' + _ii('pillars') + '</span>';
-    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="pillars" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-pillars-body" class="gtb-collapse-body gtb-widget-body" style="height:200px;overflow-y:auto;">';
     h += '<div style="color:#64748b;font-size:0.6rem;text-align:center;padding:8px;">Refreshing…</div>';
     h += '</div></div>';
@@ -933,7 +1051,7 @@ function commonMarkupPlaceHolder() {
     h += '<div class="gtb-card gtb-widget">';
     h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-top-trades-list">';
     h += '<span class="gtb-card-title"><i class="bi bi-stars"></i> TOP TRADES' + _ii('toptrades') + '</span>';
-    h += '<span class="hdr-actions"><button class="sv-icon-btn refresh-scoreboard" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="toptrades" title="Maximize"><i class="bi bi-fullscreen"></i></button><button class="sv-icon-btn refresh-scoreboard" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-top-trades-list" class="gtb-collapse-body gtb-widget-body" style="height:160px;">';
     h += '<div class="gtb-empty-msg"><i class="bi bi-hourglass-split"></i> Refreshing…</div>';
     h += '</div></div>';
@@ -942,7 +1060,7 @@ function commonMarkupPlaceHolder() {
     h += '<div class="gtb-card gtb-widget">';
     h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-score-detail">';
     h += '<span class="gtb-card-title"><i class="bi bi-table"></i> SCORE DETAIL' + _ii('scoredetail') + '</span>';
-    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="scoredetail" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-score-detail" class="gtb-collapse-body gtb-widget-body" style="height:240px;overflow:auto;">';
     h += '<div id="trend-scoreboard-table" style="overflow:auto;"></div>';
     h += '</div></div>';
@@ -951,7 +1069,7 @@ function commonMarkupPlaceHolder() {
     h += '<div class="gtb-card gtb-widget">';
     h += '<div class="gtb-card-header gtb-collapse-toggle" data-target="gtb-score-history">';
     h += '<span class="gtb-card-title"><i class="bi bi-clock-history"></i> SCORE HISTORY' + _ii('scorehistory') + '</span>';
-    h += '<span class="hdr-actions"><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
+    h += '<span class="hdr-actions"><button class="sv-icon-btn gtb-left-max-btn" data-panel="scorehistory" title="Maximize"><i class="bi bi-fullscreen"></i></button><i class="bi bi-chevron-down gtb-caret"></i></span></div>';
     h += '<div id="gtb-score-history" class="gtb-collapse-body gtb-widget-body" style="height:220px;overflow:auto;">';
     h += '<div id="gtb-score-history-table" style="font-size:0.62rem;color:#7d8590;padding:6px;">Waiting for refresh…</div>';
     h += '</div></div>';
@@ -964,9 +1082,15 @@ function commonMarkupPlaceHolder() {
     // BOTTOM: detail sections — scrollable
     // ════════════════════════════════════════════════════════════════
     h += '<div id="gtb-right">';
+    h += '<div id="gtb-tab-strip">'
+        + '<button class="gtb-tab active" data-tab="main"><i class="bi bi-grid"></i> Overview</button>'
+        + '<button class="gtb-tab" data-tab="analysis"><i class="bi bi-bar-chart-line-fill"></i> Analysis</button>'
+        + '<button class="gtb-tab" data-tab="opps"><i class="bi bi-lightning-charge-fill"></i> Opportunities</button>'
+        + '</div>';
+    h += '<div id="gtb-pane-main" class="gtb-tab-pane">';
 
-    // All 9 instruments in declaration order (row1: markets, row2: stocks)
-    var _allInstruments = [
+    // Populate the module-level _allInstruments with custom instruments before rendering
+    _allInstruments = [
         { name: 'GIFT NIFTY', mcx: false },
         { name: 'NIFTY 50',   mcx: false },
         { name: 'NIFTY BANK', mcx: false },
@@ -977,6 +1101,16 @@ function commonMarkupPlaceHolder() {
         { name: 'HDFCBANK',   mcx: false },
         { name: 'ICICIBANK',  mcx: false },
     ];
+    // Merge persisted custom instruments (skip duplicates)
+    try {
+        var _customInstrs = JSON.parse(localStorage.getItem('GTB_CUSTOM_INSTRS') || '[]');
+        var _builtInNames = _allInstruments.map(function(i) { return i.name; });
+        _customInstrs.forEach(function(ci) {
+            if (ci && ci.name && _builtInNames.indexOf(ci.name) === -1) {
+                _allInstruments.push({ name: ci.name, mcx: !!ci.mcx, custom: true });
+            }
+        });
+    } catch(e) {}
 
     // ════════════════════════════════════════════════════════════════
     // OVERVIEW BANNER — answers "what is this dashboard telling me?"
@@ -1030,20 +1164,13 @@ function commonMarkupPlaceHolder() {
     // INSTRUMENT ROWS — sticky Instrument col + horizontal scroll
     //   NAME(sticky) | CHART | 9:15 | FUTURES | OI MATRIX | OI/OBV | WEIGHTAGE | DETAILS
     // ════════════════════════════════════════════════════════════════
-    h += '<div id="gtb-rows-wrap">';
-    h += '<div id="gtb-rows-head">';
-    h +=   '<span class="gtb-rh-instr">INSTRUMENT' + _ii('col-instrument') + '<a id="show-chartgrid" title="Chart Grid — all instruments" style="margin-left:5px;cursor:pointer;color:var(--gtb-muted);font-size:0.72rem;line-height:1;opacity:0.7;flex-shrink:0;" ><i class="bi bi-grid-3x3-gap-fill"></i></a></span>';
-    h +=   '<span class="gtb-rh-chart">PRICE ACTION' + _ii('col-price') + '</span>';
-    h +=   '<span class="gtb-rh-915">9:15' + _ii('col-915') + '</span>';
-    h +=   '<span class="gtb-rh-fut">FUTURES' + _ii('col-futures') + '</span>';
-    h +=   '<span class="gtb-rh-oi">OI MATRIX' + _ii('col-oi') + '</span>';
-    h +=   '<span class="gtb-rh-oiobv">OI / OBV' + _ii('col-oiobv') + '</span>';
-    h +=   '<span class="gtb-rh-weights">WEIGHTAGE' + _ii('col-weights') + '</span>';
-    h +=   '<span class="gtb-rh-detail">DETAILS' + _ii('col-detail') + '</span>';
+    // Chart-grid launcher
+    h += '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;flex-shrink:0;">';
+    h +=   '<a id="show-chartgrid" title="Chart Grid — all instruments" style="cursor:pointer;color:var(--gtb-muted);font-size:0.7rem;">'
+         + '<i class="bi bi-grid-3x3-gap-fill"></i> Chart Grid</a>';
     h += '</div>';
 
-    h += '<div id="gtb-rows">';
-    _allInstruments.forEach(function(item, idx) {
+    function _buildCard(item, idx) {
         var name = item.name;
         var tid  = name.replace(/ /g, '-').replace(/&/g, '-');
         var icon = instrIcons[name] || 'bi-bar-chart';
@@ -1054,121 +1181,156 @@ function commonMarkupPlaceHolder() {
         var linkSymbol = mcxEntry ? mcxEntry.tradingsymbol    : name;
         var kiteLink   = 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + exchLink + '/' + linkSymbol + '/' + linkToken;
 
-        // Category: index / commodity / stock — drives the left colour tab
         var cat = isMcx ? 'cmdty' : (idx <= 3 ? 'index' : 'stock');
         var hasFut = (name !== 'GIFT NIFTY' && name !== 'SENSEX');
+        var isNifty = (name === 'NIFTY 50');
+        var isBank  = (name === 'NIFTY BANK');
 
-        h += '<div class="gtb-row cat-' + cat + '" id="gtb-pane-' + tid + '">';
+        h += '<div class="gtb-instr-card gtb-instr-card-v cat-' + cat + '" id="gtb-pane-' + tid + '" data-instr="' + name + '">';
 
-        // ── Identity: name + LTP + change ──────────────────────────────────
-        h += '<div class="gtb-row-id">';
-        h +=   '<div class="gtb-row-name"><i class="bi ' + icon + '"></i> <a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a></div>';
-        h +=   '<div class="gtb-row-ltp" id="' + tid + '-ltp"></div>';
-        h +=   '<div class="gtb-row-id-actions">';
-        h +=     '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh chart"><i class="bi bi-arrow-clockwise"></i></button>';
-        h +=     '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize chart"><i class="bi bi-fullscreen"></i></button>';
-        if (hasFut) {
-            h += '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-bar-chart-fill"></i></button>';
-            h += '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize OI"><i class="bi bi-graph-up"></i></button>';
-        }
+        // ── Panel helper ─────────────────────────────────────────────────────
+        // Each section: .gtb-ic-panel > .gtb-ic-panel-hdr + .gtb-ic-panel-body
+
+        // ── [0] Identity strip ───────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel gtb-ic-panel-identity" data-col="id">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<i class="bi ' + icon + '"></i>';
+        h +=     '<a class="gtb-instr-link" href="' + kiteLink + '" target="_blank">' + name + '</a>';
+        h +=     '<span class="gtb-row-ltp" id="' + tid + '-ltp"></span>';
+        h +=     '<span class="gtb-trend-zone" id="' + tid + '-trend-zone"></span>';
+        h +=     '<span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
+        h +=     '<span id="' + tid + '-futures-premium" class="gtb-cell-premium-chip"></span>';
+        h +=     '<span id="' + tid + '-futures-trend" class="gtb-cell-fut-remark"></span>';
         h +=   '</div>';
         h += '</div>';
 
-        // ── Wide candlestick chart ─────────────────────────────────────────
-        h += '<div class="gtb-row-col-chart">';
-        h +=   '<div id="' + tid + '-chart-levels" class="gtb-chart-levels"></div>';
-        h +=   '<div id="' + tid + '-chart" class="gtb-chart-mini gtb-row-chart"></div>';
+        // ── [1] Chart panel ──────────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="chart">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-line-fill"></i> PRICE ACTION</span>';
+        h +=     '<span class="gtb-ic-panel-btns">';
+        h +=       '<button class="sv-icon-btn refresh-chart" data-name="' + name + '" title="Refresh chart"><i class="bi bi-arrow-clockwise"></i></button>';
+        h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+        h +=     '</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body" style="padding:0;">';
+        h +=     '<div id="' + tid + '-chart-levels" class="gtb-chart-levels"></div>';
+        h +=     '<div id="' + tid + '-chart" class="gtb-chart-mini gtb-row-chart"></div>';
+        h +=   '</div>';
         h += '</div>';
 
-        // ── 9:15 ───────────────────────────────────────────────────────────
-        h += '<div class="gtb-row-col gtb-row-915"><span class="gtb-915-badge" id="' + tid + '-915-badge"></span>';
-        h +=   '<button class="gtb-prob-btn" data-name="' + name + '" title="Strike-level probability (backtest)"><i class="bi bi-percent"></i></button>';
+        // ── [2] OI / OBV panel ───────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="oiobv">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-layers-fill"></i> OI / OBV</span>';
+        h +=     '<span class="gtb-ic-panel-btns">';
+        h +=       '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>';
+        h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize OI"><i class="bi bi-fullscreen"></i></button>';
+        h +=     '</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body">';
+        h +=   '<div class="gtb-ic-sub-hdr">OI Change</div>';
+        h +=   '<div id="' + tid + '-oi" class="gtb-chart-oi" style="height:110px;"></div>';
+        h +=   '<div id="' + tid + '-oi-signal-row" style="display:none;"></div>';
+        h +=   '<div class="gtb-ic-sub-hdr" style="margin-top:4px;">OBV</div>';
+        h +=   '<div id="' + tid + '-obv" class="gtb-chart-oi" style="height:110px;"></div>';
+        h +=   '<div id="' + tid + '-oiobv-xaxis" class="gtb-oiobv-xaxis"></div>';
+        h +=   '</div>';
         h += '</div>';
 
-        // ── Futures ────────────────────────────────────────────────────────
-        h += '<div class="gtb-row-col gtb-row-fut">';
-        if (hasFut) {
-            h +=   '<span id="' + tid + '-futures-premium" class="gtb-cell-premium-chip"></span>';
-            h +=   '<div id="' + tid + '-futures" class="gtb-cell-fut-signals"></div>';
-            h +=   '<div id="' + tid + '-futures-trend" class="gtb-cell-fut-remark"></div>';
-        } else {
-            h +=   '<span class="gtb-row-na">—</span>';
-        }
+        // ── [3] 9:15 panel ───────────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="915">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-alarm"></i> 9:15 BREAKOUT</span>';
+        h +=     '<span class="gtb-ic-panel-btns">';
+        h +=       '<button class="gtb-prob-btn sv-icon-btn" data-name="' + name + '" title="Strike probability"><i class="bi bi-percent"></i></button>';
+        h +=     '</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body">';
+        h += '<span class="gtb-915-detail" id="' + tid + '-915-detail" style="font-size:0.52rem;color:var(--gtb-muted);">Waiting for data…</span>';
+        h +=   '</div>';
         h += '</div>';
 
-        // ── OI Compare Matrix (same compact heatmap cells as the popup) ───
-        h += '<div class="gtb-row-oimatrix" id="' + tid + '-oimatrix">';
-        if (!hasFut) h += '<span class="gtb-row-na">—</span>';
+        // ── [4] Trend Probability panel ──────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="prob">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-speedometer2"></i> TREND PROBABILITY</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-prob"></div>';
         h += '</div>';
 
-        // ── Inline OI/OBV — bar charts + signal row (col 6) ──────────────
-        h += '<div class="gtb-row-oiobv">';
-        if (hasFut) {
-            h += '<div class="gtb-oiobv-lbl">OI</div>';
-            h += '<div id="' + tid + '-oi" class="gtb-chart-oi"></div>';
-            h += '<div id="' + tid + '-oi-signal-row" style="display:none;"></div>';
-            h += '<div class="gtb-oiobv-lbl">OBV</div>';
-            h += '<div id="' + tid + '-obv" class="gtb-chart-oi"></div>';
-            h += '<div id="' + tid + '-oiobv-xaxis" class="gtb-oiobv-xaxis"></div>';
-        } else {
-            h += '<span class="gtb-row-na" style="margin:auto">—</span>';
-        }
+        // ── [5] Futures panel ────────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="fut">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> FUTURES</span>';
+        h +=     '<span class="gtb-ic-panel-btns">';
+        h +=       '<button class="sv-icon-btn gtb-fut-refresh-btn" data-name="' + name + '" title="Refresh futures"><i class="bi bi-arrow-clockwise"></i></button>';
+        h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+        h +=     '</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body">';
+        h +=   '<div id="' + tid + '-futures" class="gtb-cell-fut-signals"></div>';
+        h +=   '<div id="' + tid + '-atr-sl" class="gtb-cell-sl-wrap" style="margin-top:4px;"></div>';
+        h +=   '<div id="' + tid + '-futures-vwap" style="font-size:0.5rem;margin-top:2px;"></div>';
+        h +=   '</div>';
         h += '</div>';
 
-        // ── Weightage / score breakdown strip (col 7) ──────────────────────
-        // Index rows: top-6 weighted constituents with score bars
-        // Stock rows: this instrument own sub-score breakdown (9:15/trend/futures/OI)
-        var isNifty = (name === 'NIFTY 50');
-        var isBank  = (name === 'NIFTY BANK');
-        h += '<div class="gtb-row-weights" id="' + tid + '-weights">';
+        // ── [6] OI Matrix panel ──────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="oimatrix">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-table"></i> OI MATRIX</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body" style="overflow-x:auto;padding:0 4px;">';
+        h +=     '<div id="' + tid + '-oimatrix" class="gtb-row-oimatrix"></div>';
+        h +=   '</div>';
+        h += '</div>';
+
+        // ── [7] Weightage panel ──────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="weights">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-steps"></i> WEIGHTAGE</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-weights">';
         if (isNifty || isBank) {
             var wMap = isNifty ? NIFTY_50_WEIGHTED_STOCKS : NIFTY_BANK_WEIGHTED_STOCKS;
             var topW = Object.entries(wMap).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
             topW.forEach(function(kv) {
-                var wname = kv[0];
-                var wtid2 = wname.replace(/ /g,'-').replace(/&/g,'-');
-                h += '<div class="gtb-wt-row">' +
-                     '<span class="gtb-wt-name">' + wname + '</span>' +
-                     '<div class="gtb-wt-bar"><b id="' + wtid2 + '-wt-bar" style="width:0%;background:var(--gtb-muted)"></b></div>' +
-                     '<span class="gtb-wt-score" id="' + wtid2 + '-wt-score">—</span>' +
-                     '</div>';
-            });
-        } else if (hasFut) {
-            // Sub-score rows for this stock instrument
-            var subRows = [
-                { lbl:'9:15',  id: tid + '-sub-915'  },
-                { lbl:'Trend', id: tid + '-sub-trend' },
-                { lbl:'Fut',   id: tid + '-sub-fut'   },
-                { lbl:'OI',    id: tid + '-sub-oi'    },
-                { lbl:'Total', id: tid + '-sub-total' },
-            ];
-            subRows.forEach(function(sr) {
-                h += '<div class="gtb-wt-row">' +
-                     '<span class="gtb-wt-name">' + sr.lbl + '</span>' +
-                     '<div class="gtb-wt-bar"><b id="' + sr.id + '-bar" style="width:0%;background:var(--gtb-muted)"></b></div>' +
-                     '<span class="gtb-wt-score" id="' + sr.id + '">—</span>' +
-                     '</div>';
+                var wname = kv[0], wtid2 = wname.replace(/ /g,'-').replace(/&/g,'-');
+                h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + wname + '</span>'
+                   + '<div class="gtb-wt-bar"><b id="' + wtid2 + '-wt-bar" style="width:0%;background:var(--gtb-muted)"></b></div>'
+                   + '<span class="gtb-wt-score" id="' + wtid2 + '-wt-score">—</span></div>';
             });
         } else {
-            h += '<span class="gtb-row-na" style="margin:auto">—</span>';
+            [['9:15',tid+'-sub-915'],['Trend',tid+'-sub-trend'],['Fut',tid+'-sub-fut'],['OI',tid+'-sub-oi'],['Total',tid+'-sub-total']].forEach(function(sr) {
+                h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + sr[0] + '</span>'
+                   + '<div class="gtb-wt-bar"><b id="' + sr[1] + '-bar" style="width:0%;background:var(--gtb-muted)"></b></div>'
+                   + '<span class="gtb-wt-score" id="' + sr[1] + '">—</span></div>';
+            });
         }
+        h +=   '</div>';
         h += '</div>';
 
-        // ── Details: SL / PCR / OI score (col 8) ─────────────────────────
-        h += '<div class="gtb-row-detail" id="' + tid + '-detail">';
-        if (hasFut) {
-            h += '<div class="gtb-det-row"><span class="gtb-det-lbl">SL</span><div id="' + tid + '-atr-sl" class="gtb-cell-sl-wrap" style="margin-left:0"></div></div>';
-            h += '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability"></span></div>';
-            h += '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score"></span></div>';
-        } else {
-            h += '<span class="gtb-row-na" style="margin:auto">—</span>';
-        }
+        // ── [8] Details panel ────────────────────────────────────────────────
+        h += '<div class="gtb-ic-panel" data-col="detail">';
+        h +=   '<div class="gtb-ic-panel-hdr">';
+        h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-info-circle-fill"></i> DETAILS</span>';
+        h +=     '<span class="gtb-ic-panel-btns">';
+        h +=       '<button class="sv-icon-btn mp-gex-btn" data-name="' + name + '" title="Max Pain / GEX"><i class="bi bi-bar-chart-steps"></i></button>';
+        h +=     '</span>';
+        h +=   '</div>';
+        h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-detail">';
+        h +=   '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability"></span></div>';
+        h +=   '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score"></span></div>';
+        h +=   '<div id="' + tid + '-mp-gex" class="gtb-det-mp"></div>';
+        h +=   '</div>';
         h += '</div>';
 
-        h += '</div>'; // end .gtb-row
-    });
+        h += '</div>'; // end .gtb-instr-card
+    } // end _buildCard
+
+    h += '<div id="gtb-rows" class="gtb-col-scroll">';
+    _allInstruments.forEach(function(item, idx) { _buildCard(item, idx); });
     h += '</div>'; // end #gtb-rows
-    h += '</div>'; // end #gtb-rows-wrap
 
     // ── Detail sections — collapsed by default, toggled open ──────────
     h += '<div id="gtb-details-area">';
@@ -1269,8 +1431,22 @@ function commonMarkupPlaceHolder() {
 
     h += '</div>'; // end #gtb-detail-inner
     h += '</div>'; // end #gtb-details-area
+    h += '</div>'; // end #gtb-pane-main
+
+    // Additional tab panes — populated lazily on first switch
+    h += '<div id="gtb-pane-analysis" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:4px;"></div>';
+    h += '<div id="gtb-pane-opps"     class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:4px;"></div>';
 
     h += '</div>'; // end #gtb-right
+
+    // Analyze drawer — slides in from the right for instrument deep-dive
+    h += '<div id="gtb-analyze-drawer">';
+    h += '<div id="gtb-analyze-drawer-hdr">'
+        + '<span id="gtb-analyze-drawer-title">Analysis</span>'
+        + '<button id="gtb-analyze-drawer-close"><i class="bi bi-x-lg"></i></button>'
+        + '</div>';
+    h += '<div id="gtb-analyze-drawer-body"></div>';
+    h += '</div>';
 
     h += '</div>'; // end #gtb-main
 
@@ -1290,9 +1466,12 @@ function commonMarkupPlaceHolder() {
 
     // ── Refresh status bar ────────────────────────────────────────────────────
     h += '<div id="gtb-refresh-statusbar" style="'
-       + 'font-size:0.6rem;color:#7d8590;padding:3px 10px;border-top:1px solid #ffffff10;'
-       + 'background:#0d1117;display:flex;align-items:center;gap:4px;">'
-       + '<i class="bi bi-hourglass-split" style="margin-right:3px;"></i>Waiting for refresh…'
+       + 'font-size:0.6rem;color:var(--gtb-muted);padding:3px 10px;border-top:1px solid var(--gtb-border);'
+       + 'background:var(--gtb-surface2);display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+       + '<span id="gtb-statusbar-refresh"><i class="bi bi-hourglass-split" style="margin-right:3px;"></i>Waiting for refresh...</span>'
+       + '<span id="gtb-holiday-badge" style="display:none;font-size:0.6rem;padding:1px 7px;'
+       + 'border:1px solid var(--gtb-border2);border-radius:3px;background:var(--gtb-amber-dim);color:var(--gtb-amber);'
+       + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px;"></span>'
        + '</div>';
 
     return h;
@@ -1302,12 +1481,111 @@ function showCompoenentPlaceHolders() {
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
     _gtbApplyTheme(localStorage.getItem('GTB_THEME') || 'dark');
     _gtbApplyGridH(parseInt(localStorage.getItem('GTB_ROW_H') || '190'));
-    // Restore saved column widths now that the container exists in the DOM
-    var _cwDefs = { chart:260, fut:190, oi:210, oiobv:280, wt:170, detail:130 };
-    Object.keys(_cwDefs).forEach(function(k) {
-        var v = parseInt(localStorage.getItem('GTB_COL_' + k.toUpperCase()) || _cwDefs[k]);
-        _gtbApplyColW(k, v);
+    _gtbApplyCardW(parseInt(localStorage.getItem('GTB_CARD_W') || '300'));
+    // Apply column order/visibility and instrument order/visibility
+    _gtbApplyColsCfg();
+    _gtbApplyInstrsCfg();
+    // Check & display market holidays (non-blocking)
+    _gtbCheckHolidayAlert().catch(function() {});
+    // Initialize unified tab system + analyze drawer
+    _gtbInitTabs();
+}
+
+// ── Unified Tab System ────────────────────────────────────────────────────────
+// Tabs live inside #gtb-right. Content for non-main tabs is rendered lazily.
+// The analyze drawer (#gtb-analyze-drawer) slides in from the right for deep-dive analysis.
+
+// Shared helper: open a named instrument in the analyze drawer (falls back to overlay)
+function _gtbOpenDrawer(name) {
+    var $drawer = jQ('#gtb-analyze-drawer');
+    if (!$drawer.length) { try { _btAnalyzeInstrument(name); } catch(e) {} return; }
+    $drawer.addClass('open');
+    jQ('#gtb-analyze-drawer-title').text(name);
+    jQ('#gtb-analyze-drawer-body').html(
+        '<div style="color:var(--gtb-muted);padding:20px;text-align:center;">'
+        + '<i class="bi bi-arrow-clockwise spin"></i> Loading analysis...</div>');
+    setTimeout(function() {
+        try {
+            _btAnalyzeInstrument(name, '#gtb-analyze-drawer-body');
+        } catch(e2) {
+            jQ('#gtb-analyze-drawer-body').html(
+                '<div style="color:#f85149;padding:10px;font-size:0.6rem;">Error: ' + (e2.message||e2) + '</div>');
+        }
+    }, 30);
+}
+
+function _gtbInitTabs() {
+    // Drag #gtb-popup-win by the topbar (only in windowed mode, skip clicks on controls)
+    jQ(document).off('mousedown.gtb-drag').on('mousedown.gtb-drag', '#gtb-topbar', function(e) {
+        var $win = jQ('#gtb-popup-win');
+        if ($win.data('gtb-fullscreen') === true) return;
+        if (jQ(e.target).closest('button, a, select, input, .gtb-settings-menu').length) return;
+        var startX = e.clientX, startY = e.clientY;
+        var startL = parseInt($win.css('left')) || 0;
+        var startT = parseInt($win.css('top'))  || 0;
+        jQ(document).on('mousemove.gtb-drag', function(mv) {
+            $win.css({ left: (startL + mv.clientX - startX) + 'px',
+                       top:  (startT + mv.clientY - startY) + 'px' });
+        }).on('mouseup.gtb-drag', function() {
+            jQ(document).off('mousemove.gtb-drag mouseup.gtb-drag');
+        });
     });
+
+    // Tab strip clicks
+    jQ(document).off('click.gtbtabs').on('click.gtbtabs', '#gtb-tab-strip .gtb-tab', function() {
+        _gtbActivateTab(jQ(this).data('tab'));
+    });
+
+
+    // Drawer close
+    jQ(document).off('click.gtb-drawer-close').on('click.gtb-drawer-close', '#gtb-analyze-drawer-close', function() {
+        jQ('#gtb-analyze-drawer').removeClass('open');
+    });
+
+    // Load saved risk positions (GDB widget used in Analysis tab)
+    try { _gdbLoadPositions(); } catch(e) {}
+
+    // .gdb-analyze-btn (Score Matrix / Opportunity Ranker) → Instrument Detail View popup
+    jQ(document).off('click.gdb', '.gdb-analyze-btn').on('click.gdb', '.gdb-analyze-btn', function(e) {
+        e.preventDefault();
+        if (typeof _gtbOpenInstrDetailFor === 'function') _gtbOpenInstrDetailFor(jQ(this).data('name'));
+    });
+    // .maximize-component-btn is NOT routed to the drawer — it has its own handler
+    // at line ~329 that opens showMaximizeOverlay for chart/OI/futures panels.
+}
+
+function _gtbActivateTab(tabId) {
+    // Show selected pane, hide rest
+    jQ('.gtb-tab-pane').each(function() {
+        var id = jQ(this).attr('id');
+        var isMain = id === 'gtb-pane-main';
+        var isTarget = id === 'gtb-pane-' + tabId;
+        jQ(this).toggle(tabId === 'main' ? isMain : isTarget);
+    });
+    jQ('#gtb-tab-strip .gtb-tab').removeClass('active');
+    jQ('#gtb-tab-strip [data-tab="' + tabId + '"]').addClass('active');
+    // Render content on every switch (fresh data)
+    if (tabId !== 'main') _gtbRenderPane(tabId);
+}
+
+var _GTB_PANE_GRIDS = {
+    // Analysis tab: full bloomberg dashboard rendered by _btRenderInPane
+    analysis: function() { return ''; },
+    // Opps tab: full opportunities dashboard rendered by _btoShow_inpane
+    opps: function() { return ''; },
+};
+
+var _GTB_PANE_RENDERS = {
+    analysis: [function(){try{_btRenderInPane('#gtb-pane-analysis');}catch(e){}}],
+    opps:     [function(){try{_btoShow_inpane('#gtb-pane-opps');}catch(e){}}]
+};
+
+function _gtbRenderPane(tabId) {
+    var $p = jQ('#gtb-pane-' + tabId);
+    var gridFn = _GTB_PANE_GRIDS[tabId];
+    if (!gridFn) return;
+    $p.html(gridFn());
+    (_GTB_PANE_RENDERS[tabId] || []).forEach(function(fn) { fn(); });
 }
 
 // ── Main Refresh Orchestrator ──────────────────────────────────────────────────
@@ -1337,6 +1615,100 @@ function _gtbProgressHide() {
     jQ('#gtb-progress-text').text('');
 }
 
+// ── NSE Market Holiday Checker ────────────────────────────────────────────────
+// Fetches trading holidays from NSE (FO segment) via GM_xmlhttpRequest (bypasses
+// CORS). Caches in localStorage for 7 days. On startup, shows a banner if today
+// is a holiday. Also updates #gtb-holiday-badge in the topbar.
+
+var _GTB_HOLIDAYS = [];   // [{date:'DD-Mon-YYYY', desc:'...'}]
+
+function _gtbFetchHolidays() {
+    return new Promise(function (resolve) {
+        var CACHE_KEY = 'GTB_NSE_HOLIDAYS';
+        var cached = null;
+        try { cached = JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (_) {}
+        var now = Date.now();
+        // Refresh cache once a week
+        if (cached && cached.ts && (now - cached.ts) < 7 * 24 * 3600 * 1000 && Array.isArray(cached.data)) {
+            _GTB_HOLIDAYS = cached.data;
+            return resolve(cached.data);
+        }
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: 'https://www.nseindia.com/api/holiday-master?type=trading',
+            headers: {
+                'User-Agent': navigator.userAgent,
+                'Accept': 'application/json',
+                'Referer': 'https://www.nseindia.com/'
+            },
+            onload: function (r) {
+                try {
+                    var json = JSON.parse(r.responseText);
+                    // Use FO segment; fall back to CM
+                    var seg = json['FO'] || json['CM'] || [];
+                    var list = seg.map(function (h) { return { date: h.tradingDate, desc: h.description }; });
+                    _GTB_HOLIDAYS = list;
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: now, data: list }));
+                    resolve(list);
+                } catch (e) { console.warn('NSE holiday parse error', e); resolve([]); }
+            },
+            onerror: function () { resolve([]); }
+        });
+    });
+}
+
+function _gtbTodayHoliday() {
+    // NSE format: "15-Jan-2025"
+    var d = new Date();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var dd = ('0' + d.getDate()).slice(-2);
+    var mon = months[d.getMonth()];
+    var yyyy = d.getFullYear();
+    var todayStr = dd + '-' + mon + '-' + yyyy;
+    for (var i = 0; i < _GTB_HOLIDAYS.length; i++) {
+        if (_GTB_HOLIDAYS[i].date === todayStr) return _GTB_HOLIDAYS[i];
+    }
+    return null;
+}
+
+async function _gtbCheckHolidayAlert() {
+    await _gtbFetchHolidays();
+    var hol = _gtbTodayHoliday();
+    // Update topbar badge
+    var $badge = jQ('#gtb-holiday-badge');
+    if (hol) {
+        $badge.html('<i class="bi bi-calendar-x-fill" style="color:#f85149;margin-right:3px;"></i>'
+            + '<span style="color:#f85149;font-weight:700;">HOLIDAY</span>'
+            + '<span style="color:var(--gtb-muted);margin-left:4px;font-size:0.58rem;">' + hol.desc + '</span>');
+        $badge.show();
+        // Show prominent alert toast
+        Toastify({
+            text: '<i class="bi bi-calendar-x-fill" style="margin-right:6px;color:#f85149;font-size:1rem;"></i>'
+                + '<span style="font-size:0.75rem;font-weight:700;color:#f85149;">MARKET HOLIDAY TODAY</span><br>'
+                + '<span style="font-size:0.65rem;color:#c9d1d9;">' + hol.desc + '</span>',
+            duration: 10000, gravity: 'top', position: 'center', escapeMarkup: false, close: true,
+            style: { background: '#1a0a0a', border: '2px solid #f85149', 'border-radius': '8px',
+                     padding: '12px 18px', 'min-width': '280px', 'line-height': '1.6' }
+        }).showToast();
+    } else {
+        $badge.hide();
+        // Show upcoming holidays (next 3) in topbar badge
+        var d = new Date();
+        var upcoming = _GTB_HOLIDAYS.filter(function (h) {
+            var parts = h.date.split('-');
+            var months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+            var hd = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]));
+            return hd > d;
+        }).slice(0, 1);
+        if (upcoming.length) {
+            var u = upcoming[0];
+            $badge.html('<i class="bi bi-calendar2-check" style="color:var(--gtb-muted);margin-right:3px;"></i>'
+                + '<span style="color:var(--gtb-muted);font-size:0.58rem;">Next holiday: <b>' + u.date + '</b> — ' + u.desc + '</span>');
+            $badge.show();
+        }
+    }
+}
+
 function _gtbToast(msg, type) {
     var color = type === 'success' ? '#3fb950' : type === 'error' ? '#f85149' : '#fbbf24';
     var icon  = type === 'success' ? 'check-circle-fill' : type === 'error' ? 'x-circle-fill' : 'exclamation-triangle-fill';
@@ -1356,6 +1728,12 @@ async function commonShowPopupWindow() {
     _gtbProgress('Starting…');
     jQ("#last-refresh-time").html("Last @ " + moment().format("DD-MM-YYYY HH:mm:ss"));
     jQ("#main-trade-bot-container").html(commonMarkupPlaceHolder());
+    // Re-apply all persisted layout settings after DOM rebuild
+    _gtbApplyTheme(localStorage.getItem('GTB_THEME') || 'dark');
+    _gtbApplyGridH(parseInt(localStorage.getItem('GTB_ROW_H') || '190'));
+    _gtbApplyCardW(parseInt(localStorage.getItem('GTB_CARD_W') || '300'));
+    _gtbApplyColsCfg();
+    _gtbApplyInstrsCfg();
 
     await callSleepForAWhile(200)
 
@@ -1391,12 +1769,19 @@ async function commonShowPopupWindow() {
                     INSTRUMENT_SCORE_MAP[name].oi_obv = 0;
                     await showPrictionProbabiltyMCX(name, res);
                     showOIOBVBarChart(name);
+                    try {
+                        var _mcxOiData = (typeof stock !== 'undefined' && stock.length && stock[0]['DATA']) ? stock[0]['DATA'] : null;
+                        if (_mcxOiData && _mcxOiData.tableData && _mcxOiData.tableData.length) {
+                            INSTRUMENT_SCORE_MAP[name].oiData = _mcxOiData;
+                            _gtbRenderOIMatrix(name);
+                        }
+                    } catch(e) {}
                 } catch(e) { console.log(name + ' mcx', e); }
             })(),
         ]);
     }
 
-    await Promise.all([
+    var _phase2 = [
         _refreshNSE('NIFTY 50'),
         _refreshNSE('NIFTY BANK'),
         _refreshNSE('RELIANCE'),
@@ -1406,7 +1791,16 @@ async function commonShowPopupWindow() {
         showTopChart('SENSEX').catch(function(e) { console.log('SENSEX chart', e); }),
         _refreshMCX('CRUDEOILM'),
         _refreshMCX('USDINR'),
-    ]);
+    ];
+    // Also refresh any custom instruments added dynamically
+    try {
+        _gtbGetCustomInstrs().forEach(function(ci) {
+            _phase2.push(
+                ci.mcx ? _refreshMCX(ci.name) : _refreshNSE(ci.name)
+            );
+        });
+    } catch(e) {}
+    await Promise.all(_phase2);
 
     // ── Phase 3: Breadth scans ────────────────────────────────────────────────
     // A/D must complete before Futures Trend: showFuturesTrend merges per-interval
@@ -1432,6 +1826,7 @@ async function commonShowPopupWindow() {
     _gtbProgress('Done', 'green');
     setTimeout(_gtbProgressHide, 2000);
 
+    try { _gtbUpdateTrendZones(); } catch(e) {}
     try { renderComponentPanel(); } catch(e) { console.warn('renderComponentPanel error', e); }
     try { renderScoreHistory(); } catch(e) { console.warn('renderScoreHistory error', e); }
 
@@ -1446,6 +1841,183 @@ async function commonShowPopupWindow() {
 
 }
 
+
+// ── Dynamic instrument: refresh a single card after it's added ────────────────
+async function _gtbRefreshOneInstrument(name, isMcx) {
+    var tid = name.replace(/ /g, '-').replace(/&/g, '-');
+    try {
+        if (isMcx) {
+            await Promise.all([
+                showTopChartMCX(name).catch(function(e) { console.log(name + ' chart', e); }),
+                (async function() {
+                    try {
+                        var res = await showFutureDetailsMCX(name);
+                        setFutureDetails(name, res);
+                        if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+                        INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(res['REMARK']);
+                        INSTRUMENT_SCORE_MAP[name].oi_obv = 0;
+                        await showPrictionProbabiltyMCX(name, res);
+                        showOIOBVBarChart(name);
+                    } catch(e) { console.log(name + ' mcx', e); }
+                })(),
+            ]);
+        } else {
+            await Promise.all([
+                showTopChart(name).catch(function(e) { console.log(name + ' chart', e); }),
+                (async function() {
+                    try {
+                        var res = await showFutureDetails(name);
+                        setFutureDetails(name, res);
+                        if (res) {
+                            if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+                            INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(res['REMARK']);
+                        }
+                    } catch(e) { console.log(name + ' fut', e); }
+                })(),
+                (async function() {
+                    try { await showPrictionProbabilty(name); showOIOBVBarChart(name); } catch(e) { console.log(name + ' oi', e); }
+                })(),
+            ]);
+        }
+        try { _gtbRenderOIMatrix(name); } catch(e) {}
+        try {
+            var _sc2 = computeInstrumentScore(name);
+            if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+            INSTRUMENT_SCORE_MAP[name].score = _sc2;
+        } catch(e) {}
+        try { _gtbUpdateWeightBars(name); } catch(e) {}
+        try { _gtbUpdateTrendZones(); } catch(e) {}
+        _gtbToast(name + ' loaded', 'success');
+    } catch(e) {
+        _gtbToast('Error loading ' + name, 'error');
+        console.log('_gtbRefreshOneInstrument', e);
+    }
+}
+
+// ── Add instrument popup ──────────────────────────────────────────────────────
+function _gtbSaveCustomInstrs(list) {
+    localStorage.setItem('GTB_CUSTOM_INSTRS', JSON.stringify(list));
+}
+function _gtbGetCustomInstrs() {
+    try { return JSON.parse(localStorage.getItem('GTB_CUSTOM_INSTRS') || '[]'); } catch(e) { return []; }
+}
+
+function _gtbAddInstrPopupHtml() {
+    var customs = _gtbGetCustomInstrs();
+    var s = '<div style="padding:8px;font-size:0.6rem;color:var(--gtb-text);">';
+
+    s += '<div style="margin-bottom:8px;font-size:0.55rem;color:var(--gtb-muted);">Enter any NSE F&amp;O symbol (e.g. INFY, TCS, SBIN) or MCX commodity.</div>';
+
+    s += '<div style="display:flex;gap:4px;margin-bottom:10px;">';
+    s +=   '<input id="gtb-add-instr-input" type="text" placeholder="e.g. INFY" autocomplete="off" '
+         + 'style="flex:1;font-size:0.6rem;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border2);padding:4px 6px;outline:none;" />';
+    s +=   '<label style="display:flex;align-items:center;gap:3px;font-size:0.55rem;color:var(--gtb-muted);cursor:pointer;">'
+         + '<input type="checkbox" id="gtb-add-instr-mcx"> MCX</label>';
+    s +=   '<button id="gtb-add-instr-go" style="font-size:0.55rem;padding:3px 8px;background:var(--gtb-accent);color:#fff;border:none;cursor:pointer;">Add</button>';
+    s += '</div>';
+
+    if (customs.length) {
+        s += '<div style="font-size:0.5rem;font-weight:700;letter-spacing:.06em;color:var(--gtb-muted);text-transform:uppercase;margin-bottom:4px;">Custom instruments</div>';
+        s += '<div id="gtb-custom-instr-list">';
+        customs.forEach(function(ci) {
+            s += '<div class="gtb-ci-row" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--gtb-border2);">'
+               + '<span style="flex:1;font-weight:700;">' + ci.name + '</span>'
+               + (ci.mcx ? '<span style="font-size:0.45rem;color:var(--gtb-muted);">MCX</span>' : '')
+               + '<button class="gtb-ci-refresh sv-icon-btn" data-name="' + ci.name + '" data-mcx="' + (ci.mcx ? '1' : '0') + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>'
+               + '<button class="gtb-ci-remove sv-icon-btn" data-name="' + ci.name + '" title="Remove" style="color:var(--gtb-red);"><i class="bi bi-x-lg"></i></button>'
+               + '</div>';
+        });
+        s += '</div>';
+    } else {
+        s += '<div style="color:var(--gtb-muted);font-size:0.5rem;">No custom instruments yet.</div>';
+    }
+    s += '</div>';
+    return s;
+}
+
+jQ(document).on('click', '#gtb-add-instr-btn', function(e) {
+    e.stopPropagation();
+    var popId = 'pop-up-window-gtb-add-instr';
+    var $pop = jQ('#' + popId);
+    if ($pop.length) {
+        if ($pop.is(':visible')) { try { $pop.PopupWindow('show'); } catch(ex) {} return; }
+        try { $pop.PopupWindow('destroy'); } catch(ex) {}
+        $pop.remove();
+    }
+    showPopUpWindow('gtb-add-instr', _gtbAddInstrPopupHtml(), 'Add Instrument', 300, 320);
+    var cls = 'popup-custom-style-gtb-add-instr';
+    jQ('.' + cls).addClass((localStorage.getItem('GTB_THEME') || 'dark') === 'light' ? 'gtb-light' : '');
+    var titleHtml = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-plus-circle-fill" style="color:#00b4d8;font-size:0.7rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">ADD INSTRUMENT</span>'
+        + popupWinControls(cls) + '</div>';
+    jQ('.' + cls).find('.popupwindow_titlebar_text').html(titleHtml);
+    hideNativePopupButtons(cls);
+});
+
+// Add button handler
+jQ(document).on('click', '#gtb-add-instr-go', function() {
+    var raw = jQ('#gtb-add-instr-input').val().trim().toUpperCase();
+    if (!raw) return;
+    var isMcx = jQ('#gtb-add-instr-mcx').is(':checked');
+
+    // Check not already present
+    var existing = jQ('#gtb-pane-' + raw.replace(/ /g,'-').replace(/&/g,'-'));
+    if (existing.length) { _gtbToast(raw + ' already in overview', 'warn'); return; }
+
+    // Build and append card
+    var item = { name: raw, mcx: isMcx, custom: true };
+    var cardHtml = '';
+    (function _buildOneCard() {
+        // Call the inner _buildCard via re-running commonMarkupPlaceHolder is too expensive.
+        // Instead build the card HTML directly using the same template.
+        var tempH = '';
+        // We capture the card HTML by temporarily running _buildCard logic
+        // The simplest way is to trigger commonShowPopupWindow which rebuilds everything.
+        // Instead: add to localStorage first, then rebuild.
+    })();
+
+    // Save to localStorage
+    var customs = _gtbGetCustomInstrs();
+    if (!customs.find(function(c){ return c.name === raw; })) {
+        customs.push({ name: raw, mcx: isMcx });
+        _gtbSaveCustomInstrs(customs);
+    }
+
+    // Append the card to #gtb-rows without rebuilding the dashboard
+    var newItem = { name: raw, mcx: isMcx, custom: true };
+    var cardHtml = _buildCardStandalone(newItem);
+    jQ('#gtb-rows').append(cardHtml);
+    _gtbToast(raw + ' added — click Refresh on its card to load data', 'success');
+
+    // Close popup
+    try { jQ('#pop-up-window-gtb-add-instr').PopupWindow('destroy'); } catch(ex) {}
+    jQ('#pop-up-window-gtb-add-instr').remove();
+});
+
+// Refresh one custom instrument
+jQ(document).on('click', '.gtb-ci-refresh', function() {
+    var name = jQ(this).data('name');
+    var isMcx = jQ(this).data('mcx') === '1' || jQ(this).data('mcx') === 1;
+    _gtbToast('Refreshing ' + name + '…', 'info');
+    _gtbRefreshOneInstrument(name, isMcx);
+});
+
+// Remove custom instrument
+jQ(document).on('click', '.gtb-ci-remove', function() {
+    var name = jQ(this).data('name');
+    var customs = _gtbGetCustomInstrs().filter(function(c) { return c.name !== name; });
+    _gtbSaveCustomInstrs(customs);
+    _gtbToast(name + ' removed — refreshing dashboard…', 'info');
+    setTimeout(function() { commonShowPopupWindow(); }, 600);
+    try { jQ('#pop-up-window-gtb-add-instr').PopupWindow('destroy'); } catch(ex) {}
+    jQ('#pop-up-window-gtb-add-instr').remove();
+});
+
+// Enter key in add input
+jQ(document).on('keydown', '#gtb-add-instr-input', function(e) {
+    if (e.key === 'Enter') jQ('#gtb-add-instr-go').click();
+});
 
 function resetCount() {
     ALL_9_15_CLOSE_SCORE = 0;
@@ -1845,6 +2417,28 @@ let GTB_COMPONENT_CLOSE_MAP = {};
 // ─── Component Breakdown Panel ───────────────────────────────────────────────
 // Shows per-stock score breakdown for all weighted Nifty 50 + Bank Nifty constituents.
 // Called after setScore() so INSTRUMENT_SCORE_MAP[name].score is populated.
+function _gtbUpdateTrendZones() {
+    var instruments = [
+        'GIFT NIFTY','NIFTY 50','NIFTY BANK','SENSEX',
+        'CRUDEOILM','USDINR','RELIANCE','HDFCBANK','ICICIBANK'
+    ];
+    var labelMap = { '2':'AST', '1':'ASO', '0':'B/W', '-1':'BSO', '-2':'BST' };
+    var colorMap = { '2':'#3fb950', '1':'#3fb950', '0':'#7d8590', '-1':'#f85149', '-2':'#f85149' };
+    instruments.forEach(function(name) {
+        var tid = name.replace(/ /g, '-').replace(/&/g, '-');
+        var el  = document.getElementById(tid + '-trend-zone');
+        if (!el) return;
+        try {
+            var ct  = computeInstrumentScore(name).current_trend;
+            var key = String(ct);
+            var label = labelMap[key] || 'B/W';
+            var color = colorMap[key] || '#7d8590';
+            el.innerHTML = '<span class="gtb-tz-badge" style="background:' + color + '22;color:' + color
+                + ';border:1px solid ' + color + '44;">' + label + '</span>';
+        } catch(e) { el.innerHTML = ''; }
+    });
+}
+
 function renderComponentPanel() {
     var el = jQ('#gtb-component-table');
     if (!el.length) return;
@@ -1919,8 +2513,8 @@ function renderComponentPanel() {
         });
 
         var secContribCol = _scoreColor(totalContrib);
-        return '<tr style="background:#161b22;">'
-             + '<td colspan="7" style="padding:3px 4px;font-size:0.58rem;font-weight:600;color:#7d8590;letter-spacing:.04em;">'
+        return '<tr style="background:var(--gtb-surface2,#161b22);">'
+             + '<td colspan="7" style="padding:3px 4px;font-size:0.58rem;font-weight:600;color:var(--gtb-muted);letter-spacing:.04em;">'
              + title + '&nbsp;<span style="color:' + secContribCol + ';">' + (totalContrib > 0 ? '+' : '') + totalContrib.toFixed(2) + '</span>'
              + '</td></tr>'
              + rows;
@@ -2651,40 +3245,700 @@ function renderFuturesSignalCard(name, res, containerId) {
     jQ('#' + containerId).html(h);
 }
 
-// Futures-Signal popup — fetch the futures signal for any typed/picked instrument.
-async function _gtbFetchFuturesSignalUI(name) {
-    name = (name || '').trim();
-    if (!name) return;
-    var up = name.toUpperCase();
-    if (up === 'NIFTY') up = 'NIFTY 50';
-    if (up === 'BANKNIFTY' || up === 'BANK NIFTY') up = 'NIFTY BANK';
-    name = up;
-    jQ('#fsig-result').html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading ' + name + '…</div>');
-    try {
-        var res = await getFuturesSignal(name);
-        renderFuturesSignalCard(name, res, 'fsig-result');
-    } catch (e) {
-        jQ('#fsig-result').html('<div class="cmd-load" style="color:var(--gtb-red);">Error: ' + (e && e.message) + '</div>');
-    }
+// ── Instrument Detail View — full overview panel in the maximize overlay ─────────
+function _gtbNormaliseInstrName(name) {
+    name = (name || '').trim().toUpperCase();
+    if (name === 'NIFTY') name = 'NIFTY 50';
+    if (name === 'BANKNIFTY' || name === 'BANK NIFTY') name = 'NIFTY BANK';
+    return name;
 }
+
+// ── Shared helpers for detail view panels ─────────────────────────────────────
+
+// Render 9:15 badge from localStorage (always valid before any fetch)
+// ── Risk Manager panel — instrument-specific position sizing ──────────────────
+function _gtbRiskPanel(name) {
+    var funds    = parseFloat(localStorage.getItem('GTB_RISK_FUNDS') || '0');
+    var riskPct  = parseFloat(localStorage.getItem('GTB_RISK_PCT')   || '2');
+
+    var cs = {total:0, current_trend:0}; try { cs = computeInstrumentScore(name); } catch(e) {}
+
+    var ltp   = 0;
+    try { ltp = parseFloat((_btLtps()[name]||{}).ltp||0); } catch(e) {}
+
+    var lotSize = 0;
+    try {
+        if (typeof FUTURE_INTRUMENT_LIST !== 'undefined') {
+            var _fi = FUTURE_INTRUMENT_LIST.find(function(x){ return x.name === name; });
+            if (_fi) lotSize = parseInt(_fi.lot_size) || 0;
+        }
+    } catch(e) {}
+    if (!lotSize) { var _mcxMap = {'CRUDEOILM':100,'USDINR':1000}; lotSize = _mcxMap[name] || 0; }
+
+    // Derive levels from open price (same logic as generateTrend, but null-safe)
+    var aso = 0, ast = 0, bso = 0, bst = 0, vixL = 0, vixU = 0;
+    try {
+        var _openDetail = (_btOpens()[name] || {});
+        var _openPrice  = parseFloat(_openDetail.price || 0);
+        if (_openPrice) {
+            var _sd = getStrikeDetails({ price: _openPrice }, name);
+            aso = parseFloat(_sd.ustrikeOne);
+            ast = parseFloat(_sd.ustrikeTwo);
+            bso = parseFloat(_sd.bstrikeOne);
+            bst = parseFloat(_sd.bstrikeTwo);
+        }
+        var _vixRaw = JSON.parse(localStorage.getItem('VIX_QUOTE') || 'null');
+        var _prevVix = _vixRaw ? parseFloat(_vixRaw.data.candles[0][4]) : 0;
+        var _prevClose = parseFloat(_openDetail.prevPrice || 0);
+        if (_prevClose && _prevVix) {
+            var _vr = getVixRange(_prevClose, _prevVix);
+            vixL = parseFloat(_vr.vixDDLower);
+            vixU = parseFloat(_vr.vixDDUpper);
+        }
+    } catch(e) {}
+
+    var bull = cs.total > 0;
+    var bear = cs.total < 0;
+    var entry = bull ? aso : bear ? bso : (ltp || 0);
+    var sl    = bull ? bso : bear ? aso : 0;
+    var tgt1  = bull ? ast : bear ? bst : 0;
+    var tgt2  = bull ? vixU : bear ? vixL : 0;
+
+    var riskPerUnit = (entry && sl) ? Math.abs(entry - sl) : 0;
+    var riskPerLot  = riskPerUnit * lotSize;
+    var maxRiskAmt  = funds * (riskPct / 100);
+    var suggestLots = (riskPerLot > 0 && maxRiskAmt > 0) ? Math.floor(maxRiskAmt / riskPerLot) : 0;
+
+    var vixVal = 0;
+    try { vixVal = parseFloat((_btLtps()['INDIA VIX']||{}).ltp||0); } catch(e) {}
+    if (!vixVal) try { vixVal = VIX||0; } catch(e) {}
+    var vixMult  = vixVal > 25 ? 0.5 : vixVal > 18 ? 0.7 : vixVal > 13 ? 0.85 : 1.0;
+    var adjLots  = Math.floor(suggestLots * vixMult);
+    var adjRisk  = adjLots * riskPerLot;
+    var rr1      = (entry && sl && tgt1) ? (Math.abs(tgt1-entry)/riskPerUnit).toFixed(1) : '--';
+
+    var dir = bull ? 'BULL' : bear ? 'BEAR' : 'NEUTRAL';
+    var dirCol = bull ? 'var(--gtb-green)' : bear ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var f = function(v){ return v ? parseFloat(v).toLocaleString('en-IN',{maximumFractionDigits:2}) : '--'; };
+    var fc = function(v){ return v ? '₹'+parseFloat(v).toLocaleString('en-IN',{maximumFractionDigits:0}) : '--'; };
+
+    var row = function(label, val, col) {
+        return '<div class="gdb-bt-row" style="padding:2px 0;">'
+            + '<span style="font-size:0.5rem;color:var(--gtb-muted);">' + label + '</span>'
+            + '<span style="font-size:0.52rem;font-weight:700;' + (col ? 'color:'+col+';' : '') + '">' + val + '</span>'
+            + '</div>';
+    };
+
+    var noData = !entry || !sl || !lotSize;
+
+    return '<div style="padding:6px 8px;">'
+        // ── Inputs ──
+        + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">'
+        +   '<label style="font-size:0.48rem;color:var(--gtb-muted);">Funds</label>'
+        +   '<input id="grm-funds" type="number" value="' + (funds||'') + '" placeholder="Available ₹" '
+        +     'style="width:90px;font-size:0.5rem;padding:2px 4px;background:var(--gtb-surface2);border:1px solid var(--gtb-border2);border-radius:2px;color:var(--gtb-text);">'
+        +   '<label style="font-size:0.48rem;color:var(--gtb-muted);">Risk %</label>'
+        +   '<input id="grm-pct" type="number" value="' + riskPct + '" min="0.5" max="10" step="0.5" '
+        +     'style="width:48px;font-size:0.5rem;padding:2px 4px;background:var(--gtb-surface2);border:1px solid var(--gtb-border2);border-radius:2px;color:var(--gtb-text);">'
+        +   '<button id="grm-calc" class="gtb-win-btn" title="Recalculate" style="font-size:0.48rem;padding:2px 6px;"><i class="bi bi-arrow-clockwise"></i></button>'
+        + '</div>'
+        // ── Direction banner ──
+        + '<div style="font-size:0.52rem;font-weight:700;color:' + dirCol + ';margin-bottom:6px;">'
+        +   dir + (noData ? ' — insufficient data' : '') + '</div>'
+        + (noData ? '<div style="font-size:0.48rem;color:var(--gtb-muted);">Run main refresh to load strike/OI data.</div>' :
+            // ── Level grid ──
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:8px;">'
+            + row('Entry ('+( bull?'ASO':'BSO')+')', f(entry), dirCol)
+            + row('Stop Loss ('+(bull?'BSO':'ASO')+')', f(sl), bull?'var(--gtb-red)':'var(--gtb-green)')
+            + row('Target 1 ('+(bull?'AST':'BST')+')', f(tgt1), dirCol)
+            + row('Target 2 (VIX '+(bull?'Upper':'Lower')+')', f(tgt2), dirCol)
+            + row('R:R (T1)', rr1 !== '--' ? '1 : ' + rr1 : '--', parseFloat(rr1)>=1.5?'var(--gtb-green)':parseFloat(rr1)>=1?'#fbbf24':'var(--gtb-red)')
+            + row('Lot size', lotSize || '--', '')
+            + '</div>'
+            + '<div style="height:1px;background:var(--gtb-border2);margin:5px 0;"></div>'
+            // ── Sizing ──
+            + (funds > 0 ?
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;">'
+                + row('Max risk ('+riskPct+'%)', fc(maxRiskAmt), '#fbbf24')
+                + row('Risk per lot', fc(riskPerLot), '')
+                + row('Suggested lots', suggestLots || '0', suggestLots>0?'var(--gtb-green)':'var(--gtb-muted)')
+                + row('VIX adj. lots ('+(vixMult*100).toFixed(0)+'%)', adjLots || '0', adjLots>0?'var(--gtb-green)':'var(--gtb-muted)')
+                + row('Capital at risk', fc(adjRisk), adjRisk/funds>0.03?'var(--gtb-red)':'#fbbf24')
+                + row('% of funds', funds>0?(adjRisk/funds*100).toFixed(1)+'%':'--', '')
+                + '</div>'
+                : '<div style="font-size:0.48rem;color:var(--gtb-muted);">Enter available funds above to see position sizing.</div>'
+            )
+        )
+        + '</div>';
+}
+
+// Bind risk panel recalculate (delegated — panel may be in either single or multi view)
+jQ(document).off('click.grm-calc').on('click.grm-calc', '#grm-calc', function() {
+    var funds = parseFloat(jQ('#grm-funds').val()) || 0;
+    var pct   = parseFloat(jQ('#grm-pct').val())   || 2;
+    localStorage.setItem('GTB_RISK_FUNDS', funds);
+    localStorage.setItem('GTB_RISK_PCT',   pct);
+    // Re-render the panel for the instrument currently shown
+    var $panel = jQ(this).closest('.gtb-ic-panel');
+    var name   = $panel.data('risk-name');
+    if (name) $panel.find('.gtb-ic-panel-body').html(_gtbRiskPanel(name));
+});
+
+function _dvSet915(name, tid, sfx) {
+    try {
+        var b915 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN')) || {};
+        var b9 = b915[name] || {}, c915 = b9.CLOSE_9_15;
+        if (!c915) return;
+        var _bull = (c915==='ASO'||c915==='AST'), _bear = (c915==='BSO'||c915==='BST');
+        var _cls  = _bull ? 'gtb-915-bull' : _bear ? 'gtb-915-bear' : 'gtb-915-neutral';
+        var _det  = '<span class="' + _cls + '" style="font-weight:700;">' + c915 + '</span>';
+        if (b9.close) _det += ' <span style="color:var(--gtb-muted);">close: ' + parseFloat(b9.close).toFixed(2) + '</span>';
+        jQ('#' + tid + '-915-detail' + sfx).html(_det);
+        jQ('#' + tid + '-915-badge'  + sfx).html('<span class="' + _cls + '">' + c915 + '</span>');
+    } catch(e) {}
+}
+
+// Fetch live data then render trend probability, OI/OBV, futures, OI matrix,
+// weightage bars, and PCR — all in correct dependency order
+async function _dvFetchAndRender(name, tid, sfx, isMcx) {
+    // Chart fires independently (doesn't affect score calculations)
+    try {
+        if (isMcx) showTopChartMCX(name, null, '#' + tid + '-chart' + sfx).catch(function(){});
+        else        showTopChart(name, '#' + tid + '-chart' + sfx, null, sfx).catch(function(){});
+    } catch(e) {}
+
+    try {
+        if (isMcx) {
+            // MCX: futures → OI/OBV → then render score-dependent panels
+            var res = await showFutureDetailsMCX(name);
+            if (res) {
+                setFutureDetails(name, res, sfx);          // populates futures panel + remark chip
+                if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+                INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(res['REMARK']);
+                INSTRUMENT_SCORE_MAP[name].oi_obv = 0;
+                await showPrictionProbabiltyMCX(name, res);
+                showOIOBVBarChart(name, sfx);
+                // After showPrictionProbabiltyMCX, the global stock[0].DATA holds MCX OI tableData.
+                // Store it in INSTRUMENT_SCORE_MAP so _gtbRenderOIMatrix can render the matrix.
+                try {
+                    var _mcxOiData = (typeof stock !== 'undefined' && stock.length && stock[0]['DATA']) ? stock[0]['DATA'] : null;
+                    if (_mcxOiData && _mcxOiData.tableData && _mcxOiData.tableData.length) {
+                        INSTRUMENT_SCORE_MAP[name].oiData = _mcxOiData;
+                        _gtbRenderOIMatrix(name, sfx);
+                        var _lbl = document.getElementById(tid + '-oimatrix-lbl' + sfx);
+                        if (_lbl) _lbl.textContent = 'live';
+                    }
+                } catch(e) { console.log('MCX OI matrix', name, e); }
+            }
+        } else {
+            // NSE: OI+OBV and futures in parallel
+            var results = await Promise.all([
+                (async function() {
+                    await showPrictionProbabilty(name);
+                    var ed = ((INSTRUMENT_SCORE_MAP[name] || {}).stockEntry || {})['DATA'];
+                    showOIOBVBarChart(name, sfx, ed);
+                    // OI matrix — uses fresh oiData written by showPrictionProbabilty
+                    var freshOI = (INSTRUMENT_SCORE_MAP[name] || {}).oiData;
+                    if (freshOI && freshOI.tableData && freshOI.tableData.length) {
+                        _gtbRenderOIMatrix(name, sfx);
+                        var _lbl = document.getElementById(tid + '-oimatrix-lbl' + sfx);
+                        if (_lbl) _lbl.textContent = 'live';
+                    }
+                })(),
+                showFutureDetails(name),
+            ]);
+            var fres = results[1];
+            if (fres) {
+                setFutureDetails(name, fres, sfx);          // populates futures panel + remark chip
+                if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+                INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(fres['REMARK']);
+            }
+        }
+
+        // ── Score-dependent panels — rendered AFTER all data is in INSTRUMENT_SCORE_MAP ──
+        // Compute and cache the score so _gtbUpdateWeightBars finds it
+        try {
+            var _sc = computeInstrumentScore(name);
+            if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+            INSTRUMENT_SCORE_MAP[name].score = _sc;
+        } catch(e) {}
+        try { jQ('#' + tid + '-prob' + sfx).html(_cmdTrendProb(name, null)); } catch(e) {}
+        try { _gtbUpdateWeightBars(name, sfx); } catch(e) {}
+
+        // ── Trade Analysis — render inline after all data is ready ───────────────
+        try {
+            var _taEl = document.getElementById('dv-ta-' + tid + sfx.replace(/-/g,'_'));
+            if (_taEl) {
+                var _taBody = _taEl.querySelector('.gtb-ic-panel-body');
+                _btAnalyzeInstrument(name, _taBody || _taEl);
+            }
+        } catch(e) {}
+
+        // ── Risk Manager — render after data is ready ─────────────────────────────
+        try {
+            var _rmEl = document.querySelector('[data-risk-name="' + name + '"] .gtb-ic-panel-body');
+            if (_rmEl) _rmEl.innerHTML = _gtbRiskPanel(name);
+        } catch(e) {}
+
+    } catch(e) { console.log('_dvFetchAndRender', name, e); }
+}
+
+async function _gtbLoadInstrDetail(name) {
+    name = _gtbNormaliseInstrName(name);
+    if (!name) return;
+
+    var tid     = name.replace(/ /g, '-').replace(/&/g, '-');
+    var isMcx   = _gtbIsMcxFuture(name);
+    var isNifty = name === 'NIFTY 50';
+    var isBank  = name === 'NIFTY BANK';
+    var sfx     = '-dv'; // ID suffix — keeps detail IDs from clashing with overview
+
+    // ── HTML: exact same 8-panel structure as _buildCard ─────────────────────
+    var h = '<div class="gtb-instr-card-v" style="width:100%;margin:0 auto;">';
+
+    // ── [0] Identity ──────────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel gtb-ic-panel-identity" data-col="id">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-instr-link" style="font-weight:800;font-size:0.7rem;">' + name + '</span>';
+    h +=     '<span id="' + tid + '-ltp' + sfx + '" class="gtb-row-ltp"></span>';
+    h +=     '<span id="' + tid + '-trend-zone' + sfx + '" class="gtb-trend-zone"></span>';
+    h +=     '<span id="' + tid + '-915-badge' + sfx + '" class="gtb-915-badge"></span>';
+    h +=     '<span id="' + tid + '-futures-premium' + sfx + '" class="gtb-cell-premium-chip"></span>';
+    h +=     '<span id="' + tid + '-futures-trend' + sfx + '" class="gtb-cell-fut-remark"></span>';
+    h +=     '<button class="sv-icon-btn gtb-dv-refresh" data-name="' + name + '" style="margin-left:auto;"><i class="bi bi-arrow-clockwise"></i> Refresh</button>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [1] Chart ─────────────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="chart">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-line-fill"></i> PRICE ACTION</span>';
+    h +=     '<span class="gtb-ic-panel-btns">';
+    h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+    h +=     '</span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body" style="padding:0;">';
+    h +=     '<div id="' + tid + '-chart-levels' + sfx + '" class="gtb-chart-levels"></div>';
+    h +=     '<div id="' + tid + '-chart' + sfx + '" class="gtb-chart-mini gtb-row-chart"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [2] OI / OBV ─────────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="oiobv">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-layers-fill"></i> OI / OBV</span>';
+    h +=     '<span class="gtb-ic-panel-btns">';
+    h +=       '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>';
+    h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+    h +=     '</span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<div class="gtb-ic-sub-hdr">OI Change</div>';
+    h +=   '<div id="' + tid + '-oi' + sfx + '" class="gtb-chart-oi" style="height:110px;"></div>';
+    h +=   '<div id="' + tid + '-oi-signal-row' + sfx + '" style="display:none;"></div>';
+    h +=   '<div class="gtb-ic-sub-hdr" style="margin-top:4px;">OBV</div>';
+    h +=   '<div id="' + tid + '-obv' + sfx + '" class="gtb-chart-oi" style="height:110px;"></div>';
+    h +=   '<div id="' + tid + '-oiobv-xaxis' + sfx + '" class="gtb-oiobv-xaxis"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [3] OI Matrix (directly below OI/OBV) ────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="oimatrix">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-table"></i> OI MATRIX</span>';
+    h +=     '<span id="' + tid + '-oimatrix-lbl' + sfx + '" style="font-size:0.42rem;color:var(--gtb-muted);margin-left:4px;"></span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body" style="overflow-x:auto;padding:0 4px;">';
+    h +=   '<div id="' + tid + '-oimatrix' + sfx + '" class="gtb-row-oimatrix"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [4] 9:15 Breakout ────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="915">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-alarm"></i> 9:15 BREAKOUT</span>';
+    h +=     '<span class="gtb-ic-panel-btns"><button class="gtb-prob-btn sv-icon-btn" data-name="' + name + '" title="Strike probability"><i class="bi bi-percent"></i></button></span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<span class="gtb-915-detail" id="' + tid + '-915-detail' + sfx + '" style="font-size:0.52rem;color:var(--gtb-muted);">Waiting for data…</span>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [5] Trend Probability ────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="prob">';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-speedometer2"></i> TREND PROBABILITY</span></div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-prob' + sfx + '"></div>';
+    h += '</div>';
+
+    // ── [6] Futures ──────────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="fut">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> FUTURES</span>';
+    h +=     '<span class="gtb-ic-panel-btns">';
+    h +=       '<button class="sv-icon-btn gtb-fut-refresh-btn" data-name="' + name + '" title="Refresh futures"><i class="bi bi-arrow-clockwise"></i></button>';
+    h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+    h +=     '</span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<div id="' + tid + '-futures' + sfx + '" class="gtb-cell-fut-signals"></div>';
+    h +=   '<div id="' + tid + '-atr-sl' + sfx + '" class="gtb-cell-sl-wrap" style="margin-top:4px;"></div>';
+    h +=   '<div id="' + tid + '-futures-vwap' + sfx + '" style="font-size:0.5rem;margin-top:2px;"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [7] Weightage ────────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="weights">';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-steps"></i> WEIGHTAGE</span></div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-weights' + sfx + '">';
+    if (isNifty || isBank) {
+        var wMap = isNifty ? NIFTY_50_WEIGHTED_STOCKS : NIFTY_BANK_WEIGHTED_STOCKS;
+        Object.entries(wMap).sort(function(a,b){return b[1]-a[1];}).slice(0,6).forEach(function(kv) {
+            var wname = kv[0], wtid2 = wname.replace(/ /g,'-').replace(/&/g,'-');
+            h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + wname + '</span>'
+               + '<div class="gtb-wt-bar"><b id="' + wtid2 + '-wt-bar' + sfx + '" style="width:0%;background:var(--gtb-muted)"></b></div>'
+               + '<span class="gtb-wt-score" id="' + wtid2 + '-wt-score' + sfx + '">—</span></div>';
+        });
+    } else {
+        [['9:15',tid+'-sub-915'],['Trend',tid+'-sub-trend'],['Fut',tid+'-sub-fut'],['OI',tid+'-sub-oi'],['Total',tid+'-sub-total']].forEach(function(sr) {
+            h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + sr[0] + '</span>'
+               + '<div class="gtb-wt-bar"><b id="' + sr[1] + sfx + '-bar" style="width:0%;background:var(--gtb-muted)"></b></div>'
+               + '<span class="gtb-wt-score" id="' + sr[1] + sfx + '">—</span></div>';
+        });
+    }
+    h +=   '</div>';
+    h += '</div>';
+
+    // ── [8] Details ──────────────────────────────────────────────────────────
+    h += '<div class="gtb-ic-panel" data-col="detail">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-info-circle-fill"></i> DETAILS</span>';
+    h +=     '<span class="gtb-ic-panel-btns"><button class="sv-icon-btn mp-gex-btn" data-name="' + name + '" title="Max Pain / GEX"><i class="bi bi-bar-chart-steps"></i></button></span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-detail' + sfx + '">';
+    h +=   '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability' + sfx + '"></span></div>';
+    h +=   '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score' + sfx + '"></span></div>';
+    h +=   '<div id="' + tid + '-mp-gex' + sfx + '" class="gtb-det-mp"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    h += '</div>'; // end .gtb-instr-card-v
+
+    // Trade Analysis panel — rendered inline after _dvFetchAndRender completes
+    var _taSfxId = '-dv'.replace(/-/g,'_');
+    h += '<div id="dv-ta-' + tid + '_dv" class="gtb-ic-panel" style="margin-top:6px;">'
+       + '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-lightbulb-fill"></i> TRADE ANALYSIS' + _ii('dv-ta') + '</span>'
+       + '<span style="font-size:0.44rem;color:var(--gtb-muted);margin-left:6px;">loads after data</span></div>'
+       + '<div class="gtb-ic-panel-body" style="padding:4px 0;"></div>'
+       + '</div>';
+
+    // Risk Manager panel — rendered after _dvFetchAndRender completes
+    h += '<div class="gtb-ic-panel" data-risk-name="' + name + '" style="margin-top:6px;">'
+       + '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-shield-fill-check"></i> RISK MANAGER' + _ii('dv-risk') + '</span>'
+       + '<span style="font-size:0.44rem;color:var(--gtb-muted);margin-left:6px;">loads after data</span></div>'
+       + '<div class="gtb-ic-panel-body" style="padding:0;"></div>'
+       + '</div>';
+
+    jQ('#fsig-result').html(h);
+
+    // ── Only 9:15 from localStorage is reliable before any fetch ─────────────
+    _dvSet915(name, tid, sfx);
+
+    // ── All other panels require live data — fetch then render ────────────────
+    _dvFetchAndRender(name, tid, sfx, isMcx);
+}
+
+// ── Instrument Detail View — multi-instrument support ─────────────────────────
+
+// Suffix for a given instrument in the detail view (avoids clashing with overview IDs)
+function _dvSfx(name) {
+    return '-dv-' + name.replace(/ /g,'-').replace(/&/g,'-');
+}
+
+// Load / refresh one instrument panel inside #fsig-result; creates or replaces its column
+function _gtbLoadInstrDetailPanel(name) {
+    name = _gtbNormaliseInstrName(name);
+    if (!name) return;
+    var sfx = _dvSfx(name);
+    var tid = name.replace(/ /g,'-').replace(/&/g,'-');
+    var isMcx   = _gtbIsMcxFuture(name);
+    var isNifty = name === 'NIFTY 50';
+    var isBank  = name === 'NIFTY BANK';
+
+    // Build card HTML (same 8 panels as _buildCard / _gtbLoadInstrDetail)
+    var h = '<div class="gtb-instr-card-v gtb-dv-col" id="gtb-dv-col-' + tid + '" style="flex:0 0 320px;width:320px;min-width:320px;">';
+
+    // [0] Identity
+    h += '<div class="gtb-ic-panel gtb-ic-panel-identity" data-col="id">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span style="font-weight:800;font-size:0.65rem;">' + name + '</span>';
+    h +=     '<span id="' + tid + '-ltp' + sfx + '" class="gtb-row-ltp"></span>';
+    h +=     '<span id="' + tid + '-trend-zone' + sfx + '" class="gtb-trend-zone"></span>';
+    h +=     '<span id="' + tid + '-915-badge' + sfx + '" class="gtb-915-badge"></span>';
+    h +=     '<span id="' + tid + '-futures-premium' + sfx + '" class="gtb-cell-premium-chip"></span>';
+    h +=     '<span id="' + tid + '-futures-trend' + sfx + '" class="gtb-cell-fut-remark"></span>';
+    h +=     '<button class="sv-icon-btn gtb-dv-panel-refresh" data-name="' + name + '" style="margin-left:auto;" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
+    h +=     '<button class="sv-icon-btn gtb-dv-panel-close" data-name="' + name + '" style="color:var(--gtb-muted);" title="Remove"><i class="bi bi-x-lg"></i></button>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // [1] Chart
+    h += '<div class="gtb-ic-panel" data-col="chart">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-line-fill"></i> PRICE ACTION</span>';
+    h +=     '<span class="gtb-ic-panel-btns"><button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="chart" title="Maximize"><i class="bi bi-fullscreen"></i></button></span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body" style="padding:0;">';
+    h +=     '<div id="' + tid + '-chart-levels' + sfx + '" class="gtb-chart-levels"></div>';
+    h +=     '<div id="' + tid + '-chart' + sfx + '" class="gtb-chart-mini gtb-row-chart"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // [2] OI / OBV
+    h += '<div class="gtb-ic-panel" data-col="oiobv">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-layers-fill"></i> OI / OBV</span>';
+    h +=     '<span class="gtb-ic-panel-btns">';
+    h +=       '<button class="sv-icon-btn refresh-oi-obv" data-name="' + name + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>';
+    h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="oi" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+    h +=     '</span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<div class="gtb-ic-sub-hdr">OI Change</div>';
+    h +=   '<div id="' + tid + '-oi' + sfx + '" class="gtb-chart-oi" style="height:110px;"></div>';
+    h +=   '<div id="' + tid + '-oi-signal-row' + sfx + '" style="display:none;"></div>';
+    h +=   '<div class="gtb-ic-sub-hdr" style="margin-top:4px;">OBV</div>';
+    h +=   '<div id="' + tid + '-obv' + sfx + '" class="gtb-chart-oi" style="height:110px;"></div>';
+    h +=   '<div id="' + tid + '-oiobv-xaxis' + sfx + '" class="gtb-oiobv-xaxis"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // [3] OI Matrix (directly below OI/OBV)
+    h += '<div class="gtb-ic-panel" data-col="oimatrix">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-table"></i> OI MATRIX</span>';
+    h +=     '<span id="' + tid + '-oimatrix-lbl' + sfx + '" style="font-size:0.42rem;color:var(--gtb-muted);margin-left:4px;"></span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body" style="overflow-x:auto;padding:0 4px;">';
+    h +=   '<div id="' + tid + '-oimatrix' + sfx + '" class="gtb-row-oimatrix"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // [4] 9:15 Breakout
+    h += '<div class="gtb-ic-panel" data-col="915">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-alarm"></i> 9:15 BREAKOUT</span>';
+    h +=     '<span class="gtb-ic-panel-btns"><button class="gtb-prob-btn sv-icon-btn" data-name="' + name + '" title="Strike probability"><i class="bi bi-percent"></i></button></span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<span class="gtb-915-detail" id="' + tid + '-915-detail' + sfx + '" style="font-size:0.52rem;color:var(--gtb-muted);">—</span>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // [5] Trend Probability
+    h += '<div class="gtb-ic-panel" data-col="prob">';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-speedometer2"></i> TREND PROBABILITY</span></div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-prob' + sfx + '"></div>';
+    h += '</div>';
+
+    // [6] Futures
+    h += '<div class="gtb-ic-panel" data-col="fut">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> FUTURES</span>';
+    h +=     '<span class="gtb-ic-panel-btns">';
+    h +=       '<button class="sv-icon-btn maximize-component-btn" data-name="' + name + '" data-type="futures" title="Maximize"><i class="bi bi-fullscreen"></i></button>';
+    h +=     '</span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<div id="' + tid + '-futures' + sfx + '" class="gtb-cell-fut-signals"></div>';
+    h +=   '<div id="' + tid + '-atr-sl' + sfx + '" class="gtb-cell-sl-wrap" style="margin-top:4px;"></div>';
+    h +=   '<div id="' + tid + '-futures-vwap' + sfx + '" style="font-size:0.5rem;margin-top:2px;"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // [7] Weightage
+    h += '<div class="gtb-ic-panel" data-col="weights">';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-bar-chart-steps"></i> WEIGHTAGE</span></div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-weights' + sfx + '">';
+    if (isNifty || isBank) {
+        var wMap = isNifty ? NIFTY_50_WEIGHTED_STOCKS : NIFTY_BANK_WEIGHTED_STOCKS;
+        Object.entries(wMap).sort(function(a,b){return b[1]-a[1];}).slice(0,6).forEach(function(kv) {
+            var wn = kv[0], wtid2 = wn.replace(/ /g,'-').replace(/&/g,'-');
+            h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + wn + '</span>'
+               + '<div class="gtb-wt-bar"><b id="' + wtid2 + '-wt-bar' + sfx + '" style="width:0%;background:var(--gtb-muted)"></b></div>'
+               + '<span class="gtb-wt-score" id="' + wtid2 + '-wt-score' + sfx + '">—</span></div>';
+        });
+    } else {
+        [['9:15',tid+'-sub-915'],['Trend',tid+'-sub-trend'],['Fut',tid+'-sub-fut'],['OI',tid+'-sub-oi'],['Total',tid+'-sub-total']].forEach(function(sr) {
+            h += '<div class="gtb-wt-row"><span class="gtb-wt-name">' + sr[0] + '</span>'
+               + '<div class="gtb-wt-bar"><b id="' + sr[1] + sfx + '-bar" style="width:0%;background:var(--gtb-muted)"></b></div>'
+               + '<span class="gtb-wt-score" id="' + sr[1] + sfx + '">—</span></div>';
+        });
+    }
+    h +=   '</div>';
+    h += '</div>';
+
+    // [8] Details
+    h += '<div class="gtb-ic-panel" data-col="detail">';
+    h +=   '<div class="gtb-ic-panel-hdr">';
+    h +=     '<span class="gtb-ic-panel-title"><i class="bi bi-info-circle-fill"></i> DETAILS</span>';
+    h +=   '</div>';
+    h +=   '<div class="gtb-ic-panel-body">';
+    h +=   '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability' + sfx + '"></span></div>';
+    h +=   '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score' + sfx + '"></span></div>';
+    h +=   '<div id="' + tid + '-mp-gex' + sfx + '" class="gtb-det-mp"></div>';
+    h +=   '</div>';
+    h += '</div>';
+
+    // Trade Analysis panel — rendered inline after _dvFetchAndRender completes
+    var _taSfxId2 = sfx.replace(/-/g,'_');
+    h += '<div id="dv-ta-' + tid + _taSfxId2 + '" class="gtb-ic-panel" style="margin-top:6px;">'
+       + '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-lightbulb-fill"></i> TRADE ANALYSIS' + _ii('dv-ta') + '</span>'
+       + '<span style="font-size:0.44rem;color:var(--gtb-muted);margin-left:6px;">loads after data</span></div>'
+       + '<div class="gtb-ic-panel-body" style="padding:4px 0;"></div>'
+       + '</div>';
+
+    // Risk Manager panel — rendered after _dvFetchAndRender completes
+    h += '<div class="gtb-ic-panel" data-risk-name="' + name + '" style="margin-top:6px;">'
+       + '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-shield-fill-check"></i> RISK MANAGER' + _ii('dv-risk') + '</span>'
+       + '<span style="font-size:0.44rem;color:var(--gtb-muted);margin-left:6px;">loads after data</span></div>'
+       + '<div class="gtb-ic-panel-body" style="padding:0;"></div>'
+       + '</div>';
+
+    h += '</div>'; // end .gtb-dv-col
+
+    // Replace existing column or append
+    var $existing = jQ('#gtb-dv-col-' + tid);
+    if ($existing.length) {
+        $existing.replaceWith(h);
+    } else {
+        jQ('#fsig-multi-row').append(h);
+    }
+
+    // ── Only 9:15 from localStorage is reliable before any fetch ─────────────
+    _dvSet915(name, tid, sfx);
+
+    // ── All other panels require live data — fetch then render ────────────────
+    _dvFetchAndRender(name, tid, sfx, isMcx);
+}
+
 jQ(document).on('click', '#show-futures-signal', function (e) {
     e.preventDefault();
-    var picks = ['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS', 'WIPRO', 'SBIN', 'CRUDEOILM', 'USDINR'];
+    var popId  = 'pop-up-window-gtb-instr-detail';
+    var popCls = 'popup-custom-style-gtb-instr-detail';
+
+    // If already open just bring to front
+    var $existing = jQ('#' + popId);
+    if ($existing.length) {
+        if ($existing.is(':visible')) { try { $existing.PopupWindow('show'); } catch(ex) {} return; }
+        try { $existing.PopupWindow('destroy'); } catch(ex) {}
+        $existing.remove();
+    }
+
+    var builtIn  = _allInstruments.map(function(i){ return i.name; });
+    var extras   = ['INFY', 'TCS', 'WIPRO', 'SBIN', 'AXISBANK', 'KOTAKBANK'];
+    var allPicks = builtIn.concat(extras.filter(function(n){ return builtIn.indexOf(n) === -1; }));
+
     var body = '<div class="fsig-wrap">'
-        + '<div class="fsig-bar"><input id="fsig-input" type="text" placeholder="Type an instrument — e.g. INFY, WIPRO, CRUDEOILM, NIFTY 50" autocomplete="off" />'
-        + '<button id="fsig-go" class="oic-mode-btn"><i class="bi bi-search"></i> Get signal</button></div>'
-        + '<div class="fsig-picks">' + picks.map(function (p) { return '<button class="fsig-pick" data-name="' + p + '">' + p + '</button>'; }).join('') + '</div>'
-        + '<div id="fsig-result" class="fsig-result"><div class="cmd-load">Pick an instrument above or type any NSE F&O stock / index / MCX commodity.</div></div>'
+        + '<div class="fsig-bar">'
+        + '<input id="fsig-input" type="text" placeholder="Type symbol — e.g. INFY, TCS, NIFTY 50…" autocomplete="off"/>'
+        + '<button id="fsig-go" class="oic-mode-btn"><i class="bi bi-plus-circle"></i> Add</button>'
+        + '<button id="fsig-clear-all" class="oic-mode-btn" style="margin-left:4px;background:transparent;border-color:var(--gtb-border2);color:var(--gtb-muted);"><i class="bi bi-trash3"></i> Clear all</button>'
+        + '</div>'
+        + '<div class="fsig-picks" style="flex-wrap:wrap;">'
+        + allPicks.map(function(p) {
+            return '<button class="fsig-pick" data-name="' + p + '">' + p + '</button>';
+          }).join('')
+        + '</div>'
+        + '<div id="fsig-multi-row" class="fsig-multi-row"></div>'
         + '</div>';
-    showMaximizeOverlay('<i class="bi bi-graph-up"></i> Futures Signal — any instrument (NSE / MCX)', body);
+
+    // Derive popup dimensions: near-full-screen but with room to see the dashboard behind
+    var winW = window.innerWidth  || document.documentElement.clientWidth;
+    var winH = window.innerHeight || document.documentElement.clientHeight;
+    var pw = Math.min(winW - 40, 1400);
+    var ph = Math.min(winH - 60, 860);
+
+    showPopUpWindow('gtb-instr-detail', body, 'Instrument Detail View', pw, ph);
+
+    var isLight = jQ('#main-trade-bot-container').hasClass('gtb-light');
+    jQ('.' + popCls).toggleClass('gtb-light', isLight);
+
+    var titleHtml = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-layers-fill" style="color:#00b4d8;font-size:0.7rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">INSTRUMENT DETAIL VIEW</span>'
+        + popupWinControls(popCls)
+        + '</div>';
+    jQ('.' + popCls).find('.popupwindow_titlebar_text').html(titleHtml);
+    hideNativePopupButtons(popCls);
+
+    // Make content area fill popup height so fsig-multi-row can scroll
+    jQ('.' + popCls).find('.popupwindow_content').css({ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' });
+
+    // Prevent mousedown on content from triggering the titlebar drag handler
+    jQ('.' + popCls).find('.popupwindow_content').on('mousedown', function(e) { e.stopPropagation(); });
+    // Also block drag from our custom title controls
+    jQ('.' + popCls).find('.gtb-win-controls').on('mousedown', function(e) { e.stopPropagation(); });
+
+    // JS sticky: scroll events don't bubble, so bind directly on the element.
+    // translateY(scrollTop) keeps identity panels visually pinned at the top of the
+    // visible area while the rest of the column scrolls normally.
+    jQ('#fsig-multi-row').off('scroll.dv-sticky').on('scroll.dv-sticky', function() {
+        var t = this.scrollTop;
+        jQ(this).find('.gtb-ic-panel-identity').css('transform', 'translateY(' + t + 'px)');
+    });
 });
-jQ(document).on('click', '#fsig-go', function () { _gtbFetchFuturesSignalUI(jQ('#fsig-input').val()); });
-jQ(document).on('keydown', '#fsig-input', function (e) { if (e.key === 'Enter') _gtbFetchFuturesSignalUI(jQ(this).val()); });
+
+jQ(document).on('click', '#fsig-go', function () {
+    var n = jQ('#fsig-input').val().trim();
+    if (!n) return;
+    _gtbLoadInstrDetailPanel(n);
+    jQ('#fsig-input').val('');
+});
+jQ(document).on('keydown', '#fsig-input', function (e) {
+    if (e.key === 'Enter') { jQ('#fsig-go').click(); }
+});
 jQ(document).on('click', '.fsig-pick', function () {
-    var n = jQ(this).data('name');
-    jQ('#fsig-input').val(n);
-    _gtbFetchFuturesSignalUI(n);
+    _gtbLoadInstrDetailPanel(jQ(this).data('name'));
 });
+jQ(document).on('click', '#fsig-clear-all', function () {
+    jQ('#fsig-multi-row').empty();
+});
+jQ(document).on('click', '.gtb-dv-panel-refresh', function () {
+    _gtbLoadInstrDetailPanel(jQ(this).data('name'));
+});
+jQ(document).on('click', '.gtb-dv-panel-close', function () {
+    jQ('#gtb-dv-col-' + jQ(this).data('name').replace(/ /g,'-').replace(/&/g,'-')).remove();
+});
+// Keep old single-instrument refresh wiring (used by overview maximize buttons)
+jQ(document).on('click', '.gtb-dv-refresh', function () {
+    _gtbLoadInstrDetail(jQ(this).data('name'));
+});
+
+// Open (or reuse) the Instrument Detail View popup for a specific instrument.
+// Called from Analysis / Opportunities "Analyze" buttons so everything funnels into one popup.
+function _gtbOpenInstrDetailFor(name) {
+    var popId  = 'pop-up-window-gtb-instr-detail';
+    var popCls = 'popup-custom-style-gtb-instr-detail';
+
+    var $pop = jQ('#' + popId);
+    if (!$pop.length || !$pop.is(':visible')) {
+        // Popup not open — trigger the normal open flow, then load the instrument
+        jQ('#show-futures-signal').trigger('click');
+    } else {
+        // Already open — just bring to front
+        try { $pop.PopupWindow('show'); } catch(e) {}
+    }
+
+    // Give the popup a tick to render, then load/refresh the instrument column
+    setTimeout(function() {
+        _gtbLoadInstrDetailPanel(name);
+        // Scroll the new column into view
+        setTimeout(function() {
+            var col = document.getElementById('gtb-dv-col-' + name.replace(/ /g,'-').replace(/&/g,'-'));
+            if (col) col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'end' });
+        }, 80);
+    }, 60);
+}
 
 // Computes a score breakdown for a single instrument using cached data (no API calls)
 function computeInstrumentScore(name) {
@@ -2863,6 +4117,8 @@ function setScore() {
     try { _gtbRenderOIMatrix('RELIANCE'); } catch(e) {}
     try { _gtbRenderOIMatrix('HDFCBANK'); } catch(e) {}
     try { _gtbRenderOIMatrix('ICICIBANK'); } catch(e) {}
+    try { _gtbRenderOIMatrix('CRUDEOILM'); } catch(e) {}
+    try { _gtbRenderOIMatrix('USDINR'); } catch(e) {}
     try { _gtbUpdateWeightBars('NIFTY 50'); } catch(e) {}
     try { _gtbUpdateWeightBars('NIFTY BANK'); } catch(e) {}
     try { _gtbUpdateWeightBars('RELIANCE'); } catch(e) {}
@@ -2870,6 +4126,8 @@ function setScore() {
     try { _gtbUpdateWeightBars('ICICIBANK'); } catch(e) {}
     try { _gtbUpdateWeightBars('CRUDEOILM'); } catch(e) {}
     try { _gtbUpdateWeightBars('USDINR'); } catch(e) {}
+    try { _gtbRefreshMPCards(); } catch(e) {}
+    try { _gtbRefreshProbCards(); } catch(e) {}
 
     // Derive OI/OBV globals from INSTRUMENT_SCORE_MAP instead of accumulated mutation.
     // This prevents partial-refresh double-counting when setScore is called mid-cycle
@@ -2955,7 +4213,7 @@ function setScore() {
     signalHtml += '</div>'
 
     // Row 2: reason text
-    signalHtml += '<div style="font-size:0.62rem;color:var(--gtb-muted,#7d8590);line-height:1.4;margin-bottom:6px;">' + marketSignal.reason + '</div>'
+    signalHtml += '<div style="font-size:0.62rem;color:var(--gtb-muted);line-height:1.4;margin-bottom:6px;">' + marketSignal.reason + '</div>'
 
     // Row 3: divider
     signalHtml += '<div style="border-top:1px solid ' + sm.accent + '22;margin-bottom:6px;"></div>'
@@ -3006,6 +4264,17 @@ function setScore() {
         var gn = (breakOutNineFifteen['GIFT NIFTY'] || {})['CLOSE_9_15'] || null;
         jQ('#SENSEX-915-badge').html(sx ? _915badge(sx) : '');
         jQ('#GIFT-NIFTY-915-badge').html(gn ? _915badge(gn) : '');
+        // Populate 915-detail in card panels for SENSEX and GIFT NIFTY
+        function _setDetail(name, val) {
+            if (!val) return;
+            var isBull = (val === 'ASO' || val === 'AST');
+            var isBear = (val === 'BSO' || val === 'BST');
+            var cls = isBull ? 'gtb-915-bull' : isBear ? 'gtb-915-bear' : 'gtb-915-neutral';
+            var tid = name.replace(/ /g, '-').replace(/&/g, '-');
+            jQ('#' + tid + '-915-detail').html('<span class="' + cls + '" style="font-weight:700;">' + val + '</span>');
+        }
+        _setDetail('SENSEX', sx);
+        _setDetail('GIFT NIFTY', gn);
     })();
 
     // Update top bar signal pill
@@ -3161,6 +4430,71 @@ function showStockComponent() {
 //   #{tempName}-futures-vwap  — VWAP trend label (price vs VWAP = bullish/bearish)
 //   #{tempName}-futures-trend — futures REMARK badge (LONG/SHORT/UNWINDING etc.)
 // Also stores remark in INSTRUMENT_SCORE_MAP[name].futures_trend for composite score.
+// Maps REMARK key → compact readable chip shown in the identity strip.
+// Kept in sync with getFuturesTrendScore so chip colour always matches the score direction.
+function _gtbRemarkChip(remark) {
+    var map = {
+        'LONG':                         { label: 'Long Buildup',       bull: true  },
+        'SHORT':                        { label: 'Short Buildup',      bull: false },
+        'SHOT_COVERING':                { label: 'Short Covering',     bull: true  },
+        'LONG_UNWINDING':               { label: 'Long Unwinding',     bull: false },
+        'BEARS_COMING_SELL_ON_RISE':    { label: 'Sell on Rise',       bull: false },
+        'GAMBLING_BUY_NEWS_AND_EVENTS': { label: 'Gambling',           bull: false },
+        'CAUTION_WRITES_ERODING_PREMIUM':{ label: 'Caution',           bull: false },
+        'BULLS_CONSOLIDATING':          { label: 'Bulls Consolidating',bull: true  },
+        'BEARS_CONSOLIDATING':          { label: 'Bears Consolidating',bull: false },
+        'DEFENCE_BUY_ON_DECLINE':       { label: 'Buy on Decline',     bull: true  },
+    };
+    var entry = map[remark];
+    if (!entry) return '';
+    var color = entry.bull ? 'var(--gtb-green)' : 'var(--gtb-red)';
+    var bg    = entry.bull ? 'var(--gtb-green-dim,#0d3320)' : 'var(--gtb-red-dim,#3d0d0d)';
+    return '<span style="font-size:0.48rem;font-weight:700;padding:1px 5px;border-radius:3px;'
+         + 'border:1px solid ' + color + ';background:' + bg + ';color:' + color + ';white-space:nowrap;">'
+         + entry.label + '</span>';
+}
+
+// Secondary badge: VWAP price direction, dimmed when it agrees with REMARK, amber when it conflicts.
+function _gtbVwapChip(trendHtml, remark) {
+    if (!trendHtml) return '';
+    // Extract label text from the badge HTML (strips tags)
+    var label = trendHtml.replace(/<[^>]+>/g, '').trim();
+    if (!label) return '';
+
+    // Determine VWAP direction from label text
+    var vwapBull = /strong buy|buy/i.test(label) && !/sell/i.test(label);
+    var vwapBear = /sell/i.test(label);
+
+    // OI REMARK direction
+    var remarkScore = (typeof getFuturesTrendScore === 'function') ? getFuturesTrendScore(remark) : 0;
+    var remarkBull  = remarkScore > 0;
+    var remarkBear  = remarkScore < 0;
+
+    // Conflict: VWAP and REMARK point opposite directions
+    var conflict = (vwapBull && remarkBear) || (vwapBear && remarkBull);
+
+    var color, bg;
+    if (conflict) {
+        color = 'var(--gtb-amber, #f59e0b)';
+        bg    = 'var(--gtb-amber-dim, #2d1f00)';
+    } else if (vwapBull) {
+        color = 'var(--gtb-green)';
+        bg    = 'var(--gtb-green-dim, #0d3320)';
+    } else if (vwapBear) {
+        color = 'var(--gtb-red)';
+        bg    = 'var(--gtb-red-dim, #3d0d0d)';
+    } else {
+        color = 'var(--gtb-muted)';
+        bg    = 'transparent';
+    }
+
+    var icon = conflict ? '⚠ ' : '';
+    return '<span style="font-size:0.44rem;font-weight:600;padding:1px 4px;border-radius:3px;margin-left:3px;'
+         + 'border:1px solid ' + color + ';background:' + bg + ';color:' + color + ';white-space:nowrap;opacity:0.85;"'
+         + (conflict ? ' title="VWAP and OI signals conflict"' : '')
+         + '>' + icon + 'VWAP: ' + label + '</span>';
+}
+
 function setFutureDetails(name, data, suffix) {
     suffix = suffix || '';
     let tempName = name.replaceAll(" ", "-")
@@ -3198,7 +4532,11 @@ function setFutureDetails(name, data, suffix) {
         }
     }
     jQ("#" + tempName + "-futures-vwap" + suffix).html(data['vwap']);
-    jQ("#" + tempName + "-futures-trend" + suffix).html(data['trend']);
+    // Identity chip: OI REMARK (primary) + VWAP direction (secondary).
+    // When they agree the VWAP badge is green/red; when they conflict it flags the mismatch visually.
+    var _remarkHtml = _gtbRemarkChip(data['REMARK']);
+    var _vwapHtml   = _gtbVwapChip(data['trend'], data['REMARK']);
+    jQ("#" + tempName + "-futures-trend" + suffix).html(_remarkHtml + _vwapHtml);
 
     // Update futures strip at bottom — only on main panel
     if (!suffix) {
@@ -3232,27 +4570,96 @@ jQ(document).on("change", "#gtb-hist-time", function() {
     else   localStorage.removeItem('GTB_HIST_TIME');
 });
 
-// Settings gear dropdown toggle
+// Settings — open as draggable popup window
+function _gtbSettingsHtml() {
+    var _bs = 'font-size:0.44rem;padding:1px 5px;background:transparent;border:1px solid #444;color:#7d8590;cursor:pointer;border-radius:3px;';
+    var s = '<div class="gtb-settings-popup">';
+
+    // Checkboxes
+    s += '<div class="gtb-sp-section">';
+    s += '<label class="gtb-sp-row"><input type="checkbox" id="enable-auto-refresh"> Auto-refresh</label>';
+    s += '<label class="gtb-sp-row" title="Scan only weighted Nifty 50 + Bank Nifty stocks">'
+       + '<input type="checkbox" id="scan-weighted-only"' + (localStorage.getItem('GTB_SCAN_WEIGHTED') === '1' ? ' checked' : '') + '> Weighted only</label>';
+    s += '<div class="gtb-sp-row"><a id="data-load" class="gtb-ctrl-link" style="font-size:0.62rem;"><i class="bi bi-sliders"></i> Data settings</a></div>';
+    s += '</div>';
+
+    // Theme
+    var _t = localStorage.getItem('GTB_THEME') || 'dark';
+    s += '<div class="gtb-sp-section">';
+    s += '<div class="gtb-sp-hdr">THEME</div>';
+    s += '<div style="display:flex;gap:4px;">';
+    s += '<button class="gtb-theme-btn" data-theme="dark" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_t==='dark'?'#00b4d8':'transparent') + ';color:' + (_t==='dark'?'#fff':'#7d8590') + ';"><i class="bi bi-moon-stars-fill"></i> Dark</button>';
+    s += '<button class="gtb-theme-btn" data-theme="light" style="flex:1;padding:3px 0;font-size:0.6rem;border:1px solid #30363d;cursor:pointer;background:' + (_t==='light'?'#00b4d8':'transparent') + ';color:' + (_t==='light'?'#fff':'#7d8590') + ';"><i class="bi bi-sun-fill"></i> Light</button>';
+    s += '</div></div>';
+
+    // Sliders
+    var _rh = parseInt(localStorage.getItem('GTB_ROW_H') || '190');
+    var _cw = parseInt(localStorage.getItem('GTB_CARD_W') || '300');
+    var _bw = parseInt(localStorage.getItem('GTB_OI_BAR_W') || '60');
+    s += '<div class="gtb-sp-section">';
+    s += '<div class="gtb-sp-hdr">DISPLAY</div>';
+    s += '<div class="gtb-sp-slider-row"><span>Chart Height</span><input type="range" id="gtb-grid-h-slider" min="120" max="320" step="10" value="' + _rh + '"><span id="gtb-grid-h-val">' + _rh + '</span>px</div>';
+    s += '<div class="gtb-sp-slider-row"><span>Card Width</span><input type="range" id="gtb-card-w-slider" min="220" max="520" step="10" value="' + _cw + '"><span id="gtb-card-w-val">' + _cw + '</span>px</div>';
+    s += '<div class="gtb-sp-slider-row"><span>OI Bar W</span><input type="range" id="gtb-oi-bar-slider" min="20" max="100" step="5" value="' + _bw + '"><span id="gtb-oi-bar-val">' + _bw + '</span>%</div>';
+    s += '</div>';
+
+    // Columns
+    s += '<div class="gtb-sp-section">';
+    s += '<div class="gtb-sp-hdr">PANELS <button id="gtb-cols-reset" style="' + _bs + 'margin-left:6px;">Reset</button></div>';
+    s += '<div id="gtb-cols-cfg-list">' + _gtbColsCfgHtml() + '</div>';
+    s += '</div>';
+
+    // Instruments
+    s += '<div class="gtb-sp-section">';
+    s += '<div class="gtb-sp-hdr">INSTRUMENTS <button id="gtb-instrs-reset" style="' + _bs + 'margin-left:6px;">Reset</button></div>';
+    s += '<div id="gtb-instrs-cfg-list">' + _gtbInstrsCfgHtml(null) + '</div>';
+    s += '</div>';
+
+    // Last refresh
+    s += '<div class="gtb-sp-section" style="border-bottom:none;">';
+    s += '<span id="last-refresh-time" style="font-size:0.52rem;color:#7d8590;">—</span>';
+    s += '</div>';
+
+    s += '</div>';
+    return s;
+}
+
 jQ(document).on("click", "#gtb-settings-toggle", function(e) {
     e.stopPropagation();
-    var menu = jQ("#gtb-settings-menu");
-    menu.toggle();
-});
-// Close settings menu when clicking outside
-jQ(document).on("click", function(e) {
-    if (!jQ(e.target).closest(".gtb-settings-wrap").length) {
-        jQ("#gtb-settings-menu").hide();
+    var popId = 'pop-up-window-gtb-settings';
+    var $pop = jQ('#' + popId);
+    if ($pop.length) {
+        // Popup exists — if visible bring to front, if hidden show it
+        if ($pop.is(':visible')) {
+            try { $pop.PopupWindow('show'); } catch(ex) {}
+            return;
+        }
+        // Was closed — remove and recreate so content/state is fresh
+        try { $pop.PopupWindow('destroy'); } catch(ex) {}
+        $pop.remove();
     }
+    showPopUpWindow('gtb-settings', _gtbSettingsHtml(), 'Settings', 260, 520);
+    var cls = 'popup-custom-style-gtb-settings';
+    jQ('.' + cls).addClass((localStorage.getItem('GTB_THEME') || 'dark') === 'light' ? 'gtb-light' : '');
+    var titleHtml = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-gear-fill" style="color:#00b4d8;font-size:0.7rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">SETTINGS</span>'
+        + popupWinControls(cls)
+        + '</div>';
+    jQ('.' + cls).find('.popupwindow_titlebar_text').html(titleHtml);
+    hideNativePopupButtons(cls);
 });
 
 
 // ── Theme toggle (dark / light) ──────────────────────────────────────────────
 function _gtbApplyTheme(theme) {
-    // The maximize overlay is appended to <body>, outside #main-trade-bot-container,
-    // so it needs the theme class applied directly to inherit the light palette.
-    var container = jQ('#main-trade-bot-container').add('#groot-maximize-overlay');
+    // Apply theme to all popups, overlays and containers that use --gtb-* vars
+    // but live outside #main-trade-bot-container (so they don't inherit it automatically).
+    var container = jQ('#main-trade-bot-container, #groot-maximize-overlay, [class*="popup-custom-style-"]');
     if (theme === 'light') container.addClass('gtb-light');
     else                    container.removeClass('gtb-light');
+    // Sync floating bar theme
+    jQ('#gtb-float-bar').toggleClass('gtb-light', theme === 'light');
     localStorage.setItem('GTB_THEME', theme);
     // Reflect active state on the toggle buttons
     jQ('.gtb-theme-btn').each(function() {
@@ -3265,7 +4672,8 @@ function _gtbApplyTheme(theme) {
 
 // Theme-aware LightweightCharts colours
 function _gtbChartColors() {
-    var light = jQ('#main-trade-bot-container').hasClass('gtb-light');
+    var light = jQ('#main-trade-bot-container').hasClass('gtb-light')
+             || (localStorage.getItem('GTB_THEME') || 'dark') === 'light';
     return light
         ? { bg: '#ffffff', grid: '#e7edf4', bdr: '#c5d0de', text: '#5a6678' }
         : { bg: '#060a12', grid: '#122038', bdr: '#1b2d47', text: '#5c7499' };
@@ -3278,7 +4686,7 @@ function _gtbRecolorCharts() {
         if (!ch) return;
         try {
             ch.applyOptions({
-                layout: { background: { color: c.bg }, textColor: c.text },
+                layout: { background: { color: 'transparent' }, textColor: c.text },
                 grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
                 rightPriceScale: { borderColor: c.bdr },
                 timeScale: { borderColor: c.bdr },
@@ -3296,39 +4704,209 @@ function _gtbApplyGridH(px) {
     jQ('#main-trade-bot-container')[0].style.setProperty('--gtb-row-h', px + 'px');
     jQ('#gtb-grid-h-val').text(px);
     localStorage.setItem('GTB_ROW_H', px);
-    // Resize existing LW charts to match new row height
-    jQ('#gtb-rows .gtb-row-chart').each(function() {
-        if (this._lwChart) { try { this._lwChart.resize(this.clientWidth, this.clientHeight); } catch (e) {} }
-    });
+    setTimeout(function() {
+        jQ('#gtb-rows .gtb-row-chart').each(function() {
+            if (this._lwChart) { try { this._lwChart.resize(this.clientWidth || 10, this.clientHeight || 10); } catch (e) {} }
+        });
+    }, 30);
 }
 jQ(document).on('input', '#gtb-grid-h-slider', function() {
     _gtbApplyGridH(parseInt(jQ(this).val()));
 });
 
-// ── Column width sliders ────────────────────────────────────────────────────
-function _gtbApplyColW(key, px) {
+// ── Column / Instrument layout config ────────────────────────────────────────
+
+var GTB_DEFAULT_COLS = [
+    { key: 'id',       label: 'Instrument',        canHide: false },
+    { key: 'chart',    label: 'Price Action',       canHide: true  },
+    { key: 'oiobv',   label: 'OI / OBV',           canHide: true  },
+    { key: '915',      label: '9:15 Breakout',      canHide: true  },
+    { key: 'prob',     label: 'Trend Probability',  canHide: true  },
+    { key: 'fut',      label: 'Futures',            canHide: true  },
+    { key: 'oimatrix', label: 'OI Matrix',          canHide: true  },
+    { key: 'weights',  label: 'Weightage',          canHide: true  },
+    { key: 'detail',   label: 'Details',            canHide: true  },
+];
+
+function _gtbGetColsCfg() {
+    try {
+        var saved = JSON.parse(localStorage.getItem('GTB_COLS_CFG') || 'null');
+        if (saved && saved.length) {
+            var keys = saved.map(function(c){ return c.key; });
+            GTB_DEFAULT_COLS.forEach(function(d) {
+                if (keys.indexOf(d.key) === -1) saved.push({ key: d.key, label: d.label, canHide: d.canHide, visible: true });
+            });
+            return saved;
+        }
+    } catch(e) {}
+    return GTB_DEFAULT_COLS.map(function(c){ return { key: c.key, label: c.label, canHide: c.canHide, visible: true }; });
+}
+function _gtbSaveColsCfg(arr) { localStorage.setItem('GTB_COLS_CFG', JSON.stringify(arr)); }
+
+function _gtbApplyColsCfg() {
+    var cfg = _gtbGetColsCfg();
+    // Identity panel always pinned to top (order -1)
+    jQ('.gtb-ic-panel[data-col="id"]').each(function() { this.style.order = -1; });
+    cfg.forEach(function(col, i) {
+        // old horizontal layout: order + visibility on gtb-ic-col
+        jQ('.gtb-ic-col[data-col="' + col.key + '"]').each(function() {
+            this.style.order = i;
+            this.classList.toggle('gtb-col-hidden', !col.visible);
+        });
+        // new panel layout: order + visibility on gtb-ic-panel
+        // panels sit in a flex-column card, so CSS order resequences them vertically
+        jQ('.gtb-ic-panel[data-col="' + col.key + '"]').each(function() {
+            this.style.order = i;
+            this.classList.toggle('gtb-col-hidden', !col.visible);
+        });
+    });
+}
+
+function _gtbColsCfgHtml() {
+    var cfg = _gtbGetColsCfg();
+    var _bs = 'font-size:0.44rem;padding:1px 4px;background:transparent;border:1px solid #444;color:#7d8590;cursor:pointer;border-radius:3px;line-height:1.4;';
+    var h2 = '';
+    cfg.forEach(function(col, i) {
+        h2 += '<div class="gtb-cfg-row" style="display:flex;align-items:center;gap:3px;margin-bottom:2px;">';
+        if (col.canHide) {
+            h2 += '<button class="gtb-col-vis" data-col="' + col.key + '" style="' + _bs + 'color:' + (col.visible ? '#00b4d8' : '#555') + ';" title="Show/Hide"><i class="bi bi-eye' + (col.visible ? '-fill' : '-slash') + '"></i></button>';
+        } else {
+            h2 += '<span style="width:22px;flex-shrink:0;"></span>';
+        }
+        h2 += '<span style="flex:1;font-size:0.46rem;color:' + (col.visible ? '#c9d1d9' : '#555') + ';">' + col.label + '</span>';
+        h2 += '<button class="gtb-col-up" data-col="' + col.key + '" ' + (i === 0 ? 'disabled' : '') + ' style="' + _bs + '"><i class="bi bi-chevron-up"></i></button>';
+        h2 += '<button class="gtb-col-dn" data-col="' + col.key + '" ' + (i === cfg.length - 1 ? 'disabled' : '') + ' style="' + _bs + '"><i class="bi bi-chevron-down"></i></button>';
+        h2 += '</div>';
+    });
+    return h2;
+}
+
+var GTB_DEFAULT_INSTRS = ['GIFT NIFTY','NIFTY 50','NIFTY BANK','SENSEX','CRUDEOILM','USDINR','RELIANCE','HDFCBANK','ICICIBANK'];
+
+function _gtbGetInstrsCfg(defaults) {
+    var def = defaults || GTB_DEFAULT_INSTRS;
+    try {
+        var saved = JSON.parse(localStorage.getItem('GTB_INSTRS_CFG') || 'null');
+        if (saved && saved.length) {
+            var names = saved.map(function(c){ return c.name; });
+            def.forEach(function(n) { if (names.indexOf(n) === -1) saved.push({ name: n, visible: true }); });
+            return saved;
+        }
+    } catch(e) {}
+    return def.map(function(n){ return { name: n, visible: true }; });
+}
+function _gtbSaveInstrsCfg(arr) { localStorage.setItem('GTB_INSTRS_CFG', JSON.stringify(arr)); }
+
+function _gtbApplyInstrsCfg() {
+    var cfg = _gtbGetInstrsCfg();
+    cfg.forEach(function(instr, i) {
+        jQ('.gtb-instr-card[data-instr="' + instr.name + '"]').each(function() {
+            this.style.order = i;
+            this.classList.toggle('gtb-instr-hidden', !instr.visible);
+        });
+    });
+}
+
+function _gtbInstrsCfgHtml(defaults) {
+    var cfg = _gtbGetInstrsCfg(defaults);
+    var _bs = 'font-size:0.44rem;padding:1px 4px;background:transparent;border:1px solid #444;color:#7d8590;cursor:pointer;border-radius:3px;line-height:1.4;';
+    var h2 = '';
+    cfg.forEach(function(instr, i) {
+        var shortName = instr.name.length > 12 ? instr.name.substring(0, 11) + '.' : instr.name;
+        h2 += '<div class="gtb-cfg-row" style="display:flex;align-items:center;gap:3px;margin-bottom:2px;">';
+        h2 += '<button class="gtb-instr-vis" data-instr="' + instr.name + '" style="' + _bs + 'color:' + (instr.visible ? '#00b4d8' : '#555') + ';" title="Show/Hide"><i class="bi bi-eye' + (instr.visible ? '-fill' : '-slash') + '"></i></button>';
+        h2 += '<span style="flex:1;font-size:0.46rem;color:' + (instr.visible ? '#c9d1d9' : '#555') + ';">' + shortName + '</span>';
+        h2 += '<button class="gtb-instr-up" data-instr="' + instr.name + '" ' + (i === 0 ? 'disabled' : '') + ' style="' + _bs + '"><i class="bi bi-chevron-up"></i></button>';
+        h2 += '<button class="gtb-instr-dn" data-instr="' + instr.name + '" ' + (i === cfg.length - 1 ? 'disabled' : '') + ' style="' + _bs + '"><i class="bi bi-chevron-down"></i></button>';
+        h2 += '</div>';
+    });
+    return h2;
+}
+
+// Shared move helper
+function _gtbMoveInArr(arr, keyFn, key, dir) {
+    var idx = arr.findIndex ? arr.findIndex(function(x){ return keyFn(x) === key; })
+                            : (function(){ for (var i=0;i<arr.length;i++) if (keyFn(arr[i])===key) return i; return -1; })();
+    if (idx < 0) return arr;
+    var nIdx = idx + dir;
+    if (nIdx < 0 || nIdx >= arr.length) return arr;
+    var tmp = arr[idx]; arr[idx] = arr[nIdx]; arr[nIdx] = tmp;
+    return arr;
+}
+
+// Delegated event handlers for col/instr settings
+// stopPropagation on all: prevents the document-level close handler from
+// running on a detached element (which happens because html() re-renders the list).
+jQ(document).on('click', '.gtb-col-vis', function(e) {
+    e.stopPropagation();
+    var key = jQ(this).data('col'), cfg = _gtbGetColsCfg();
+    var col = cfg.find ? cfg.find(function(c){ return c.key === key; })
+                       : (function(){ for(var i=0;i<cfg.length;i++) if(cfg[i].key===key) return cfg[i]; })();
+    if (col && col.canHide) { col.visible = !col.visible; _gtbSaveColsCfg(cfg); _gtbApplyColsCfg(); jQ('#gtb-cols-cfg-list').html(_gtbColsCfgHtml()); }
+});
+jQ(document).on('click', '.gtb-col-up', function(e) {
+    e.stopPropagation();
+    var key = jQ(this).data('col'), cfg = _gtbGetColsCfg();
+    _gtbMoveInArr(cfg, function(c){ return c.key; }, key, -1);
+    _gtbSaveColsCfg(cfg); _gtbApplyColsCfg(); jQ('#gtb-cols-cfg-list').html(_gtbColsCfgHtml());
+});
+jQ(document).on('click', '.gtb-col-dn', function(e) {
+    e.stopPropagation();
+    var key = jQ(this).data('col'), cfg = _gtbGetColsCfg();
+    _gtbMoveInArr(cfg, function(c){ return c.key; }, key, 1);
+    _gtbSaveColsCfg(cfg); _gtbApplyColsCfg(); jQ('#gtb-cols-cfg-list').html(_gtbColsCfgHtml());
+});
+jQ(document).on('click', '#gtb-cols-reset', function(e) {
+    e.stopPropagation();
+    localStorage.removeItem('GTB_COLS_CFG'); _gtbApplyColsCfg(); jQ('#gtb-cols-cfg-list').html(_gtbColsCfgHtml());
+});
+jQ(document).on('click', '.gtb-instr-vis', function(e) {
+    e.stopPropagation();
+    var name = jQ(this).data('instr'), cfg = _gtbGetInstrsCfg();
+    var it = cfg.find ? cfg.find(function(c){ return c.name === name; })
+                      : (function(){ for(var i=0;i<cfg.length;i++) if(cfg[i].name===name) return cfg[i]; })();
+    if (it) { it.visible = !it.visible; _gtbSaveInstrsCfg(cfg); _gtbApplyInstrsCfg(); jQ('#gtb-instrs-cfg-list').html(_gtbInstrsCfgHtml()); }
+});
+jQ(document).on('click', '.gtb-instr-up', function(e) {
+    e.stopPropagation();
+    var name = jQ(this).data('instr'), cfg = _gtbGetInstrsCfg();
+    _gtbMoveInArr(cfg, function(c){ return c.name; }, name, -1);
+    _gtbSaveInstrsCfg(cfg); _gtbApplyInstrsCfg(); jQ('#gtb-instrs-cfg-list').html(_gtbInstrsCfgHtml());
+});
+jQ(document).on('click', '.gtb-instr-dn', function(e) {
+    e.stopPropagation();
+    var name = jQ(this).data('instr'), cfg = _gtbGetInstrsCfg();
+    _gtbMoveInArr(cfg, function(c){ return c.name; }, name, 1);
+    _gtbSaveInstrsCfg(cfg); _gtbApplyInstrsCfg(); jQ('#gtb-instrs-cfg-list').html(_gtbInstrsCfgHtml());
+});
+jQ(document).on('click', '#gtb-instrs-reset', function(e) {
+    e.stopPropagation();
+    localStorage.removeItem('GTB_INSTRS_CFG'); _gtbApplyInstrsCfg(); jQ('#gtb-instrs-cfg-list').html(_gtbInstrsCfgHtml());
+});
+
+// ── Card width slider (new column layout) ───────────────────────────────────
+function _gtbApplyColW() {} // stub — replaced by _gtbApplyCardW
+function _gtbApplyCardW(px) {
+    // CSS variable drives the card width via !important rules in common.css
     var el = document.getElementById('main-trade-bot-container');
-    if (el) el.style.setProperty('--gtb-col-' + key, px + 'px');
-    jQ('.gtb-col-val[data-col="' + key + '"]').text(px);
-    localStorage.setItem('GTB_COL_' + key.toUpperCase(), px);
-    // Resize LW charts if chart column changed
-    if (key === 'chart') {
+    if (el) el.style.setProperty('--gtb-card-w', px + 'px');
+    jQ('#gtb-card-w-val').text(px);
+    localStorage.setItem('GTB_CARD_W', px);
+    // Resize LW charts after layout reflow
+    setTimeout(function() {
         jQ('#gtb-rows .gtb-row-chart').each(function() {
             if (this._lwChart) { try { this._lwChart.resize(this.clientWidth, this.clientHeight); } catch(e) {} }
         });
-    }
+    }, 50);
 }
-// Apply saved column widths on init
+// Apply saved card width on init
 (function() {
-    var cols = ['chart','fut','oi','oiobv','wt','detail'];
-    var defs = { chart:260, fut:190, oi:210, oiobv:280, wt:170, detail:160 };
-    cols.forEach(function(k) {
-        var v = parseInt(localStorage.getItem('GTB_COL_' + k.toUpperCase()) || defs[k]);
-        _gtbApplyColW(k, v);
-    });
+    var w = parseInt(localStorage.getItem('GTB_CARD_W') || '300');
+    setTimeout(function() { _gtbApplyCardW(w); }, 200);
 })();
-jQ(document).on('input', '.gtb-col-slider', function() {
-    _gtbApplyColW(jQ(this).data('col'), parseInt(jQ(this).val()));
+jQ(document).on('input', '#gtb-card-w-slider', function(e) {
+    e.stopPropagation();
+    _gtbApplyCardW(parseInt(jQ(this).val()));
 });
 
 // ── OI/OBV bar width slider ─────────────────────────────────────────────────
@@ -3336,10 +4914,13 @@ jQ(document).on('input', '#gtb-oi-bar-slider', function() {
     var pct = parseInt(jQ(this).val());
     localStorage.setItem('GTB_OI_BAR_W', pct);
     jQ('#gtb-oi-bar-val').text(pct + '%');
-    // Re-render all OI/OBV bar charts using cached data (no API call)
+    // Re-render all OI/OBV bar charts using per-instrument cached data (no API call, no stock[] read)
     var _oiNames = ['NIFTY 50','NIFTY BANK','RELIANCE','HDFCBANK','ICICIBANK','CRUDEOILM','USDINR'];
     _oiNames.forEach(function(n) {
-        try { showOIOBVBarChart(n); } catch(e) {}
+        try {
+            var _cached = INSTRUMENT_SCORE_MAP[n] && INSTRUMENT_SCORE_MAP[n].oiData;
+            if (_cached) showOIOBVBarChart(n, '', _cached);
+        } catch(e) {}
     });
 });
 
@@ -3373,6 +4954,11 @@ function hideNativePopupButtons(popupClass) {
 
 jQ(document).on("click", ".popup-win-close", function () {
     let cls = jQ(this).closest('[data-popup]').data('popup');
+    if (cls === 'popup-custom-style-groot-trade-bot') {
+        jQ('body').css('overflow', '');
+        jQ('#gtb-popup-win').remove();
+        return;
+    }
     jQ('.' + cls).find('.popupwindow_titlebar_button_close').trigger('click');
 });
 
@@ -3380,9 +4966,29 @@ jQ(document).on("click", ".popup-win-restore", function () {
     let btn   = jQ(this);
     let cls   = btn.closest('[data-popup]').data('popup');
     let popEl = jQ('.' + cls);
+
+    // Groot main popup: toggle CSS fullscreen ↔ windowed
+    if (cls === 'popup-custom-style-groot-trade-bot') {
+        let $win = jQ('#gtb-popup-win');
+        let isFs = $win.data('gtb-fullscreen') === true;
+        _gtbApplyFullscreen(!isFs);
+        jQ('#gtb-main').show();
+        btn.closest('[data-popup]').find('.popup-win-minimize')
+            .removeClass('is-active').find('i').removeClass('bi-chevron-up').addClass('bi-dash');
+        $win.css({ 'min-height': '', overflow: '' });
+        if (!isFs) {
+            btn.find('i').removeClass('bi-fullscreen').addClass('bi-fullscreen-exit');
+            btn.attr('title', 'Restore to window').addClass('is-active');
+        } else {
+            btn.find('i').removeClass('bi-fullscreen-exit').addClass('bi-fullscreen');
+            btn.attr('title', 'Fullscreen').removeClass('is-active');
+        }
+        return;
+    }
+
+    // All other popups: use library maximize
     let isMax = popEl.data('maximized') || false;
     popEl.find('.popupwindow_titlebar_button_maximize').trigger('click');
-    // Toggle and persist maximized state so the next click goes the other way
     popEl.data('maximized', !isMax);
     if (isMax) {
         btn.find('i').removeClass('bi-fullscreen-exit').addClass('bi-fullscreen');
@@ -3391,12 +4997,8 @@ jQ(document).on("click", ".popup-win-restore", function () {
         btn.find('i').removeClass('bi-fullscreen').addClass('bi-fullscreen-exit');
         btn.attr('title', 'Restore').addClass('is-active');
     }
-    // Re-show content if it was collapsed by minimize
-    let collapseTarget = popEl.find('.popup-win-content-area');
-    if (collapseTarget.length) collapseTarget.show();
     btn.closest('[data-popup]').find('.popup-win-minimize')
         .removeClass('is-active').find('i').removeClass('bi-chevron-up').addClass('bi-dash');
-    // Restore any height constraints imposed by minimize
     popEl.find('.popupwindow_content').show();
     popEl.css({ height: '', 'min-height': '', overflow: '' });
 });
@@ -3405,6 +5007,31 @@ jQ(document).on("click", ".popup-win-minimize", function () {
     let btn   = jQ(this);
     let cls   = btn.closest('[data-popup]').data('popup');
     let popEl = jQ('.' + cls);
+
+    // Groot main popup: collapse to topbar strip
+    if (cls === 'popup-custom-style-groot-trade-bot') {
+        let $win = jQ('#gtb-popup-win');
+        let main = jQ('#gtb-main');
+        if (main.is(':visible')) {
+            main.hide();
+            btn.find('i').removeClass('bi-dash').addClass('bi-chevron-up');
+            btn.attr('title', 'Restore').addClass('is-active');
+            $win.css({ height: '46px', 'min-height': '0', overflow: 'hidden' });
+        } else {
+            main.show();
+            btn.find('i').removeClass('bi-chevron-up').addClass('bi-dash');
+            btn.attr('title', 'Minimize').removeClass('is-active');
+            if ($win.data('gtb-fullscreen') === true) {
+                _gtbApplyFullscreen(true);
+            } else {
+                _gtbApplyFullscreen(false);
+                $win.css({ 'min-height': '', overflow: '' });
+            }
+        }
+        return;
+    }
+
+    // All other popups: hide/show popupwindow_content
     let content = popEl.find('.popupwindow_content');
     if (content.is(':visible')) {
         content.hide();
@@ -3420,52 +5047,29 @@ jQ(document).on("click", ".popup-win-minimize", function () {
 });
 
 // ── Window control buttons ───────────────────────────────────────────────────
-// Minimize: collapse the panel body, leaving only the topbar visible.
-// This avoids the library's minimize which flows the popup to the bottom of
-// the page and gets hidden behind the OS taskbar on Windows.
+// Minimize — collapse to topbar-only strip (46px); restore on second click.
 jQ(document).on("click", ".gtb-win-minimize", function () {
-    let container = jQ('#main-trade-bot-container');
-    let main      = container.find('#gtb-main');
-    let btn       = jQ(this);
-    let popupEl = jQ('.popup-custom-style-groot-trade-bot');
+    var main = jQ('#gtb-main');
+    var btn  = jQ(this);
+    var $win = jQ('#gtb-popup-win');
     if (main.is(':visible')) {
         main.hide();
         btn.find('i').removeClass('bi-dash').addClass('bi-chevron-up');
         btn.attr('title', 'Restore').addClass('is-active');
-        popupEl.css({ height: '44px', 'min-height': '44px', overflow: 'hidden' });
+        $win.css({ height: '46px', 'min-height': '0', overflow: 'hidden' });
     } else {
         main.show();
         btn.find('i').removeClass('bi-chevron-up').addClass('bi-dash');
-        btn.attr('title', 'Minimise').removeClass('is-active');
-        popupEl.css({ height: '', 'min-height': '', overflow: '' });
+        btn.attr('title', 'Minimize').removeClass('is-active');
+        if ($win.data('gtb-fullscreen') === true) {
+            _gtbApplyFullscreen(true);
+        } else {
+            _gtbApplyFullscreen(false);
+            $win.css({ 'min-height': '', overflow: '' });
+        }
     }
 });
 
-// Maximize: trigger the library's maximize; update icon to reflect state.
-jQ(document).on("click", ".gtb-win-restore", function () {
-    let popupEl = jQ('.popup-custom-style-groot-trade-bot');
-    let btn     = jQ(this);
-    let isMaximized = popupEl.data('maximized') || false;
-    popupEl.find('.popupwindow_titlebar_button_maximize').trigger('click');
-    // Persist toggle state so next click goes the other way
-    popupEl.data('maximized', !isMaximized);
-    if (isMaximized) {
-        btn.find('i').removeClass('bi-fullscreen-exit').addClass('bi-fullscreen');
-        btn.attr('title', 'Maximise').removeClass('is-active');
-    } else {
-        btn.find('i').removeClass('bi-fullscreen').addClass('bi-fullscreen-exit');
-        btn.attr('title', 'Restore').addClass('is-active');
-    }
-    // If panel was collapsed (minimized), restore it
-    jQ('#gtb-main').show();
-    jQ('.gtb-win-minimize').removeClass('is-active').find('i').removeClass('bi-chevron-up').addClass('bi-dash');
-    popupEl.css({ height: '', 'min-height': '', overflow: '' });
-});
-
-// Close: trigger the library close button.
-jQ(document).on("click", ".gtb-win-close", function () {
-    jQ('.popup-custom-style-groot-trade-bot').find('.popupwindow_titlebar_button_close').trigger('click');
-});
 
 jQ(document).on("click", ".gtb-collapse-toggle", function (e) {
     // Don't collapse when clicking badges/buttons inside the header
@@ -3795,6 +5399,48 @@ var GTB_INFO = {
         body:'Per-instrument detail strip: SL/Target (ATR-based), PCR, OI score, and ADX regime label. Heavy analysis panels (full OI/OBV charts, futures deep-dive, 9:15, A/D) are in the collapsible DETAILS bar below.' },
     details:      { icon:'bi-layers',           title:'Details',
         body:'Deep-dive panels (click the bar to expand): full OI/OBV charts, futures, 9:15 tables, advance/decline, and the weighted-component breakdown per instrument.' },
+    // ── Bloomberg Market Terminal panels ──────────────────────────────────────
+    'bt-tape':    { icon:'bi-broadcast',        title:'Ticker Tape',
+        body:'Live scrolling strip showing the LTP and % change from the day\'s open for all 9 tracked instruments (GIFT NIFTY, NIFTY 50, NIFTY BANK, SENSEX, CRUDEOILM, USDINR, RELIANCE, HDFCBANK, ICICIBANK). Updates each time you click Refresh.' },
+    'bt-heatmap': { icon:'bi-grid-3x3-gap-fill', title:'Heat Map',
+        body:'3×3 grid — one tile per instrument. Background intensity encodes the composite score: <b style="color:#3fb950">green = bullish</b>, <b style="color:#f85149">red = bearish</b>. Deeper color = stronger score. Each tile shows short name, live LTP, % change from open, and composite score. Use this for an instant at-a-glance market read.' },
+    'bt-relstr':  { icon:'bi-bar-chart-steps',  title:'Relative Strength',
+        body:'All 9 instruments ranked by <b>% change from today\'s open</b>, best performer at top. The horizontal bar length reflects the magnitude. Use this to spot which instruments are leading or lagging the move intraday.' },
+    'bt-breadth': { icon:'bi-distribute-horizontal', title:'Market Breadth',
+        body:'Breadth of the F&O stock universe (NIFTY 50 + BANK NIFTY weighted constituents). Top gauge: <b style="color:#3fb950">green = above open</b>, <b style="color:#f85149">red = below open</b>. Below: how many are in ASO/BSO strike zone (computed via <code>computeInstrumentScore</code>). A strong green skew with high ASO count = broad bullish participation.' },
+    'bt-vix':     { icon:'bi-activity',         title:'VIX Regime',
+        body:'India VIX with a colour-coded regime label: <b style="color:#3fb950">LOW &lt;13</b> (trend days, tight spreads), <b style="color:#fbbf24">NORMAL 13–18</b>, <b style="color:#f97316">ELEVATED 18–25</b> (wider swings, use wider SL), <b style="color:#f85149">HIGH &gt;25</b> (whipsaw risk, reduce size). Gauge needle shows current VIX. VIXL/VIXU are the NIFTY 50 expected daily range limits derived from VIX.' },
+    'bt-flow':    { icon:'bi-arrows-collapse',  title:'Options Flow',
+        body:'For each instrument with OI data, shows the <b>net Change-OI</b> in CE and PE. <b style="color:#f85149">CE bar red</b> = CE OI is being added (put writers on the other side = bullish for CE writers, bearish for CE buyers). <b style="color:#3fb950">PE bar green</b> = PE OI is being added (premium collected = bearish for index). Interpret: heavy PE writing with light CE writing = bulls selling puts = net bullish bias.' },
+    'bt-corr':    { icon:'bi-table',            title:'Correlation Matrix',
+        body:'Pearson correlation (−1 to +1) between the 5-minute % returns of NIFTY 50, NIFTY BANK, GIFT NIFTY, SENSEX, RELIANCE and HDFCBANK for today. <b style="color:#3fb950">Green = positive correlation</b> (move together), <b style="color:#f85149">red = negative</b>. Darker cell = stronger relationship. Values near 1.0 for indices are normal; divergence (e.g. NIFTY strong but BANK weak) signals sector-specific moves. Click <b>Load</b> to fetch today\'s 5-min candles and compute.' },
+    'bt-analyze': { icon:'bi-search',               title:'Multi-Angle Trade Analysis',
+        body:'Opens a deep-dive analysis panel for one instrument covering: <b>Price Level Map</b> (visual bar showing LTP vs OPEN/VIXL/BST/BSO/ASO/AST/VIXU), <b>Signal Confluence</b> (9:15 candle, current zone, futures direction, OI/OBV — do all 4 agree?), <b>Suggested Setup</b> (CE buy / PE buy / spread / iron condor based on score and direction), <b>Entry Triggers</b> (exact price conditions before entering), <b>Risk/Reward</b> (entry zone, SL, Target 1 &amp; 2, R:R ratio, VIX-adjusted SL), <b>OI &amp; Flow</b> (net CE/PE OI, max CE/PE walls, PCR and PCR change direction), <b>Market Context</b> (F&O breadth, A/D ratio, VIX regime), and a <b>Scenario Analysis</b> table covering Bull, Base, Bear and Reversal cases with triggers, targets, probability, and recommended action.' },
+    'bt-pred':    { icon:'bi-lightning-charge-fill', title:'Trend Probability',
+        body:'Synthesises 5 independent signals into a single directional probability (% Bull vs % Bear): <b>Composite Score</b> (avg across 9 instruments, weight 3), <b>Relative Strength</b> (% instruments above open, weight 2), <b>Market Breadth</b> (% F&O stocks above open, weight 2), <b>Strike Zone</b> (ASO+ vs BSO- count, weight 2), <b>Options Flow</b> (net PE writing vs CE writing, weight 3). VIX acts as a confidence modifier — Low VIX amplifies the signal (×1.15), High VIX dampens it (×0.65). The half-circle gauge needle shows the resulting bull probability; the table below shows each signal\'s direction, strength bar, raw value, and the reasoning behind the vote.' },
+    'bt-stats':   { icon:'bi-clipboard-data',   title:'Intraday Snapshot',
+        body:'Consolidated table for all 9 instruments: <b>LTP</b>, <b>% change from open</b>, <b>composite score</b> (sum of all pillars), <b>trend zone</b> (AST/ASO/B·W/BSO/BST from <code>computeInstrumentScore</code>), and <b>9:15 candle outcome</b> from the breakout scanner. Use this as a single-glance status board.' },
+    // ── Instrument Detail View panels ─────────────────────────────────────────
+    'dv-chart':   { icon:'bi-bar-chart-line-fill', title:'Price Action',
+        body:'Intraday candlestick (5-min) with reference lines: <b>OPEN</b> (white), <b>ASO/AST</b> (green — above-strike levels), <b>BSO/BST</b> (red — below-strike levels), <b>VIXL/VIXU</b> (blue — VIX-based daily expected range). The LTP dot moves in real time. Use the fullscreen button to expand into a large chart.' },
+    'dv-oiobv':   { icon:'bi-layers-fill', title:'OI / OBV',
+        body:'Two bar charts per strike: <b>top — Change-OI</b> (green = PE OI added = bullish, red = CE OI added = bearish) and <b>bottom — OBV momentum</b> (accumulation vs distribution). The ATM strike is highlighted. The signal row beneath scores each strike and the overall OI/OBV score feeds into the composite instrument score.' },
+    'dv-915':     { icon:'bi-alarm', title:'9:15 Breakout',
+        body:'Where the very first 9:15 candle closed relative to the strike levels: <b style="color:#3fb950">AST/ASO</b> = bullish breakout, <b style="color:#f85149">BSO/BST</b> = bearish breakdown, <b>B/W</b> = inside the range. This is fixed for the day at 9:20 and contributes ±1 to the instrument score.' },
+    'dv-prob':    { icon:'bi-speedometer2', title:'Trend Probability',
+        body:'A bull/bear probability gauge synthesised from 5 signals: composite score, relative strength, market breadth, strike zone bias, and options flow (CE vs PE net OI). VIX acts as a confidence multiplier — low VIX amplifies, high VIX dampens. The needle angle reflects the bull %, with the table below showing each vote.' },
+    'dv-futures': { icon:'bi-graph-up-arrow', title:'Futures',
+        body:'Futures positioning for this instrument: <b>Primary chip</b> = OI-based REMARK (Long Buildup / Short Buildup / Short Covering / Long Unwinding etc.) colour-coded green/red. <b>Secondary chip</b> = VWAP direction — amber with ⚠ when the two signals conflict. Also shows: VWAP, PCR, premium/discount vs spot, and 5-min OI trend.' },
+    'dv-oimatrix':{ icon:'bi-table', title:'OI Matrix',
+        body:'Mini option-chain centred on ATM ± 2 strikes. Each row: <b>CE ΔOI</b> | signal | strike | signal | <b>PE ΔOI</b>. Signals: <span style="color:#3fb950">Long Buildup / Short Covering</span> = bullish, <span style="color:#f85149">Short Buildup / Long Unwinding</span> = bearish. The max CE/PE OI walls (support/resistance) and PCR are shown at the bottom. Label turns "live" after data loads.' },
+    'dv-weights': { icon:'bi-bar-chart-steps', title:'Weightage',
+        body:'Top-6 weighted constituents for NIFTY 50 or NIFTY BANK (by index weight). The bar shows each stock\'s computed score contribution. A strongly green set means heavyweight stocks are bullish — this drives the NIFTY_50_COMPONENT_SCORE and NIFTY_BANK_COMPONENT_SCORE that feed the master gauge.' },
+    'dv-detail':  { icon:'bi-info-circle-fill', title:'Details',
+        body:'Raw per-instrument data: ATR-based SL and Target levels, live PCR, the individual OI/OBV score, ADX regime (trending vs ranging), and the strike levels (BST/BSO/ASO/AST) derived from today\'s open price plus the NSE strike step for this instrument.' },
+    'dv-ta':      { icon:'bi-lightbulb-fill', title:'Trade Analysis',
+        body:'Synthesised trade recommendation covering: <b>Price Level Map</b> (LTP bar vs all key levels), <b>Suggested Setup</b> (CE buy / PE buy / spread / condor based on score and direction), <b>Entry Triggers</b> (exact price conditions to confirm before entering), <b>Risk/Reward</b> (entry, SL, T1, T2, R:R, VIX-adjusted SL), <b>OI &amp; Flow</b> (net CE/PE OI, max walls, PCR trend), and <b>Scenario Analysis</b> (Bull/Bear/Base/Reversal cases with triggers, probability, and action). Rendered after OI/Futures data loads.' },
+    'dv-risk':    { icon:'bi-shield-fill-check', title:'Risk Manager',
+        body:'Instrument-specific position sizing. Enter your <b>available funds</b> and <b>risk % per trade</b>. The panel derives: entry zone (ASO for bull / BSO for bear), stop loss (BSO / ASO), targets (AST / BST and VIX range), <b>risk per lot</b> (|entry − SL| × lot size), <b>suggested lots</b> (floor of max-risk ÷ risk-per-lot), and a <b>VIX-adjusted lot count</b> (reduced by 15–50% when VIX is elevated). Hit ↺ to recalculate after changing funds or risk %.' },
 };
 
 // Build the popover element once, lazily
@@ -4562,10 +6208,199 @@ function _gtbAllOIInstruments() {
     return list;
 }
 
+// ── Max Pain + Gamma Exposure (GEX) ──────────────────────────────────────────
+function _gtbComputeMaxPainGEX(name) {
+    var sm = INSTRUMENT_SCORE_MAP[name];
+    if (!sm || !sm.oiData || !sm.oiData.tableData || !sm.oiData.tableData.length) return null;
+    var td = sm.oiData.tableData;
+
+    // Spot ≈ ATM strike
+    var spot = 0;
+    for (var i = 0; i < td.length; i++) {
+        if (td[i]['ATM_STRIKE']) { spot = parseFloat(td[i]['STRIKE']); break; }
+    }
+    if (!spot) spot = parseFloat(td[Math.floor(td.length / 2)]['STRIKE']);
+
+    var strikes = td.map(function(r) { return parseFloat(r['STRIKE']); });
+    var oiCE    = td.map(function(r) { return parseFloat(r['OI_CE'])  || 0; });
+    var oiPE    = td.map(function(r) { return parseFloat(r['OI_PE'])  || 0; });
+
+    // Max Pain: strike where option-writer loss is minimised
+    var maxPainK = strikes[0], minPain = Infinity;
+    strikes.forEach(function(K, ki) {
+        var pain = 0;
+        strikes.forEach(function(S, si) {
+            if (S < K) pain += (K - S) * oiCE[si];  // ITM calls bleed
+            if (S > K) pain += (S - K) * oiPE[si];  // ITM puts bleed
+        });
+        if (pain < minPain) { minPain = pain; maxPainK = K; }
+    });
+
+    // GEX: dealers are net long gamma on options they sold.
+    // gamma_proxy = bell-curve centred at ATM (σ = 15% of spot)
+    var sigma = spot * 0.15;
+    var gex = strikes.map(function(K, i) {
+        var g = Math.exp(-0.5 * Math.pow((K - spot) / sigma, 2));
+        return (oiCE[i] - oiPE[i]) * g;
+    });
+
+    // GEX flip zones: strikes where running sign changes
+    var flipZones = [];
+    for (var j = 1; j < gex.length; j++) {
+        if ((gex[j - 1] >= 0) !== (gex[j] >= 0)) flipZones.push(strikes[j]);
+    }
+
+    var netGEX = gex.reduce(function(a, b) { return a + b; }, 0);
+    var maxPainDist = maxPainK - spot;
+
+    return { spot: spot, maxPainK: maxPainK, maxPainDist: maxPainDist,
+             maxPainPct: spot ? (maxPainDist / spot * 100) : 0,
+             gex: gex, strikes: strikes, oiCE: oiCE, oiPE: oiPE,
+             flipZones: flipZones, netGEX: netGEX };
+}
+
+function _gtbMaxPainGEXHtml(name, compact) {
+    var d = _gtbComputeMaxPainGEX(name);
+    if (!d) return '<div style="font-size:0.5rem;color:var(--gtb-muted);padding:6px;">No OI data — refresh first</div>';
+
+    var distCol   = d.maxPainDist > 0 ? '#3fb950' : d.maxPainDist < 0 ? '#f85149' : '#7d8590';
+    var gexCol    = d.netGEX  > 0 ? '#3fb950' : d.netGEX  < 0 ? '#f85149' : '#7d8590';
+    var gexLbl    = d.netGEX  > 0 ? 'Stabilising (mean-revert)' : d.netGEX < 0 ? 'Trending (momentum)' : 'Neutral';
+    var fmtDist   = (d.maxPainDist > 0 ? '+' : '') + d.maxPainDist.toFixed(0)
+                    + ' (' + (d.maxPainPct > 0 ? '+' : '') + d.maxPainPct.toFixed(2) + '%)';
+
+    // GEX bar chart SVG
+    var n = d.gex.length;
+    var bW = compact ? Math.max(4, Math.floor(180 / n)) : Math.max(6, Math.floor(280 / n));
+    var svgH = compact ? 50 : 80, midY = svgH / 2;
+    var maxG = d.gex.reduce(function(m, g) { return Math.max(m, Math.abs(g)); }, 1);
+    var svgW = n * (bW + 1);
+    var bars = d.gex.map(function(g, i) {
+        var pct = g / maxG;
+        var bh  = Math.max(1, Math.abs(pct) * (midY - 3));
+        var y   = pct >= 0 ? midY - bh : midY;
+        var col = g >= 0 ? '#3fb950' : '#f85149';
+        var isMP  = d.strikes[i] === d.maxPainK;
+        var isFlip= d.flipZones.indexOf(d.strikes[i]) !== -1;
+        return '<rect x="' + (i * (bW + 1)) + '" y="' + y + '" width="' + bW + '" height="' + bh + '" fill="' + col + '" opacity="0.8"/>'
+            + (isMP   ? '<rect x="' + (i*(bW+1)-1) + '" y="0" width="' + (bW+2) + '" height="' + svgH + '" fill="none" stroke="#ffbe0b" stroke-width="1.5" stroke-dasharray="3,2"/>' : '')
+            + (isFlip ? '<line x1="' + (i*(bW+1)+bW/2) + '" y1="0" x2="' + (i*(bW+1)+bW/2) + '" y2="' + svgH + '" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="2,2"/>' : '');
+    }).join('');
+    var gexSvg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" style="width:100%;height:' + svgH + 'px;display:block;">'
+        + '<line x1="0" y1="' + midY + '" x2="' + svgW + '" y2="' + midY + '" stroke="var(--gtb-border,#21262d)" stroke-width="1"/>'
+        + bars + '</svg>';
+
+    // Compact view (for detail column in card)
+    if (compact) {
+        return '<div class="mp-compact">'
+            + '<div class="mp-compact-row">'
+            +   '<span class="mp-compact-label">Max Pain</span>'
+            +   '<span style="color:#ffbe0b;font-weight:700;">' + d.maxPainK + '</span>'
+            +   '<span style="color:' + distCol + ';font-size:0.5rem;">' + fmtDist + '</span>'
+            + '</div>'
+            + '<div class="mp-compact-row">'
+            +   '<span class="mp-compact-label">Net GEX</span>'
+            +   '<span style="color:' + gexCol + ';font-weight:700;">' + (d.netGEX > 0 ? '+' : '') + d.netGEX.toFixed(0) + '</span>'
+            +   '<span style="color:' + gexCol + ';font-size:0.5rem;">' + (d.netGEX > 0 ? 'Stabilising' : 'Trending') + '</span>'
+            + '</div>'
+            + (d.flipZones.length ? '<div class="mp-compact-row"><span class="mp-compact-label">Flip</span>' + d.flipZones.map(function(f){return '<span class="mp-flip-pill">'+f+'</span>';}).join('') + '</div>' : '')
+            + '<div style="margin-top:4px;">' + gexSvg + '</div>'
+            + '</div>';
+    }
+
+    // Full view (for maximize popup)
+    var flipHtml = d.flipZones.length
+        ? d.flipZones.map(function(f) { return '<span class="mp-flip-pill">' + f + '</span>'; }).join('')
+        : '<span style="color:var(--gtb-muted);font-size:0.5rem;">None detected</span>';
+
+    // Strike labels (every other)
+    var labelHtml = d.strikes.map(function(s, i) {
+        var x = i * (bW + 1) + bW / 2;
+        return (i % 2 === 0) ? '<text x="' + x + '" y="10" font-size="6" text-anchor="middle" fill="var(--gtb-muted,#7d8590)">' + s + '</text>' : '';
+    }).join('');
+    var lblSvg = '<svg viewBox="0 0 ' + svgW + ' 12" style="width:100%;height:12px;display:block;">' + labelHtml + '</svg>';
+
+    return '<div class="mp-wrap">'
+        + '<div class="mp-header">'
+        +   '<div class="mp-block">'
+        +     '<div class="mp-label">MAX PAIN STRIKE</div>'
+        +     '<div class="mp-value" style="color:#ffbe0b;">' + d.maxPainK + '</div>'
+        +     '<div class="mp-sub">Distance from spot: <b style="color:' + distCol + ';">' + fmtDist + '</b></div>'
+        +     '<div class="mp-sub" style="color:var(--gtb-muted);margin-top:2px;">Price gravitates here into expiry</div>'
+        +   '</div>'
+        +   '<div class="mp-block">'
+        +     '<div class="mp-label">NET GAMMA EXPOSURE</div>'
+        +     '<div class="mp-value" style="color:' + gexCol + ';">' + (d.netGEX > 0 ? '+' : '') + d.netGEX.toFixed(0) + '</div>'
+        +     '<div class="mp-sub" style="color:' + gexCol + ';">' + gexLbl + '</div>'
+        +     '<div class="mp-sub" style="color:var(--gtb-muted);margin-top:2px;">+ve = dealers hedge by selling rallies; −ve = dealers amplify moves</div>'
+        +   '</div>'
+        +   '<div class="mp-block">'
+        +     '<div class="mp-label">GEX FLIP ZONES</div>'
+        +     '<div class="mp-flip-list">' + flipHtml + '</div>'
+        +     '<div class="mp-sub" style="color:#a78bfa;margin-top:3px;">Price tends to accelerate (or stall) through these levels</div>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="mp-chart-legend">'
+        +   '<span style="color:#3fb950;">■ Long gamma (stabilising)</span>'
+        +   '<span style="color:#f85149;">■ Short gamma (trending)</span>'
+        +   '<span style="color:#ffbe0b;">┄ Max pain</span>'
+        +   '<span style="color:#a78bfa;">┄ GEX flip</span>'
+        + '</div>'
+        + '<div class="mp-gex-chart">' + gexSvg + '</div>'
+        + '<div class="mp-gex-chart">' + lblSvg + '</div>'
+        + '</div>';
+}
+
+// ── Max Pain / GEX popup (all OI instruments) ─────────────────────────────────
+jQ(document).on('click', '#show-maxpain-gex', function(e) {
+    e.preventDefault();
+    var _divId = 'popup-custom-style-maxpain-gex';
+    var _instrs = ['NIFTY 50', 'NIFTY BANK', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'CRUDEOILM'];
+
+    // Summary table
+    var summaryRows = _instrs.map(function(nm) {
+        var d = _gtbComputeMaxPainGEX(nm);
+        if (!d) return '<tr><td>' + nm + '</td><td colspan="6" style="color:var(--gtb-muted);">No OI data</td></tr>';
+        var dc = d.maxPainDist > 0 ? '#3fb950' : d.maxPainDist < 0 ? '#f85149' : '#7d8590';
+        var gc = d.netGEX > 0 ? '#3fb950' : d.netGEX < 0 ? '#f85149' : '#7d8590';
+        var gRegime = d.netGEX > 0 ? '<span style="color:#3fb950;">Stabilising</span>' : '<span style="color:#f85149;">Trending</span>';
+        return '<tr>'
+            + '<td><b>' + nm + '</b></td>'
+            + '<td>' + d.spot + '</td>'
+            + '<td style="color:#ffbe0b;font-weight:700;">' + d.maxPainK + '</td>'
+            + '<td style="color:' + dc + ';">' + (d.maxPainDist > 0 ? '+' : '') + d.maxPainDist.toFixed(0) + ' (' + (d.maxPainPct > 0?'+':'') + d.maxPainPct.toFixed(1) + '%)</td>'
+            + '<td style="color:' + gc + ';font-weight:700;">' + (d.netGEX > 0?'+':'') + d.netGEX.toFixed(0) + '</td>'
+            + '<td>' + gRegime + '</td>'
+            + '<td>' + (d.flipZones.length ? d.flipZones.map(function(f){return '<span class="mp-flip-pill">'+f+'</span>';}).join('') : '<span style="color:var(--gtb-muted);">—</span>') + '</td>'
+            + '</tr>';
+    }).join('');
+
+    // Per-instrument GEX cards
+    var cards = _instrs.map(function(nm) {
+        return '<div class="mp-instr-card">'
+            + '<div class="mp-instr-name"><i class="bi bi-bar-chart-steps"></i> ' + nm + '</div>'
+            + _gtbMaxPainGEXHtml(nm, false)
+            + '</div>';
+    }).join('');
+
+    var body = '<div class="mp-popup-wrap">'
+        + '<div class="mp-section-label">Summary — all instruments</div>'
+        + '<div style="overflow-x:auto;">'
+        + '<table class="aoi-tbl mp-summary-tbl"><thead><tr>'
+        + '<th>Instrument</th><th>Spot</th><th>Max Pain</th><th>Distance</th><th>Net GEX</th><th>GEX Regime</th><th>Flip Zones</th>'
+        + '</tr></thead><tbody>' + summaryRows + '</tbody></table>'
+        + '</div>'
+        + '<div class="mp-section-label" style="margin-top:14px;">GEX Profile per Instrument</div>'
+        + '<div class="mp-cards-grid">' + cards + '</div>'
+        + '</div>';
+
+    showMaximizeOverlay('<i class="bi bi-bar-chart-steps"></i> Max Pain &amp; Gamma Exposure — All Instruments', body);
+});
+
 // Builds the compact OI list table HTML directly from oiData (works for any instrument).
 function _gtbOITableHtml(oiData, pc) {
     var h = '<table class="aoi-tbl"><thead><tr>'
-        + '<th>Strike</th><th>DeltaCE OI</th><th>CE OBV</th><th>DeltaPE OI</th><th>PE OBV</th><th>CE Signal</th><th>PE Signal</th><th>Score</th>'
+        + '<th>Strike</th><th>Score</th><th>DeltaCE OI</th><th>CE OBV</th><th>DeltaPE OI</th><th>PE OBV</th><th>CE Signal</th><th>PE Signal</th>'
         + '</tr></thead><tbody>';
     jQ.each(oiData.tableData, function (i, item) {
         var r = scoreOIStrikeForSignal(item, !!item['ATM_STRIKE'], pc);
@@ -4575,12 +6410,12 @@ function _gtbOITableHtml(oiData, pc) {
         var sc = r.score > 0 ? 'var(--gtb-green)' : r.score < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
         h += '<tr' + (item['ATM_STRIKE'] ? ' class="atm"' : '') + '>'
             + '<td><b>' + item['STRIKE'] + (item['ATM_STRIKE'] ? ' ★' : '') + '</b></td>'
+            + '<td style="color:' + sc + ';font-weight:700;">' + (r.score > 0 ? '+' : '') + r.score.toFixed(2) + '</td>'
             + '<td style="color:' + (ceCh > 0 ? 'var(--gtb-red)' : ceCh < 0 ? 'var(--gtb-green)' : 'inherit') + '">' + item['CHG_OI_CE'] + '</td>'
             + '<td style="color:' + (ceObv > 0 ? 'var(--gtb-red)' : ceObv < 0 ? 'var(--gtb-green)' : 'inherit') + '">' + ceObv.toFixed(1) + '</td>'
             + '<td style="color:' + (peCh > 0 ? 'var(--gtb-green)' : peCh < 0 ? 'var(--gtb-red)' : 'inherit') + '">' + item['CHG_OI_PE'] + '</td>'
             + '<td style="color:' + (peObv > 0 ? 'var(--gtb-green)' : peObv < 0 ? 'var(--gtb-red)' : 'inherit') + '">' + peObv.toFixed(1) + '</td>'
             + '<td>' + r.ceLabel + '</td><td>' + r.peLabel + '</td>'
-            + '<td style="color:' + sc + ';font-weight:700;">' + (r.score > 0 ? '+' : '') + r.score.toFixed(2) + '</td>'
             + '</tr>';
     });
     h += '</tbody></table>';
@@ -4696,64 +6531,324 @@ function _cmdRenderOI(oiData, oiSel, obvSel) {
         if (item['ATM_STRIKE']) atm = i;
     });
     var strikes = x.slice(1);
-    _renderBarChart(oiSel,  { labels: strikes, atm: atm, height: 170, series: [
+    var _oiEl = document.getElementById(oiSel.replace('#','')), _obvEl = document.getElementById(obvSel.replace('#',''));
+    var _oiH  = (_oiEl  && parseInt(_oiEl.style.height))  || 170;
+    var _obvH = (_obvEl && parseInt(_obvEl.style.height)) || 170;
+    _renderBarChart(oiSel,  { labels: strikes, atm: atm, height: _oiH, series: [
         { label: 'CH CE OI', color: OI_COLORS.CE_OI, values: ceCh.slice(1) },
         { label: 'CH PE OI', color: OI_COLORS.PE_OI, values: peCh.slice(1) } ] });
-    _renderBarChart(obvSel, { labels: strikes, atm: atm, height: 170, series: [
+    _renderBarChart(obvSel, { labels: strikes, atm: atm, height: _obvH, series: [
         { label: 'CE OBV', color: OI_COLORS.CE_OBV, values: ceObv.slice(1) },
         { label: 'PE OBV', color: OI_COLORS.PE_OBV, values: peObv.slice(1) } ] });
 }
 
+// ── Commodities popup state (auto-refresh) ────────────────────────────────────
+var _CMD = { interval: null, intervalMs: 60000, running: false, lastRefresh: null };
+
+// Build trend-probability card for one instrument (GIFT NIFTY or CRUDEOILM)
+function _cmdTrendProb(name, fres) {
+    var signals = [];
+
+    // 1. 9:15 Breakout
+    var nine15 = 'B/W';
+    try { nine15 = (JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}')[name] || {}).CLOSE_9_15 || 'B/W'; } catch(e) {}
+    var n15dir = nine15 === 'ASO' ? 'bull' : nine15 === 'BSO' ? 'bear' : 'neutral';
+    signals.push({ key:'915', label:'9:15 Breakout', icon:'bi-sunrise-fill', dir:n15dir, weight:2, strength:n15dir!=='neutral'?0.8:0, detail:'9:15 candle: '+nine15, value:nine15 });
+
+    // 2. Futures Trend
+    var futScore = 0, futDir = 'neutral', futLabel = 'N/A', futDetail = 'No futures data';
+    if (fres) {
+        var rem = fres['REMARK'] || '';
+        futScore = getFuturesTrendScore(rem);
+        futDir   = futScore > 0 ? 'bull' : futScore < 0 ? 'bear' : 'neutral';
+        futLabel = rem || 'Neutral';
+        futDetail = rem || 'Neutral';
+    } else {
+        try { var sm0 = INSTRUMENT_SCORE_MAP[name]; if (sm0 && sm0.futures_trend !== undefined) {
+            futScore = sm0.futures_trend; futDir = futScore>0?'bull':futScore<0?'bear':'neutral';
+            futLabel = futScore>0?'Long Buildup':futScore<0?'Short Buildup':'Neutral';
+            futDetail = 'Cached futures score: '+futScore;
+        }} catch(e) {}
+    }
+    signals.push({ key:'fut', label:'Futures', icon:'bi-graph-up-arrow', dir:futDir, weight:3, strength:Math.min(1,Math.abs(futScore)), detail:futDetail, value:futLabel });
+
+    // 3. OI/OBV
+    var oiScore = 0, oiDir = 'neutral', oiLabel = '--';
+    try { oiScore = computeInstrumentScore(name).oi_obv; oiDir = oiScore>0?'bull':oiScore<0?'bear':'neutral'; oiLabel=(oiScore>0?'+':'')+oiScore.toFixed(1); } catch(e) {}
+    signals.push({ key:'oiobv', label:'OI / OBV', icon:'bi-layers-fill', dir:oiDir, weight:2, strength:Math.min(1,Math.abs(oiScore)/3), detail:'OI/OBV score: '+oiLabel, value:oiLabel });
+
+    // 4. Composite Score
+    var cs = { total:0 }; try { cs = computeInstrumentScore(name); } catch(e) {}
+    var cDir = cs.total>=2?'bull':cs.total<=-2?'bear':'neutral';
+    var cLbl = (cs.total>0?'+':'')+cs.total.toFixed(1);
+    signals.push({ key:'score', label:'Composite Score', icon:'bi-speedometer2', dir:cDir, weight:2, strength:Math.min(1,Math.abs(cs.total)/8), detail:'Instrument score: '+cLbl, value:cLbl });
+
+    // 5. VIX modifier
+    var vix = 0;
+    try { vix = parseFloat((_btLtps()['INDIA VIX']||{}).ltp)||0; } catch(e) {}
+    if (!vix) try { vix = VIX||0; } catch(e) {}
+    var vixMod = vix<13?1.15:vix<18?1.0:vix<25?0.85:0.65;
+    signals.push({ key:'vix', label:'VIX', icon:'bi-activity', dir:'neutral', weight:0, strength:0, detail:'VIX '+(vix?vix.toFixed(1):'--'), value:vix?vix.toFixed(1):'--', isVix:true, vixMod:vixMod });
+
+    // Aggregate
+    var bW=0, rW=0;
+    signals.forEach(function(s) {
+        if (s.isVix||!s.weight) return;
+        var w = s.weight*(0.5+s.strength*0.5);
+        if (s.dir==='bull') bW+=w; else if (s.dir==='bear') rW+=w; else { bW+=s.weight*0.25; rW+=s.weight*0.25; }
+    });
+    var raw = (bW+rW)>0 ? bW/(bW+rW) : 0.5;
+    var bullPct = Math.max(0.05, Math.min(0.95, 0.5+(raw-0.5)*vixMod));
+    var bearPct = 1-bullPct;
+    var conf = Math.round(Math.abs(bullPct-0.5)*200);
+
+    var verdict,vCol,vIcon;
+    if      (bullPct>=0.70){verdict='STRONGLY BULLISH';vCol='#3fb950';vIcon='bi-arrow-up-circle-fill';}
+    else if (bullPct>=0.58){verdict='BULLISH';          vCol='#3fb950';vIcon='bi-arrow-up-circle';}
+    else if (bullPct>=0.52){verdict='MILDLY BULLISH';   vCol='#86efac';vIcon='bi-arrow-up-right-circle';}
+    else if (bullPct>=0.48){verdict='NEUTRAL';           vCol='#7d8590';vIcon='bi-dash-circle';}
+    else if (bullPct>=0.42){verdict='MILDLY BEARISH';   vCol='#fca5a5';vIcon='bi-arrow-down-right-circle';}
+    else if (bullPct>=0.30){verdict='BEARISH';           vCol='#f85149';vIcon='bi-arrow-down-circle';}
+    else                   {verdict='STRONGLY BEARISH'; vCol='#f85149';vIcon='bi-arrow-down-circle-fill';}
+
+    // Mini gauge SVG
+    var r=40,cx=52,cy=49;
+    function px(d){return cx+r*Math.cos((180-d)*Math.PI/180);}
+    function py(d){return cy-r*Math.sin((180-d)*Math.PI/180);}
+    var ang=bullPct*180, nX=px(ang), nY=py(ang), mX=px(90), mY=py(90), bigA=ang>180?1:0;
+    var gaugeHtml='<svg viewBox="0 0 104 57" style="width:104px;height:57px;display:block;">'
+        +'<path d="M '+px(0)+' '+py(0)+' A '+r+' '+r+' 0 0 1 '+mX+' '+mY+'" fill="none" stroke="#f8514940" stroke-width="8" stroke-linecap="round"/>'
+        +'<path d="M '+mX+' '+mY+' A '+r+' '+r+' 0 0 1 '+px(180)+' '+py(180)+'" fill="none" stroke="#3fb95040" stroke-width="8" stroke-linecap="round"/>'
+        +(ang>1?'<path d="M '+px(0)+' '+py(0)+' A '+r+' '+r+' 0 '+bigA+' 1 '+nX+' '+nY+'" fill="none" stroke="'+vCol+'" stroke-width="8" stroke-linecap="round"/>'  :'')
+        +'<line x1="'+cx+'" y1="'+cy+'" x2="'+nX+'" y2="'+nY+'" stroke="var(--gtb-text,#cdd9e5)" stroke-width="2" stroke-linecap="round"/>'
+        +'<circle cx="'+cx+'" cy="'+cy+'" r="3.5" fill="var(--gtb-text,#cdd9e5)"/>'
+        +'<text x="5" y="56" font-size="6" fill="#f85149" font-family="monospace">BEAR</text>'
+        +'<text x="75" y="56" font-size="6" fill="#3fb950" font-family="monospace">BULL</text>'
+        +'</svg>';
+
+    var dCol={bull:'#3fb950',bear:'#f85149',neutral:'#7d8590'};
+    var dLbl={bull:'▲ BULL',bear:'▼ BEAR',neutral:'● NEUTRAL'};
+    var sigRows='';
+    signals.forEach(function(s){
+        var dc=dCol[s.dir];
+        var bw=s.dir!=='neutral'?Math.round(s.strength*100):0;
+        sigRows+='<div class="cmd-sig-row">'
+            +'<i class="bi '+s.icon+'" style="color:'+dc+';font-size:0.62rem;width:13px;flex-shrink:0;text-align:center;"></i>'
+            +'<span class="cmd-sig-lbl">'+s.label+'</span>'
+            +'<span class="cmd-sig-badge" style="color:'+dc+';background:'+dc+'18;border-color:'+dc+'44;">'+dLbl[s.dir]+'</span>'
+            +'<div class="cmd-sig-bar-bg"><div class="cmd-sig-bar" style="width:'+bw+'%;background:'+dc+';"></div></div>'
+            +'<span class="cmd-sig-val" title="'+s.detail+'">'+s.value+'</span>'
+            +'</div>';
+    });
+
+    return '<div class="cmd-prob">'
+        +'<div class="cmd-prob-top">'
+        +  gaugeHtml
+        +  '<div class="cmd-prob-info">'
+        +    '<div class="cmd-prob-verdict" style="color:'+vCol+';"><i class="bi '+vIcon+'"></i> '+verdict+'</div>'
+        +    '<div class="cmd-prob-pcts"><b style="color:#3fb950;">'+(bullPct*100).toFixed(0)+'%</b><span> bull</span> &middot; <b style="color:#f85149;">'+(bearPct*100).toFixed(0)+'%</b><span> bear</span></div>'
+        +    '<div class="cmd-prob-conf"><div class="cmd-prob-conf-bar-bg"><div style="width:'+conf+'%;height:100%;background:'+vCol+';border-radius:2px;"></div></div><span>'+conf+'/100</span></div>'
+        +  '</div>'
+        +'</div>'
+        +'<div class="cmd-sig-list">'+sigRows+'</div>'
+        +'</div>';
+}
+
+function _cmdUpdateStatus() {
+    var $s = jQ('#cmd-status');
+    if (_CMD.running) {
+        $s.html('<span style="color:#3fb950;"><i class="bi bi-circle-fill bto-pulse"></i> Live</span>');
+        jQ('#cmd-start').prop('disabled', true).css('opacity', 0.45);
+        jQ('#cmd-stop').prop('disabled', false).css('opacity', 1);
+    } else {
+        $s.html('<span style="color:#7d8590;"><i class="bi bi-circle"></i> Stopped</span>');
+        jQ('#cmd-start').prop('disabled', false).css('opacity', 1);
+        jQ('#cmd-stop').prop('disabled', true).css('opacity', 0.45);
+    }
+    if (_CMD.lastRefresh) jQ('#cmd-last-ref').text('Updated ' + _CMD.lastRefresh);
+}
+function _cmdStartRefresh() {
+    if (_CMD.running) return;
+    _CMD.running = true; _cmdUpdateStatus();
+    _CMD.interval = setInterval(function() { if (_CMD.loadAll) _CMD.loadAll().catch(function(){}); }, _CMD.intervalMs);
+}
+function _cmdStopRefresh() {
+    _CMD.running = false;
+    if (_CMD.interval) { clearInterval(_CMD.interval); _CMD.interval = null; }
+    _cmdUpdateStatus();
+}
+
 jQ(document).on('click', '#show-commodities', function (e) {
     e.preventDefault();
-    var body = ''
-        + '<div class="cmd-grid">'
-        + '<div class="cmd-cell"><div class="cmd-t"><i class="bi bi-globe-asia-australia"></i> GIFT NIFTY</div><div id="cmd-gift-chart" style="height:300px;"></div></div>'
-        + '<div class="cmd-cell"><div class="cmd-t"><i class="bi bi-droplet-fill"></i> CRUDEOILM</div><div id="cmd-crude-chart" style="height:300px;"></div></div>'
+    var _cmdDivId = 'popup-custom-style-commodities-panel';
+
+    var body = '<div class="cmd-wrap">'
+        // ── Toolbar ──────────────────────────────────────────────────────────
+        + '<div class="cmd-toolbar">'
+        +   '<button id="cmd-start" class="bto-btn bto-btn-green"><i class="bi bi-play-fill"></i> Start</button>'
+        +   '<button id="cmd-stop"  class="bto-btn bto-btn-red"  disabled><i class="bi bi-stop-fill"></i> Stop</button>'
+        +   '<select id="cmd-interval" class="bto-sel">'
+        +     '<option value="30000">Every 30s</option>'
+        +     '<option value="60000" selected>Every 1 min</option>'
+        +     '<option value="120000">Every 2 min</option>'
+        +     '<option value="300000">Every 5 min</option>'
+        +   '</select>'
+        +   '<span id="cmd-status" class="bto-status" style="margin-left:4px;"></span>'
+        +   '<button id="cmd-refresh-btn" class="bto-btn" style="margin-left:auto;" title="Refresh now"><i class="bi bi-arrow-clockwise"></i> Refresh</button>'
+        +   '<span id="cmd-last-ref" style="font-size:0.5rem;color:var(--gtb-muted);"></span>'
         + '</div>'
-        + '<div class="cmd-t"><i class="bi bi-bar-chart-fill"></i> CRUDEOILM — OI / OBV</div>'
-        + '<div class="cmd-oi-charts"><div><div class="cmd-st">OI Change (CE/PE)</div><div id="cmd-crude-oi"></div></div>'
-        + '<div><div class="cmd-st">OBV (CE/PE)</div><div id="cmd-crude-obv"></div></div></div>'
-        + '<div id="cmd-crude-oi-table" style="overflow-x:auto;margin-top:6px;"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading OI…</div></div>'
-        + '<div class="cmd-t"><i class="bi bi-graph-up"></i> CRUDEOILM — Futures Trend</div>'
-        + '<div id="cmd-crude-fut" class="cmd-fut"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading futures…</div></div>';
-    showMaximizeOverlay('<i class="bi bi-droplet-fill"></i> Commodities — GIFT NIFTY &amp; Crude', body);
+        // ── Two-column layout ─────────────────────────────────────────────────
+        + '<div class="cmd-twin-grid">'
+        // Left: GIFT NIFTY
+        +   '<div class="cmd-twin-col">'
+        +     '<div class="cmd-col-hdr"><i class="bi bi-globe-asia-australia"></i> GIFT NIFTY</div>'
+        +     '<div id="cmd-gift-levels" class="gtb-chart-levels" style="min-height:22px;"></div>'
+        +     '<div id="cmd-gift-chart"  style="height:180px;"></div>'
+        +     '<div class="cmd-fut-prob-cell" style="margin-top:8px;"><div id="cmd-gift-prob"></div></div>'
+        +   '</div>'
+        // Right: CRUDEOILM
+        +   '<div class="cmd-twin-col">'
+        +     '<div class="cmd-col-hdr"><i class="bi bi-droplet-fill"></i> CRUDEOILM</div>'
+        +     '<div id="cmd-crude-levels" class="gtb-chart-levels" style="min-height:22px;"></div>'
+        +     '<div id="cmd-crude-chart"  style="height:180px;"></div>'
+        // Futures + Trend Probability side by side
+        +     '<div class="cmd-fut-prob-row">'
+        +       '<div class="cmd-fut-prob-cell cmd-3col-scroll"><div class="cmd-st">Futures Trend</div><div id="cmd-crude-fut" class="cmd-fut"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading…</div></div></div>'
+        +       '<div class="cmd-fut-prob-cell"><div id="cmd-crude-prob"></div></div>'
+        +     '</div>'
+        // OI + OBV full width
+        +     '<div class="cmd-st" style="margin-top:8px;">OI Change (CE/PE)</div>'
+        +     '<div id="cmd-crude-oi" style="height:130px;"></div>'
+        +     '<div class="cmd-st" style="margin-top:4px;">OBV (CE/PE)</div>'
+        +     '<div id="cmd-crude-obv" style="height:130px;"></div>'
+        +     '<div id="cmd-crude-oi-table" style="overflow-x:auto;margin-top:8px;"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading OI…</div></div>'
+        +   '</div>'
+        + '</div>'
+        + '</div>';
 
-    setTimeout(async function () {
-        // Charts
-        try { await showTopChart('GIFT NIFTY', '#cmd-gift-chart', 300); } catch (e1) {}
-        try { await showTopChartMCX('CRUDEOILM', 300, '#cmd-crude-chart'); } catch (e2) {}
+    async function _cmdLoadAll() {
+        // GIFT NIFTY ─────────────────────────────────────────────────────────
+        try {
+            var _gnData = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS['GIFT NIFTY'], _gtbCurrDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL);
+            var _gnCandles = _gtbTrimCandles(_gnData.data.candles);
+            var _gnRefLines = [];
+            try {
+                var _gnTrend = generateTrend('GIFT NIFTY');
+                _gnRefLines = [
+                    { key:'OPEN', value:_gnTrend.open,                    text:'OPEN '+_gnTrend.open },
+                    { key:'VIXL', value:_gnTrend.vix.vixDDLower,          text:'VIXL '+_gnTrend.vix.vixDDLower },
+                    { key:'VIXU', value:_gnTrend.vix.vixDDUpper,          text:'VIXU '+_gnTrend.vix.vixDDUpper },
+                    { key:'AST',  value:_gnTrend.strikeData.ustrikeTwo,   text:'AST ' +_gnTrend.strikeData.ustrikeTwo },
+                    { key:'ASO',  value:_gnTrend.strikeData.ustrikeOne,   text:'ASO ' +_gnTrend.strikeData.ustrikeOne },
+                    { key:'BSO',  value:_gnTrend.strikeData.bstrikeOne,   text:'BSO ' +_gnTrend.strikeData.bstrikeOne },
+                    { key:'BST',  value:_gnTrend.strikeData.bstrikeTwo,   text:'BST ' +_gnTrend.strikeData.bstrikeTwo },
+                ];
+                var _lMeta = { OPEN:{s:'O',c:'#ffbe0b'}, VIXU:{s:'V↑',c:'#38bdf8'}, VIXL:{s:'V↓',c:'#38bdf8'},
+                               AST:{s:'A+',c:'#3fb950'}, ASO:{s:'A',c:'#3fb950'}, BSO:{s:'B',c:'#f85149'}, BST:{s:'B-',c:'#f85149'} };
+                var _fmt = function(v) { v=parseFloat(v); return v>=1000?v.toLocaleString('en-IN',{maximumFractionDigits:1}):v.toFixed(1); };
+                var _lvHtml = _gnRefLines.map(function(rl){
+                    var m=_lMeta[rl.key]||{s:rl.key,c:'#7d8590'};
+                    return '<span style="display:inline-flex;align-items:center;gap:2px;white-space:nowrap;">'
+                        +'<span style="font-size:0.58rem;font-weight:700;color:'+m.c+';letter-spacing:0.02em;">'+m.s+'</span>'
+                        +'<span style="font-size:0.58rem;color:var(--gtb-muted);">'+_fmt(rl.value)+'</span></span>';
+                }).join('<span style="color:#30363d;font-size:0.5rem;padding:0 2px;">·</span>');
+                var _lvEl=document.getElementById('cmd-gift-levels');
+                if (_lvEl) _lvEl.innerHTML=_lvHtml;
+            } catch(_e) {}
+            _renderLWChart('cmd-gift-chart', _gnCandles, _gnRefLines, 180, { hideLegend:true });
+        } catch(e1) { console.warn('GIFT NIFTY chart error',e1); }
+        jQ('#cmd-gift-prob').html(_cmdTrendProb('GIFT NIFTY', null));
 
-        // ── Load CRUDEOILM futures fresh ──────────────────────────────────────
+        // CRUDEOILM ──────────────────────────────────────────────────────────
+        try { await showTopChartMCX('CRUDEOILM', 180, '#cmd-crude-chart'); } catch(e2) {}
+        // Populate level labels above the crude chart from the cached strikeMap
+        try {
+            var _cSM = (INSTRUMENT_SCORE_MAP['CRUDEOILM'] || {}).strikeMap;
+            var _cOpen = (INSTRUMENT_SCORE_MAP['CRUDEOILM'] || {}).open;
+            if (_cSM) {
+                var _lMeta2 = { OPEN:{s:'O',c:'#ffbe0b'}, VIXU:{s:'V↑',c:'#38bdf8'}, VIXL:{s:'V↓',c:'#38bdf8'},
+                                AST:{s:'A+',c:'#3fb950'}, ASO:{s:'A',c:'#3fb950'}, BSO:{s:'B',c:'#f85149'}, BST:{s:'B-',c:'#f85149'} };
+                var _fmt2 = function(v) { v=parseFloat(v); return v>=1000?v.toLocaleString('en-IN',{maximumFractionDigits:1}):v.toFixed(1); };
+                var _cLevels = [
+                    { key:'OPEN', value:_cOpen },
+                    { key:'VIXL', value:_cSM.vixDDLower }, { key:'VIXU', value:_cSM.vixDDUpper },
+                    { key:'AST',  value:_cSM.ustrikeTwo }, { key:'ASO',  value:_cSM.ustrikeOne },
+                    { key:'BSO',  value:_cSM.bstrikeOne }, { key:'BST',  value:_cSM.bstrikeTwo },
+                ];
+                var _cLvHtml = _cLevels.map(function(rl){
+                    var m=_lMeta2[rl.key]||{s:rl.key,c:'#7d8590'};
+                    return '<span style="display:inline-flex;align-items:center;gap:2px;white-space:nowrap;">'
+                        +'<span style="font-size:0.58rem;font-weight:700;color:'+m.c+';letter-spacing:0.02em;">'+m.s+'</span>'
+                        +'<span style="font-size:0.58rem;color:var(--gtb-muted);">'+_fmt2(rl.value)+'</span></span>';
+                }).join('<span style="color:#30363d;font-size:0.5rem;padding:0 2px;">·</span>');
+                var _cLvEl = document.getElementById('cmd-crude-levels');
+                if (_cLvEl) _cLvEl.innerHTML = _cLvHtml;
+            }
+        } catch(_eL) {}
+        jQ('#cmd-crude-fut').html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading futures…</div>');
         var fres = null;
         try {
             fres = await showFutureDetailsMCX('CRUDEOILM');
-            setFutureDetails('CRUDEOILM', fres);
-            if (!INSTRUMENT_SCORE_MAP['CRUDEOILM']) INSTRUMENT_SCORE_MAP['CRUDEOILM'] = {};
+            if (!INSTRUMENT_SCORE_MAP['CRUDEOILM']) INSTRUMENT_SCORE_MAP['CRUDEOILM']={};
             INSTRUMENT_SCORE_MAP['CRUDEOILM'].futures_trend = getFuturesTrendScore(fres['REMARK']);
-        } catch (e3) {}
-        var prem  = jQ('#CRUDEOILM-futures-premium').html() || '';
-        var fut   = jQ('#CRUDEOILM-futures').html() || '';
-        var trend = jQ('#CRUDEOILM-futures-trend').html() || '';
-        var vwap  = jQ('#CRUDEOILM-futures-vwap').html() || '';
-        jQ('#cmd-crude-fut').html((prem || fut || trend || vwap)
-            ? ('<div class="cmd-fut-prem">' + prem + '</div>' + fut + '<div class="cmd-fut-meta">' + trend + ' ' + vwap + '</div>')
-            : '<div class="cmd-load" style="color:var(--gtb-red);">Futures unavailable.</div>');
-
-        // ── Load CRUDEOILM OI fresh ───────────────────────────────────────────
-        try {
-            if (fres) await showPrictionProbabiltyMCX('CRUDEOILM', fres);
-            showOIOBVBarChart('CRUDEOILM');   // populates INSTRUMENT_SCORE_MAP['CRUDEOILM'].oiData
-        } catch (e4) {}
-        var oiData = INSTRUMENT_SCORE_MAP['CRUDEOILM'] && INSTRUMENT_SCORE_MAP['CRUDEOILM'].oiData;
-        if (oiData && oiData.tableData && oiData.tableData.length) {
-            var pc = 0; try { pc = parseFloat(generateTrend('CRUDEOILM').change) || 0; } catch (e5) {}
-            try { _cmdRenderOI(oiData, '#cmd-crude-oi', '#cmd-crude-obv'); } catch (e6) {}
-            jQ('#cmd-crude-oi-table').html(_gtbOITableHtml(oiData, pc));
+            // Also update main dashboard elements if they exist
+            try { setFutureDetails('CRUDEOILM', fres); } catch(_e) {}
+        } catch(e3) {}
+        // Render directly from fres — do NOT read back from main dashboard DOM elements
+        // (those elements only exist when Groot Bot dashboard is open)
+        if (fres) {
+            var _cSent = getFuturesTrendScore(fres['REMARK']);
+            var _cCls  = _cSent > 0 ? 'bull' : _cSent < 0 ? 'bear' : 'neutral';
+            var _cFut  = '<div class="gtb-futures-signals">'
+                + '<div class="gtb-fut-row ' + _cCls + '">' + (fres['PLUS']  || '—') + '</div>'
+                + '<div class="gtb-fut-row ' + _cCls + '">' + (fres['MINUS'] || '—') + '</div>'
+                + '</div>';
+            var _cMeta = _gtbRemarkChip(fres['REMARK']) + ' ' + _gtbVwapChip(fres['trend'], fres['REMARK'])
+                       + ' <span style="font-size:0.48rem;color:var(--gtb-muted);">' + (fres['vwap'] || '') + '</span>';
+            jQ('#cmd-crude-fut').html('<div class="cmd-fut-meta" style="margin-bottom:4px;">' + _cMeta + '</div>' + _cFut);
+        } else {
+            jQ('#cmd-crude-fut').html('<div class="cmd-load" style="color:var(--gtb-red);">Futures unavailable.</div>');
+        }
+        jQ('#cmd-crude-prob').html(_cmdTrendProb('CRUDEOILM', fres));
+        try { if (fres) await showPrictionProbabiltyMCX('CRUDEOILM', fres); showOIOBVBarChart('CRUDEOILM'); } catch(e4) {}
+        var oiData=INSTRUMENT_SCORE_MAP['CRUDEOILM']&&INSTRUMENT_SCORE_MAP['CRUDEOILM'].oiData;
+        if (oiData&&oiData.tableData&&oiData.tableData.length) {
+            var pc=0; try{pc=parseFloat(generateTrend('CRUDEOILM').change)||0;}catch(e5){}
+            try{_cmdRenderOI(oiData,'#cmd-crude-oi','#cmd-crude-obv');}catch(e6){}
+            jQ('#cmd-crude-oi-table').html(_gtbOITableHtml(oiData,pc));
         } else {
             jQ('#cmd-crude-oi-table').html('<div class="cmd-load" style="color:var(--gtb-red);">CRUDEOILM OI unavailable.</div>');
         }
-    }, 80);
+        _CMD.lastRefresh = moment().format('HH:mm:ss');
+        _cmdUpdateStatus();
+    }
+
+    showPopUpWindow('commodities-panel', body, 'Commodities', 960, 640);
+    var _cmdTitle = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-droplet-fill"></i> COMMODITIES</span>'
+        + popupWinControls(_cmdDivId)
+        + '</div>';
+    jQ('.' + _cmdDivId).find('.popupwindow_titlebar_text').html(_cmdTitle);
+    hideNativePopupButtons(_cmdDivId);
+    // Remove draggable so clicking anywhere in the titlebar padding doesn't move the popup
+    jQ('.' + _cmdDivId).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    jQ('.' + _cmdDivId).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+
+    jQ(document).off('click.cmd-start').on('click.cmd-start',   '#cmd-start',       _cmdStartRefresh);
+    jQ(document).off('click.cmd-stop').on('click.cmd-stop',     '#cmd-stop',        _cmdStopRefresh);
+    jQ(document).off('click.cmd-ref').on('click.cmd-ref', '#cmd-refresh-btn', async function() {
+        var $i = jQ(this).find('i'); $i.addClass('spin');
+        try { if (_CMD.loadAll) await _CMD.loadAll(); } catch(e) {}
+        $i.removeClass('spin');
+    });
+    jQ(document).off('change.cmd-iv').on('change.cmd-iv', '#cmd-interval', function() {
+        _CMD.intervalMs = parseInt(jQ(this).val());
+        if (_CMD.running) { _cmdStopRefresh(); _cmdStartRefresh(); }
+    });
+
+    _CMD.loadAll = _cmdLoadAll;
+    _cmdUpdateStatus();
+    setTimeout(_cmdLoadAll, 80);
 });
 
 // ── Strike-level probability backtest ─────────────────────────────────────────
@@ -5248,6 +7343,21 @@ jQ(document).on("click", ".refresh-oi-obv", function () {
     commonRefershOIOBV(name, that)
 })
 
+jQ(document).on('click', '.gtb-fut-refresh-btn', async function () {
+    let name = jQ(this).data('name');
+    let $btn = jQ(this);
+    $btn.prop('disabled', true);
+    $btn.find('i').addClass('spin');
+    try {
+        let res = _gtbIsMcxFuture(name)
+            ? await showFutureDetailsMCX(name)
+            : await showFutureDetails(name);
+        if (res) setFutureDetails(name, res);
+    } catch(e) { console.log('fut refresh', e); }
+    $btn.find('i').removeClass('spin');
+    $btn.prop('disabled', false);
+});
+
 async function commonRefershOIOBV(name, that) {
     try {
         that.attr("disabled", true);
@@ -5359,11 +7469,13 @@ jQ(document).on("click", ".show-info", function () {
 function _renderLWChart(containerId, candles, refLines, chartHeight, opts) {
     let container = document.getElementById(containerId.replace('#', ''));
     if (!container) return;
+    // Tear down previous chart instance so its ResizeObserver doesn't fire on the new one
+    if (container._lwRO)    { try { container._lwRO.disconnect(); } catch(e) {} container._lwRO = null; }
+    if (container._lwChart) { try { container._lwChart.remove();  } catch(e) {} container._lwChart = null; }
     container.innerHTML = '';
     container.style.position = 'relative';
 
     var _lwc    = (typeof _gtbChartColors === 'function') ? _gtbChartColors() : { bg:'#060a12', grid:'#122038', bdr:'#1b2d47', text:'#5c7499' };
-    var _lwBg   = _lwc.bg;
     var _lwGrid = _lwc.grid;
     var _lwBdr  = _lwc.bdr;
     var _lwText = _lwc.text;
@@ -5373,10 +7485,10 @@ function _renderLWChart(containerId, candles, refLines, chartHeight, opts) {
     let chart = LightweightCharts.createChart(container, {
         width: container.clientWidth || 300,
         height: _chH,
-        layout: { background: { color: _lwBg }, textColor: _lwText },
+        layout: { background: { color: 'transparent' }, textColor: _lwText },
         grid: { vertLines: { color: _lwGrid }, horzLines: { color: _lwGrid } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        rightPriceScale: { borderColor: _lwBdr, visible: true, scaleMargins: { top: 0.05, bottom: 0.05 }, minimumWidth: 52 },
+        rightPriceScale: { borderColor: _lwBdr, visible: !(opts && (opts.hideYAxis || (opts.hideLegend && !chartHeight))), scaleMargins: { top: 0.05, bottom: 0.05 }, minimumWidth: 52 },
         timeScale: { borderColor: _lwBdr, timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: false, rightOffset: 5 },
         localization: {
             timeFormatter: function(t) {
@@ -5521,10 +7633,11 @@ function _renderLWChart(containerId, candles, refLines, chartHeight, opts) {
     });
     ro.observe(container);
     container._lwChart = chart;
+    container._lwRO    = ro;
     return chart;
 }
 
-function _buildATRBadges(ltp, name, candles) {
+function _buildATRBadges(ltp, name, candles, suffix) {
     let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
     try {
         let instrScore = computeInstrumentScore(name);
@@ -5615,7 +7728,7 @@ function _buildATRBadges(ltp, name, candles) {
             slHtml += '<span class="gtb-sl-badge t1"><span class="sb-label">T1</span><span class="sb-val">' + slShort.target1 + '</span></span>';
         }
         slHtml += '</div>';
-        let slDivId = '#' + tempName + '-atr-sl';
+        let slDivId = '#' + tempName + '-atr-sl' + (suffix || '');
         if (jQ(slDivId).length) jQ(slDivId).html(slHtml);
     } catch(e) {}
 }
@@ -5633,7 +7746,7 @@ function _buildATRBadges(ltp, name, candles) {
 //   Updates #{tempName}-ltp with formatted live price
 //   Updates #{tempName}-atr-sl with ATR-based stop-loss badges (_buildATRBadges)
 //   Caches previous day candle via savePreviousStockQuote (for OI change baseline)
-async function showTopChart(name, bindtoDivId, chartHeight) {
+async function showTopChart(name, bindtoDivId, chartHeight, idSuffix) {
     try {
         let tempName = name.replaceAll(' ', '-').replaceAll('&', '-');
         let data = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[name], _gtbCurrDay(), _gtbCurrDayTo(), HISTORICAL_DATA_INTERVAL);
@@ -5651,37 +7764,67 @@ async function showTopChart(name, bindtoDivId, chartHeight) {
         ];
 
         let containerId = (bindtoDivId || ('#' + tempName + '-chart')).replace('#', '');
+
+        // Derive ID suffix for side-effect DOM writes so they land in the right
+        // elements regardless of which panel is calling (main, stock viewer, maximize).
+        // e.g. 'NIFTY-50-chart'              → _sfx = ''
+        //      'NIFTY-50-chart-stock-viewer'  → _sfx = '-stock-viewer'
+        //      'max-NIFTY-50-chart'           → _sfx = '' (update main panel elements)
+        var _sfx = idSuffix !== undefined ? idSuffix
+                 : containerId.startsWith('max-') ? '' : containerId.replace(tempName + '-chart', '');
+
         let _chartCandles = _gtbTrimCandles(data.data.candles);
         // No explicit height → let _renderLWChart fill the row cell via clientHeight
         _renderLWChart(containerId, _chartCandles, refLines, chartHeight, { hideLegend: true });
 
-        // Populate levels strip in the row title bar (if it exists)
-        var _levelsRow = document.getElementById(tempName + '-chart-levels');
-        if (_levelsRow) {
-            var _lMeta = { OPEN:{s:'O',c:'#ffbe0b'}, VIXU:{s:'V↑',c:'#38bdf8'}, VIXL:{s:'V↓',c:'#38bdf8'},
-                           AST:{s:'A+',c:'#3fb950'}, ASO:{s:'A',c:'#3fb950'}, BSO:{s:'B',c:'#f85149'}, BST:{s:'B-',c:'#f85149'} };
-            var _fmt = function(v) { v=parseFloat(v); return v>=1000?v.toLocaleString('en-IN',{maximumFractionDigits:1}):v.toFixed(1); };
-            _levelsRow.innerHTML = refLines.map(function(rl) {
-                var m = _lMeta[rl.key] || {s:rl.key,c:'#7d8590'};
-                return '<span style="display:inline-flex;align-items:center;gap:1px;white-space:nowrap;">'
-                    + '<span style="font-size:0.44rem;font-weight:700;color:'+m.c+';letter-spacing:0.02em;">'+m.s+'</span>'
-                    + '<span style="font-size:0.44rem;color:var(--gtb-muted,#7d8590);">'+_fmt(rl.value)+'</span></span>';
-            }).join('<span style="color:#30363d;font-size:0.4rem;"> · </span>');
+        // Populate levels strip
+        var _lMeta = { OPEN:{s:'O',c:'#ffbe0b'}, VIXU:{s:'V↑',c:'#38bdf8'}, VIXL:{s:'V↓',c:'#38bdf8'},
+                       AST:{s:'A+',c:'#3fb950'}, ASO:{s:'A',c:'#3fb950'}, BSO:{s:'B',c:'#f85149'}, BST:{s:'B-',c:'#f85149'} };
+        var _fmt = function(v) { v=parseFloat(v); return v>=1000?v.toLocaleString('en-IN',{maximumFractionDigits:1}):v.toFixed(1); };
+        var _levelsHtml = refLines.map(function(rl) {
+            var m = _lMeta[rl.key] || {s:rl.key,c:'#7d8590'};
+            return '<span style="display:inline-flex;align-items:center;gap:2px;white-space:nowrap;">'
+                + '<span style="font-size:0.58rem;font-weight:700;color:'+m.c+';letter-spacing:0.02em;">'+m.s+'</span>'
+                + '<span style="font-size:0.58rem;color:var(--gtb-muted);">'+_fmt(rl.value)+'</span></span>';
+        }).join('<span style="color:#30363d;font-size:0.5rem;padding:0 2px;">·</span>');
+
+        // Row header strip — suffix-aware (main panel: no suffix, stock viewer: -stock-viewer)
+        var _levelsRow = document.getElementById(tempName + '-chart-levels' + _sfx);
+        if (_levelsRow) _levelsRow.innerHTML = _levelsHtml;
+
+        // Maximize overlay strip (only when called from maximizeChart)
+        if (containerId.startsWith('max-')) {
+            var _maxLevels = document.getElementById(containerId + '-levels');
+            if (_maxLevels) _maxLevels.innerHTML = _levelsHtml;
+        }
+
+        // Custom container (e.g. commodities popup '#cmd-gift-chart') — derive sibling levels div
+        if (_sfx && _sfx !== '' && !containerId.startsWith('max-')) {
+            var _siblingLevels = document.getElementById(containerId.replace('#', '').replace('-chart', '-levels'));
+            if (_siblingLevels) _siblingLevels.innerHTML = _levelsHtml;
+            // Also keep the main panel div in sync
+            var _mainLevels = document.getElementById(tempName + '-chart-levels');
+            if (_mainLevels) _mainLevels.innerHTML = _levelsHtml;
         }
 
         let ltp = _chartCandles[_chartCandles.length - 1][4];
-        jQ('#' + tempName + '-ltp').html(parseFloat(ltp).toLocaleString('en-IN'));
-        _buildATRBadges(ltp, name, _chartCandles);
+        jQ('#' + tempName + '-ltp' + _sfx).html(parseFloat(ltp).toLocaleString('en-IN'));
+        _buildATRBadges(ltp, name, _chartCandles, _sfx);
 
-        // 9:15 breakout badge
+        // 9:15 breakout badge + detail
         try {
             let b915 = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN")) || {};
-            let close915 = (b915[name] || {}).CLOSE_9_15;
+            let b9   = b915[name] || {};
+            let close915 = b9.CLOSE_9_15;
             if (close915) {
                 let isBull = (close915 === 'ASO' || close915 === 'AST');
                 let isBear = (close915 === 'BSO' || close915 === 'BST');
                 let cls = isBull ? 'gtb-915-bull' : isBear ? 'gtb-915-bear' : 'gtb-915-neutral';
-                jQ('#' + tempName + '-915-badge').html('<span class="' + cls + '">' + close915 + '</span>');
+                jQ('#' + tempName + '-915-badge' + _sfx).html('<span class="' + cls + '">' + close915 + '</span>');
+                // Populate detail row in card panel
+                let detailHtml = '<span class="' + cls + '" style="font-weight:700;">' + close915 + '</span>';
+                if (b9.close) detailHtml += ' <span style="color:var(--gtb-muted);">close: ' + parseFloat(b9.close).toFixed(2) + '</span>';
+                jQ('#' + tempName + '-915-detail' + _sfx).html(detailHtml);
             }
         } catch(e) {}
     } catch (error) {
@@ -5833,7 +7976,7 @@ function renderRangeScoreboard() {
           + '  <div style="width:60px;height:4px;background:#ffffff10;border-radius:2px;">'
           + '    <div style="width:' + confPct + '%;height:100%;background:' + vColor + ';border-radius:2px;"></div>'
           + '  </div>'
-          + '  <span style="font-size:0.44rem;color:var(--gtb-muted);">confidence ' + confPct + '%</span>'
+          + '  <span style="font-size:0.55rem;color:var(--gtb-muted);">confidence ' + confPct + '%</span>'
           + '</div>'
           + '</div>';
 
@@ -5857,7 +8000,7 @@ function _renderGauge(containerId, value, min, max) {
                 track: { background: '#21262d', strokeWidth: '100%' },
                 dataLabels: {
                     name: { show: false },
-                    value: { show: true, fontSize: '22px', fontWeight: 900, color: color, offsetY: 8,
+                    value: { show: true, fontSize: (String((value > 0 ? '+' : '') + value).length > 5 ? '14px' : String((value > 0 ? '+' : '') + value).length > 4 ? '17px' : '22px'), fontWeight: 900, color: color, offsetY: 8,
                         formatter: function() { return (value > 0 ? '+' : '') + value; } }
                 }
             }
@@ -6327,7 +8470,7 @@ function _svRenderOIMatrix(name, tempName, oiData, suffix) {
     INSTRUMENT_SCORE_MAP[name].oi_obv = oiScore;
 }
 
-function showOIOBVBarChart(name, suffix) {
+function showOIOBVBarChart(name, suffix, _oiDataOverride) {
     suffix = suffix || '';
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -6348,8 +8491,10 @@ function showOIOBVBarChart(name, suffix) {
     let oiCEOBV = ["CE OBV"]
     let oiPEOBV = ["PE OBV"]
 
-    let data = stock[0]['DATA']['tableData']
-    let oiData = stock[0]['DATA']
+    // When called from the bar-width slider, _oiDataOverride carries the per-instrument
+    // cached data so we never read the shared stock[0] global (which only holds the last fetch).
+    let oiData = _oiDataOverride || stock[0]['DATA']
+    let data = oiData['tableData']
 
     // Cache per-instrument so maximize can re-render without re-fetching
     if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
@@ -6434,33 +8579,35 @@ function showOIOBVBarChart(name, suffix) {
     function _svgMiniBar(containerId, seriesList, atmIdx) {
         let el = document.getElementById(containerId.replace(/^#/, ''));
         if (!el) return;
-        let W = el.clientWidth || 260, H = 56;
+        // Fixed logical coordinate space — SVG scales via width="100%" so bars always
+        // fill the container regardless of when clientWidth is read or column width.
+        let W = 300, H = 56;
         let n = seriesList[0].values.length;
         if (!n) { el.innerHTML = '<span style="color:#7d8590;font-size:0.5rem;padding:2px;">no data</span>'; return; }
-        // max abs across all series
         let maxV = 0;
         seriesList.forEach(function(s) { s.values.forEach(function(v) { let a = Math.abs(+v||0); if (a>maxV) maxV=a; }); });
         if (!maxV) maxV = 1;
         let barWPct = parseInt(localStorage.getItem('GTB_OI_BAR_W') || '60') / 100;
-        let barW = Math.max(2, Math.floor((W / n) / seriesList.length * barWPct));
-        let groupW = barW * seriesList.length + 1;
-        let svg = '<svg width="' + W + '" height="' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">';
-        let midY = Math.round(H / 2);
-        // zero line
-        svg += '<line x1="0" y1="' + midY + '" x2="' + W + '" y2="' + midY + '" stroke="#30363d" stroke-width="1"/>';
+        let ns = seriesList.length;
+        let slotW = W / n;
+        let gap = 0.5;                                          // gap between bars in a group
+        let barW = Math.max(1, (slotW * barWPct - gap * (ns - 1)) / ns);
+        let groupW = barW * ns + gap * (ns - 1);               // total group width
+        let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;" preserveAspectRatio="none">';
+        let midY = H / 2;
+        svg += '<line x1="0" y1="' + midY + '" x2="' + W + '" y2="' + midY + '" stroke="#30363d" stroke-width="0.5"/>';
         for (let i = 0; i < n; i++) {
-            let gx = Math.round(i * (W / n));
-            // ATM highlight
-            if (i === atmIdx) svg += '<rect x="' + gx + '" y="0" width="' + Math.round(W/n) + '" height="' + H + '" fill="#fbbf2418" rx="1"/>';
+            let slotCx = i * slotW + slotW / 2;                // center of this slot
+            let groupX = slotCx - groupW / 2;                  // center bars in slot
+            if (i === atmIdx) svg += '<rect x="' + (i * slotW) + '" y="0" width="' + slotW + '" height="' + H + '" fill="#fbbf2418" rx="1"/>';
             seriesList.forEach(function(s, si) {
                 let v = +s.values[i] || 0;
-                let bh = Math.round((Math.abs(v) / maxV) * (midY - 2));
+                let bh = Math.max(1, Math.abs(v) / maxV * (midY - 2));
                 let by = v >= 0 ? midY - bh : midY;
-                let bx = gx + si * (barW + 1);
-                svg += '<rect x="' + bx + '" y="' + by + '" width="' + barW + '" height="' + Math.max(1,bh) + '" fill="' + s.color + '" opacity="0.85" rx="1"/>';
+                let bx = groupX + si * (barW + gap);
+                svg += '<rect x="' + bx + '" y="' + by + '" width="' + barW + '" height="' + bh + '" fill="' + s.color + '" opacity="0.85" rx="0.5"/>';
             });
-            // ATM tick below
-            if (i === atmIdx) svg += '<text x="' + (gx + Math.round(W/n)/2) + '" y="' + (H-1) + '" text-anchor="middle" font-size="5" fill="#fbbf24">▲</text>';
+            if (i === atmIdx) svg += '<text x="' + slotCx + '" y="' + (H - 1) + '" text-anchor="middle" font-size="5" fill="#fbbf24">▲</text>';
         }
         svg += '</svg>';
         el.innerHTML = svg;
@@ -6477,16 +8624,14 @@ function showOIOBVBarChart(name, suffix) {
 
     // Shared x-axis labels (strikes) below both charts — rendered once
     (function() {
-        let axEl = document.getElementById(tempName + '-oiobv-xaxis');
+        let axEl = document.getElementById(tempName + '-oiobv-xaxis' + suffix);
         if (!axEl || !strikes.length) return;
-        let W = axEl.clientWidth || 260;
-        let n = strikes.length;
-        let slotW = W / n;
-        let svg = '<svg width="' + W + '" height="14" xmlns="http://www.w3.org/2000/svg" style="display:block;">';
+        // Same logical W=300 as _svgMiniBar so strike labels align with bars above
+        let W = 300, n = strikes.length, slotW = W / n;
+        let svg = '<svg viewBox="0 0 ' + W + ' 14" width="100%" height="14" xmlns="http://www.w3.org/2000/svg" style="display:block;" preserveAspectRatio="none">';
         for (let i = 0; i < n; i++) {
-            let cx = Math.round(i * slotW + slotW / 2);
+            let cx = i * slotW + slotW / 2;
             let lbl = String(strikes[i]);
-            // Abbreviate: drop last 3 zeros if present (e.g. 24500 → 24.5k or just last digits)
             let short = lbl.length > 5 ? lbl.slice(-4) : lbl;
             let isAtm = (i === atmIndex);
             svg += '<text x="' + cx + '" y="10" text-anchor="middle" font-size="' + (isAtm ? '6' : '5.5') + '" '
@@ -6509,7 +8654,7 @@ function showOIOBVBarChart(name, suffix) {
         let peLabelColor = (s.peLabel === 'PE WRITE' || s.peLabel === 'PE UNWIND') ? '#3fb950'
                          : (s.peLabel === 'PE BUY'   || s.peLabel === 'PE COV')    ? '#f85149' : '#7d8590';
         let scoreColor = s.score > 0 ? '#3fb950' : s.score < 0 ? '#f85149' : '#7d8590';
-        signalRowHtml += '<div style="flex:1;min-width:70px;text-align:center;border:' + border + ';border-radius:5px;padding:3px 2px;background:#161b22;">';
+        signalRowHtml += '<div style="flex:1;min-width:70px;text-align:center;border:' + border + ';border-radius:5px;padding:3px 2px;background:var(--gtb-bg,#161b22);">';
         signalRowHtml += '<div style="font-size:0.6rem;color:' + strikeColor + ';font-weight:' + fontWeight + ';">' + s.strike + (s.isATM ? ' ★' : '') + '</div>';
         signalRowHtml += '<div style="font-size:0.58rem;color:' + ceLabelColor + ';">' + s.ceLabel + '</div>';
         signalRowHtml += '<div style="font-size:0.58rem;color:' + peLabelColor + ';">' + s.peLabel + '</div>';
@@ -8407,3 +10552,317 @@ jQ(document).on("click", "#stock-list-table_wrapper .trend-filter", function (e)
     });
     showStockList(list)
 });
+
+// ── Pre-Trade Checklist popup ────────────────────────────────────────────────
+function _gtbShowTradeChecklist() {
+    var b9 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
+    var vix = 0;
+    try { vix = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
+
+    // Recompute composite SCORE from globals
+    var SCORE = parseFloat((
+        (ALL_9_15_CLOSE_SCORE || 0) +
+        (NIFTY_50_9_15_CLOSE_SCORE || 0) +
+        (NIFTY_BANK_9_15_CLOSE_SCORE || 0) +
+        (GIFT_NIFTY_9_15_CLOSE_SCORE || 0) +
+        (SENSEX_9_15_CLOSE_SCORE || 0) +
+        (RELIANCE_9_15_CLOSE_SCORE || 0) +
+        (HDFCBANK_9_15_CLOSE_SCORE || 0) +
+        (ALL_ADVANCE_DECLINE_SCORE || 0) +
+        (NIFTY_50_ADVANCE_DECLINE_SCORE || 0) +
+        (NIFTY_BANK_ADVANCE_DECLINE_SCORE || 0) +
+        (ALL_FUTURES_TREND_SCORE || 0) +
+        (NIFTY_50_FUTURES_TREND_SCORE || 0) +
+        (NIFTY_BANK_FUTURES_TREND_SCORE || 0) +
+        (NIFTY_50_OI_OBV_SCORE || 0) +
+        (NIFTY_BANK_OI_OBV_SCORE || 0) +
+        (RELIANCE_OI_OBV_SCORE || 0) +
+        (HDFCBANK_OI_OBV_SCORE || 0) +
+        (ICICIBANK_OI_OBV_SCORE || 0) +
+        (NIFTY_50_COMPONENT_SCORE || 0) +
+        (NIFTY_BANK_COMPONENT_SCORE || 0)
+    ).toFixed(2));
+
+    var ms = getMarketSignal(SCORE, b9);
+    var sig = ms.signal;
+    var sigColor = (sig === 'STRONG BUY' || sig === 'BUY') ? '#3fb950'
+                 : (sig === 'STRONG SELL' || sig === 'SELL') ? '#f85149' : '#fbbf24';
+
+    // Trade recommendation text based on signal
+    var tradeRec = sig === 'STRONG BUY'  ? 'Buy NIFTY CE (ATM or ASO strike). Sell PE spread for premium.'
+                 : sig === 'BUY'         ? 'Buy NIFTY CE at pullback to ASO/BSO level.'
+                 : sig === 'SELL'        ? 'Buy NIFTY PE at rally to ASO/AST level.'
+                 : sig === 'STRONG SELL' ? 'Buy NIFTY PE (ATM or BSO strike). Sell CE spread for premium.'
+                 : sig === 'NO TRADE'    ? 'Wait. VIX boundary hit — daily range likely exhausted.'
+                 :                        'Avoid directional trade. Range between BSO–ASO. Consider Iron Condor.';
+
+    // Helpers
+    function _scoreColor(v) { return v > 0 ? 'var(--gtb-green)' : v < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)'; }
+    function _icon(v) { return v > 0 ? '▲' : v < 0 ? '▼' : '—'; }
+    function _915label(name) {
+        var c = (b9[name] || {})['CLOSE_9_15'] || '—';
+        var col = (c === 'AST' || c === 'ASO') ? 'var(--gtb-green)' : (c === 'BST' || c === 'BSO') ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        return '<span style="color:' + col + ';font-weight:700;">' + c + '</span>';
+    }
+
+    // VIX regime
+    var vixLabel = vix <= 0 ? { txt: '—', col: 'var(--gtb-muted)' }
+                 : vix < 13 ? { txt: 'LOW', col: 'var(--gtb-green)' }
+                 : vix < 18 ? { txt: 'NORMAL', col: 'var(--gtb-amber)' }
+                 : vix < 25 ? { txt: 'ELEVATED', col: 'var(--gtb-amber)' }
+                 :            { txt: 'HIGH', col: 'var(--gtb-red)' };
+    var vixRisk = vix >= 25 ? 'Reduce size, widen SL.' : vix >= 18 ? 'Use wider SL.' : vix > 0 ? 'Normal conditions.' : '';
+
+    function _row(label, val, color, sub) {
+        return '<div style="display:flex;align-items:baseline;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--gtb-border);">'
+            + '<span style="font-size:0.65rem;color:var(--gtb-muted);">' + label + '</span>'
+            + '<span style="font-size:0.7rem;font-weight:700;color:' + (color || 'var(--gtb-text)') + ';">'
+            + val + (sub ? '<span style="font-size:0.58rem;font-weight:400;color:var(--gtb-muted);margin-left:4px;">' + sub + '</span>' : '')
+            + '</span></div>';
+    }
+
+    function _step(n, title, ok) {
+        var dot = ok === true ? 'var(--gtb-green)' : ok === false ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+        return '<div style="display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--gtb-border);">'
+            + '<span style="flex-shrink:0;width:16px;height:16px;border-radius:50%;background:var(--gtb-surface2);border:1.5px solid ' + dot + ';display:flex;align-items:center;justify-content:center;font-size:0.52rem;font-weight:800;color:' + dot + ';margin-top:1px;">' + n + '</span>'
+            + '<div style="flex:1;">' + title + '</div></div>';
+    }
+
+    // Step ok states
+    var vixOk = vix <= 0 ? null : vix < 18;
+    var b9ok  = ((NIFTY_50_9_15_CLOSE_SCORE || 0) + (NIFTY_BANK_9_15_CLOSE_SCORE || 0)) > 0 ? true
+              : ((NIFTY_50_9_15_CLOSE_SCORE || 0) + (NIFTY_BANK_9_15_CLOSE_SCORE || 0)) < 0 ? false : null;
+    var adOk  = (ALL_ADVANCE_DECLINE_SCORE || 0) > 0 ? true : (ALL_ADVANCE_DECLINE_SCORE || 0) < 0 ? false : null;
+    var futOk = (ALL_FUTURES_TREND_SCORE || 0) > 0 ? true : (ALL_FUTURES_TREND_SCORE || 0) < 0 ? false : null;
+    var oiOk  = ((NIFTY_50_OI_OBV_SCORE || 0) + (NIFTY_BANK_OI_OBV_SCORE || 0)) > 0 ? true
+              : ((NIFTY_50_OI_OBV_SCORE || 0) + (NIFTY_BANK_OI_OBV_SCORE || 0)) < 0 ? false : null;
+    var scoreOk = SCORE >= 6 ? true : SCORE < 0 ? false : null;
+
+    var scCol = SCORE >= 8 ? 'var(--gtb-green)' : SCORE >= 5 ? 'var(--gtb-amber)' : SCORE >= 1 ? 'var(--gtb-amber)' : 'var(--gtb-red)';
+
+    var h = '<div style="padding:12px;height:100%;overflow-y:auto;box-sizing:border-box;font-family:inherit;color:var(--gtb-text);background:var(--gtb-bg);">';
+
+    // ── Section A: Market Checklist ────────────────────────────────────────
+    h += '<div style="font-size:0.6rem;font-weight:800;letter-spacing:0.08em;color:var(--gtb-muted);margin-bottom:6px;">A · MARKET CHECKLIST</div>';
+
+    h += _step(1,
+        '<div style="font-size:0.65rem;font-weight:700;">VIX Regime</div>'
+        + '<div style="font-size:0.62rem;margin-top:2px;display:flex;gap:8px;">'
+        + _row('India VIX', (vix > 0 ? vix.toFixed(2) : '—') + ' <span style="font-size:0.6rem;font-weight:700;color:' + vixLabel.col + ';">(' + vixLabel.txt + ')</span>', null, vixRisk)
+        + '</div>',
+        vixOk
+    );
+
+    h += _step(2,
+        '<div style="font-size:0.65rem;font-weight:700;">9:15 Opening Candle</div>'
+        + '<div style="font-size:0.62rem;margin-top:2px;display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;">'
+        + _row('NIFTY 50', _icon(NIFTY_50_9_15_CLOSE_SCORE) + ' ' + _915label('NIFTY 50'), _scoreColor(NIFTY_50_9_15_CLOSE_SCORE))
+        + _row('NIFTY BANK', _icon(NIFTY_BANK_9_15_CLOSE_SCORE) + ' ' + _915label('NIFTY BANK'), _scoreColor(NIFTY_BANK_9_15_CLOSE_SCORE))
+        + _row('SENSEX', _icon(SENSEX_9_15_CLOSE_SCORE) + ' ' + _915label('SENSEX'), _scoreColor(SENSEX_9_15_CLOSE_SCORE))
+        + _row('GIFT NIFTY', _icon(GIFT_NIFTY_9_15_CLOSE_SCORE) + ' ' + _915label('GIFT NIFTY'), _scoreColor(GIFT_NIFTY_9_15_CLOSE_SCORE))
+        + '</div>',
+        b9ok
+    );
+
+    h += _step(3,
+        '<div style="font-size:0.65rem;font-weight:700;">Advance / Decline</div>'
+        + '<div style="font-size:0.62rem;margin-top:2px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px 10px;">'
+        + _row('All F&amp;O', _icon(ALL_ADVANCE_DECLINE_SCORE) + ' ' + (ALL_ADVANCE_DECLINE_SCORE > 0 ? 'Bullish' : ALL_ADVANCE_DECLINE_SCORE < 0 ? 'Bearish' : 'Neutral'), _scoreColor(ALL_ADVANCE_DECLINE_SCORE))
+        + _row('NIFTY 50', _icon(NIFTY_50_ADVANCE_DECLINE_SCORE) + ' ' + (NIFTY_50_ADVANCE_DECLINE_SCORE > 0 ? 'Bull' : NIFTY_50_ADVANCE_DECLINE_SCORE < 0 ? 'Bear' : 'Neutral'), _scoreColor(NIFTY_50_ADVANCE_DECLINE_SCORE))
+        + _row('BANK', _icon(NIFTY_BANK_ADVANCE_DECLINE_SCORE) + ' ' + (NIFTY_BANK_ADVANCE_DECLINE_SCORE > 0 ? 'Bull' : NIFTY_BANK_ADVANCE_DECLINE_SCORE < 0 ? 'Bear' : 'Neutral'), _scoreColor(NIFTY_BANK_ADVANCE_DECLINE_SCORE))
+        + '</div>',
+        adOk
+    );
+
+    h += _step(4,
+        '<div style="font-size:0.65rem;font-weight:700;">Futures Trend</div>'
+        + '<div style="font-size:0.62rem;margin-top:2px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px 10px;">'
+        + _row('All F&amp;O', _icon(ALL_FUTURES_TREND_SCORE) + ' ' + (ALL_FUTURES_TREND_SCORE > 0 ? 'Bulls' : ALL_FUTURES_TREND_SCORE < 0 ? 'Bears' : 'Neutral'), _scoreColor(ALL_FUTURES_TREND_SCORE))
+        + _row('NIFTY 50', _icon(NIFTY_50_FUTURES_TREND_SCORE) + ' ' + (NIFTY_50_FUTURES_TREND_SCORE > 0 ? 'Long' : NIFTY_50_FUTURES_TREND_SCORE < 0 ? 'Short' : 'Neutral'), _scoreColor(NIFTY_50_FUTURES_TREND_SCORE))
+        + _row('BANK', _icon(NIFTY_BANK_FUTURES_TREND_SCORE) + ' ' + (NIFTY_BANK_FUTURES_TREND_SCORE > 0 ? 'Long' : NIFTY_BANK_FUTURES_TREND_SCORE < 0 ? 'Short' : 'Neutral'), _scoreColor(NIFTY_BANK_FUTURES_TREND_SCORE))
+        + '</div>',
+        futOk
+    );
+
+    h += _step(5,
+        '<div style="font-size:0.65rem;font-weight:700;">OI / OBV Score</div>'
+        + '<div style="font-size:0.62rem;margin-top:2px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px 10px;">'
+        + _row('NIFTY 50', (NIFTY_50_OI_OBV_SCORE > 0 ? '+' : '') + NIFTY_50_OI_OBV_SCORE, _scoreColor(NIFTY_50_OI_OBV_SCORE))
+        + _row('BANK NIFTY', (NIFTY_BANK_OI_OBV_SCORE > 0 ? '+' : '') + NIFTY_BANK_OI_OBV_SCORE, _scoreColor(NIFTY_BANK_OI_OBV_SCORE))
+        + _row('RELIANCE', (RELIANCE_OI_OBV_SCORE > 0 ? '+' : '') + RELIANCE_OI_OBV_SCORE, _scoreColor(RELIANCE_OI_OBV_SCORE))
+        + _row('HDFCBANK', (HDFCBANK_OI_OBV_SCORE > 0 ? '+' : '') + HDFCBANK_OI_OBV_SCORE, _scoreColor(HDFCBANK_OI_OBV_SCORE))
+        + _row('ICICIBANK', (ICICIBANK_OI_OBV_SCORE > 0 ? '+' : '') + ICICIBANK_OI_OBV_SCORE, _scoreColor(ICICIBANK_OI_OBV_SCORE))
+        + '</div>',
+        oiOk
+    );
+
+    h += _step(6,
+        '<div style="font-size:0.65rem;font-weight:700;">Component Score</div>'
+        + '<div style="font-size:0.62rem;margin-top:2px;display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;">'
+        + _row('NIFTY 50 Weighted', (NIFTY_50_COMPONENT_SCORE > 0 ? '+' : '') + NIFTY_50_COMPONENT_SCORE.toFixed(2), _scoreColor(NIFTY_50_COMPONENT_SCORE))
+        + _row('BANK NIFTY Weighted', (NIFTY_BANK_COMPONENT_SCORE > 0 ? '+' : '') + NIFTY_BANK_COMPONENT_SCORE.toFixed(2), _scoreColor(NIFTY_BANK_COMPONENT_SCORE))
+        + '</div>',
+        ((NIFTY_50_COMPONENT_SCORE + NIFTY_BANK_COMPONENT_SCORE) > 0 ? true : (NIFTY_50_COMPONENT_SCORE + NIFTY_BANK_COMPONENT_SCORE) < 0 ? false : null)
+    );
+
+    h += _step(7,
+        '<div style="font-size:0.65rem;font-weight:700;">Composite Score</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-top:3px;">'
+        + '<span style="font-size:1.1rem;font-weight:900;color:' + scCol + ';">' + (SCORE > 0 ? '+' : '') + SCORE + '</span>'
+        + '<span style="font-size:0.62rem;color:var(--gtb-muted);">out of ~40 max (green ≥ 8, yellow 5–7, orange 1–4, red &lt; 0)</span>'
+        + '</div>',
+        scoreOk
+    );
+
+    // ── Section B: Trade Recommendation ────────────────────────────────────
+    h += '<div style="margin-top:12px;padding:10px 12px;border-radius:6px;background:' + sigColor + '0f;border:1px solid ' + sigColor + '44;">';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+    h += '<span style="font-size:0.85rem;font-weight:900;color:' + sigColor + ';">' + sig + '</span>';
+    h += '</div>';
+    h += '<div style="font-size:0.65rem;color:var(--gtb-muted);margin-bottom:6px;">' + ms.reason + '</div>';
+    h += '<div style="font-size:0.7rem;font-weight:700;color:' + sigColor + ';line-height:1.5;">' + tradeRec + '</div>';
+    h += '</div>';
+
+    // ── Section C: Per-Instrument table ──────────────────────────────────
+    var instList = ['GIFT NIFTY','NIFTY 50','NIFTY BANK','SENSEX','RELIANCE','HDFCBANK','ICICIBANK','CRUDEOILM','USDINR'];
+    h += '<div style="font-size:0.6rem;font-weight:800;letter-spacing:0.08em;color:var(--gtb-muted);margin:14px 0 6px;">C · INSTRUMENT SCORES</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:0.62rem;">';
+    h += '<thead><tr style="background:var(--gtb-surface2);">';
+    h += '<th style="text-align:left;padding:4px 6px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">Instrument</th>';
+    h += '<th style="text-align:center;padding:4px 4px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">9:15</th>';
+    h += '<th style="text-align:center;padding:4px 4px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">Trend</th>';
+    h += '<th style="text-align:center;padding:4px 4px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">Fut</th>';
+    h += '<th style="text-align:center;padding:4px 4px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">OI/OBV</th>';
+    h += '<th style="text-align:center;padding:4px 4px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">Total</th>';
+    h += '<th style="text-align:left;padding:4px 6px;color:var(--gtb-muted);font-weight:600;border-bottom:1px solid var(--gtb-border);">Action</th>';
+    h += '</tr></thead><tbody>';
+    instList.forEach(function(name) {
+        try {
+            var sc = computeInstrumentScore(name);
+            var tot = sc.total;
+            var totCol = _scoreColor(tot);
+            var action = tot >= 4 ? { txt: 'BUY CE', col: 'var(--gtb-green)' }
+                       : tot >= 2 ? { txt: 'CE (wait ASO)', col: 'var(--gtb-green)' }
+                       : tot >=  0 ? { txt: 'WAIT', col: 'var(--gtb-amber)' }
+                       : tot >= -3 ? { txt: 'PE (wait BSO)', col: 'var(--gtb-red)' }
+                       :             { txt: 'BUY PE', col: 'var(--gtb-red)' };
+            var rowBg = name === 'NIFTY 50' || name === 'NIFTY BANK' ? 'background:var(--gtb-surface2);' : '';
+            h += '<tr style="border-bottom:1px solid var(--gtb-border);' + rowBg + '">';
+            h += '<td style="padding:4px 6px;font-weight:700;color:var(--gtb-text);">' + name + '</td>';
+            h += '<td style="text-align:center;padding:4px;color:' + _scoreColor(sc.nine_fifteen) + ';">' + (sc.nine_fifteen > 0 ? '+' : '') + sc.nine_fifteen + '</td>';
+            h += '<td style="text-align:center;padding:4px;color:' + _scoreColor(sc.current_trend) + ';">' + (sc.current_trend > 0 ? '+' : '') + sc.current_trend + '</td>';
+            h += '<td style="text-align:center;padding:4px;color:' + _scoreColor(sc.futures_trend) + ';">' + (sc.futures_trend > 0 ? '+' : '') + sc.futures_trend + '</td>';
+            h += '<td style="text-align:center;padding:4px;color:' + _scoreColor(sc.oi_obv) + ';">' + (sc.oi_obv > 0 ? '+' : '') + sc.oi_obv + '</td>';
+            h += '<td style="text-align:center;padding:4px;font-weight:800;color:' + totCol + ';">' + (tot > 0 ? '+' : '') + tot + '</td>';
+            h += '<td style="padding:4px 6px;font-size:0.6rem;font-weight:700;color:' + action.col + ';">' + action.txt + '</td>';
+            h += '</tr>';
+        } catch(e) {
+            h += '<tr><td colspan="7" style="padding:4px 6px;color:var(--gtb-muted);">' + name + '</td></tr>';
+        }
+    });
+    h += '</tbody></table>';
+
+    h += '</div>';
+
+    showPopUpWindow('trade-checklist', h, 'Trade Checklist', 620, 580);
+    var _tcClass = 'popup-custom-style-trade-checklist';
+    var _tcTitle = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-clipboard-check"></i> PRE-TRADE CHECKLIST</span>'
+        + popupWinControls(_tcClass)
+        + '</div>';
+    jQ('.' + _tcClass).find('.popupwindow_titlebar_text').html(_tcTitle);
+    hideNativePopupButtons(_tcClass);
+    jQ('.' + _tcClass).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+}
+
+jQ(document).on('click', '#show-trade-checklist', function() {
+    _gtbShowTradeChecklist();
+});
+
+// ── Floating quick-access toolbar ───────────────────────────────────────────
+function _gtbCreateFloatingBar() {
+    if (document.getElementById('gtb-float-bar')) return;
+
+    var _tools = [
+        { id: 'show-chartgrid',              icon: 'bi-grid-3x3-gap-fill',    title: 'Chart Grid' },
+        { id: 'show-915-backtest',           icon: 'bi-calendar-week',        title: '9:15 Backtest' },
+        { id: 'show-all-oi',                 icon: 'bi-layers-fill',          title: 'OI Scan' },
+        { id: 'show-fut-accuracy',           icon: 'bi-bullseye',             title: 'Futures Accuracy' },
+        { id: 'show-futures-signal',         icon: 'bi-flag-fill',            title: 'Instrument Detail View' },
+        { id: 'show-commodities',            icon: 'bi-droplet-fill',         title: 'Commodities' },
+        { id: 'show-oi-viewer',              icon: 'bi-eye',                  title: 'OI Viewer' },
+        { id: 'show-stock-viewer',           icon: 'bi-list-ul',              title: 'Stock Viewer' },
+        { id: 'show-market-quote-analyzer',  icon: 'bi-graph-up',             title: 'Market Quotes' },
+        { id: 'show-maxpain-gex',            icon: 'bi-bar-chart-steps',      title: 'Max Pain / GEX' },
+        { id: 'gtb-add-instr-btn',           icon: 'bi-plus-circle-fill',     title: 'Add Instrument' },
+        { id: 'gtb-settings-toggle',         icon: 'bi-gear-fill',            title: 'Settings' },
+        { id: 'show-trade-checklist',        icon: 'bi-clipboard-check',      title: 'Pre-Trade Checklist' },
+        { id: 'show-help',                   icon: 'bi-question-circle-fill', title: 'Help' },
+        { id: 'data-load',                   icon: 'bi-sliders',              title: 'Data Settings' },
+    ];
+
+    var bar = document.createElement('div');
+    bar.id = 'gtb-float-bar';
+    bar.innerHTML = '<span class="gtb-fb-handle" title="Drag">&#8942;</span>';
+
+    _tools.forEach(function(t) {
+        var btn = document.createElement('button');
+        btn.className = 'gtb-fb-btn';
+        btn.title = t.title;
+        btn.dataset.toolId = t.id;
+        btn.innerHTML = '<i class="bi ' + t.icon + '"></i>';
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var id = this.dataset.toolId;
+            if (id === 'show-trade-checklist') { _gtbShowTradeChecklist(); return; }
+            var $el = jQ('#' + id);
+            if ($el.length) {
+                $el[0].click();
+            } else {
+                showGrootTradeBot();
+                setTimeout(function() { var $x = jQ('#' + id); if ($x.length) $x[0].click(); }, 300);
+            }
+        });
+        bar.appendChild(btn);
+    });
+
+    // Groot bot toggle at bottom
+    var gBtn = document.createElement('button');
+    gBtn.className = 'gtb-fb-btn gtb-fb-groot';
+    gBtn.title = 'Toggle Groot Bot';
+    gBtn.innerHTML = '<i class="bi bi-toggles"></i>';
+    gBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var $win = jQ('#gtb-popup-win');
+        if ($win.length) { $win.toggle(); } else { showGrootTradeBot(); }
+    });
+    bar.appendChild(gBtn);
+
+    document.body.appendChild(bar);
+
+    // Apply current theme immediately
+    if ((localStorage.getItem('GTB_THEME') || 'dark') === 'light') bar.classList.add('gtb-light');
+
+    // Drag support
+    var _dragging = false, _startY = 0, _startTop = 0;
+    bar.querySelector('.gtb-fb-handle').addEventListener('mousedown', function(e) {
+        _dragging = true;
+        _startY   = e.clientY;
+        _startTop = parseInt(bar.style.top) || bar.getBoundingClientRect().top;
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!_dragging) return;
+        var t = _startTop + (e.clientY - _startY);
+        t = Math.max(4, Math.min(window.innerHeight - bar.offsetHeight - 4, t));
+        bar.style.top = t + 'px';
+        localStorage.setItem('GTB_FLOAT_TOP', t);
+    });
+    document.addEventListener('mouseup', function() { _dragging = false; });
+
+    // Restore saved position
+    var _saved = localStorage.getItem('GTB_FLOAT_TOP');
+    bar.style.top = (_saved ? _saved + 'px' : '40%');
+}
+
+setTimeout(_gtbCreateFloatingBar, 1500);

@@ -173,7 +173,9 @@ jQ(document).on("click", ".refresh-oi-stock-viewer", async function () {
 // ── Score confidence + level suggestion ──────────────────────────────────────
 function _svRenderScoreConfidence(name, sc, suffix) {
     var tid = name.replace(/ /g, '-').replace(/&/g, '-');
-    var el  = document.getElementById(tid + '-detail' + suffix);
+    // Target the confidence sub-div to preserve the SL row above it
+    var el  = document.getElementById(tid + '-confidence' + suffix)
+           || document.getElementById(tid + '-detail' + suffix);
     if (!el) return;
 
     var scores = [sc.nine_fifteen, sc.current_trend, sc.futures_trend, sc.oi_obv];
@@ -395,12 +397,11 @@ function _svRowHtml(name, scriptData, breakOut915) {
     }
     h += '</div>';
 
-    // col 8 — detail
+    // col 8 — detail: SL row (persistent) + confidence panel (overwritten by _svRenderScoreConfidence)
     h += '<div class="gtb-row-detail" id="' + tid + '-detail' + s + '">';
     if (hasFut) {
-        h += '<div class="gtb-det-row"><span class="gtb-det-lbl">SL</span><div id="' + tid + '-atr-sl' + s + '" class="gtb-cell-sl-wrap" style="margin-left:0"></div></div>';
-        h += '<div class="gtb-det-row"><span class="gtb-det-lbl">PCR</span><span class="gtb-pcr-chip gtb-det-val" id="' + tid + '-pcr-probability' + s + '"></span></div>';
-        h += '<div class="gtb-det-row"><span class="gtb-det-lbl">OI sc</span><span class="gtb-oi-score-chip gtb-det-val" id="' + tid + '-oi-score' + s + '"></span></div>';
+        h += '<div class="gtb-det-row"><div id="' + tid + '-atr-sl' + s + '" class="gtb-cell-sl-wrap" style="margin-left:0"></div></div>';
+        h += '<div id="' + tid + '-confidence' + s + '"></div>';
     } else {
         h += '<span class="gtb-row-na" style="margin:auto">—</span>';
     }

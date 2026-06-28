@@ -132,11 +132,13 @@ jQ(document).on("click", "#load-price", function (e) {
 // Saves result to INSTRUMENT_LIST_GLOBAL: { name: { price(open), prevPrice, perc } }
 // Also saves India VIX quote (for VIXL/VIXU levels) and then scans LTP.
 async function loadOpenPrice() {
+    if (typeof _gtbProgress === 'function') _gtbProgress('Fetching VIX quote…');
     await saveVixQuote();
     let currentTime = moment().format("HH:mm")
     let checkTime = moment(PREVIOUS_DAY + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
     if (currentTime < checkTime) {
+        if (typeof _gtbProgress === 'function') _gtbProgress('Pre-market: scanning open prices…');
         await loadPreMarketOpenPrice()
     } else {
         let instru = []
@@ -149,7 +151,9 @@ async function loadOpenPrice() {
         let storageObj = {};
         for (let i = 0; i < instru.length; i++) {
             try {
+                let _pMsg = 'Load prices: ' + instru[i]['TRADINGSYMBOL'] + ' (' + (i+1) + '/' + instru.length + ')';
                 jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
+                if (typeof _gtbProgress === 'function') _gtbProgress(_pMsg);
                 let name = instru[i]['TRADINGSYMBOL']
                 let tempName = name.replaceAll(" ", "-")
                 tempName = tempName.replaceAll("&", "-")
@@ -169,6 +173,8 @@ async function loadOpenPrice() {
 
         }
         localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
+        if (typeof _gtbProgress === 'function') _gtbProgress('Prices loaded', 'green');
+        setTimeout(function(){ if (typeof _gtbProgressHide === 'function') _gtbProgressHide(); }, 2500);
     }
     await updateStrorageLtpPrice();
     alert("Price loaded successfully.")
@@ -433,84 +439,66 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
                   : (c915 === 'BST' || c915 === 'BSO') ? 'sv-badge sv-badge-red'
                   : 'sv-badge sv-badge-muted';
 
-    let html = ''
+    let scriptData  = generateTrends();
 
-    // Outer wrapper — dark flex row matching grootTradeBot card style
-    html += '<div id="individual-stock-popup-window" style="display:flex;height:100%;background:var(--gtb-bg,#0d1117);overflow:hidden;">'
+    // Column header — same labels as main panel / stock viewer
+    let header = '<div id="sv-rows-head">'
+        + '<span class="gtb-rh-instr">INSTRUMENT</span>'
+        + '<span class="gtb-rh-chart">PRICE ACTION</span>'
+        + '<span class="gtb-rh-915">9:15</span>'
+        + '<span class="gtb-rh-fut">FUTURES</span>'
+        + '<span class="gtb-rh-oi">OI MATRIX</span>'
+        + '<span class="gtb-rh-oiobv">OI / OBV</span>'
+        + '<span class="gtb-rh-weights">SCORE</span>'
+        + '<span class="gtb-rh-detail">DETAIL</span>'
+        + '</div>';
 
-    // ── Column 1: Chart ──────────────────────────────────────────────────────
-    html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
-    html += '<div class="sv-card-header">'
-    html += '  <div class="sv-header-left">'
-    html += '    <button class="sv-icon-btn show-info" data-index="0" data-name="' + symbol + '" title="Info">i</button>'
-    html += '  </div>'
-    html += '  <div class="sv-header-title">' + symbol + '&nbsp;<span id="' + tempName + '-ltp" style="font-size:0.68rem;font-weight:900;font-variant-numeric:tabular-nums;"></span></div>'
-    html += '  <div class="sv-header-right"><span class="' + nineClass + '">' + c915 + '</span></div>'
-    html += '</div>'
-    html += '<div class="sv-chart-area" style="height:260px;background:var(--gtb-bg,#0d1117);">'
-    html += '  <div id="' + tempName + '-chart" style="height:100%;"></div>'
-    html += '</div>'
-    html += '<div class="gtb-atr-row">'
-    html += '  <div id="' + tempName + '-atr-sl"></div>'
-    html += '</div>'
-    html += '</div>'
+    // Row HTML — identical to stock viewer (all IDs carry -stock-viewer suffix)
+    let rowHtml = _svRowHtml(symbol, scriptData, breakOutNineFifteen);
 
-    // ── Column 2: OI / OBV ──────────────────────────────────────────────────
-    html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
-    html += '<div class="sv-card-header">'
-    html += '  <div class="sv-header-left">'
-    html += '    <button class="sv-icon-btn refresh-oi-obv" data-name="' + symbol + '" title="Refresh OI"><i class="bi bi-arrow-clockwise"></i></button>'
-    html += '  </div>'
-    html += '  <div class="sv-header-title"><i class="bi bi-bar-chart-fill"></i> OI / OBV</div>'
-    html += '  <div class="sv-header-right">'
-    html += '    <span title="OI Score" id="' + tempName + '-oi-score" style="font-size:0.58rem;"></span>'
-    html += '    <span id="' + tempName + '-pcr-probability" style="font-size:0.58rem;"></span>'
-    html += '  </div>'
-    html += '</div>'
-    html += '<div class="sv-oi-body" style="height:260px;overflow-y:auto;background:var(--gtb-bg,#0d1117);padding:4px;">'
-    html += '  <div id="' + tempName + '-oi"></div>'
-    html += '  <div id="' + tempName + '-oi-signal-row" style="padding:0 4px;"></div>'
-    html += '  <div id="' + tempName + '-obv"></div>'
-    html += '  <div id="' + tempName + '-component-oi-list-table" class="sv-oi-table"></div>'
-    html += '</div>'
-    html += '</div>'
+    let html = '<div id="individual-stock-popup-window" class="sv-indiv-view">'
+             + header + rowHtml + '</div>';
 
-    // ── Column 3: Futures ───────────────────────────────────────────────────
-    html += '<div class="sv-stock-col" style="flex:1;min-width:0;">'
-    html += '<div class="sv-card-header">'
-    html += '  <div class="sv-header-left"></div>'
-    html += '  <div class="sv-header-title" id="futures-chart-' + tempName + '"><i class="bi bi-graph-up"></i> FUTURES</div>'
-    html += '  <div class="sv-header-right">'
-    html += '    <span id="' + tempName + '-futures-premium" style="font-size:0.58rem;"></span>'
-    html += '  </div>'
-    html += '</div>'
-    html += '<div class="sv-fut-body" style="height:260px;overflow-y:auto;background:var(--gtb-bg,#0d1117);padding:6px;">'
-    html += '  <div id="' + tempName + '-futures"></div>'
-    html += '  <div title="VWAP Trend" id="' + tempName + '-futures-vwap" style="margin-top:4px;"></div>'
-    html += '  <div title="Future trend" id="' + tempName + '-futures-trend" style="margin-top:4px;"></div>'
-    html += '</div>'
-    html += '</div>'
-
-    html += '</div>'
-
-    // Title bar content
-    let title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
-    title += '<span style="font-size:0.7rem;font-weight:800;color:#e6edf3;white-space:nowrap;">'
-    title += '<i class="bi bi-graph-up"></i> ' + symbol + ' — Individual View'
-    title += '</span>'
-    title += '<input checked title="Enable auto-refresh" type="checkbox" id="enable-auto-refresh-individual" style="cursor:pointer;vertical-align:middle;">'
+    // Title bar — includes futures premium placeholder (populated after setFutureDetails)
+    let title = '<div style="display:flex;align-items:center;gap:8px;width:100%;">'
+    title += '<i class="bi bi-graph-up" style="font-size:0.6rem;opacity:0.7;"></i>'
+    title += '<span style="font-size:0.68rem;font-weight:800;color:var(--gtb-text,#e6edf3);">' + symbol + '</span>'
+    title += '<span style="font-size:0.5rem;font-weight:600;color:var(--gtb-muted,#7d8590);">Individual View</span>'
+    title += '<span style="flex:1;"></span>'
+    title += '<input checked title="Enable auto-refresh" type="checkbox" id="enable-auto-refresh-individual" style="cursor:pointer;accent-color:var(--gtb-blue,#00b4d8);">'
     title += popupWinControls("popup-custom-style-groot-trade-bot-stock")
     title += '</div>'
 
-    showPopUpWindow('groot-trade-bot-stock', html, symbol, 1000, 320);
+    showPopUpWindow('groot-trade-bot-stock', html, symbol, 1600, 380);
     let divId = "popup-custom-style-groot-trade-bot-stock";
     jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
     hideNativePopupButtons(divId);
-    await showTopChart(symbol);
-    await showPrictionProbabilty(symbol)
-    showOIOBVBarChart(symbol);
-    let res = await showFutureDetails(symbol);
-    setFutureDetails(symbol, res);
+    // Read theme from localStorage — works even when main dashboard isn't in the DOM
+    var _isLight = (localStorage.getItem('GTB_THEME') || 'dark') === 'light';
+    jQ('.' + divId).toggleClass('gtb-light', _isLight);
+
+    // Small delay so popup paints and CSS grid dimensions are computed
+    await new Promise(function(r) { setTimeout(r, 60); });
+
+    // Exact same refresh pipeline as _svLoadCards
+    let tid = tempName;
+    try { await showTopChart(symbol, tid + '-chart' + _SV_SUFFIX); } catch(e) { console.log(e); }
+    try {
+        let res = await showFutureDetails(symbol);
+        setFutureDetails(symbol, res, _SV_SUFFIX);
+    } catch(e) { console.log(e); }
+    try {
+        await showPrictionProbabilty(symbol);
+        showOIOBVBarChart(symbol, _SV_SUFFIX);
+        _gtbRenderOIMatrix(symbol, _SV_SUFFIX);
+        try {
+            var sc = computeInstrumentScore(symbol);
+            if (!INSTRUMENT_SCORE_MAP[symbol]) INSTRUMENT_SCORE_MAP[symbol] = {};
+            INSTRUMENT_SCORE_MAP[symbol].score = sc;
+            _gtbUpdateWeightBars(symbol, _SV_SUFFIX);
+            _svRenderScoreConfidence(symbol, sc, _SV_SUFFIX);
+        } catch(e2) { console.log(e2); }
+    } catch(e) { console.log(e); }
 }
 
 

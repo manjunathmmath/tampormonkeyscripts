@@ -262,8 +262,8 @@ function generateTrend(name) {
 var _GTB_HIST_QUEUE = [];
 var _GTB_HIST_ACTIVE = 0;
 var _GTB_HIST_LAST = 0;
-var _GTB_HIST_CONC = 3;     // max concurrent historical requests
-var _GTB_HIST_GAP  = 320;   // min ms between request starts (~3/sec)
+var _GTB_HIST_CONC = 5;     // max concurrent historical requests
+var _GTB_HIST_GAP  = 100;   // min ms between request starts (~10/sec)
 
 function _gtbHistPump() {
     if (!_GTB_HIST_QUEUE.length || _GTB_HIST_ACTIVE >= _GTB_HIST_CONC) return;
@@ -688,4 +688,7 @@ function showPopUpWindow(index, html, title, width, height) {
     jQ.PopupWindowMinimizedArea({ position: "bottom right", direction: "vertical" });
     jQ("#" + divId).on("minimize.popupwindow",   function () { jQ("." + popupCustomClass + " .pop-title-extra").hide(); });
     jQ("#" + divId).on("unminimize.popupwindow", function () { jQ("." + popupCustomClass + " .pop-title-extra").show(); });
+    // Stop mousedown on content/statusbar from triggering the popup library's drag handler
+    jQ("." + popupCustomClass).find(".popupwindow_content, .popupwindow_statusbar")
+        .on("mousedown", function(e) { e.stopPropagation(); });
 }
