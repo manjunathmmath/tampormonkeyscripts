@@ -240,6 +240,7 @@ function _btAnalyzeInstrument(name, targetEl) {
     try { nine15 = (JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}')[name] || {}).CLOSE_9_15 || 'B/W'; } catch(e) {}
 
     var sm = INSTRUMENT_SCORE_MAP[name] || {};
+    var avwap   = sm.avwap || 0;
     var futScore = sm.futures_trend || 0;
     var futRemarkText = futScore > 0 ? 'Long Buildup / Short Covering' : futScore < 0 ? 'Short Buildup / Long Unwinding' : 'Neutral / Unknown';
 
@@ -279,6 +280,17 @@ function _btAnalyzeInstrument(name, targetEl) {
         +   scorePill(cs.oi_obv,          'OI/OBV')
         +   '<span class="bt-ta-pill" style="color:' + zoneCss(zoneLabel) + ';border-color:' + zoneCss(zoneLabel) + '44;background:' + zoneCss(zoneLabel) + '11;">ZONE ' + zoneLabel + '</span>'
         +   '<span class="bt-ta-pill" style="color:' + zoneCss(nine15) + ';border-color:' + zoneCss(nine15) + '44;background:' + zoneCss(nine15) + '11;">9:15 ' + nine15 + '</span>'
+        +   (avwap && ltp ? (function() {
+                var _above   = ltp > avwap;
+                var _vwapDB  = sm.vwapBullishDaily;
+                var _conflict = _vwapDB !== null && _vwapDB !== undefined && (_above !== _vwapDB);
+                var _ac = _above ? '#3fb950' : '#f85149';
+                var _al = (_above ? '▲ AVWAP' : '▼ AVWAP') + ' ' + parseFloat(avwap).toFixed(0) + (_conflict ? ' ⚠' : '');
+                var _at = 'AVWAP (9:15 anchor): ' + parseFloat(avwap).toFixed(1) + ' | LTP ' + (_above ? 'above' : 'below') + ' — ' + (_above ? 'Bullish' : 'Bearish')
+                        + (_conflict ? ' | ⚠ Daily VWAP ' + (_vwapDB ? 'BUY' : 'SELL') + ' conflicts — wait for alignment' : '');
+                var _bc = _conflict ? 'var(--gtb-amber)' : _ac;
+                return '<span class="bt-ta-pill" title="' + _at + '" style="color:' + _bc + ';border-color:' + _bc + '44;background:' + _bc + '11;">' + _al + '</span>';
+            })() : '')
         + '</div>'
         + '</div>';
 

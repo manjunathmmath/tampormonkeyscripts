@@ -30,20 +30,54 @@ There are no configured `scripts` in `package.json`, no test runner, no linter, 
 
 The composite score is the sum of these global variables, set during each refresh cycle:
 
+**9:15 Opening Candle**
+
 | Variable | Source | Range |
 |---|---|---|
-| `ALL_9_15_CLOSE_SCORE` | 9:15 breakout across all stocks | ±1 |
-| `NIFTY_50_9_15_CLOSE_SCORE`, `NIFTY_BANK_9_15_CLOSE_SCORE`, `GIFT_NIFTY_9_15_CLOSE_SCORE`, `SENSEX_9_15_CLOSE_SCORE`, `RELIANCE_9_15_CLOSE_SCORE`, `HDFCBANK_9_15_CLOSE_SCORE` | Index/stock 9:15 candle vs strike | ±1 each |
-| `ALL/NIFTY_50/NIFTY_BANK_ADVANCE_DECLINE_SCORE` | ASO vs BSO count across stocks | ±1 each |
-| `ALL/NIFTY_50/NIFTY_BANK_FUTURES_TREND_SCORE` | Futures Bulls vs Bears count | ±1 each |
-| `NIFTY_50/NIFTY_BANK/RELIANCE/HDFCBANK/ICICIBANK_OI_OBV_SCORE` | OI+OBV per strike scoring | ±N |
-| `NIFTY_50_COMPONENT_SCORE` | Top-10 Nifty 50 constituents weighted (9:15+trend+futures+OI) × weight% | float |
-| `NIFTY_BANK_COMPONENT_SCORE` | Top-10 Bank Nifty constituents weighted | float |
+| `ALL_9_15_CLOSE_SCORE` | Weighted ratio of bullish vs bearish 9:15 candles across all stocks: `(bullish − bearish) / (bullish + bearish)`; AST/BST count ×2, ASO/BSO count ×1 | −1 to +1 (float) |
+| `NIFTY_50_9_15_CLOSE_SCORE`, `NIFTY_BANK_9_15_CLOSE_SCORE`, `GIFT_NIFTY_9_15_CLOSE_SCORE`, `SENSEX_9_15_CLOSE_SCORE`, `RELIANCE_9_15_CLOSE_SCORE`, `HDFCBANK_9_15_CLOSE_SCORE` | Individual 9:15 candle vs strike: AST=+2, ASO=+1, BSO=−1, BST=−2 | ±2 each |
 
-`computeInstrumentScore(name)` — computes `{nine_fifteen, current_trend, futures_trend, oi_obv, total}` for any instrument from localStorage (no API calls).  
+**Advance / Decline**
+
+| Variable | Source | Range |
+|---|---|---|
+| `ALL_ADVANCE_DECLINE_SCORE`, `NIFTY_50_ADVANCE_DECLINE_SCORE`, `NIFTY_BANK_ADVANCE_DECLINE_SCORE` | ASO/AST vs BSO/BST count across stocks in each universe | ±1 each |
+
+**Futures Trend**
+
+| Variable | Source | Range |
+|---|---|---|
+| `ALL_FUTURES_TREND_SCORE`, `NIFTY_50_FUTURES_TREND_SCORE`, `NIFTY_BANK_FUTURES_TREND_SCORE` | Bulls vs Bears count from NSE futures REMARK | ±1 each |
+
+**OI + OBV**
+
+| Variable | Source | Range |
+|---|---|---|
+| `NIFTY_50_OI_OBV_SCORE`, `NIFTY_BANK_OI_OBV_SCORE`, `RELIANCE_OI_OBV_SCORE`, `HDFCBANK_OI_OBV_SCORE`, `ICICIBANK_OI_OBV_SCORE` | OI+OBV per-strike scoring from `INSTRUMENT_SCORE_MAP[name].oi_obv` | ±N each |
+
+**Max Pain**
+
+| Variable | Source | Range |
+|---|---|---|
+| `NIFTY_50_MAX_PAIN_SCORE`, `NIFTY_BANK_MAX_PAIN_SCORE`, `RELIANCE_MAX_PAIN_SCORE`, `HDFCBANK_MAX_PAIN_SCORE`, `ICICIBANK_MAX_PAIN_SCORE` | +1 when Max Pain > spot (gravitational pull up), −1 when below; 0 if within 0.3% of spot | ±1 each |
+
+**IV Skew**
+
+| Variable | Source | Range |
+|---|---|---|
+| `NIFTY_50_IV_SKEW_SCORE`, `NIFTY_BANK_IV_SKEW_SCORE`, `RELIANCE_IV_SKEW_SCORE`, `HDFCBANK_IV_SKEW_SCORE`, `ICICIBANK_IV_SKEW_SCORE` | Put skew > 2% → −1 (bearish pressure); Call skew > 2% → +1; read from `INSTRUMENT_SCORE_MAP[name].oiExtras.ivSkew` | ±1 each |
+
+**Component Scores**
+
+| Variable | Source | Range |
+|---|---|---|
+| `NIFTY_50_COMPONENT_SCORE` | Top-10 Nifty 50 constituents: `computeInstrumentScore(stock).total × weight%` summed | float |
+| `NIFTY_BANK_COMPONENT_SCORE` | Top-10 Bank Nifty constituents: same formula | float |
+
+`computeInstrumentScore(name)` — computes `{nine_fifteen, current_trend, futures_trend, oi_obv, max_pain, iv_skew, total}` for any instrument from localStorage + `INSTRUMENT_SCORE_MAP` (no API calls). The `total` is the sum of all six sub-scores.  
 `computeComponentScores()` — iterates `NIFTY_50_WEIGHTED_STOCKS` and `NIFTY_BANK_WEIGHTED_STOCKS`, calls `computeInstrumentScore`, applies weight, populates `INSTRUMENT_SCORE_MAP[name].score`.  
 `getFuturesTrendScore(remark)` — maps futures REMARK string (`LONG`, `SHORT`, `LONG_UNWINDING`, `SHOT_COVERING`, etc.) to +1/0/-1. Note: `LONG_UNWINDING` = -1 (bearish), `SHOT_COVERING` = +1 (bullish) — opposite of what the names suggest.  
-`INSTRUMENT_SCORE_MAP` — global cache: `{name: {futures_trend, oi_obv, strikeMap, open, oiData, score: {nine_fifteen, current_trend, futures_trend, oi_obv, total}}}`.
+`INSTRUMENT_SCORE_MAP` — global cache: `{name: {futures_trend, oi_obv, oiExtras, strikeMap, open, oiData, score: {nine_fifteen, current_trend, futures_trend, oi_obv, max_pain, iv_skew, total}}}`.
 
 Score thresholds for gauge color: red < 0, orange 1–4, yellow 5–7, green ≥ 8.
 
@@ -155,7 +189,7 @@ The popup (`showPopUpWindow('trade-checklist', ...)`, 620×580) has three sectio
 
 **B · Trade Recommendation** — colored card: market signal from `getMarketSignal(SCORE, b9)` + plain-English trade action (Buy CE / Buy PE / Iron Condor / Wait).
 
-**C · Instrument Scores** — table for 9 instruments (GIFT NIFTY, NIFTY 50, NIFTY BANK, SENSEX, RELIANCE, HDFCBANK, ICICIBANK, CRUDEOILM, USDINR): columns 9:15 / Trend / Futures / OI/OBV / Total / Action. Action thresholds: total ≥ 4 → BUY CE, ≥ 2 → CE (wait ASO), ≥ 0 → WAIT, ≥ -3 → PE (wait BSO), < -3 → BUY PE.
+**C · Instrument Scores** — table for 9 instruments (GIFT NIFTY, NIFTY 50, NIFTY BANK, SENSEX, RELIANCE, HDFCBANK, ICICIBANK, CRUDEOILM, USDINR): columns 9:15 / Trend / Futures / OI/OBV / Max Pain / IV Skew / Total / Action. Total = sum of all six sub-scores from `computeInstrumentScore`. Action thresholds: total ≥ 4 → BUY CE, ≥ 2 → CE (wait ASO), ≥ 0 → WAIT, ≥ -3 → PE (wait BSO), < -3 → BUY PE.
 
 ## Analysis tools (grootTradeBot.js, opened from topbar icons)
 

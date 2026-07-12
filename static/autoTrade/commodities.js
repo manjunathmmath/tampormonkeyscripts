@@ -271,8 +271,11 @@ async function showFutureDetailsMCX(name) {
             futures = item;
         }
     })
-    let pres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
-    let cres = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), 'day');
+    let [pres, cres, ires] = await Promise.all([
+        getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day'),
+        getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), 'day'),
+        getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), '5minute').catch(function() { return null; }),
+    ]);
 
 
     let data = []
@@ -302,22 +305,32 @@ async function showFutureDetailsMCX(name) {
     });
 
     prevData = prevData[prevData.length - 1];
+
+    // Build 5-min intraday candle array for AVWAP + futures signal (same format as NSE)
+    var intradayCandles5MCX = [];
+    if (ires && ires.data && ires.data.candles && ires.data.candles.length) {
+        ires.data.candles.forEach(function(c) {
+            intradayCandles5MCX.push({ date: moment(c[0]).format('HH:mm'), open: c[1], high: c[2], low: c[3], close: c[4], volume: c[5], oi: c[6] });
+        });
+    }
+
     // MCX: pass instrument name for trend-persistence; vix (OVX/GVZ) optional — left
     // unscaled here so commodity thresholds stay at their legacy baseline.
-    let resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'], null, { name: name })
+    let resp = showTableAiNiftyPrediction(data[data.length - 1], prevData, futures['lot_size'], intradayCandles5MCX.length > 1 ? intradayCandles5MCX : null, { name: name })
     resp['ltp'] = data[data.length - 1]['close']
     resp['open'] = data[0]['close']
     resp['vwap'] = getVwapTrend(data[data.length - 1], prevData);
-    // Numeric VWAP — needed by updateFuturesStrip (NSE sets vwapPrice too; without it
-    // the strip does parseFloat() on the HTML label and shows NaN for MCX instruments).
+    // Intraday AVWAP anchored to session open (5-min candles); fallback to daily weighted avg.
     (function () {
         var q = data[data.length - 1], p = prevData;
         var cTp = (parseFloat(q.high) + parseFloat(q.low) + parseFloat(q.close)) / 3;
         var pTp = (parseFloat(p.high) + parseFloat(p.low) + parseFloat(p.close)) / 3;
         var totVol = parseInt(q.volume) + parseInt(p.volume);
-        resp['vwapPrice'] = totVol > 0
-            ? ((cTp * parseFloat(q.volume) + pTp * parseFloat(p.volume)) / totVol).toFixed(2)
-            : 0;
+        var _dailyVwapNum = totVol > 0 ? parseFloat(((cTp * parseFloat(q.volume) + pTp * parseFloat(p.volume)) / totVol).toFixed(2)) : 0;
+        resp['vwapBullishDaily'] = _dailyVwapNum > 0 && parseFloat(q.close) >= _dailyVwapNum;
+        resp['vwapPrice'] = intradayCandles5MCX.length > 0
+            ? computeIntradayVwap(intradayCandles5MCX)
+            : _dailyVwapNum;
     })();
     resp['trend'] = getFutureDirection(data[data.length - 1], prevData, name);
     return resp;

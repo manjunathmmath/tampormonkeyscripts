@@ -419,29 +419,21 @@ async function showDetailsOnChartPage(exhange, symbol, token) {
 }
 
 async function commonShowInidividuslStockPopupWindow(symbol) {
-    let index = 0;
-    let tempName = symbol.replaceAll(" ", "-")
-    tempName = tempName.replaceAll("&", "-")
-
-    let componentColor = "#ffffff";
-    if (index % 2 === 0) {
-        componentColor = "#edecec";
+    // Delegate to the redesigned Instrument Detail View popup (2-column card layout).
+    // _gtbOpenInstrDetailFor opens #show-futures-signal popup (or reuses it if already open)
+    // then calls _gtbLoadInstrDetailPanel(symbol) which fetches all live data.
+    if (typeof _gtbOpenInstrDetailFor === 'function') {
+        _gtbOpenInstrDetailFor(symbol);
+        return;
     }
 
-    let breakOutNineFifteen = JSON.parse(localStorage.getItem("VALID_BREAKOUT_NINE_FIFTEEN"));
-    if (breakOutNineFifteen[symbol] == undefined) {
-        breakOutNineFifteen[symbol] = {};
-        breakOutNineFifteen[symbol]['CLOSE_9_15'] = "B/W"
+    // Fallback: open the old-style popup if grootTradeBot hasn't loaded yet
+    let tempName = symbol.replaceAll(' ', '-').replaceAll('&', '-');
+    let breakOutNineFifteen = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN')) || {};
+    if (!breakOutNineFifteen[symbol]) {
+        breakOutNineFifteen[symbol] = { CLOSE_9_15: 'B/W' };
     }
-
-    let c915 = breakOutNineFifteen[symbol]['CLOSE_9_15'];
-    let nineClass = (c915 === 'AST' || c915 === 'ASO') ? 'sv-badge sv-badge-green'
-                  : (c915 === 'BST' || c915 === 'BSO') ? 'sv-badge sv-badge-red'
-                  : 'sv-badge sv-badge-muted';
-
-    let scriptData  = generateTrends();
-
-    // Column header — same labels as main panel / stock viewer
+    let scriptData = generateTrends();
     let header = '<div id="sv-rows-head">'
         + '<span class="gtb-rh-instr">INSTRUMENT</span>'
         + '<span class="gtb-rh-chart">PRICE ACTION</span>'
@@ -452,53 +444,37 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
         + '<span class="gtb-rh-weights">SCORE</span>'
         + '<span class="gtb-rh-detail">DETAIL</span>'
         + '</div>';
-
-    // Row HTML — identical to stock viewer (all IDs carry -stock-viewer suffix)
     let rowHtml = _svRowHtml(symbol, scriptData, breakOutNineFifteen);
-
-    let html = '<div id="individual-stock-popup-window" class="sv-indiv-view">'
-             + header + rowHtml + '</div>';
-
-    // Title bar — includes futures premium placeholder (populated after setFutureDetails)
+    let html = '<div id="individual-stock-popup-window" class="sv-indiv-view">' + header + rowHtml + '</div>';
     let title = '<div style="display:flex;align-items:center;gap:8px;width:100%;">'
-    title += '<i class="bi bi-graph-up" style="font-size:0.6rem;opacity:0.7;"></i>'
-    title += '<span style="font-size:0.68rem;font-weight:800;color:var(--gtb-text,#e6edf3);">' + symbol + '</span>'
-    title += '<span style="font-size:0.5rem;font-weight:600;color:var(--gtb-muted,#7d8590);">Individual View</span>'
-    title += '<span style="flex:1;"></span>'
-    title += '<input checked title="Enable auto-refresh" type="checkbox" id="enable-auto-refresh-individual" style="cursor:pointer;accent-color:var(--gtb-blue,#00b4d8);">'
-    title += popupWinControls("popup-custom-style-groot-trade-bot-stock")
-    title += '</div>'
-
+        + '<i class="bi bi-graph-up" style="font-size:0.6rem;opacity:0.7;"></i>'
+        + '<span style="font-size:0.68rem;font-weight:800;color:var(--gtb-text,#e6edf3);">' + symbol + '</span>'
+        + '<span style="font-size:0.5rem;font-weight:600;color:var(--gtb-muted,#7d8590);">Individual View</span>'
+        + '<span style="flex:1;"></span>'
+        + popupWinControls('popup-custom-style-groot-trade-bot-stock')
+        + '</div>';
     showPopUpWindow('groot-trade-bot-stock', html, symbol, 1600, 380);
-    let divId = "popup-custom-style-groot-trade-bot-stock";
-    jQ("." + divId).find(".popupwindow_titlebar_text").html(title);
+    let divId = 'popup-custom-style-groot-trade-bot-stock';
+    jQ('.' + divId).find('.popupwindow_titlebar_text').html(title);
     hideNativePopupButtons(divId);
-    // Read theme from localStorage — works even when main dashboard isn't in the DOM
     var _isLight = (localStorage.getItem('GTB_THEME') || 'dark') === 'light';
     jQ('.' + divId).toggleClass('gtb-light', _isLight);
-
-    // Small delay so popup paints and CSS grid dimensions are computed
     await new Promise(function(r) { setTimeout(r, 60); });
-
-    // Exact same refresh pipeline as _svLoadCards
     let tid = tempName;
-    try { await showTopChart(symbol, tid + '-chart' + _SV_SUFFIX); } catch(e) { console.log(e); }
-    try {
-        let res = await showFutureDetails(symbol);
-        setFutureDetails(symbol, res, _SV_SUFFIX);
-    } catch(e) { console.log(e); }
+    try { await showTopChart(symbol, tid + '-chart' + _SV_SUFFIX); } catch(e) {}
+    try { let res = await showFutureDetails(symbol); setFutureDetails(symbol, res, _SV_SUFFIX); } catch(e) {}
     try {
         await showPrictionProbabilty(symbol);
         showOIOBVBarChart(symbol, _SV_SUFFIX);
         _gtbRenderOIMatrix(symbol, _SV_SUFFIX);
         try {
-            var sc = computeInstrumentScore(symbol);
+            var sc2 = computeInstrumentScore(symbol);
             if (!INSTRUMENT_SCORE_MAP[symbol]) INSTRUMENT_SCORE_MAP[symbol] = {};
-            INSTRUMENT_SCORE_MAP[symbol].score = sc;
+            INSTRUMENT_SCORE_MAP[symbol].score = sc2;
             _gtbUpdateWeightBars(symbol, _SV_SUFFIX);
-            _svRenderScoreConfidence(symbol, sc, _SV_SUFFIX);
-        } catch(e2) { console.log(e2); }
-    } catch(e) { console.log(e); }
+            _svRenderScoreConfidence(symbol, sc2, _SV_SUFFIX);
+        } catch(e2) {}
+    } catch(e) {}
 }
 
 

@@ -384,7 +384,8 @@ async function showTrendingOI(instrument, strikToShowOverride) {
             let fromDay  = isMcx ? _gtbMcxPrevDay()   : _gtbPrevDay();
             let toDay    = isMcx ? _gtbMcxCurrDayTo() : _gtbCurrDayTo();
             let spotData = await getHistoricalDataUsingPromise(underlyingToken, fromDay, toDay, HISTORICAL_DATA_INTERVAL_OVERRIDE);
-            spotCandles = (spotData && spotData['data'] && spotData['data']['candles']) ? spotData['data']['candles'] : [];
+            let rawSpot = (spotData && spotData['data'] && spotData['data']['candles']) ? spotData['data']['candles'] : [];
+            spotCandles = _gtbTrimCandles(rawSpot, isMcx ? MCX_CURRENT_DAY : undefined);
         }
     } catch(e) { console.log('IV: could not fetch spot candles', e); }
 
@@ -489,22 +490,21 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
 
     jQ.each(strikeMap, function (index, item) {
         try {
-            let currDataCE = item['currDataCE']['data']['candles']
-            let currDataPE = item['currDataPE']['data']['candles']
+            // Apply snapshot end-time trim: strips prev-day candles and cuts at GTB_HIST_TIME
+            let currDataCE = _gtbTrimCandles(item['currDataCE']['data']['candles'])
+            let currDataPE = _gtbTrimCandles(item['currDataPE']['data']['candles'])
 
             let prevDataCE = item['prevDataCE']['data']['candles']
             let prevDataPE = item['prevDataPE']['data']['candles']
 
-            if (currDataCE.length == 0) {
-                currDataCE = prevDataCE
-            }
+            // For OI/OBV/volume calcs: fall back to prev-day when today has no candles.
+            // Do NOT overwrite currDataCE/PE — _fetchLTP reads them for LTP and must get
+            // null (→ BS estimate) for illiquid strikes, not yesterday's closing price.
+            let oiCE = currDataCE.length ? currDataCE : prevDataCE
+            let oiPE = currDataPE.length ? currDataPE : prevDataPE
 
-            if (currDataPE.length == 0) {
-                currDataPE = prevDataPE
-            }
-
-            let OI_CE = currDataCE[currDataCE.length - 1][6]
-            let OI_PE = currDataPE[currDataPE.length - 1][6]
+            let OI_CE = oiCE[oiCE.length - 1][6]
+            let OI_PE = oiPE[oiPE.length - 1][6]
 
             totalCEOI = totalCEOI + OI_CE
             totalPEOI = totalPEOI + OI_PE
@@ -525,18 +525,26 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
             chCEOI = chCEOI + (OI_CE - PREV_OI_CE)
             chPEOI = chPEOI + (OI_PE - PREV_OI_PE)
 
+            // Store trimmed current-day candles (may be empty for illiquid strikes)
             obj['currDataCE'] = currDataCE
             obj['currDataPE'] = currDataPE
 
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
-            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
-            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, oiCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, oiPE)
+
+            // Today's total option volume (sum of 5-min candle volumes)
+            obj['VOL_CE'] = parseFloat(oiCE.reduce(function(s, c) { return s + (c[5] || 0); }, 0) / OI_DIVISOR).toFixed(1)
+            obj['VOL_PE'] = parseFloat(oiPE.reduce(function(s, c) { return s + (c[5] || 0); }, 0) / OI_DIVISOR).toFixed(1)
+            // Yesterday's total option volume (baseline for conviction ratio)
+            obj['PREV_VOL_CE'] = parseFloat(prevDataCE.reduce(function(s, c) { return s + (c[5] || 0); }, 0) / OI_DIVISOR).toFixed(1)
+            obj['PREV_VOL_PE'] = parseFloat(prevDataPE.reduce(function(s, c) { return s + (c[5] || 0); }, 0) / OI_DIVISOR).toFixed(1)
 
             // IV series — one IV per candle using Black-Scholes inversion
             if (expiryDateStr && spotCandles.length) {
-                obj['CE_IV'] = calculateIVSeries(currDataCE, index, true,  expiryDateStr, spotCandles)
-                obj['PE_IV'] = calculateIVSeries(currDataPE, index, false, expiryDateStr, spotCandles)
+                obj['CE_IV'] = calculateIVSeries(oiCE, index, true,  expiryDateStr, spotCandles)
+                obj['PE_IV'] = calculateIVSeries(oiPE, index, false, expiryDateStr, spotCandles)
             } else {
                 obj['CE_IV'] = []
                 obj['PE_IV'] = []
@@ -554,10 +562,62 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
 
 
     tableData.sort(function (a, b) { return parseFloat(a.STRIKE) - parseFloat(b.STRIKE) })
+
+    // ── Derived metrics ────────────────────────────────────────────────────────
+
+    // Total today/yesterday volume across all strikes
+    let totalVolCE = 0, totalVolPE = 0, prevVolCE = 0, prevVolPE = 0;
+    tableData.forEach(function(r) {
+        totalVolCE += parseFloat(r['VOL_CE']) || 0;
+        totalVolPE += parseFloat(r['VOL_PE']) || 0;
+        prevVolCE  += parseFloat(r['PREV_VOL_CE']) || 0;
+        prevVolPE  += parseFloat(r['PREV_VOL_PE']) || 0;
+    });
+
+    // IV Skew: PE OTM IV (ATM−2) minus CE OTM IV (ATM+2), in %.
+    // Positive skew = put demand > call demand = fear / bearish bias.
+    // Negative skew = call demand > put demand = bullish sentiment.
+    let ivSkew = null;
+    let atmIdx = -1;
+    for (let i = 0; i < tableData.length; i++) { if (tableData[i]['ATM_STRIKE']) { atmIdx = i; break; } }
+    if (atmIdx < 0) atmIdx = Math.floor(tableData.length / 2);
+    let peOTM = tableData[atmIdx - 2], ceOTM = tableData[atmIdx + 2];
+    if (peOTM && ceOTM) {
+        let peIVLast = peOTM['PE_IV'].length ? peOTM['PE_IV'][peOTM['PE_IV'].length - 1].iv : null;
+        let ceIVLast = ceOTM['CE_IV'].length ? ceOTM['CE_IV'][ceOTM['CE_IV'].length - 1].iv : null;
+        if (peIVLast !== null && ceIVLast !== null) ivSkew = parseFloat((peIVLast - ceIVLast).toFixed(2));
+    }
+    // ATM IV (for reference)
+    let atmIV = null;
+    let atmRow = tableData[atmIdx];
+    if (atmRow) {
+        let ceAtm = atmRow['CE_IV'].length ? atmRow['CE_IV'][atmRow['CE_IV'].length - 1].iv : null;
+        let peAtm = atmRow['PE_IV'].length ? atmRow['PE_IV'][atmRow['PE_IV'].length - 1].iv : null;
+        if (ceAtm !== null && peAtm !== null) atmIV = parseFloat(((ceAtm + peAtm) / 2).toFixed(2));
+    }
+
+    // OI Concentration: what % of total OI sits at ATM±1 (the 3 central strikes).
+    // High concentration (>60%) = strong wall, decisive support/resistance.
+    // Low concentration (<35%) = OI is spread, weaker directional signal.
+    let totalOI = 0, centralOI = 0;
+    tableData.forEach(function(r, i) {
+        let oi = (parseFloat(r['OI_CE']) || 0) + (parseFloat(r['OI_PE']) || 0);
+        totalOI += oi;
+        if (Math.abs(i - atmIdx) <= 1) centralOI += oi;
+    });
+    let oiConcentration = totalOI > 0 ? parseFloat((centralOI / totalOI * 100).toFixed(1)) : null;
+
     let map = {}
-    map['tableData'] = tableData
-    map['pcr'] = pcr
-    map['chPcr'] = chPcr
+    map['tableData']       = tableData
+    map['pcr']             = pcr
+    map['chPcr']           = chPcr
+    map['totalVolCE']      = parseFloat(totalVolCE.toFixed(1))
+    map['totalVolPE']      = parseFloat(totalVolPE.toFixed(1))
+    map['prevVolCE']       = parseFloat(prevVolCE.toFixed(1))
+    map['prevVolPE']       = parseFloat(prevVolPE.toFixed(1))
+    map['ivSkew']          = ivSkew       // PE_OTM_IV - CE_OTM_IV (%)
+    map['atmIV']           = atmIV        // avg ATM CE+PE IV (%)
+    map['oiConcentration'] = oiConcentration  // % of OI at ATM±1
     // Underlying spot candles retained for per-5min score reconstruction
     // (renderScoreHistory derives priceChange@T from these). See _oiScoreAtTime().
     map['spotCandles'] = spotCandles

@@ -421,18 +421,86 @@
 
 /* ── Futures Signal popup ──────────────────────────────────────── */
 .fsig-wrap { font-size: 0.72rem; color: var(--gtb-text); }
-.fsig-bar { display: flex; gap: 6px; margin-bottom: 8px; }
-.fsig-bar input {
-  flex: 1; background: var(--gtb-bg); color: var(--gtb-text);
-  border: 1px solid var(--gtb-border); padding: 6px 10px; font-size: 0.72rem; outline: none;
+
+/* Top bar: single flex row — search | picks (scroll) | clear */
+.fsig-topbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-bottom: 1px solid var(--gtb-border);
+  background: var(--gtb-surface); flex-shrink: 0;
 }
-.fsig-bar input:focus { border-color: var(--gtb-accent); }
-.fsig-picks { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.fsig-topbar-search {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--gtb-bg); border: 1px solid var(--gtb-border);
+  padding: 4px 8px; flex-shrink: 0;
+}
+.fsig-topbar-search input {
+  background: transparent; color: var(--gtb-text); border: none; outline: none;
+  font-size: 0.62rem; width: 180px;
+}
+/* Chip-based multi-select search */
+.fsig-chip-search {
+  display: flex; align-items: center; gap: 0;
+  background: var(--gtb-bg); border: 1px solid var(--gtb-border);
+  padding: 3px 6px; flex-shrink: 0; min-width: 260px; max-width: 480px;
+}
+.fsig-chip-box {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
+  flex: 1; min-width: 0; cursor: text;
+}
+.fsig-chip-box input {
+  background: transparent; color: var(--gtb-text); border: none; outline: none;
+  font-size: 0.62rem; min-width: 80px; flex: 1;
+}
+.fsig-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--gtb-accent); color: #fff;
+  font-size: 0.52rem; font-weight: 800; padding: 1px 5px;
+  white-space: nowrap; user-select: none;
+}
+.fsig-chip-x { cursor: pointer; font-size: 0.65rem; opacity: 0.8; }
+.fsig-chip-x:hover { opacity: 1; }
+/* Autocomplete dropdown — absolutely positioned inside popup content */
+.fsig-ac-drop {
+  position: absolute; z-index: 9999; display: none;
+  background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-height: 220px; overflow-y: auto;
+}
+.fsig-ac-item {
+  padding: 5px 10px; font-size: 0.6rem; font-weight: 700; cursor: pointer;
+  color: var(--gtb-text); white-space: nowrap;
+}
+.fsig-ac-item:hover { background: var(--gtb-accent); color: #fff; }
+.fsig-add-btn {
+  background: var(--gtb-accent); color: #fff; border: none;
+  padding: 4px 10px; font-size: 0.58rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.fsig-add-btn:hover { opacity: 0.85; }
+.fsig-picks-row {
+  display: flex; align-items: center; gap: 4px; overflow-x: auto; flex: 1;
+  scrollbar-width: none;
+}
+.fsig-picks-row::-webkit-scrollbar { display: none; }
 .fsig-pick {
-  background: var(--gtb-surface2); border: 1px solid var(--gtb-border2); color: var(--gtb-muted);
-  font-size: 0.62rem; font-weight: 700; padding: 3px 9px; cursor: pointer;
+  background: transparent; border: 1px solid var(--gtb-border2); color: var(--gtb-muted);
+  font-size: 0.56rem; font-weight: 700; padding: 2px 7px; cursor: pointer; flex-shrink: 0; white-space: nowrap;
 }
 .fsig-pick:hover { color: var(--gtb-accent); border-color: var(--gtb-accent); }
+.fsig-pick.fsig-pick-selected {
+  background: var(--gtb-accent); border-color: var(--gtb-accent); color: #fff;
+}
+.fsig-pick.fsig-pick-selected:hover { opacity: 0.85; }
+.fsig-load-sel-btn {
+  background: var(--gtb-accent); border: none; color: #fff;
+  font-size: 0.56rem; font-weight: 800; padding: 4px 10px; cursor: pointer; flex-shrink: 0; white-space: nowrap;
+  display: none;
+}
+.fsig-load-sel-btn.fsig-load-sel-visible { display: block; }
+.fsig-load-sel-btn:hover { opacity: 0.85; }
+.fsig-clear-btn {
+  background: transparent; border: 1px solid var(--gtb-border2); color: var(--gtb-muted);
+  padding: 4px 8px; font-size: 0.6rem; cursor: pointer; flex-shrink: 0;
+}
+.fsig-clear-btn:hover { color: var(--gtb-red); border-color: var(--gtb-red); }
 .fsig-result { min-height: 80px; }
 .fsig-card { border: 1px solid var(--gtb-border2); background: var(--gtb-bg); }
 .fsig-card img { max-width: 26px !important; max-height: 26px !important; vertical-align: middle; }
@@ -2681,7 +2749,6 @@ td.details-control {
 }
 .sv-indiv-view .gtb-row-fut .gtb-cell-fut-signals,
 .sv-indiv-view .gtb-row-fut .gtb-cell-fut-remark { width: 100%; flex: unset; }
-#gtb-rows-head,
 .gtb-row {
   display: grid;
   grid-template-columns:
@@ -2702,25 +2769,29 @@ td.details-control {
   align-items: stretch;
 }
 
-/* Sticky column header — sticks to top AND left first cell sticks left */
+/* Column header row for card-scroll layout — panel labels strip */
 #gtb-rows-head {
   flex-shrink: 0;
-  position: sticky; top: 0; z-index: 12;
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
   background: var(--gtb-surface2);
   border-bottom: 1px solid var(--gtb-border);
-  font-size: 0.46rem; font-weight: 800; letter-spacing: 0.12em;
+  font-size: 0.42rem; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--gtb-muted);
+  padding: 0;
+  min-height: 0;
+  gap: 0;
 }
 #gtb-rows-head > span {
-  padding: 4px 8px; border-right: 1px solid var(--gtb-border2);
+  padding: 4px 8px;
+  border-right: 1px solid var(--gtb-border2);
   display: flex; align-items: center;
+  white-space: nowrap;
+  flex: 1 1 0;
 }
 #gtb-rows-head > span:last-child { border-right: none; }
-/* Sticky instrument header cell */
-#gtb-rows-head > span:first-child {
-  position: sticky; left: 0; z-index: 13;
-  background: var(--gtb-surface2);
-}
+#gtb-rows-head > span:first-child { flex: 0 0 auto; }
 
 /* Rows container — stacks rows vertically within the scroll wrapper */
 #gtb-rows {
@@ -2972,12 +3043,27 @@ td.details-control {
 .gtb-cell-fut-remark {
   font-size: 0.5rem !important; font-weight: 700;
   font-family: var(--gtb-mono) !important;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: var(--gtb-muted); max-width: 90px;
+  color: var(--gtb-muted);
+  display: flex; align-items: center; flex-wrap: wrap; gap: 3px;
+  min-width: 0;
 }
 
 /* ── Premium chip (CONTANGO / BACKWARDATION) ────────────────────────── */
 .gtb-cell-premium-chip { font-size: 0.5rem !important; }
+
+/* ── Net GEX chip in identity strip ─────────────────────────────────── */
+.gtb-gex-chip {
+  font-size: 0.48rem;
+  font-family: var(--gtb-mono);
+  white-space: nowrap;
+  margin-left: 4px;
+}
+.gtb-avwap-chip {
+  font-size: 0.48rem;
+  font-family: var(--gtb-mono);
+  white-space: nowrap;
+  margin-left: 4px;
+}
 
 /* ── OI chips ────────────────────────────────────────────────────────── */
 .gtb-cell-data-bar .gtb-pcr-chip,
@@ -4935,7 +5021,10 @@ td.details-control {
     padding: 3px 6px; background: var(--gtb-surface);
     border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0;
     overflow-x: auto; white-space: nowrap;
+    overflow: visible; /* allow settings dropdown to show below */
 }
+/* Spacer that pushes controls to the right */
+.gtb-tab-sep { flex: 1; min-width: 8px; }
 .gtb-tab {
     background: transparent; border: 1px solid transparent;
     border-radius: 3px; color: var(--gtb-muted);
@@ -4958,6 +5047,53 @@ td.details-control {
 }
 #gtb-right {
     display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;
+}
+
+/* ── Signals tab pane — 3-column layout ──────────────────────────────── */
+#gtb-sig-pane {
+    height: 100%; display: flex; flex-direction: column; overflow: hidden;
+}
+#gtb-sig-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    flex: 0 0 55%;
+    min-height: 0;
+    overflow: hidden;
+}
+#gtb-sig-iv-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 1px solid var(--gtb-border);
+}
+.gtb-sig-col {
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--gtb-border);
+    overflow: hidden; min-height: 0;
+}
+.gtb-sig-col:last-child { border-right: none; }
+.gtb-sig-hdr {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 8px; flex-shrink: 0;
+    background: var(--gtb-surface2);
+    border-bottom: 1px solid var(--gtb-border);
+    font-size: 0.5rem; font-weight: 800; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--gtb-muted);
+}
+.gtb-sig-hdr-btn {
+    font-size: 0.46rem; font-weight: 700; color: var(--gtb-accent);
+    background: transparent; border: 1px solid var(--gtb-accent)44;
+    border-radius: 3px; padding: 1px 5px; cursor: pointer;
+    transition: background 0.12s;
+}
+.gtb-sig-hdr-btn:hover { background: var(--gtb-accent)18; }
+.gtb-sig-col > div:not(.gtb-sig-hdr) {
+    flex: 1; overflow: auto; min-height: 0;
+}
+.gtb-sig-wait {
+    padding: 16px; text-align: center;
+    font-size: 0.56rem; color: var(--gtb-muted); font-style: italic;
 }
 
 /* Tab grid for non-main panes */
@@ -5052,24 +5188,15 @@ td.details-control {
 #gtb-pane-analysis { display: flex; flex-direction: column; overflow: hidden; }
 #gtb-pane-analysis #bt-wrap { flex: 1; overflow-y: auto; }
 
-/* ── Groot window control buttons (outside main-trade-bot-container) ────── */
+/* ── Groot window control buttons — fixed to viewport top-right ─────────── */
 #gtb-winctrl {
-    position: absolute;
-    top: 9px;
-    right: 10px;
+    position: fixed;
+    top: 10px;
+    right: 12px;
     display: flex;
     gap: 4px;
-    z-index: 20;
+    z-index: 99000;
     pointer-events: all;
-}
-
-/* ── Win controls: fixed on body, above ALL groot content ───────────────── */
-#gtb-winctrl {
-    position: fixed !important;
-    display: flex !important;
-    gap: 4px !important;
-    z-index: 9500 !important;
-    pointer-events: all !important;
 }
 
 /* ── Popup library container above groot bot window ─────────────────────── */
@@ -5552,11 +5679,23 @@ td.details-control {
     background: transparent !important;
 }
 
-/* ── Floating quick-access toolbar ─────────────────────────────────── */
+/* ── Floating quick-access toolbar (flyout) ─────────────────────────── */
 #gtb-float-bar {
     position: fixed !important;
     right: 0 !important;
+    bottom: 40px !important;
     z-index: 8500 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0 !important;
+    user-select: none !important;
+    font-family: inherit !important;
+    box-sizing: border-box !important;
+    width: 28px !important;
+}
+/* Flyout panel — slides up from trigger */
+#gtb-float-panel {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -5564,19 +5703,61 @@ td.details-control {
     background: #0b1220 !important;
     border: 1px solid #1e2f46 !important;
     border-right: none !important;
-    border-radius: 6px 0 0 6px !important;
-    padding: 3px 2px !important;
-    box-shadow: -2px 0 12px rgba(0,0,0,0.65) !important;
-    user-select: none !important;
-    font-family: inherit !important;
+    border-bottom: none !important;
+    border-radius: 6px 0 0 0 !important;
+    padding: 0 2px !important;
+    box-shadow: -2px -4px 14px rgba(0,0,0,0.65) !important;
     box-sizing: border-box !important;
     width: 28px !important;
+    overflow: hidden !important;
+    max-height: 0 !important;
+    transition: max-height 0.22s ease, padding 0.22s ease !important;
 }
-#gtb-float-bar.gtb-light {
+#gtb-float-bar.gtb-fb-open #gtb-float-panel {
+    max-height: 700px !important;
+    padding: 3px 2px !important;
+}
+#gtb-float-bar.gtb-light #gtb-float-panel {
     background: #f0f2f5 !important;
     border-color: #c8cdd6 !important;
-    box-shadow: -2px 0 12px rgba(0,0,0,0.18) !important;
+    box-shadow: -2px -4px 14px rgba(0,0,0,0.18) !important;
 }
+/* Trigger — always visible tab at the bottom */
+#gtb-float-trigger {
+    background: #0b1220 !important;
+    border: 1px solid #1e2f46 !important;
+    border-right: none !important;
+    border-radius: 0 0 0 6px !important;
+    color: #4e6a8a !important;
+    font-size: 12px !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    box-shadow: -2px 2px 10px rgba(0,0,0,0.55) !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    transition: color 0.12s, background 0.12s !important;
+    flex-shrink: 0 !important;
+}
+#gtb-float-bar.gtb-fb-open #gtb-float-trigger {
+    border-top: 1px solid #1e2f46 !important;
+    border-radius: 0 !important;
+    color: #4cc9e0 !important;
+}
+#gtb-float-trigger:hover { color: #4cc9e0 !important; background: rgba(76,201,224,0.10) !important; }
+#gtb-float-bar.gtb-light #gtb-float-trigger {
+    background: #f0f2f5 !important;
+    border-color: #c8cdd6 !important;
+    color: #5a7399 !important;
+    box-shadow: -2px 2px 10px rgba(0,0,0,0.18) !important;
+}
+#gtb-float-bar.gtb-light #gtb-float-trigger:hover { color: #1a6fa8 !important; background: rgba(26,111,168,0.10) !important; }
+#gtb-float-bar.gtb-light.gtb-fb-open #gtb-float-trigger { color: #1a6fa8 !important; border-top-color: #c8cdd6 !important; }
+/* Handle (drag) inside panel */
 .gtb-fb-handle {
     color: #2d4160 !important;
     font-size: 10px !important;
@@ -5590,6 +5771,7 @@ td.details-control {
     box-sizing: border-box !important;
 }
 #gtb-float-bar.gtb-light .gtb-fb-handle { color: #aab0bc !important; }
+/* Tool buttons inside panel */
 .gtb-fb-btn {
     background: transparent !important;
     border: none !important;
@@ -5621,9 +5803,7 @@ td.details-control {
     color: #1a6fa8 !important;
     background: rgba(26,111,168,0.12) !important;
 }
-.gtb-fb-btn:active {
-    background: rgba(76,201,224,0.22) !important;
-}
+.gtb-fb-btn:active { background: rgba(76,201,224,0.22) !important; }
 .gtb-fb-groot {
     margin-top: 3px !important;
     border-top: 1px solid #1e2f46 !important;
@@ -5634,14 +5814,8 @@ td.details-control {
     max-height: 22px !important;
 }
 #gtb-float-bar.gtb-light .gtb-fb-groot { border-top-color: #c8cdd6 !important; color: #1a6fa8 !important; }
-.gtb-fb-groot:hover {
-    color: #6cb4ff !important;
-    background: rgba(108,180,255,0.13) !important;
-}
-#gtb-float-bar.gtb-light .gtb-fb-groot:hover {
-    color: #0d5c94 !important;
-    background: rgba(26,111,168,0.12) !important;
-}
+.gtb-fb-groot:hover { color: #6cb4ff !important; background: rgba(108,180,255,0.13) !important; }
+#gtb-float-bar.gtb-light .gtb-fb-groot:hover { color: #0d5c94 !important; background: rgba(26,111,168,0.12) !important; }
 
 /* ── Commodities popup v2 ──────────────────────────────────────────── */
 .cmd-wrap { display: flex; flex-direction: column; height: 100%; gap: 0; }
@@ -5657,6 +5831,27 @@ td.details-control {
     display: flex; flex: 1; min-height: 0;
     overflow: auto; gap: 1px;
     background: var(--gtb-border, #21262d);
+}
+
+/* ── Crude oil session alert chips ─────────────────────────────── */
+.cmd-session-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.46rem; padding: 2px 6px;
+    border: 1px solid var(--gtb-border);
+    background: var(--gtb-surface);
+    white-space: nowrap;
+}
+.cmd-session-active {
+    border-color: var(--gtb-green);
+    background: color-mix(in srgb, var(--gtb-green) 12%, transparent);
+}
+.cmd-session-blink {
+    border-color: var(--gtb-amber);
+    animation: cmd-blink 1s step-end infinite;
+}
+@keyframes cmd-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
 }
 .cmd-twin-col {
     flex: 1; min-width: 0;
@@ -6094,8 +6289,7 @@ td.details-control {
     max-width: 300px !important;
     border-right: 1px solid var(--gtb-border2) !important;
     border-bottom: none !important;
-    overflow-y: auto;
-    height: 100%;
+    overflow-y: visible;
     min-height: 0;
 }
 #gtb-rows.gtb-col-scroll .gtb-instr-card-v:last-child {
@@ -6119,9 +6313,10 @@ td.details-control {
     display: flex !important;
     flex-direction: column !important;
 }
-/* Identity panel always first; sticky within its own scroll container (main dashboard cards) */
+/* Identity panel always first; sticky within #gtb-rows scroll (cards must NOT have overflow-y to allow this) */
 .gtb-ic-panel-identity {
     order: -1 !important;
+    flex-shrink: 0 !important;
     position: sticky !important;
     top: 0 !important;
     z-index: 8 !important;
@@ -6216,20 +6411,50 @@ td.details-control {
 .fsig-multi-row {
     display: flex;
     flex-direction: row;
-    gap: 8px;
-    padding: 8px;
+    gap: 10px;
+    padding: 10px;
     overflow-x: auto;
-    overflow-y: auto;
+    overflow-y: hidden;
     flex: 1;
-    align-items: flex-start;
+    align-items: stretch;
     scrollbar-width: thin;
     scrollbar-color: var(--gtb-border) transparent;
 }
 .fsig-multi-row .gtb-dv-col {
-    flex: 0 0 420px;
-    width: 420px;
-    min-width: 420px;
-    display: block; /* block context makes position:sticky on identity panel reliable */
+    flex: 0 0 600px;
+    width: 600px;
+    min-width: 600px;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    border: 1px solid var(--gtb-border);
+    overflow: hidden;
+}
+
+/* 2-column body row inside each card */
+.gtb-dv-body-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+.gtb-dv-left-col {
+    flex: 0 0 280px;
+    width: 280px;
+    border-right: 1px solid var(--gtb-border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+}
+.gtb-dv-right-col {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
 }
 /* Override fixed panel heights inside the detail view columns */
 .fsig-multi-row .gtb-ic-panel[data-col="chart"] .gtb-row-chart { height: 190px !important; }
@@ -6259,6 +6484,7 @@ td.details-control {
     height: 100% !important;
     overflow: hidden !important;
     padding: 0 !important;
+    position: relative !important; /* anchors .fsig-ac-drop absolute positioning */
 }
 .popup-custom-style-gtb-instr-detail .popupwindow_content > * {
     flex: 1;

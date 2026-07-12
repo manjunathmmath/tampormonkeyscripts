@@ -899,7 +899,8 @@ async function showTrendingOIViewer(instrument) {
             let fromDay  = isMcx ? _gtbMcxPrevDay()   : _gtbPrevDay();
             let toDay    = isMcx ? _gtbMcxCurrDayTo() : _gtbCurrDayTo();
             let spotData = await getHistoricalDataUsingPromise(underlyingToken, fromDay, toDay, interval);
-            spotCandles = (spotData && spotData['data'] && spotData['data']['candles']) ? spotData['data']['candles'] : [];
+            let rawSpot = (spotData && spotData['data'] && spotData['data']['candles']) ? spotData['data']['candles'] : [];
+            spotCandles = _gtbTrimCandles(rawSpot, isMcx ? MCX_CURRENT_DAY : undefined);
         }
     } catch(e) { console.log('OIViewer IV: could not fetch spot candles', e); }
 
@@ -969,22 +970,21 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike, spotCan
 
     jQ.each(strikeMap, function (index, item) {
         try {
-            let currDataCE = item['currDataCE']['data']['candles']
-            let currDataPE = item['currDataPE']['data']['candles']
+            // Apply snapshot end-time trim: strips prev-day candles and cuts at GTB_HIST_TIME
+            let currDataCE = _gtbTrimCandles(item['currDataCE']['data']['candles'])
+            let currDataPE = _gtbTrimCandles(item['currDataPE']['data']['candles'])
 
             let prevDataCE = item['prevDataCE']['data']['candles']
             let prevDataPE = item['prevDataPE']['data']['candles']
 
-            if (currDataCE.length == 0) {
-                currDataCE = prevDataCE
-            }
+            // For OI/OBV/volume calcs: fall back to prev-day when today has no candles.
+            // Do NOT overwrite currDataCE/PE — _fetchLTP reads them for LTP and must get
+            // null (→ BS estimate) for illiquid strikes, not yesterday's closing price.
+            let oiCE = currDataCE.length ? currDataCE : prevDataCE
+            let oiPE = currDataPE.length ? currDataPE : prevDataPE
 
-            if (currDataPE.length == 0) {
-                currDataPE = prevDataPE
-            }
-
-            let OI_CE = currDataCE[currDataCE.length - 1][6]
-            let OI_PE = currDataPE[currDataPE.length - 1][6]
+            let OI_CE = oiCE[oiCE.length - 1][6]
+            let OI_PE = oiPE[oiPE.length - 1][6]
 
             totalCEOI = totalCEOI + OI_CE
             totalPEOI = totalPEOI + OI_PE
@@ -1005,19 +1005,20 @@ async function showOITrendingDetailsOiViewer(strikeData, selectedStrike, spotCan
             chCEOI = chCEOI + (OI_CE - PREV_OI_CE)
             chPEOI = chPEOI + (OI_PE - PREV_OI_PE)
 
+            // Store trimmed current-day candles (may be empty for illiquid strikes)
             obj['currDataCE'] = currDataCE
             obj['currDataPE'] = currDataPE
 
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
 
-            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
-            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, oiCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, oiPE)
 
             // IV series — Black-Scholes inversion per candle (same as oiAnalyzer.js)
             if (expiryDateStr && spotCandles.length) {
-                obj['CE_IV'] = calculateIVSeries(currDataCE, index, true,  expiryDateStr, spotCandles)
-                obj['PE_IV'] = calculateIVSeries(currDataPE, index, false, expiryDateStr, spotCandles)
+                obj['CE_IV'] = calculateIVSeries(oiCE, index, true,  expiryDateStr, spotCandles)
+                obj['PE_IV'] = calculateIVSeries(oiPE, index, false, expiryDateStr, spotCandles)
             } else {
                 obj['CE_IV'] = []
                 obj['PE_IV'] = []
