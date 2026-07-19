@@ -1,4 +1,4 @@
-// ─── grootTradeBot.js ──────────────────────────────────────────────────────────
+﻿// ─── grootTradeBot.js ──────────────────────────────────────────────────────────
 // Main dashboard popup for the autoTrade Tampermonkey script.
 //
 // KEY RESPONSIBILITIES:
@@ -2002,8 +2002,12 @@ async function _gtbSigFetchAndRenderOI(isIndex) {
         }
         _gtbProgress(label + ' done ✓', 'green');
         setTimeout(_gtbProgressHide, 2000);
-        var freshList = _gtbAllOIInstruments().filter(function(it) { return it.group === group; });
-        _gtbSigOiColHtml(freshList, containerId);
+        if (isIndex) {
+            var freshList = _gtbAllOIInstruments().filter(function(it) { return it.group === group; });
+            _gtbSigOiColHtml(freshList, containerId);
+        } else {
+            _gtbSigOiWtdColHtml(containerId);
+        }
         try { _gtbRenderIVSignalsSection(); } catch(e) {}
     } catch(e) {
         _gtbProgressHide();
@@ -2131,6 +2135,63 @@ function _gtbComputeOIExtras(name, oiData) {
         mpConvergence:   mpConv,
         fetchedAt:       now
     };
+}
+
+// Renders weighted constituent OI split into NIFTY 50 and BANK NIFTY sub-sections.
+function _gtbSigOiWtdColHtml(containerId) {
+    var n50Names  = Object.keys(NIFTY_50_WEIGHTED_STOCKS  || {});
+    var bnkNames  = Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {});
+    var hasAny = false;
+    function _hasOI(n) {
+        var od = INSTRUMENT_SCORE_MAP[n] && INSTRUMENT_SCORE_MAP[n].oiData;
+        return od && od.tableData && od.tableData.length;
+    }
+    function _buildTable(names, groupLabel, groupColor) {
+        var filtered = names.filter(_hasOI);
+        if (!filtered.length) return '';
+        var OFFS = [-2, -1, 0, 1, 2];
+        var h = '<div style="margin-bottom:10px;">'
+            + '<div style="font-size:0.42rem;font-weight:800;letter-spacing:0.06em;color:' + groupColor + ';'
+            +   'padding:3px 6px;background:var(--gtb-surface);border-left:3px solid ' + groupColor + ';'
+            +   'border-bottom:1px solid var(--gtb-border);margin-bottom:2px;">'
+            +   groupLabel + ' <span style="font-weight:400;color:var(--gtb-muted);">(' + filtered.length + ' stocks)</span>'
+            + '</div>'
+            + '<table class="oic-matrix"><thead><tr>'
+            + '<th class="oic-sticky">Instrument</th>'
+            + '<th>OI Score ' + _ii('sig-oi-score') + '</th>'
+            + '<th>PCR ' + _ii('sig-oi-pcr') + '</th>'
+            + OFFS.map(function(o){ return '<th>' + (o===0?'ATM★':'ATM'+(o>0?'+'+o:o)) + '</th>'; }).join('')
+            + '</tr></thead><tbody>';
+        filtered.forEach(function(name) {
+            var sm = INSTRUMENT_SCORE_MAP[name] || {}, oiData = sm.oiData;
+            var td = oiData.tableData, atmIdx = -1;
+            for (var i = 0; i < td.length; i++) { if (td[i]['ATM_STRIKE']) { atmIdx = i; break; } }
+            if (atmIdx < 0) atmIdx = Math.floor(td.length / 2);
+            var pc = 0; try { pc = parseFloat(generateTrend(name).change) || 0; } catch(_e) {}
+            var oiScore = (sm.oi_obv != null) ? sm.oi_obv : 0;
+            var scColor = oiScore > 0 ? 'var(--gtb-green)' : oiScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+            h += '<tr><td class="oic-sticky"><b>' + name + '</b></td>'
+                + '<td style="color:' + scColor + ';font-weight:700;font-family:var(--gtb-mono);">' + (oiScore > 0 ? '+' : '') + (typeof oiScore === 'number' ? oiScore.toFixed(1) : oiScore) + '</td>'
+                + '<td style="font-family:var(--gtb-mono);">' + (oiData.pcr != null ? oiData.pcr : '—') + '</td>';
+            OFFS.forEach(function(off) {
+                var idx = atmIdx + off;
+                h += _gtbOICellCompact((idx >= 0 && idx < td.length) ? td[idx] : null, pc, off === 0);
+            });
+            h += '</tr>';
+        });
+        h += '</tbody></table></div>';
+        hasAny = true;
+        return h;
+    }
+    var html = '<div style="overflow-x:auto;">'
+        + _buildTable(n50Names,  'NIFTY 50 CONSTITUENTS',   'var(--gtb-blue)')
+        + _buildTable(bnkNames,  'BANK NIFTY CONSTITUENTS', 'var(--gtb-amber)')
+        + '</div>';
+    if (!hasAny) {
+        jQ(containerId).html('<div class="gtb-sig-wait">No OI data yet. Run a refresh first.</div>');
+        return;
+    }
+    jQ(containerId).html(html);
 }
 
 function _gtbSigOiColHtml(list, containerId) {
@@ -2405,7 +2466,7 @@ function _gtbRenderSignalsPane() {
     try {
         var allList = _gtbAllOIInstruments();
         _gtbSigOiColHtml(allList.filter(function(it) { return it.group === 'Index / Stock'; }),       '#gtb-sig-oi-index');
-        _gtbSigOiColHtml(allList.filter(function(it) { return it.group === 'Weighted constituent'; }), '#gtb-sig-oi-wtd');
+        _gtbSigOiWtdColHtml('#gtb-sig-oi-wtd');
     } catch(e) {}
     try { _gtbRenderIVSignalsSection(); } catch(e) {}
 
@@ -7697,6 +7758,58 @@ var GTB_INFO = {
         body:'One row per instrument. <b>Max Pain</b> is the strike where total open-interest loss for all option writers is minimised — spot tends to be pulled toward it near expiry. <b>Distance</b> = spot minus Max Pain (positive = spot above Max Pain, bearish pull back; negative = below, bullish pull up). <b>Net GEX</b> (Gamma Exposure) = sum of (gamma × OI × lot size) across all strikes; positive GEX = dealers are long gamma and act as market stabilisers (fade rallies/drops), negative GEX = dealers short gamma and amplify moves. <b>Flip Zones</b> are strikes where GEX crosses zero — price action typically accelerates beyond these levels.' },
     'mp-gex':     { icon:'bi-bar-chart-steps', title:'GEX Profile per Instrument',
         body:'Each card shows a per-strike GEX bar chart. <b>Green bars</b> = positive GEX at that strike (dealer long gamma → stabilising), <b>red bars</b> = negative GEX (dealer short gamma → trending/amplifying). The tallest bar is the dominant support/resistance level. The Max Pain strike is marked with a ★. Use this to identify where the market is likely to consolidate (cluster of positive GEX) vs where it can trend freely (negative GEX zone).' },
+    // ── Results Calendar ─────────────────────────────────────────────────────────
+    'rc-revenue': { icon:'bi-cash-stack', title:'Revenue / Net Sales',
+        body:'Total income / net sales for the reported quarter in ₹ Crore. For banks this is Net Interest Income + Other Income. Sourced from NSE financial results.' },
+    'rc-profit':  { icon:'bi-graph-up-arrow', title:'Net Profit (PAT)',
+        body:'Profit After Tax for the reported quarter in ₹ Crore. A positive value (green) means the company was profitable; negative (red) means a loss. This is the primary metric for the Outcome verdict.' },
+    'rc-yoy':     { icon:'bi-arrow-up-right-circle', title:'Revenue YoY %',
+        body:'Year-on-year percentage change in Revenue vs the same quarter last year. Positive = growing revenue. Note: NSE may not always provide prior-year comparisons in the summary API — click + to fetch full quarterly history.' },
+    'rc-pat-yoy': { icon:'bi-arrow-up-right-circle-fill', title:'Net Profit YoY %',
+        body:'Year-on-year percentage change in Net Profit vs the same quarter last year. Used to determine the Outcome: <b style="color:var(--gtb-green)">Strong Beat ≥20%</b>, <b>Beat ≥5%</b>, <b>In-Line ±5%</b>, <b style="color:var(--gtb-red)">Miss &lt;−5%</b>, <b style="color:var(--gtb-red)">Weak Miss &lt;−20%</b>.' },
+    // ── Overnight Carry Scanner ───────────────────────────────────────────────────
+    'oc-carry':   { icon:'bi-moon-stars-fill', title:'Overnight Carry Scanner',
+        body:'Predicts whether a position can be safely <b>carried overnight</b> (held past close for the next-day gap) for each selected stock. Everything is fetched <b>fresh from Kite historical data</b> — no cached/loaded data is used. For each stock it fetches: (1) spot 5-min candles → zone score, (2) futures 5-min candles → REMARK → futures score, (3) option CE/PE candles (ATM±2) → OI/OBV + Max Pain + IV Skew scores.<br><br>'
+           + '<b>Total = Zone + Futures + OI/OBV + Max Pain + IV Skew</b> — the same 5-factor formula as the main dashboard. Action: <b style="color:var(--gtb-green)">Total ≥ 3 → LONG CARRY</b>, <b style="color:var(--gtb-red)">Total ≤ −3 → SHORT CARRY</b>, otherwise <b style="color:var(--gtb-amber)">AVOID</b> (no clear edge — don\'t hold overnight). Select stocks, click Fetch &amp; Analyze; each stock takes ~10 Kite calls so keep the selection focused.' },
+    // ── Volume Profile / POC ──────────────────────────────────────────────────────
+    'vp-profile': { icon:'bi-bar-chart-steps', title:'Volume Profile / Point of Control',
+        body:'Volume distributed over <b>PRICE</b> instead of time — it shows exactly where institutions accepted value. Each Kite candle\'s volume is spread across the price bins its high–low range spans. Bars extend right; longer bar = more volume traded at that price.<br><br>'
+           + '<b style="color:var(--gtb-amber)">POC (Point of Control)</b> = the single price bin with the most volume — the value magnet price tends to return to. <b>Value Area</b> (blue bars) = the band holding 70% of the day\'s volume, i.e. the fair-value range; its edges are <b>VAH</b> (high) and <b>VAL</b> (low). Bins <b>outside</b> the value area (dim) are <b>low-volume nodes</b> — price rips through them fast because no one is defending there. The ◄ marker shows where the last price sits.<br><br>'
+           + '<b>Indices:</b> NIFTY 50 / BANK NIFTY spot candles have <b>no volume</b> (an index isn\'t traded), so the volume is pulled from the <b>index futures</b> and overlaid on the spot prices by timestamp — the profile is built on real futures volume at correct spot price levels. The status line notes "volume from futures" when this happens.' },
+    'vp-trade':   { icon:'bi-lightbulb-fill', title:'Volume Profile — Trade Setup',
+        body:'The setup derived from where price sits vs POC/VAH/VAL (classic auction-market logic):<br><br>'
+           + '<b style="color:var(--gtb-green)">Above VAH → LONG</b>: value accepted higher (bullish). Best entry is a pullback to VAH (now support), SL below POC, target = VAH + value-area width. Chasing is worse R:R than waiting for the retest.<br>'
+           + '<b style="color:var(--gtb-red)">Below VAL → SHORT</b>: value rejected lower (bearish). Entry on a bounce to VAL (now resistance), SL above POC.<br>'
+           + '<b>Inside value → mean-reversion toward POC</b>: upper half = fade short to POC; lower half = fade long to POC.<br>'
+           + '<b style="color:var(--gtb-amber)">At POC → NO TRADE</b>: maximum acceptance, coin-flip, no directional edge.<br><br>'
+           + 'Each card also shows the <b>flip condition</b> — e.g. a fade-short becomes a long breakout if VAH breaks with acceptance. This is a level guide, not a substitute for your entry trigger.' },
+    // ── Liquidity / SL-Hunt Scanner ───────────────────────────────────────────────
+    'lq-scan':    { icon:'bi-magnet-fill', title:'Liquidity / Stop-Loss Hunt Scanner',
+        body:'Detects <b>stop runs</b> (liquidity grabs): institutions push price THROUGH an obvious level to trigger clustered retail stops (free liquidity to fill against), then reclaim the level and reverse. All from Kite <b>1-min</b> candles for the current session.<br><br>'
+           + '<b>A genuine hunt = 4 things together:</b><br>'
+           + '1. <b>Sweep</b> — a candle wicks beyond a stop-cluster level (PDH/PDL, VAH/VAL, day open, VWAP, 9:15 BSO/BST, round numbers).<br>'
+           + '2. <b>Reclaim</b> — it closes back on the original side (long lower wick = bull grab; long upper wick = bear grab).<br>'
+           + '3. <b>Volume spike</b> — the stops firing show as ≥1.3× the rolling-average volume on that candle.<br>'
+           + '4. <b>OI non-confirmation</b> — futures OI does NOT confirm the breakout direction, so the move was a trap, not real.<br><br>'
+           + 'The <b>setup card</b> gives Entry / SL / Targets (T1 = POC, T2 = far value-area edge, since hunts fire outside value and revert toward it). <b style="color:var(--gtb-green)">OI CONFIRMS</b> badge = high-confidence reversal; <b style="color:var(--gtb-amber)">OI UNCONFIRMED</b> = futures actually confirm the move, so it may be a real break — lower confidence. The tables below list every detected sweep and the full watched-level map.<br><br>'
+           + '<b>Indices:</b> NIFTY 50 / BANK NIFTY spot candles have <b>no volume</b>, so the volume-spike test would never fire. Volume is pulled from the <b>index futures</b> and overlaid on the spot price candles by timestamp — so the sweep prices stay on spot (where the strike levels live) while the spike filter uses real futures volume. SENSEX has no NSE futures, so it can\'t be scanned this way.' },
+    // ── Master Scanner ────────────────────────────────────────────────────────────
+    'uni-scan':   { icon:'bi-binoculars-fill', title:'Master Scanner — 3 engines, one verdict',
+        body:'Runs all three scanners per instrument and fuses them into a single confluence verdict, so you don\'t have to cross-check three tools by hand.<br><br>'
+           + '<b style="color:var(--gtb-blue,#58a6ff)">Carry</b> (overnight/positional bias) — zone + futures + OI/OBV + Max Pain + IV Skew. Vote: ±1 if |total| ≥ 3, ±0.5 if ≥ 1.<br>'
+           + '<b style="color:var(--gtb-amber)">Volume Profile</b> (intraday structure) — where price sits vs POC/VAH/VAL. Vote: ±1 for a breakout/breakdown setup, ±0.5 for a fade.<br>'
+           + '<b style="color:var(--gtb-green)">SL-Hunt</b> (immediate trigger) — a recent sweep-and-reclaim. Vote: ±1 if OI confirms, ±0.5 if not; only counts if it fired in the last ~10 min.<br><br>'
+           + '<b>Confluence score</b> = sum of the three votes. <b style="color:var(--gtb-green)">≥ 2 STRONG LONG</b>, ≥ 1 LONG, <b style="color:var(--gtb-red)">≤ −2 STRONG SHORT</b>, ≤ −1 SHORT, else WAIT. '
+           + 'The <b>master trade card</b> picks the most actionable setup (a live SL-hunt trigger &gt; a volume-profile setup &gt; the carry bias) and shows Entry / SL / Target. A <b style="color:var(--gtb-amber)">conflict warning</b> appears when the overnight bias and the intraday trigger disagree. Click any table row to expand the full three-engine breakdown with the mini volume profile.<br><br>'
+           + 'Each instrument is ~13 Kite calls, so keep the selection focused. Indices use futures volume (see the * flag); SENSEX can\'t be volume-scanned.<br><br>'
+           + '<b>Zone quick-pick:</b> the buttons above the stock list pre-select every stock in a zone bucket so you can analyse a whole group at once. <b>9:15 break</b> buttons (AST/ASO/BSO/BST/B·W) are instant — read from the app\'s 9:15 scan. <b>Now</b> buttons use the live zone, classified instantly from the <b>LTP already stored by the dashboard refresh</b> (INSTRUMENT_LTP_PRICE) vs strike levels from the day open — no fetch. Only covers instruments whose LTP is loaded (watchlist / loaded), so refresh the dashboard first. "Show All" clears the bucket filter.<br><br>'
+           + '<b>When to run it (IST):</b><br>'
+           + '<b>9:20–9:45</b> — Opening read. 9:15 zone seals at 9:20; check AST/BST buckets + early SL-hunts. (Before 9:20 the 9:15 buckets are empty.)<br>'
+           + '<b>9:45–10:45</b> — Prime window. Highest volume; liquidity grabs / SL-hunt entries are most reliable here.<br>'
+           + '<b>12:00–13:30</b> — Lunch lull. Thin, choppy, false sweeps — the SL-Hunt and VP signals degrade. Prefer to wait.<br>'
+           + '<b>13:30–14:30</b> — Afternoon trend. Best for confirming whether the morning bias held (9:15 vs Now zone divergence).<br>'
+           + '<b>14:45–15:15</b> — Best for the <b>overnight carry</b> verdict: structure settled, VP meaningful, close enough to judge overnight risk. This is the run to <b>Export</b>.<br><br>'
+           + '<b>Recommendation:</b> two runs a day — a ~9:40 opening scan (use 9:15 AST/BST) and a ~2:50 carry scan (export it). Avoid trading the verdict during the 12:00–1:30 dead zone. The clock bar at the top shows the current phase live.' },
 };
 
 // Build the popover element once, lazily
@@ -9030,6 +9143,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
         +     '<div id="cmd-crude-meta" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 0;margin-bottom:4px;border-bottom:1px solid var(--gtb-border);font-size:0.48rem;"></div>'
         +     '<div id="cmd-crude-usdinr-div" style="margin-bottom:4px;"></div>'
         +     '<div id="cmd-crude-session" style="margin-bottom:4px;"></div>'
+        +     '<div id="cmd-crude-global" style="margin-bottom:6px;"></div>'
         +     '<div id="cmd-crude-levels" class="gtb-chart-levels" style="min-height:22px;"></div>'
         +     '<div id="cmd-crude-chart"  style="height:180px;"></div>'
         // Futures + Trend Probability side by side
@@ -9163,6 +9277,147 @@ jQ(document).on('click', '#show-commodities', function (e) {
             : '');
     }
 
+    // ── Feature 5: WTI global context + fair value signal ────────────────────
+    function _cmdRenderGlobalContext() {
+        var wtiCur  = parseFloat(localStorage.getItem('CMD_WTI_CUR')  || '0') || 0;
+        var wtiPrev = parseFloat(localStorage.getItem('CMD_WTI_PREV') || '0') || 0;
+
+        // USD/INR: try live LTP first, fall back to manual localStorage
+        var usdInr = 0, usdInrLive = false;
+        try {
+            var _ltpStore = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}');
+            var _liveFx = parseFloat((_ltpStore['USDINR'] || {}).ltp) || 0;
+            if (_liveFx > 0) { usdInr = _liveFx; usdInrLive = true; }
+        } catch(_e) {}
+        if (!usdInr) {
+            var _manFx = parseFloat(localStorage.getItem('CMD_USDINR') || '0') || 0;
+            if (_manFx > 0) usdInr = _manFx;
+        }
+        var usdInrManual = !usdInrLive;
+        var usdInrStale = false; // no range guard — INR/USD can move significantly
+
+        // MCX LTP — try multiple sources (async data may not be ready at static render time)
+        var mcxLtp = 0;
+        try { mcxLtp = parseFloat(((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}'))['CRUDEOILM'] || {}).ltp) || 0; } catch(_e) {}
+        if (!mcxLtp) { try { mcxLtp = parseFloat(generateTrend('CRUDEOILM').close) || 0; } catch(_e) {} }
+        if (!mcxLtp) { try { mcxLtp = parseFloat((INSTRUMENT_SCORE_MAP['CRUDEOILM'] || {}).open) || 0; } catch(_e) {} }
+        var fairVal = (wtiCur && usdInr) ? Math.round(wtiCur * usdInr) : 0;
+        var gap     = (fairVal && mcxLtp) ? ((mcxLtp - fairVal) / fairVal * 100) : null;
+
+        // Verdict
+        var wtiDir   = wtiCur && wtiPrev ? (wtiCur > wtiPrev ? 1 : wtiCur < wtiPrev ? -1 : 0) : 0;
+        var usdScore = 0;
+        try { usdScore = computeInstrumentScore('USDINR').current_trend || ((INSTRUMENT_SCORE_MAP['USDINR'] || {}).futures_trend || 0); } catch(_e) {}
+        var ovx = parseFloat(OVX) || 0;
+
+        var signal = 'WAIT', sigCol = 'var(--gtb-amber)', sigReason = [];
+        if (!wtiCur || !wtiPrev) {
+            signal = 'ENTER WTI'; sigCol = 'var(--gtb-muted)';
+            sigReason.push('Enter WTI current and previous close to compute signal');
+        } else {
+            // OVX guard — trumps everything
+            if (ovx >= 35) {
+                signal = 'NO TRADE'; sigCol = 'var(--gtb-red)';
+                sigReason.push('OVX ELEVATED (' + ovx.toFixed(1) + ') — volatility too high, widen SL or skip');
+            } else {
+                // Fair value gap override
+                var gapBias = 0;
+                if (gap !== null) {
+                    if (gap > 1.0)       { gapBias = -1; sigReason.push('MCX premium +' + gap.toFixed(1) + '% vs WTI — reversion drag'); }
+                    else if (gap < -1.0) { gapBias =  1; sigReason.push('MCX discount ' + gap.toFixed(1) + '% vs WTI — catch-up potential'); }
+                }
+                // Direction matrix
+                var bullCount = 0, bearCount = 0;
+                if (wtiDir > 0)   { bullCount++; sigReason.push('WTI bullish (' + wtiPrev + '→' + wtiCur + ')'); }
+                if (wtiDir < 0)   { bearCount++; sigReason.push('WTI bearish (' + wtiPrev + '→' + wtiCur + ')'); }
+                if (usdScore > 0) { bullCount++; sigReason.push('USD/INR bullish — MCX amplified'); }
+                if (usdScore < 0) { bearCount++; sigReason.push('USD/INR bearish — MCX drag'); }
+                bullCount += gapBias > 0 ? 1 : 0;
+                bearCount += gapBias < 0 ? 1 : 0;
+
+                if (bullCount >= 2 && bearCount === 0) {
+                    signal = 'BUY CE'; sigCol = 'var(--gtb-green)';
+                } else if (bearCount >= 2 && bullCount === 0) {
+                    signal = 'BUY PE'; sigCol = 'var(--gtb-red)';
+                } else if (bullCount > bearCount) {
+                    signal = 'LEAN LONG'; sigCol = 'var(--gtb-green)';
+                    sigReason.push('Conflicting signals — lean long, confirm with OBV');
+                } else if (bearCount > bullCount) {
+                    signal = 'LEAN SHORT'; sigCol = 'var(--gtb-red)';
+                    sigReason.push('Conflicting signals — lean short, confirm with OBV');
+                } else {
+                    signal = 'WAIT'; sigCol = 'var(--gtb-amber)';
+                    sigReason.push('WTI and USD/INR conflict — no edge');
+                }
+            }
+        }
+
+        var _fmtRate = function(v) { return v ? v.toFixed(2) : '—'; };
+        var _fmtPct  = function(v) { return v !== null ? ((v >= 0 ? '+' : '') + v.toFixed(2) + '%') : '—'; };
+        var gapCol   = gap === null ? 'var(--gtb-muted)' : gap > 1 ? 'var(--gtb-red)' : gap < -1 ? 'var(--gtb-green)' : 'var(--gtb-muted)';
+
+        var h = '<div style="padding:6px;background:var(--gtb-surface);border:1px solid var(--gtb-border);font-size:0.48rem;">'
+            // Header
+            + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+            +   '<i class="bi bi-globe2" style="color:var(--gtb-blue);"></i>'
+            +   '<span style="font-weight:800;letter-spacing:0.04em;color:var(--gtb-muted);font-size:0.42rem;">GLOBAL CONTEXT</span>'
+            + '</div>'
+            // Inputs row
+            + '<div style="display:grid;grid-template-columns:1fr 1fr' + (usdInrManual ? ' 1fr' : '') + ';gap:6px;margin-bottom:8px;">'
+            +   '<div>'
+            +     '<div style="color:var(--gtb-muted);font-size:0.4rem;margin-bottom:2px;">BRENT/WTI CURRENT ($) <span style="color:var(--gtb-blue);" title="MCX crude is Brent-linked — use Brent price">ℹ</span></div>'
+            +     '<input id="cmd-wti-cur" type="number" step="0.01" value="' + (wtiCur || '') + '" placeholder="Brent e.g. 88.10"'
+            +       ' style="width:100%;background:var(--gtb-bg);border:1px solid var(--gtb-border);color:var(--gtb-text);'
+            +       'padding:3px 5px;font-size:0.48rem;font-family:var(--gtb-mono);">'
+            +   '</div>'
+            +   '<div>'
+            +     '<div style="color:var(--gtb-muted);font-size:0.4rem;margin-bottom:2px;">BRENT/WTI PREV CLOSE ($)</div>'
+            +     '<input id="cmd-wti-prev" type="number" step="0.01" value="' + (wtiPrev || '') + '" placeholder="e.g. 84.23"'
+            +       ' style="width:100%;background:var(--gtb-bg);border:1px solid var(--gtb-border);color:var(--gtb-text);'
+            +       'padding:3px 5px;font-size:0.48rem;font-family:var(--gtb-mono);">'
+            +   '</div>'
+            + (usdInrManual
+            ?   '<div>'
+            +     '<div style="color:var(--gtb-muted);font-size:0.4rem;margin-bottom:2px;">USD/INR</div>'
+            +     '<input id="cmd-usdinr-inp" type="number" step="0.01" value="' + (usdInr || '') + '" placeholder="e.g. 84.20"'
+            +       ' style="width:100%;background:var(--gtb-bg);border:1px solid var(--gtb-border);color:var(--gtb-text);'
+            +       'padding:3px 5px;font-size:0.48rem;font-family:var(--gtb-mono);">'
+            +   '</div>'
+            : '')
+            + '</div>'
+            // Metrics row
+            + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;padding:5px;background:var(--gtb-bg);border:1px solid var(--gtb-border);">'
+            +   '<span>USD/INR <b style="font-family:var(--gtb-mono);color:' + (usdInrStale ? 'var(--gtb-red)' : 'var(--gtb-text)') + ';">' + (usdInr ? _fmtRate(usdInr) : '—') + '</b>'
+            +     (usdInrLive ? ' <span style="color:var(--gtb-green);font-size:0.4rem;">live</span>' : usdInrStale ? ' <span style="color:var(--gtb-red);font-size:0.4rem;">⚠ stale — update below</span>' : ' <span style="color:var(--gtb-muted);font-size:0.4rem;">manual</span>') + '</span>'
+            +   '<span>Fair Value <b style="font-family:var(--gtb-mono);">' + (fairVal ? '₹' + fairVal.toLocaleString('en-IN') : '—') + '</b></span>'
+            +   '<span>MCX LTP <b style="font-family:var(--gtb-mono);">' + (mcxLtp ? '₹' + mcxLtp.toLocaleString('en-IN') : '—') + '</b></span>'
+            +   '<span>Gap <b style="font-family:var(--gtb-mono);color:' + gapCol + ';">' + _fmtPct(gap) + '</b>'
+            +     (gap !== null && Math.abs(gap) > 1 ? '<span style="color:' + gapCol + ';"> ' + (gap > 0 ? '↓ reversion risk' : '↑ catch-up') + '</span>' : '') + '</span>'
+            + '</div>'
+            // Signal card
+            + '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px;background:var(--gtb-bg);border-left:3px solid ' + sigCol + ';">'
+            +   '<b style="font-size:0.7rem;color:' + sigCol + ';white-space:nowrap;line-height:1;">' + signal + '</b>'
+            +   '<div style="color:var(--gtb-muted);line-height:1.5;">' + sigReason.join(' · ') + '</div>'
+            + '</div>'
+            + '</div>';
+
+        jQ('#cmd-crude-global').html(h);
+
+        // Wire up input persistence + re-render on change
+        jQ('#cmd-wti-cur').off('change.wti').on('change.wti', function() {
+            localStorage.setItem('CMD_WTI_CUR', jQ(this).val());
+            _cmdRenderGlobalContext();
+        });
+        jQ('#cmd-wti-prev').off('change.wti').on('change.wti', function() {
+            localStorage.setItem('CMD_WTI_PREV', jQ(this).val());
+            _cmdRenderGlobalContext();
+        });
+        jQ('#cmd-usdinr-inp').off('change.wti').on('change.wti', function() {
+            localStorage.setItem('CMD_USDINR', jQ(this).val());
+            _cmdRenderGlobalContext();
+        });
+    }
+
     async function _cmdLoadAll() {
         // GIFT NIFTY ─────────────────────────────────────────────────────────
         try {
@@ -9246,6 +9501,8 @@ jQ(document).on('click', '#show-commodities', function (e) {
         } else {
             jQ('#cmd-crude-fut').html('<div class="cmd-load" style="color:var(--gtb-red);">Futures unavailable.</div>');
         }
+        // Re-render global context now that MCX data is loaded (LTP available from generateTrend)
+        try { _cmdRenderGlobalContext(); } catch(_gce) {}
         jQ('#cmd-crude-prob').html(_cmdTrendProb('CRUDEOILM', fres));
         try { if (fres) await showPrictionProbabiltyMCX('CRUDEOILM', fres); showOIOBVBarChart('CRUDEOILM'); } catch(e4) {}
         jQ('#cmd-crude-sig-strip').html(_gtbSigStripHtml('CRUDEOILM'));
@@ -9369,6 +9626,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
     // Render static meta immediately (no async needed)
     _cmdRenderCrudeMeta();
     _cmdRenderSessionAlert();
+    _cmdRenderGlobalContext();
 
     // Session alert refreshes every minute so countdown stays live
     var _cmdSessionTimer = setInterval(function() {
@@ -13337,6 +13595,408 @@ function _gtbBuildChecklistHtml() {
 
 // Renders the checklist inline into #gtb-pane-checklist.
 // ── Metrics tab ───────────────────────────────────────────────────────────────
+// ── Intraday Prediction Model ────────────────────────────────────────────────
+// Multi-layer probability model:
+//   Layer 1 — base rate from 9:15 combo historical backtest
+//   Layer 2 — Bayesian nudge from each current signal
+//   Layer 3 — VIX regime confidence filter
+// Outputs Bull% / Bear% / Sideways% + trade recommendation + key levels.
+function _gtbBuildPrediction() {
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    var _s   = function(v) { return (v > 0 ? '+' : '') + parseFloat(v).toFixed(1); };
+    var _col = function(v) { return v > 0 ? 'var(--gtb-green)' : v < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)'; };
+    var _dot = function(v, lbl) {
+        var c = v > 0 ? 'var(--gtb-green)' : v < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        return '<span style="color:' + c + ';font-weight:700;">' + (v > 0 ? '▲' : v < 0 ? '▼' : '—') + '</span>'
+             + (lbl ? ' <span style="font-size:0.55rem;color:var(--gtb-muted);">' + lbl + '</span>' : '');
+    };
+
+    // ── Layer 1: 9:15 combo → base probability from backtest ─────────────────
+    var b915 = {};
+    try { b915 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}'); } catch(e) {}
+
+    var n915raw = (b915['NIFTY 50']   && b915['NIFTY 50']['CLOSE_9_15'])   || 'B/W';
+    var s915raw = (b915['SENSEX']     && b915['SENSEX']['CLOSE_9_15'])      || 'B/W';
+    var b915raw = (b915['NIFTY BANK'] && b915['NIFTY BANK']['CLOSE_9_15']) || 'B/W';
+    var gn915   = (b915['GIFT NIFTY'] && b915['GIFT NIFTY']['CLOSE_9_15']) || 'B/W';
+
+    var comboKey = _gtbNorm915(n915raw) + '-' + _gtbNorm915(s915raw) + '-' + _gtbNorm915(b915raw);
+    var strat    = GTB_STRAT_LOOKUP[comboKey] || { outcome: 'Sideways', level: 'No trade' };
+
+    // Load cached backtest rows for today (built by _gtbBuild915Trend if run)
+    var btRows = null;
+    try {
+        var _ckey = 'GTB_915TREND_' + moment().format('YYYY-MM-DD') + '_250_v4';
+        var _cached = localStorage.getItem(_ckey);
+        if (_cached) btRows = JSON.parse(_cached);
+    } catch(e) {}
+
+    // Find stats for this exact combo from backtest
+    var comboStats = null;
+    if (btRows) {
+        var _combo = {};
+        btRows.forEach(function(r) {
+            if (!_combo[r.key]) _combo[r.key] = { legs: 0, win: 0 };
+            (r.legs || []).forEach(function(lg) { _combo[r.key].legs++; if (lg.win) _combo[r.key].win++; });
+        });
+        if (_combo[comboKey] && _combo[comboKey].legs > 0) {
+            comboStats = _combo[comboKey];
+            comboStats.winPct = Math.round(comboStats.win / comboStats.legs * 100);
+        }
+    }
+
+    // Base probability from combo outcome
+    // Buy → bull base 65%, Sell → bear base 65%, Buy/Sell → 50/50, Sideways → 40 flat
+    var bullBase = 33, bearBase = 33, sidewaysBase = 34;
+    if (strat.outcome === 'Buy')      { bullBase = 62; bearBase = 18; sidewaysBase = 20; }
+    else if (strat.outcome === 'Sell'){ bullBase = 18; bearBase = 62; sidewaysBase = 20; }
+    else if (strat.outcome === 'Buy/Sell') { bullBase = 42; bearBase = 42; sidewaysBase = 16; }
+
+    // Override base with actual backtest win rate if available
+    if (comboStats) {
+        if (strat.outcome === 'Buy') {
+            bullBase = Math.round(comboStats.winPct * 0.9);
+            bearBase = Math.round((100 - comboStats.winPct) * 0.7);
+            sidewaysBase = 100 - bullBase - bearBase;
+        } else if (strat.outcome === 'Sell') {
+            bearBase = Math.round(comboStats.winPct * 0.9);
+            bullBase = Math.round((100 - comboStats.winPct) * 0.7);
+            sidewaysBase = 100 - bullBase - bearBase;
+        }
+    }
+
+    // ── Layer 2: signal nudges (each adds/subtracts from bull − bear delta) ──
+    // Positive nudge = more bullish, negative = more bearish
+    // Scale: each unit below shifts probability ~2–5 pts
+
+    var nudges = [];  // { label, value, weight, nudge }
+
+    function _addNudge(label, rawVal, weight, note) {
+        var n = rawVal * weight;
+        nudges.push({ label: label, rawVal: rawVal, weight: weight, nudge: n, note: note || '' });
+        return n;
+    }
+
+    var totalNudge = 0;
+
+    // 1. Leading score (9:15 + A/D + Futures) — most reliable
+    var leadScore = (typeof ALL_9_15_CLOSE_SCORE !== 'undefined' ? ALL_9_15_CLOSE_SCORE : 0)
+        + (typeof NIFTY_50_9_15_CLOSE_SCORE !== 'undefined' ? NIFTY_50_9_15_CLOSE_SCORE : 0)
+        + (typeof NIFTY_BANK_9_15_CLOSE_SCORE !== 'undefined' ? NIFTY_BANK_9_15_CLOSE_SCORE : 0)
+        + (typeof GIFT_NIFTY_9_15_CLOSE_SCORE !== 'undefined' ? GIFT_NIFTY_9_15_CLOSE_SCORE : 0)
+        + (typeof SENSEX_9_15_CLOSE_SCORE !== 'undefined' ? SENSEX_9_15_CLOSE_SCORE : 0)
+        + (typeof ALL_ADVANCE_DECLINE_SCORE !== 'undefined' ? ALL_ADVANCE_DECLINE_SCORE : 0)
+        + (typeof NIFTY_50_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_50_ADVANCE_DECLINE_SCORE : 0)
+        + (typeof NIFTY_BANK_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_BANK_ADVANCE_DECLINE_SCORE : 0)
+        + (typeof ALL_FUTURES_TREND_SCORE !== 'undefined' ? ALL_FUTURES_TREND_SCORE : 0)
+        + (typeof NIFTY_50_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_50_FUTURES_TREND_SCORE : 0)
+        + (typeof NIFTY_BANK_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_BANK_FUTURES_TREND_SCORE : 0);
+    totalNudge += _addNudge('Leading score (9:15 + A/D + Futures)', leadScore, 2.0, 'fast signals; high weight');
+
+    // 2. Index futures direction — N50 + BN individually
+    var n50Fut = (INSTRUMENT_SCORE_MAP['NIFTY 50']  && INSTRUMENT_SCORE_MAP['NIFTY 50'].futures_trend)  || 0;
+    var bnFut  = (INSTRUMENT_SCORE_MAP['NIFTY BANK'] && INSTRUMENT_SCORE_MAP['NIFTY BANK'].futures_trend) || 0;
+    totalNudge += _addNudge('NIFTY 50 futures REMARK',  n50Fut, 3.5, 'index future is primary price discovery');
+    totalNudge += _addNudge('BANK NIFTY futures REMARK', bnFut, 3.0, 'sector confirmation');
+
+    // 3. GIFT NIFTY 9:15 — pre-market global cue
+    var gn915Score = _gtbNorm915(gn915) === 'ASO' ? 1 : _gtbNorm915(gn915) === 'BSO' ? -1 : 0;
+    totalNudge += _addNudge('GIFT NIFTY 9:15 zone', gn915Score, 2.5, 'global pre-market signal');
+
+    // 4. A/D breadth spot vs futures alignment
+    var adAllSc = (typeof ALL_ADVANCE_DECLINE_SCORE !== 'undefined' ? ALL_ADVANCE_DECLINE_SCORE : 0);
+    var futAllSc = (typeof ALL_FUTURES_TREND_SCORE !== 'undefined' ? ALL_FUTURES_TREND_SCORE : 0);
+    var adFutAlign = (adAllSc > 0 && futAllSc > 0) ? 1 : (adAllSc < 0 && futAllSc < 0) ? -1 : 0;
+    totalNudge += _addNudge('A/D spot ↔ Futures alignment', adFutAlign, 2.0, 'both confirming = stronger signal');
+
+    // 5. AVWAP N50 (intraday trend anchor)
+    var n50sm = INSTRUMENT_SCORE_MAP['NIFTY 50'] || {};
+    var avwapDir = 0;
+    try {
+        var _ltp50 = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['NIFTY 50'] || {}).ltp) || 0;
+        if (n50sm.avwap && _ltp50) avwapDir = _ltp50 > n50sm.avwap ? 1 : -1;
+    } catch(e) {}
+    totalNudge += _addNudge('NIFTY 50 AVWAP direction', avwapDir, 2.5, 'LTP above/below 9:15 anchored VWAP');
+
+    // 6. OI/OBV net (lagging, lower weight)
+    var oiNet = (typeof NIFTY_50_OI_OBV_SCORE !== 'undefined' ? NIFTY_50_OI_OBV_SCORE : 0)
+              + (typeof NIFTY_BANK_OI_OBV_SCORE !== 'undefined' ? NIFTY_BANK_OI_OBV_SCORE : 0);
+    var oiDir = oiNet > 0 ? 1 : oiNet < 0 ? -1 : 0;
+    totalNudge += _addNudge('OI/OBV direction (N50+BN)', oiDir, 1.0, 'lagging; reflects prior candle batch');
+
+    // 7. Max Pain gravity
+    var mpNet = (typeof NIFTY_50_MAX_PAIN_SCORE !== 'undefined' ? NIFTY_50_MAX_PAIN_SCORE : 0)
+              + (typeof NIFTY_BANK_MAX_PAIN_SCORE !== 'undefined' ? NIFTY_BANK_MAX_PAIN_SCORE : 0);
+    totalNudge += _addNudge('Max Pain gravity (N50+BN)', mpNet, 0.8, 'gravitational pull; low intraday weight');
+
+    // 8. PCR contrarian — extreme PCR fades the primary direction
+    var pcr50 = parseFloat((n50sm.pcr) || 1);
+    var pcrNudge = 0;
+    var pcrNote = '';
+    if (pcr50 > 1.3)      { pcrNudge = 1;  pcrNote = 'extreme puts → contrarian bullish'; }
+    else if (pcr50 < 0.7) { pcrNudge = -1; pcrNote = 'extreme calls → contrarian bearish'; }
+    totalNudge += _addNudge('PCR contrarian signal', pcrNudge, 1.2, pcrNote || 'neutral PCR; no contrarian edge');
+
+    // 9. IV Skew (fear gauge direction)
+    var ivNet = (typeof NIFTY_50_IV_SKEW_SCORE !== 'undefined' ? NIFTY_50_IV_SKEW_SCORE : 0)
+              + (typeof NIFTY_BANK_IV_SKEW_SCORE !== 'undefined' ? NIFTY_BANK_IV_SKEW_SCORE : 0);
+    totalNudge += _addNudge('IV Skew (N50+BN)', ivNet, 0.8, 'put skew -1 (fear), call skew +1 (demand)');
+
+    // 10. Component breadth (weighted stocks alignment)
+    var compN50 = (typeof NIFTY_50_COMPONENT_SCORE !== 'undefined' ? NIFTY_50_COMPONENT_SCORE : 0);
+    var compBN  = (typeof NIFTY_BANK_COMPONENT_SCORE !== 'undefined' ? NIFTY_BANK_COMPONENT_SCORE : 0);
+    var compDir = (compN50 + compBN) > 0.5 ? 1 : (compN50 + compBN) < -0.5 ? -1 : 0;
+    totalNudge += _addNudge('Weighted component breadth', compDir, 1.5, 'weighted top-20 constituent alignment');
+
+    // ── Translate nudge into probability shift ────────────────────────────────
+    // Max possible total nudge ≈ ±50 → clamp shift to ±40 pts
+    var maxNudge = nudges.reduce(function(s, n) { return s + Math.abs(n.weight); }, 0);
+    var shift = Math.max(-40, Math.min(40, (totalNudge / maxNudge) * 40));
+
+    var bullP     = Math.max(5, Math.min(88, bullBase     + shift));
+    var bearP     = Math.max(5, Math.min(88, bearBase     - shift));
+    var sidewaysP = Math.max(4, 100 - bullP - bearP);
+    // Re-normalise to 100
+    var _tot = bullP + bearP + sidewaysP;
+    bullP     = Math.round(bullP     / _tot * 100);
+    bearP     = Math.round(bearP     / _tot * 100);
+    sidewaysP = Math.round(sidewaysP / _tot * 100);
+
+    // ── Layer 3: VIX regime confidence filter ────────────────────────────────
+    var _vixVal = 0;
+    try { _vixVal = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
+    var vixRegime = 'NORMAL', vixColor = 'var(--gtb-amber)', noTrade = false;
+    if (_vixVal > 0) {
+        if      (_vixVal < 13)  { vixRegime = 'LOW';      vixColor = 'var(--gtb-green)'; }
+        else if (_vixVal < 18)  { vixRegime = 'NORMAL';   vixColor = 'var(--gtb-accent)'; }
+        else if (_vixVal < 25)  { vixRegime = 'ELEVATED'; vixColor = 'var(--gtb-amber)';
+            // Compress toward 50% when elevated
+            bullP     = Math.round(bullP     * 0.75 + 25 * 0.25);
+            bearP     = Math.round(bearP     * 0.75 + 25 * 0.25);
+            sidewaysP = 100 - bullP - bearP;
+        } else { vixRegime = 'HIGH'; vixColor = 'var(--gtb-red)'; noTrade = true; }
+    }
+
+    // Check VIXU/VIXL from NIFTY 50 trends
+    var n50Trends = [];
+    try { var _td = generateTrend('NIFTY 50'); n50Trends = _td.trends || []; } catch(e) {}
+    var atVIXU = n50Trends.indexOf('VIXU') !== -1;
+    var atVIXL = n50Trends.indexOf('VIXL') !== -1;
+    if (atVIXU || atVIXL) noTrade = true;
+
+    // ── Confidence score (0–100) ──────────────────────────────────────────────
+    // How many signals agree with the primary direction?
+    var primaryBull = bullP > bearP && bullP > sidewaysP;
+    var primaryBear = bearP > bullP && bearP > sidewaysP;
+    var agreedCount = 0, totalSigs = nudges.length;
+    nudges.forEach(function(n) {
+        if (primaryBull && n.nudge > 0) agreedCount++;
+        else if (primaryBear && n.nudge < 0) agreedCount++;
+        else if (!primaryBull && !primaryBear && Math.abs(n.nudge) < 0.5) agreedCount++;
+    });
+    var confidence = Math.round((agreedCount / totalSigs) * 100);
+    // Dampen confidence when leading/lagging conflict
+    var _includeLagging = localStorage.getItem('GTB_INCLUDE_LAGGING') !== '0';
+    var laggingScore = (typeof NIFTY_50_OI_OBV_SCORE !== 'undefined' ? NIFTY_50_OI_OBV_SCORE : 0)
+        + (typeof NIFTY_BANK_OI_OBV_SCORE !== 'undefined' ? NIFTY_BANK_OI_OBV_SCORE : 0);
+    var leadLagConflict = _includeLagging && ((leadScore > 2 && laggingScore < -1) || (leadScore < -2 && laggingScore > 1));
+    if (leadLagConflict) confidence = Math.round(confidence * 0.7);
+
+    // ── Strike levels for entry/target/stop ───────────────────────────────────
+    var n50Strike = null;
+    try {
+        var _n50open = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LIST_GLOBAL') || '{}')['NIFTY 50'] || {}).price) || 0;
+        if (_n50open) {
+            var _sd = getStrikeDetails({ price: _n50open }, 'NIFTY 50');
+            n50Strike = {
+                aso: parseFloat(_sd.ustrikeOne),
+                ast: parseFloat(_sd.ustrikeTwo),
+                bso: parseFloat(_sd.bstrikeOne),
+                bst: parseFloat(_sd.bstrikeTwo)
+            };
+        }
+    } catch(e) {}
+
+    var _n50ltp = 0;
+    try { _n50ltp = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['NIFTY 50'] || {}).ltp) || 0; } catch(e) {}
+
+    var vixRange = null;
+    try {
+        var _prevClose50 = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LIST_GLOBAL') || '{}')['NIFTY 50'] || {}).prevPrice) || 0;
+        var _vixClose    = parseFloat((JSON.parse(localStorage.getItem('VIX_QUOTE') || '{}').data || {candles:[[0,0,0,0,0]]}).candles[0][4]) || _vixVal;
+        if (_prevClose50 && _vixClose) {
+            var _range = _prevClose50 * (_vixClose / Math.sqrt(246)) / 100;
+            vixRange = { vixu: _prevClose50 + _range, vixl: _prevClose50 - _range, range: _range };
+        }
+    } catch(e) {}
+
+    // ── Trade recommendation ──────────────────────────────────────────────────
+    var tradeAction = '—', tradeColor = 'var(--gtb-muted)', tradeEntry = '', tradeTarget = '', tradeStop = '';
+    if (noTrade) {
+        tradeAction = 'NO TRADE'; tradeColor = 'var(--gtb-amber)';
+        tradeEntry  = atVIXU ? 'NIFTY at VIXU — range exhausted upside' : atVIXL ? 'NIFTY at VIXL — range exhausted downside' : 'VIX HIGH — wide unpredictable swings';
+    } else if (primaryBull && bullP >= 52) {
+        tradeAction = 'BUY CE'; tradeColor = 'var(--gtb-green)';
+        if (n50Strike) {
+            tradeEntry  = 'Entry: near BSO ' + n50Strike.bso.toFixed(0) + (atVIXL ? ' ★ at VIXL — high probability bounce' : '');
+            tradeTarget = 'Target 1: ASO ' + n50Strike.aso.toFixed(0) + ' → Target 2: AST ' + n50Strike.ast.toFixed(0);
+            tradeStop   = 'Stop: below BST ' + n50Strike.bst.toFixed(0);
+        }
+    } else if (primaryBear && bearP >= 52) {
+        tradeAction = 'BUY PE'; tradeColor = 'var(--gtb-red)';
+        if (n50Strike) {
+            tradeEntry  = 'Entry: near ASO ' + n50Strike.aso.toFixed(0) + (atVIXU ? ' ★ at VIXU — high probability reversal' : '');
+            tradeTarget = 'Target 1: BSO ' + n50Strike.bso.toFixed(0) + ' → Target 2: BST ' + n50Strike.bst.toFixed(0);
+            tradeStop   = 'Stop: above AST ' + n50Strike.ast.toFixed(0);
+        }
+    } else {
+        tradeAction = 'WAIT / IRON CONDOR'; tradeColor = 'var(--gtb-amber)';
+        if (n50Strike) {
+            tradeEntry  = 'Range: BSO ' + n50Strike.bso.toFixed(0) + ' ↔ ASO ' + n50Strike.aso.toFixed(0);
+            tradeTarget = 'Condor body: collect premium between BSO and ASO';
+            tradeStop   = 'Exit if NIFTY breaks BST or AST';
+        }
+    }
+
+    // ── Outcome scenarios ─────────────────────────────────────────────────────
+    var scenarios = [];
+    if (primaryBull) {
+        scenarios.push({ prob: bullP,     label: 'BULL TREND',   detail: 'Sustained move above ASO toward AST. Pullbacks to BSO are buying dips.', col: 'var(--gtb-green)' });
+        scenarios.push({ prob: sidewaysP, label: 'RANGE DAY',    detail: 'Oscillates between BSO and ASO. Both sides get a trade.', col: 'var(--gtb-muted)' });
+        scenarios.push({ prob: bearP,     label: 'REVERSAL',     detail: 'Fails at ASO, drops below BSO. Bearish trap for early CE buyers.', col: 'var(--gtb-red)' });
+    } else if (primaryBear) {
+        scenarios.push({ prob: bearP,     label: 'BEAR TREND',   detail: 'Sustained move below BSO toward BST. Rallies to ASO are shorting opportunities.', col: 'var(--gtb-red)' });
+        scenarios.push({ prob: sidewaysP, label: 'RANGE DAY',    detail: 'Oscillates between BSO and ASO. Both sides get a trade.', col: 'var(--gtb-muted)' });
+        scenarios.push({ prob: bullP,     label: 'REVERSAL',     detail: 'Fails at BSO, rallies above ASO. Bull trap for early PE buyers.', col: 'var(--gtb-green)' });
+    } else {
+        scenarios.push({ prob: sidewaysP, label: 'SIDEWAYS',     detail: 'Choppy range between BSO and ASO. Option sellers favoured.', col: 'var(--gtb-muted)' });
+        scenarios.push({ prob: bullP,     label: 'BULL BREAK',   detail: 'Clear break above ASO — enter CE on pullback.', col: 'var(--gtb-green)' });
+        scenarios.push({ prob: bearP,     label: 'BEAR BREAK',   detail: 'Break below BSO — enter PE on rally.', col: 'var(--gtb-red)' });
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function probBar(pct, col) {
+        return '<div style="position:relative;height:10px;background:var(--gtb-border);border-radius:2px;flex:1;">'
+             + '<div style="height:10px;width:' + pct + '%;background:' + col + ';border-radius:2px;transition:width 0.4s;"></div>'
+             + '</div>';
+    }
+
+    var html = '<div style="padding:10px 12px;font-size:0.65rem;">';
+
+    // ── Disclaimer strip ──────────────────────────────────────────────────────
+    html += '<div style="padding:4px 8px;background:var(--gtb-surface2);border-left:3px solid var(--gtb-amber);font-size:0.5rem;color:var(--gtb-muted);margin-bottom:8px;">'
+          + '<i class="bi bi-exclamation-triangle-fill" style="color:var(--gtb-amber);"></i>'
+          + ' Probabilistic model — not financial advice. Accuracy is directional, not guaranteed. 9:15 combo is the only signal with historical backtesting; other weights are heuristic.'
+          + '</div>';
+
+    // ── Primary verdict card ──────────────────────────────────────────────────
+    var primaryScenario = scenarios[0];
+    var confColor = confidence >= 65 ? 'var(--gtb-green)' : confidence >= 45 ? 'var(--gtb-amber)' : 'var(--gtb-red)';
+    var confLabel = confidence >= 65 ? 'HIGH' : confidence >= 45 ? 'MODERATE' : 'LOW';
+
+    html += '<div style="background:var(--gtb-surface);padding:12px;margin-bottom:8px;border-left:4px solid ' + tradeColor + ';">'
+
+        // Top: prediction + action
+        + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">'
+        + '<div>'
+        +   '<div style="font-size:0.5rem;color:var(--gtb-muted);margin-bottom:2px;">TODAY\'S PREDICTION</div>'
+        +   '<div style="font-size:1.1rem;font-weight:900;color:' + tradeColor + ';">' + primaryScenario.label + '</div>'
+        + '</div>'
+        + '<div style="margin-left:auto;text-align:right;">'
+        +   '<div style="font-size:0.5rem;color:var(--gtb-muted);margin-bottom:2px;">RECOMMENDED ACTION</div>'
+        +   '<div style="font-size:0.75rem;font-weight:900;color:' + tradeColor + ';border:1px solid ' + tradeColor + ';padding:3px 12px;">' + tradeAction + '</div>'
+        + '</div>'
+        + '</div>'
+
+        // Probability bars
+        + '<div style="margin-bottom:8px;">'
+        + scenarios.map(function(sc) {
+            return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+                 + '<span style="font-size:0.55rem;font-weight:700;color:' + sc.col + ';min-width:100px;">' + sc.label + '</span>'
+                 + probBar(sc.prob, sc.col)
+                 + '<span style="font-size:0.6rem;font-weight:900;font-family:var(--gtb-mono);color:' + sc.col + ';min-width:30px;text-align:right;">' + sc.prob + '%</span>'
+                 + '</div>';
+        }).join('')
+        + '</div>'
+
+        // Confidence
+        + '<div style="display:flex;gap:12px;align-items:center;padding-top:6px;border-top:1px solid var(--gtb-border);">'
+        + '<span style="font-size:0.5rem;color:var(--gtb-muted);">Confidence: <b style="color:' + confColor + ';">' + confLabel + ' (' + confidence + '%)</b></span>'
+        + '<span style="font-size:0.5rem;color:var(--gtb-muted);">VIX: <b style="color:' + vixColor + ';">' + (_vixVal ? _vixVal.toFixed(2) + ' · ' + vixRegime : '—') + '</b></span>'
+        + (leadLagConflict ? '<span style="font-size:0.5rem;color:var(--gtb-amber);"><i class="bi bi-exclamation-triangle-fill"></i> Lead/Lag conflict</span>' : '')
+        + '</div>'
+        + '</div>';
+
+    // ── Trade plan ────────────────────────────────────────────────────────────
+    if (tradeEntry || tradeTarget || tradeStop) {
+        html += '<div style="background:var(--gtb-surface);padding:10px 12px;margin-bottom:8px;">'
+            + '<div style="font-size:0.55rem;font-weight:800;color:var(--gtb-muted);margin-bottom:6px;letter-spacing:0.05em;"><i class="bi bi-map-fill"></i> TRADE PLAN</div>'
+            + (tradeEntry  ? '<div style="font-size:0.6rem;margin-bottom:3px;color:var(--gtb-text);"><span style="color:var(--gtb-muted);">Entry → </span>' + tradeEntry  + '</div>' : '')
+            + (tradeTarget ? '<div style="font-size:0.6rem;margin-bottom:3px;color:var(--gtb-green);"><span style="color:var(--gtb-muted);">Target → </span>' + tradeTarget + '</div>' : '')
+            + (tradeStop   ? '<div style="font-size:0.6rem;margin-bottom:3px;color:var(--gtb-red);"><span style="color:var(--gtb-muted);">Stop → </span>'   + tradeStop   + '</div>' : '')
+            + (vixRange    ? '<div style="font-size:0.55rem;color:var(--gtb-muted);margin-top:4px;">Daily range: VIXL <b>' + vixRange.vixl.toFixed(0) + '</b> ↔ VIXU <b>' + vixRange.vixu.toFixed(0) + '</b> (±' + vixRange.range.toFixed(0) + ' pts)</div>' : '')
+            + '</div>';
+    }
+
+    // ── 9:15 Combo block ──────────────────────────────────────────────────────
+    html += '<div style="background:var(--gtb-surface);padding:10px 12px;margin-bottom:8px;">'
+        + '<div style="font-size:0.55rem;font-weight:800;color:var(--gtb-muted);margin-bottom:6px;letter-spacing:0.05em;"><i class="bi bi-alarm"></i> 9:15 COMBO — ' + comboKey + '</div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
+        + [
+            { name: 'NIFTY 50',   z: n915raw },
+            { name: 'SENSEX',     z: s915raw },
+            { name: 'NIFTY BANK', z: b915raw },
+            { name: 'GIFT NIFTY', z: gn915   },
+          ].map(function(it) {
+            var sc = (it.z === 'AST' || it.z === 'ASO') ? 1 : (it.z === 'BST' || it.z === 'BSO') ? -1 : 0;
+            var col = sc > 0 ? 'var(--gtb-green)' : sc < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+            return '<div style="text-align:center;padding:4px 8px;background:var(--gtb-surface2);border-radius:2px;">'
+                 + '<div style="font-size:0.45rem;color:var(--gtb-muted);">' + it.name + '</div>'
+                 + '<div style="font-size:0.65rem;font-weight:900;color:' + col + ';">' + it.z + '</div>'
+                 + '</div>';
+        }).join('')
+        + '</div>'
+        + '<div style="font-size:0.55rem;color:var(--gtb-text);">Strategy: <b style="color:' + tradeColor + ';">' + strat.outcome + '</b> — ' + strat.level + '</div>'
+        + (comboStats
+            ? '<div style="font-size:0.52rem;color:var(--gtb-muted);margin-top:3px;">Historical: <b style="color:' + (comboStats.winPct >= 55 ? 'var(--gtb-green)' : comboStats.winPct <= 45 ? 'var(--gtb-red)' : 'var(--gtb-amber)') + ';">' + comboStats.winPct + '% win rate</b> over ' + comboStats.legs + ' legs from 250-day backtest</div>'
+            : '<div style="font-size:0.52rem;color:var(--gtb-muted);margin-top:3px;"><i class="bi bi-info-circle"></i> Run 9:15 Backtest to load historical win rates for this combo</div>')
+        + '</div>';
+
+    // ── Signal evidence table ──────────────────────────────────────────────────
+    html += '<div style="background:var(--gtb-surface);padding:10px 12px;margin-bottom:8px;">'
+        + '<div style="font-size:0.55rem;font-weight:800;color:var(--gtb-muted);margin-bottom:6px;letter-spacing:0.05em;"><i class="bi bi-list-check"></i> SIGNAL EVIDENCE</div>'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<thead><tr>'
+        + '<th style="font-size:0.48rem;font-weight:600;color:var(--gtb-muted);text-align:left;padding:2px 4px;border-bottom:1px solid var(--gtb-border);">Signal</th>'
+        + '<th style="font-size:0.48rem;font-weight:600;color:var(--gtb-muted);text-align:center;padding:2px 4px;border-bottom:1px solid var(--gtb-border);">Dir</th>'
+        + '<th style="font-size:0.48rem;font-weight:600;color:var(--gtb-muted);text-align:center;padding:2px 4px;border-bottom:1px solid var(--gtb-border);">Wt</th>'
+        + '<th style="font-size:0.48rem;font-weight:600;color:var(--gtb-muted);text-align:right;padding:2px 4px;border-bottom:1px solid var(--gtb-border);">Nudge</th>'
+        + '<th style="font-size:0.48rem;font-weight:600;color:var(--gtb-muted);text-align:left;padding:2px 4px;border-bottom:1px solid var(--gtb-border);">Note</th>'
+        + '</tr></thead><tbody>'
+        + nudges.map(function(n) {
+            var nc = n.nudge > 0 ? 'var(--gtb-green)' : n.nudge < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+            return '<tr>'
+                 + '<td style="font-size:0.5rem;color:var(--gtb-text);padding:2px 4px;border-bottom:1px solid var(--gtb-border)18;">' + n.label + '</td>'
+                 + '<td style="text-align:center;padding:2px 4px;border-bottom:1px solid var(--gtb-border)18;">' + _dot(n.rawVal) + '</td>'
+                 + '<td style="font-size:0.48rem;text-align:center;color:var(--gtb-muted);padding:2px 4px;border-bottom:1px solid var(--gtb-border)18;">×' + n.weight.toFixed(1) + '</td>'
+                 + '<td style="font-size:0.52rem;font-weight:700;font-family:var(--gtb-mono);text-align:right;color:' + nc + ';padding:2px 4px;border-bottom:1px solid var(--gtb-border)18;">' + (n.nudge > 0 ? '+' : '') + n.nudge.toFixed(1) + '</td>'
+                 + '<td style="font-size:0.46rem;color:var(--gtb-muted);padding:2px 4px;border-bottom:1px solid var(--gtb-border)18;">' + n.note + '</td>'
+                 + '</tr>';
+        }).join('')
+        + '<tr style="background:var(--gtb-surface2);">'
+        + '<td colspan="3" style="font-size:0.5rem;font-weight:700;color:var(--gtb-text);padding:3px 4px;">Net Nudge</td>'
+        + '<td style="font-size:0.55rem;font-weight:900;font-family:var(--gtb-mono);color:' + _col(totalNudge) + ';text-align:right;padding:3px 4px;">' + _s(totalNudge) + '</td>'
+        + '<td style="font-size:0.46rem;color:var(--gtb-muted);padding:3px 4px;">→ ' + (shift > 0 ? '+' : '') + shift.toFixed(1) + ' pt probability shift</td>'
+        + '</tr>'
+        + '</tbody></table>'
+        + '</div>'
+
+        + '</div>'; // end padding wrapper
+
+    return html;
+}
+
 function _gtbRenderMetricsPane() {
     var $pane = jQ('#gtb-pane-metrics');
     if (!$pane.length) return;
@@ -13420,13 +14080,22 @@ function _gtbRenderMetricsPane() {
         else                   { _vixLabel = 'HIGH';     _vixCol = 'var(--gtb-red)'; }
     }
 
+    // Which sub-view is active: 'score' or 'matrix'
+    var _metricsView = localStorage.getItem('GTB_METRICS_VIEW') || 'score';
+
     var h = '<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">';
 
     // Header
     h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--gtb-border);background:var(--gtb-surface);flex-shrink:0;">'
         + '<i class="bi bi-speedometer2" style="color:var(--gtb-accent);"></i>'
-        + '<span style="font-size:0.55rem;font-weight:800;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.08em;">METRICS DASHBOARD</span>'
-        + (_vixVal ? '<span style="font-size:0.46rem;color:var(--gtb-muted);padding:1px 6px;border:1px solid ' + _vixCol + ';color:' + _vixCol + ';background:' + _vixCol + '18;"><i class="bi bi-activity"></i> VIX ' + _vixVal.toFixed(2) + ' · ' + _vixLabel + '</span>' : '')
+        + '<span style="font-size:0.55rem;font-weight:800;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.08em;">METRICS</span>'
+        + (_vixVal ? '<span style="font-size:0.46rem;padding:1px 6px;border:1px solid ' + _vixCol + ';color:' + _vixCol + ';background:' + _vixCol + '18;"><i class="bi bi-activity"></i> VIX ' + _vixVal.toFixed(2) + ' · ' + _vixLabel + '</span>' : '')
+        // Sub-view toggle
+        + '<div style="display:flex;gap:2px;margin-left:8px;">'
+        +   '<button class="gtb-mv-btn' + (_metricsView === 'score'   ? ' gtb-mv-active' : '') + '" data-mv="score"   style="font-size:0.46rem;padding:2px 8px;cursor:pointer;border:1px solid var(--gtb-border);background:' + (_metricsView === 'score'   ? 'var(--gtb-accent)' : 'transparent') + ';color:' + (_metricsView === 'score'   ? '#fff' : 'var(--gtb-muted)') + ';"><i class="bi bi-bar-chart-fill"></i> Scores</button>'
+        +   '<button class="gtb-mv-btn' + (_metricsView === 'matrix'  ? ' gtb-mv-active' : '') + '" data-mv="matrix"  style="font-size:0.46rem;padding:2px 8px;cursor:pointer;border:1px solid var(--gtb-border);background:' + (_metricsView === 'matrix'  ? 'var(--gtb-accent)' : 'transparent') + ';color:' + (_metricsView === 'matrix'  ? '#fff' : 'var(--gtb-muted)') + ';"><i class="bi bi-grid-1x2-fill"></i> Matrix</button>'
+        +   '<button class="gtb-mv-btn' + (_metricsView === 'predict' ? ' gtb-mv-active' : '') + '" data-mv="predict" style="font-size:0.46rem;padding:2px 8px;cursor:pointer;border:1px solid var(--gtb-border);background:' + (_metricsView === 'predict' ? 'var(--gtb-accent)' : 'transparent') + ';color:' + (_metricsView === 'predict' ? '#fff' : 'var(--gtb-muted)') + ';"><i class="bi bi-cpu-fill"></i> Predict</button>'
+        + '</div>'
         + '<div style="margin-left:auto;display:flex;align-items:center;gap:8px;">'
         +   '<span style="font-size:0.52rem;font-weight:900;color:' + sigCol + ';padding:2px 8px;border:1px solid ' + sigCol + ';background:' + sigCol + '18;">' + (ms ? ms.signal : '—') + '</span>'
         +   '<span style="font-size:0.48rem;color:var(--gtb-muted);">Score <b style="color:' + _col(SCORE) + ';">' + _s(SCORE) + '</b></span>'
@@ -13434,6 +14103,11 @@ function _gtbRenderMetricsPane() {
         + '</div>'
         + '</div>';
 
+    if (_metricsView === 'matrix') {
+        h += '<div style="flex:1;overflow:hidden;">' + _gtbBuildTrendMatrix() + '</div>';
+    } else if (_metricsView === 'predict') {
+        h += '<div style="flex:1;overflow-y:auto;">' + _gtbBuildPrediction() + '</div>';
+    } else {
     h += '<div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0;">';
 
     // ── Leading / Lagging summary bar ─────────────────────────────────────────
@@ -13573,6 +14247,7 @@ function _gtbRenderMetricsPane() {
     h += _section('AVWAP (9:15 FUTURES ANCHOR)', 'bi-bar-chart-line-fill', 0, _avwapRows);
 
     h += '</div></div>';
+    } // end else (score view)
 
     $pane.html('<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">'
         + h
@@ -13580,6 +14255,13 @@ function _gtbRenderMetricsPane() {
 }
 
 jQ(document).on('click', '#gtb-metrics-refresh', function() {
+    _gtbRenderMetricsPane();
+});
+
+// Sub-view toggle inside Metrics pane
+jQ(document).on('click', '.gtb-mv-btn', function() {
+    var mv = jQ(this).data('mv');
+    localStorage.setItem('GTB_METRICS_VIEW', mv);
     _gtbRenderMetricsPane();
 });
 
@@ -13617,6 +14299,460 @@ function _gtbShowTradeChecklist() {
 
 jQ(document).on('click', '#show-trade-checklist', function() {
     _gtbShowTradeChecklist();
+});
+
+// ── Trend Combination Matrix ─────────────────────────────────────────────────
+// Shows every dimension of market state (9:15, strike zone, OI, A/D, score,
+// AVWAP/PCR) per instrument in a single matrix, then derives a verdict.
+
+function _gtbBuildTrendMatrix() {
+    // ── instruments ──────────────────────────────────────────────────────────
+    var INDICES   = ['NIFTY 50', 'NIFTY BANK', 'SENSEX', 'GIFT NIFTY'];
+    var STOCKS    = ['RELIANCE', 'HDFCBANK', 'ICICIBANK'];
+    var ALL_INSTR = INDICES.concat(STOCKS);
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    var b915 = {};
+    try { b915 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}'); } catch(e) {}
+
+    function zoneScore(z) {
+        if (z === 'AST') return 2; if (z === 'ASO') return 1;
+        if (z === 'BST') return -2; if (z === 'BSO') return -1;
+        return 0;
+    }
+    function scoreColor(v) {
+        if (v > 0) return 'var(--gtb-green)';
+        if (v < 0) return 'var(--gtb-red)';
+        return 'var(--gtb-muted)';
+    }
+    function scoreSign(v) { return (v > 0 ? '+' : '') + (typeof v === 'number' ? v.toFixed ? v.toFixed(1) : v : v); }
+    function zonePill(z, score) {
+        var col = score > 0 ? 'var(--gtb-green)' : score < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        var bg  = score > 1 ? '#1a3a1a' : score === 1 ? '#132030' : score < -1 ? '#3a1a1a' : score === -1 ? '#2e1f0e' : '#1e1e1e';
+        if (document.querySelector('#main-trade-bot-container.gtb-light')) {
+            bg  = score > 1 ? '#d4edda' : score === 1 ? '#cce5ff' : score < -1 ? '#f8d7da' : score === -1 ? '#fff3cd' : '#e9ecef';
+        }
+        return '<span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:0.65rem;font-weight:700;font-family:var(--gtb-mono);color:' + col + ';background:' + bg + ';">'
+             + (z || 'B/W') + '</span>';
+    }
+    function dot(v) {
+        if (v > 0) return '<span style="color:var(--gtb-green);">●</span>';
+        if (v < 0) return '<span style="color:var(--gtb-red);">●</span>';
+        return '<span style="color:var(--gtb-muted);">○</span>';
+    }
+    function td(content, align) {
+        return '<td style="padding:3px 6px;text-align:' + (align || 'center') + ';border-bottom:1px solid var(--gtb-border);white-space:nowrap;">' + content + '</td>';
+    }
+    function th(label, tip) {
+        return '<th style="padding:4px 6px;text-align:center;background:var(--gtb-surface2);font-size:0.6rem;color:var(--gtb-muted);white-space:nowrap;position:sticky;top:0;"' + (tip ? ' title="' + tip + '"' : '') + '>' + label + '</th>';
+    }
+
+    // ── per-instrument row data ───────────────────────────────────────────────
+    function instrData(name) {
+        var sm = INSTRUMENT_SCORE_MAP[name] || {};
+        var sc = {};
+        try { sc = computeInstrumentScore(name); } catch(e) {}
+
+        // 1. 9:15 zone
+        var zone915 = (b915[name] && b915[name]['CLOSE_9_15']) || 'B/W';
+        var score915 = zoneScore(zone915);
+
+        // 2. Current trend zone
+        var currZone = 'B/W', currScore = 0;
+        try {
+            var trend = generateTrend(name); var trends = trend.trends || [];
+            if      (trends.indexOf('AST') !== -1) { currZone = 'AST'; currScore = 2; }
+            else if (trends.indexOf('ASO') !== -1) { currZone = 'ASO'; currScore = 1; }
+            else if (trends.indexOf('BST') !== -1) { currZone = 'BST'; currScore = -2; }
+            else if (trends.indexOf('BSO') !== -1) { currZone = 'BSO'; currScore = -1; }
+            // VIXU/VIXL override display
+            if (trends.indexOf('VIXU') !== -1) currZone = 'VIXU';
+            if (trends.indexOf('VIXL') !== -1) currZone = 'VIXL';
+        } catch(e) {}
+
+        // 3. OI/OBV score
+        var oiObv = (sm.oi_obv != null) ? sm.oi_obv : 0;
+        var pcr   = (sm.pcr   != null) ? parseFloat(sm.pcr).toFixed(2) : '—';
+        var pcrV  = (sm.pcr   != null) ? parseFloat(sm.pcr) : 1;
+        var maxPain = (typeof sc.max_pain !== 'undefined') ? sc.max_pain : 0;
+        var ivSkew  = (typeof sc.iv_skew  !== 'undefined') ? sc.iv_skew  : 0;
+
+        // 4. A/D breadth — only defined for index-level breadth variables
+        var adScore = 0;
+        if (name === 'NIFTY 50')   adScore = (typeof NIFTY_50_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_50_ADVANCE_DECLINE_SCORE : 0);
+        else if (name === 'NIFTY BANK') adScore = (typeof NIFTY_BANK_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_BANK_ADVANCE_DECLINE_SCORE : 0);
+        else adScore = (typeof ALL_ADVANCE_DECLINE_SCORE !== 'undefined' ? ALL_ADVANCE_DECLINE_SCORE : 0);
+
+        // A/D label
+        var adLabel = adScore > 0 ? 'ADV' : adScore < 0 ? 'DEC' : 'FLAT';
+
+        // 5. Futures trend
+        var futScore = (sm.futures_trend != null) ? sm.futures_trend : 0;
+        var futRemark = futScore > 0 ? 'LONG' : futScore < 0 ? 'SHORT' : '—';
+
+        // 6. AVWAP
+        var avwap = sm.avwap || 0;
+        var avwapDir = avwap ? null : null; // will calc from LTP
+        try {
+            var _ltp = parseFloat(generateTrend(name).ltp) || 0;
+            if (avwap && _ltp) avwapDir = _ltp > avwap ? 1 : -1;
+        } catch(e) {}
+
+        // 7. Component score (only for indices)
+        var compScore = 0;
+        if (name === 'NIFTY 50')   compScore = (typeof NIFTY_50_COMPONENT_SCORE !== 'undefined' ? NIFTY_50_COMPONENT_SCORE : 0);
+        else if (name === 'NIFTY BANK') compScore = (typeof NIFTY_BANK_COMPONENT_SCORE !== 'undefined' ? NIFTY_BANK_COMPONENT_SCORE : 0);
+
+        // 8. Leading vs Lagging split
+        var leadScore = score915 + currScore + futScore + adScore;
+        var lagScore  = oiObv + maxPain + ivSkew + (compScore || 0);
+
+        // 9. Total
+        var total = leadScore + lagScore;
+
+        // Alignment check: do leading and lagging agree?
+        var alignment = (leadScore > 0 && lagScore >= 0) ? 'BULL' :
+                        (leadScore < 0 && lagScore <= 0) ? 'BEAR' :
+                        (leadScore === 0 && lagScore === 0) ? 'FLAT' : 'CONFLICT';
+
+        return {
+            name, zone915, score915, currZone, currScore,
+            oiObv, pcr, pcrV, maxPain, ivSkew,
+            adScore, adLabel, futScore, futRemark,
+            avwap, avwapDir, compScore,
+            leadScore, lagScore, total, alignment
+        };
+    }
+
+    var rows = ALL_INSTR.map(instrData);
+
+    // ── Aggregate signals ─────────────────────────────────────────────────────
+    var totBull = 0, totBear = 0, totFlat = 0, totConf = 0;
+    rows.forEach(function(r) {
+        if      (r.alignment === 'BULL') totBull++;
+        else if (r.alignment === 'BEAR') totBear++;
+        else if (r.alignment === 'CONFLICT') totConf++;
+        else totFlat++;
+    });
+
+    // Breadth pillars
+    var all915Bull = rows.filter(function(r){ return r.score915 > 0; }).length;
+    var all915Bear = rows.filter(function(r){ return r.score915 < 0; }).length;
+    var allCurrBull = rows.filter(function(r){ return r.currScore > 0; }).length;
+    var allCurrBear = rows.filter(function(r){ return r.currScore < 0; }).length;
+    var allFutBull  = rows.filter(function(r){ return r.futScore > 0; }).length;
+    var allFutBear  = rows.filter(function(r){ return r.futScore < 0; }).length;
+    var allOIBull   = rows.filter(function(r){ return r.oiObv > 0; }).length;
+    var allOIBear   = rows.filter(function(r){ return r.oiObv < 0; }).length;
+
+    // Global scores
+    var SCORE = 0;
+    try {
+        SCORE = ALL_9_15_CLOSE_SCORE + NIFTY_50_9_15_CLOSE_SCORE + NIFTY_BANK_9_15_CLOSE_SCORE
+            + GIFT_NIFTY_9_15_CLOSE_SCORE + SENSEX_9_15_CLOSE_SCORE + RELIANCE_9_15_CLOSE_SCORE + HDFCBANK_9_15_CLOSE_SCORE
+            + ALL_ADVANCE_DECLINE_SCORE + NIFTY_50_ADVANCE_DECLINE_SCORE + NIFTY_BANK_ADVANCE_DECLINE_SCORE
+            + ALL_FUTURES_TREND_SCORE + NIFTY_50_FUTURES_TREND_SCORE + NIFTY_BANK_FUTURES_TREND_SCORE
+            + NIFTY_50_OI_OBV_SCORE + NIFTY_BANK_OI_OBV_SCORE + RELIANCE_OI_OBV_SCORE + HDFCBANK_OI_OBV_SCORE + ICICIBANK_OI_OBV_SCORE
+            + NIFTY_50_MAX_PAIN_SCORE + NIFTY_BANK_MAX_PAIN_SCORE + RELIANCE_MAX_PAIN_SCORE + HDFCBANK_MAX_PAIN_SCORE + ICICIBANK_MAX_PAIN_SCORE
+            + NIFTY_50_IV_SKEW_SCORE + NIFTY_BANK_IV_SKEW_SCORE + RELIANCE_IV_SKEW_SCORE + HDFCBANK_IV_SKEW_SCORE + ICICIBANK_IV_SKEW_SCORE
+            + NIFTY_50_COMPONENT_SCORE + NIFTY_BANK_COMPONENT_SCORE;
+    } catch(e) {}
+
+    var ms = {};
+    try { ms = getMarketSignal(SCORE, b915); } catch(e) {}
+
+    // Leading score
+    var leadTotal = (typeof ALL_9_15_CLOSE_SCORE !== 'undefined' ? ALL_9_15_CLOSE_SCORE : 0)
+        + (typeof NIFTY_50_9_15_CLOSE_SCORE !== 'undefined' ? NIFTY_50_9_15_CLOSE_SCORE : 0)
+        + (typeof NIFTY_BANK_9_15_CLOSE_SCORE !== 'undefined' ? NIFTY_BANK_9_15_CLOSE_SCORE : 0)
+        + (typeof GIFT_NIFTY_9_15_CLOSE_SCORE !== 'undefined' ? GIFT_NIFTY_9_15_CLOSE_SCORE : 0)
+        + (typeof SENSEX_9_15_CLOSE_SCORE !== 'undefined' ? SENSEX_9_15_CLOSE_SCORE : 0)
+        + (typeof ALL_ADVANCE_DECLINE_SCORE !== 'undefined' ? ALL_ADVANCE_DECLINE_SCORE : 0)
+        + (typeof NIFTY_50_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_50_ADVANCE_DECLINE_SCORE : 0)
+        + (typeof NIFTY_BANK_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_BANK_ADVANCE_DECLINE_SCORE : 0)
+        + (typeof ALL_FUTURES_TREND_SCORE !== 'undefined' ? ALL_FUTURES_TREND_SCORE : 0)
+        + (typeof NIFTY_50_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_50_FUTURES_TREND_SCORE : 0)
+        + (typeof NIFTY_BANK_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_BANK_FUTURES_TREND_SCORE : 0);
+
+    var lagTotal = SCORE - leadTotal;
+
+    // ── Verdict block ─────────────────────────────────────────────────────────
+    function verdictBlock() {
+        var sig      = ms.signal || 'WAIT';
+        var sigColor = sig.indexOf('BUY') !== -1 ? 'var(--gtb-green)' : sig.indexOf('SELL') !== -1 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+        var isConflict = sig === 'WAIT' && (ms.reason || '').indexOf('conflict') !== -1;
+        var reason   = ms.reason || '';
+        var tradeSig = (ms.tradeSignal || {});
+
+        // Determine trade action
+        var action = '—', actionColor = 'var(--gtb-muted)';
+        if (sig === 'STRONG BUY' || sig === 'BUY')   { action = 'BUY CE'; actionColor = 'var(--gtb-green)'; }
+        else if (sig === 'STRONG SELL' || sig === 'SELL') { action = 'BUY PE'; actionColor = 'var(--gtb-red)'; }
+        else if (sig === 'SIDEWAYS') { action = 'Iron Condor'; actionColor = 'var(--gtb-muted)'; }
+        else { action = 'WAIT'; actionColor = 'var(--gtb-amber)'; }
+
+        // Breadth bar
+        function bbar(bull, bear, total) {
+            var bpct = total > 0 ? Math.round(bull / total * 100) : 0;
+            var rpct = total > 0 ? Math.round(bear / total * 100) : 0;
+            return '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--gtb-border);">'
+                + '<div style="width:' + bpct + '%;background:var(--gtb-green);"></div>'
+                + '<div style="width:' + rpct + '%;background:var(--gtb-red);margin-left:auto;"></div>'
+                + '</div>';
+        }
+
+        var n = rows.length;
+        var alignBull = rows.filter(function(r){ return r.total > 0; }).length;
+        var alignBear = rows.filter(function(r){ return r.total < 0; }).length;
+
+        return '<div style="padding:10px 12px;background:var(--gtb-surface);border-radius:4px;margin:8px 0;">'
+
+            // Signal row
+            + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+            + '<div style="font-size:1rem;font-weight:900;color:' + sigColor + ';">' + sig + '</div>'
+            + '<div style="font-size:0.6rem;color:var(--gtb-muted);">Composite: <b style="color:' + scoreColor(SCORE) + ';">' + scoreSign(SCORE) + '</b></div>'
+            + '<div style="font-size:0.6rem;color:var(--gtb-muted);">Leading: <b style="color:' + scoreColor(leadTotal) + ';">' + scoreSign(leadTotal) + '</b></div>'
+            + '<div style="font-size:0.6rem;color:var(--gtb-muted);">Lagging: <b style="color:' + scoreColor(lagTotal) + ';">' + scoreSign(lagTotal) + '</b></div>'
+            + '<div style="margin-left:auto;font-size:0.75rem;font-weight:800;color:' + actionColor + ';border:1px solid ' + actionColor + ';padding:2px 8px;border-radius:3px;">' + action + '</div>'
+            + '</div>'
+
+            // Reason
+            + '<div style="font-size:0.6rem;color:var(--gtb-muted);margin-top:4px;">' + reason + '</div>'
+
+            // Alignment breadth
+            + '<div style="margin-top:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">'
+            + _verdictCell('BULL', totBull, n, 'var(--gtb-green)')
+            + _verdictCell('BEAR', totBear, n, 'var(--gtb-red)')
+            + _verdictCell('CONFLICT', totConf, n, 'var(--gtb-amber)')
+            + _verdictCell('FLAT', totFlat, n, 'var(--gtb-muted)')
+            + '</div>'
+
+            // Pillar breadth bars
+            + '<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;">'
+            + _pillarBar('9:15 Open', all915Bull, all915Bear, n)
+            + _pillarBar('Strike Zone', allCurrBull, allCurrBear, n)
+            + _pillarBar('Futures', allFutBull, allFutBear, n)
+            + _pillarBar('OI/OBV', allOIBull, allOIBear, n)
+            + '</div>'
+
+            // Conflict warning
+            + (isConflict ? '<div style="font-size:0.6rem;color:var(--gtb-amber);margin-top:4px;"><i class="bi bi-exclamation-triangle-fill"></i> Leading/Lagging conflict — wait for alignment before entry.</div>' : '')
+            + '</div>';
+    }
+
+    function _verdictCell(label, count, total, color) {
+        var pct = total > 0 ? Math.round(count / total * 100) : 0;
+        return '<div style="text-align:center;padding:4px;background:var(--gtb-surface2);border-radius:3px;">'
+            + '<div style="font-size:0.9rem;font-weight:900;color:' + color + ';">' + count + '</div>'
+            + '<div style="font-size:0.55rem;color:var(--gtb-muted);">' + label + ' (' + pct + '%)</div>'
+            + '</div>';
+    }
+
+    function _pillarBar(label, bull, bear, total) {
+        var bpct = total > 0 ? Math.round(bull / total * 100) : 0;
+        var rpct = total > 0 ? Math.round(bear / total * 100) : 0;
+        var netDir = bull > bear ? 'var(--gtb-green)' : bear > bull ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        return '<div>'
+            + '<div style="display:flex;justify-content:space-between;font-size:0.55rem;color:var(--gtb-muted);margin-bottom:1px;">'
+            + '<span>' + label + '</span>'
+            + '<span style="color:' + netDir + ';">' + bull + 'B / ' + bear + 'D</span>'
+            + '</div>'
+            + '<div style="display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--gtb-border);">'
+            + '<div style="width:' + bpct + '%;background:var(--gtb-green);"></div>'
+            + '</div>'
+            + '</div>';
+    }
+
+    // ── Matrix table ──────────────────────────────────────────────────────────
+    var colHeaders = ''
+        + th('Instrument', 'Name')
+        + th('9:15<br>Zone', '9:15 candle close zone vs open')
+        + th('Strike<br>Zone', 'Current LTP vs strike levels (AST/ASO/B/W/BSO/BST)')
+        + th('Futures<br>Trend', 'NSE futures REMARK: LONG/SHORT')
+        + th('OI/OBV<br>Score', 'Net change in open interest + OBV direction')
+        + th('Max<br>Pain', 'Max pain vs spot: +1 above (pull up), -1 below')
+        + th('IV<br>Skew', 'Put skew > 2% = -1 (fear), Call skew > 2% = +1')
+        + th('A/D', 'Advance/Decline breadth for this universe')
+        + th('PCR', 'Put/Call Ratio: >1.3 extreme puts, <0.7 extreme calls')
+        + th('AVWAP', 'LTP vs Anchored VWAP from 9:15 (bull = above)')
+        + th('Lead<br>Score', '9:15 + Strike + Futures + A/D (fast signals)')
+        + th('Lag<br>Score', 'OI/OBV + MaxPain + IVSkew + Component (slower signals)')
+        + th('Total', 'Sum of all sub-scores')
+        + th('Alignment', 'Do leading & lagging agree?');
+
+    var tableRows = '';
+    var isLightTheme = !!document.querySelector('#main-trade-bot-container.gtb-light');
+
+    rows.forEach(function(r) {
+        var isIndex = INDICES.indexOf(r.name) !== -1;
+        var rowBg   = isIndex ? '' : '';
+
+        // Alignment cell
+        var alColor = r.alignment === 'BULL' ? 'var(--gtb-green)' :
+                      r.alignment === 'BEAR' ? 'var(--gtb-red)' :
+                      r.alignment === 'CONFLICT' ? 'var(--gtb-amber)' : 'var(--gtb-muted)';
+
+        var avwapHtml = r.avwap
+            ? (r.avwapDir === 1 ? '<span style="color:var(--gtb-green);">▲ Above</span>'
+             : r.avwapDir === -1 ? '<span style="color:var(--gtb-red);">▼ Below</span>'
+             : '<span style="color:var(--gtb-muted);">—</span>')
+            : '<span style="color:var(--gtb-muted);">N/A</span>';
+
+        var pcrHtml = r.pcr !== '—'
+            ? '<span style="color:' + (r.pcrV > 1.2 ? 'var(--gtb-green)' : r.pcrV < 0.8 ? 'var(--gtb-red)' : 'var(--gtb-muted)') + ';">' + r.pcr + '</span>'
+            : '—';
+
+        var compHtml = isIndex && r.compScore !== 0
+            ? ' <span style="font-size:0.55rem;color:var(--gtb-muted);">(C:' + scoreSign(parseFloat(r.compScore.toFixed(1))) + ')</span>'
+            : '';
+
+        tableRows += '<tr style="' + (isIndex ? 'font-weight:700;' : '') + '">'
+            + td('<span style="font-size:0.65rem;">' + r.name + '</span>' + compHtml, 'left')
+            + td(zonePill(r.zone915, r.score915))
+            + td(zonePill(r.currZone, r.currScore))
+            + td(dot(r.futScore) + ' <span style="font-size:0.6rem;color:' + scoreColor(r.futScore) + ';">' + r.futRemark + '</span>')
+            + td('<span style="font-family:var(--gtb-mono);font-size:0.65rem;color:' + scoreColor(r.oiObv) + ';">' + scoreSign(r.oiObv) + '</span>')
+            + td(dot(r.maxPain))
+            + td(dot(r.ivSkew))
+            + td(dot(r.adScore) + ' <span style="font-size:0.6rem;color:' + scoreColor(r.adScore) + ';">' + r.adLabel + '</span>')
+            + td(pcrHtml)
+            + td(avwapHtml)
+            + td('<span style="font-family:var(--gtb-mono);font-size:0.65rem;font-weight:700;color:' + scoreColor(r.leadScore) + ';">' + scoreSign(r.leadScore) + '</span>')
+            + td('<span style="font-family:var(--gtb-mono);font-size:0.65rem;font-weight:700;color:' + scoreColor(r.lagScore) + ';">' + scoreSign(r.lagScore) + '</span>')
+            + td('<span style="font-family:var(--gtb-mono);font-size:0.7rem;font-weight:900;color:' + scoreColor(r.total) + ';">' + scoreSign(r.total) + '</span>')
+            + td('<span style="font-size:0.6rem;font-weight:700;color:' + alColor + ';">' + r.alignment + '</span>')
+            + '</tr>';
+    });
+
+    // ── Breadth summary rows ──────────────────────────────────────────────────
+    // All-score summary rows (spot A/D and futures A/D from globals)
+    var adAllScore = (typeof ALL_ADVANCE_DECLINE_SCORE !== 'undefined' ? ALL_ADVANCE_DECLINE_SCORE : 0);
+    var adN50Score = (typeof NIFTY_50_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_50_ADVANCE_DECLINE_SCORE : 0);
+    var adBNScore  = (typeof NIFTY_BANK_ADVANCE_DECLINE_SCORE !== 'undefined' ? NIFTY_BANK_ADVANCE_DECLINE_SCORE : 0);
+    var futAllScore = (typeof ALL_FUTURES_TREND_SCORE !== 'undefined' ? ALL_FUTURES_TREND_SCORE : 0);
+    var futN50Score = (typeof NIFTY_50_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_50_FUTURES_TREND_SCORE : 0);
+    var futBNScore  = (typeof NIFTY_BANK_FUTURES_TREND_SCORE !== 'undefined' ? NIFTY_BANK_FUTURES_TREND_SCORE : 0);
+    var all915Score = (typeof ALL_9_15_CLOSE_SCORE !== 'undefined' ? ALL_9_15_CLOSE_SCORE : 0);
+
+    // ── Relative Strength section (AVWAP direction per weighted stock) ─────────
+    function rsRows() {
+        var n50keys = Object.keys(NIFTY_50_WEIGHTED_STOCKS  || {});
+        var bnkeys  = Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {});
+        var allKeys = n50keys.concat(bnkeys.filter(function(k){ return n50keys.indexOf(k) === -1; }));
+
+        var bulls = 0, bears = 0;
+        var rsHtml = '';
+        allKeys.forEach(function(sname) {
+            var sm2 = INSTRUMENT_SCORE_MAP[sname] || {};
+            var avwap2 = sm2.avwap || 0;
+            var ltpAbove = null;
+            try {
+                var _l = parseFloat(generateTrend(sname).ltp) || 0;
+                if (avwap2 && _l) ltpAbove = _l > avwap2;
+            } catch(e) {}
+            if (ltpAbove === true) bulls++;
+            else if (ltpAbove === false) bears++;
+            var cs = {};
+            try { cs = computeInstrumentScore(sname); } catch(e) {}
+            var zone = (b915[sname] && b915[sname]['CLOSE_9_15']) || 'B/W';
+            rsHtml += '<div style="display:flex;align-items:center;gap:4px;padding:2px 0;">'
+                + '<span style="font-size:0.55rem;color:var(--gtb-muted);min-width:80px;">' + sname + '</span>'
+                + zonePill(zone, zoneScore(zone))
+                + '<span style="margin-left:4px;font-size:0.55rem;color:' + (ltpAbove === true ? 'var(--gtb-green)' : ltpAbove === false ? 'var(--gtb-red)' : 'var(--gtb-muted)') + ';">' + (ltpAbove === true ? '▲ AVWAP' : ltpAbove === false ? '▼ AVWAP' : 'N/A') + '</span>'
+                + '<span style="margin-left:auto;font-size:0.55rem;font-family:var(--gtb-mono);color:' + scoreColor(cs.total || 0) + ';">' + scoreSign(cs.total || 0) + '</span>'
+                + '</div>';
+        });
+
+        var rsBull = bulls > bears ? 'var(--gtb-green)' : bears > bulls ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        return '<div style="margin-top:10px;">'
+            + '<div style="font-size:0.6rem;font-weight:700;color:var(--gtb-text);margin-bottom:4px;">'
+            + '<i class="bi bi-bar-chart-fill"></i> Relative Strength (Weighted Stocks) '
+            + '<span style="font-weight:400;color:var(--gtb-muted);">— '
+            + '<span style="color:var(--gtb-green);">' + bulls + ' above AVWAP</span> / '
+            + '<span style="color:var(--gtb-red);">' + bears + ' below</span>'
+            + '</span></div>'
+            + '<div style="columns:3;column-gap:8px;">' + rsHtml + '</div>'
+            + '</div>';
+    }
+
+    // ── Global breadth summary ────────────────────────────────────────────────
+    function breadthBar(label, score, max) {
+        var pct = max > 0 ? Math.min(100, Math.abs(score / max) * 100) : 0;
+        var col = scoreColor(score);
+        return '<div style="margin-bottom:3px;">'
+            + '<div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:1px;">'
+            + '<span style="color:var(--gtb-muted);">' + label + '</span>'
+            + '<span style="color:' + col + ';font-family:var(--gtb-mono);font-weight:700;">' + scoreSign(score) + '</span>'
+            + '</div>'
+            + '<div style="height:6px;background:var(--gtb-border);border-radius:3px;">'
+            + '<div style="height:6px;width:' + pct.toFixed(0) + '%;background:' + col + ';border-radius:3px;margin-left:' + (score < 0 ? (100-pct).toFixed(0) + '%' : '0') + ';"></div>'
+            + '</div></div>';
+    }
+
+    var html = '<div id="gtb-trend-matrix-wrap" style="padding:8px 12px;overflow:auto;max-height:calc(100% - 10px);font-size:0.65rem;">'
+
+        // ── Verdict ──────────────────────────────────────────────────────────
+        + '<div style="font-size:0.65rem;font-weight:700;color:var(--gtb-muted);margin-bottom:4px;letter-spacing:0.05em;">MARKET VERDICT</div>'
+        + verdictBlock()
+
+        // ── Global breadth summary ───────────────────────────────────────────
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">'
+        + '<div style="padding:8px;background:var(--gtb-surface);border-radius:4px;">'
+        + '<div style="font-size:0.6rem;font-weight:700;color:var(--gtb-muted);margin-bottom:6px;">9:15 CANDLE BREADTH</div>'
+        + breadthBar('All F&O stocks', all915Score, 1)
+        + breadthBar('NIFTY 50', typeof NIFTY_50_9_15_CLOSE_SCORE !== 'undefined' ? NIFTY_50_9_15_CLOSE_SCORE : 0, 2)
+        + breadthBar('NIFTY BANK', typeof NIFTY_BANK_9_15_CLOSE_SCORE !== 'undefined' ? NIFTY_BANK_9_15_CLOSE_SCORE : 0, 2)
+        + breadthBar('GIFT NIFTY', typeof GIFT_NIFTY_9_15_CLOSE_SCORE !== 'undefined' ? GIFT_NIFTY_9_15_CLOSE_SCORE : 0, 2)
+        + breadthBar('SENSEX', typeof SENSEX_9_15_CLOSE_SCORE !== 'undefined' ? SENSEX_9_15_CLOSE_SCORE : 0, 2)
+        + '</div>'
+        + '<div style="padding:8px;background:var(--gtb-surface);border-radius:4px;">'
+        + '<div style="font-size:0.6rem;font-weight:700;color:var(--gtb-muted);margin-bottom:6px;">ADVANCE / DECLINE BREADTH</div>'
+        + breadthBar('All F&O (spot)', adAllScore, 1)
+        + breadthBar('NIFTY 50 (spot)', adN50Score, 1)
+        + breadthBar('BANK NIFTY (spot)', adBNScore, 1)
+        + '<div style="font-size:0.6rem;font-weight:700;color:var(--gtb-muted);margin:6px 0 4px;">FUTURES BREADTH</div>'
+        + breadthBar('All futures', futAllScore, 1)
+        + breadthBar('NIFTY 50 futures', futN50Score, 1)
+        + breadthBar('BANK futures', futBNScore, 1)
+        + '</div></div>'
+
+        // ── Main matrix ──────────────────────────────────────────────────────
+        + '<div style="font-size:0.65rem;font-weight:700;color:var(--gtb-muted);margin:10px 0 4px;letter-spacing:0.05em;">INSTRUMENT SIGNAL MATRIX</div>'
+        + '<div style="overflow-x:auto;">'
+        + '<table style="border-collapse:collapse;width:100%;min-width:760px;">'
+        + '<thead><tr>' + colHeaders + '</tr></thead>'
+        + '<tbody>' + tableRows + '</tbody>'
+        + '</table></div>'
+
+        // ── Relative strength ─────────────────────────────────────────────────
+        + rsRows()
+
+        // ── Refresh ───────────────────────────────────────────────────────────
+        + '<div style="margin-top:8px;text-align:right;">'
+        + '<button id="gtb-trendmatrix-refresh" style="font-size:0.6rem;padding:3px 10px;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;cursor:pointer;">'
+        + '<i class="bi bi-arrow-clockwise"></i> Refresh</button>'
+        + '</div>'
+
+        + '</div>';
+
+    return html;
+}
+
+function _gtbShowTrendMatrix() {
+    var h = _gtbBuildTrendMatrix();
+    showPopUpWindow('trend-matrix', h, 'Trend Matrix', 900, 620);
+    var _cls = 'popup-custom-style-trend-matrix';
+    var _ttl = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;white-space:nowrap;"><i class="bi bi-grid-1x2-fill"></i> TREND COMBINATION MATRIX</span>'
+        + popupWinControls(_cls)
+        + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_ttl);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+}
+
+jQ(document).on('click', '#gtb-trendmatrix-refresh', function() {
+    jQ('#gtb-trend-matrix-wrap').replaceWith(_gtbBuildTrendMatrix());
 });
 
 // ── Trade Recommender popup ───────────────────────────────────────────────────
@@ -14920,11 +16056,2078 @@ function _gtbShowTradeSetup(inPaneId, singleName) {
 }
 
 
+// ── Relative Strength Scanner ────────────────────────────────────────────────
+
+// RS universe: N50 + BNK weighted stocks + main indices
+function _rsGetUniverse() {
+    var seen = {};
+    var list = [];
+    var addName = function(n) { if (!seen[n]) { seen[n] = 1; list.push(n); } };
+    Object.keys(NIFTY_50_WEIGHTED_STOCKS  || {}).forEach(addName);
+    Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {}).forEach(addName);
+    return list;
+}
+
+// Compute RS row for one instrument vs benchmark
+// Returns { name, stockChg, benchChg, rs, zone, score }
+function _rsCalcRow(name, benchChg) {
+    var ltp = 0, open = 0;
+    try {
+        var _ltpStore = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}');
+        ltp  = parseFloat((_ltpStore[name] || {}).ltp) || 0;
+    } catch(_e) {}
+    try { open = parseFloat((INSTRUMENT_SCORE_MAP[name] || {}).open) || 0; } catch(_e) {}
+    if (!ltp || !open) return null;
+
+    var stockChg = ((ltp - open) / open) * 100;
+    var rs = stockChg - benchChg;
+
+    // Zone from current_trend sub-score
+    var instr = computeInstrumentScore(name);
+    var zone = '—';
+    if      (instr.current_trend >= 2)  zone = 'AST';
+    else if (instr.current_trend >= 1)  zone = 'ASO';
+    else if (instr.current_trend <= -2) zone = 'BST';
+    else if (instr.current_trend <= -1) zone = 'BSO';
+    else                                zone = 'B/W';
+
+    return { name: name, ltp: ltp, stockChg: stockChg, benchChg: benchChg, rs: rs, zone: zone, score: instr.total };
+}
+
+function _rsGetBenchChg() {
+    var ltp = 0, open = 0;
+    try {
+        var _s = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}');
+        ltp = parseFloat((_s['NIFTY 50'] || {}).ltp) || 0;
+    } catch(_e) {}
+    try { open = parseFloat((INSTRUMENT_SCORE_MAP['NIFTY 50'] || {}).open) || 0; } catch(_e) {}
+    return (!ltp || !open) ? 0 : ((ltp - open) / open) * 100;
+}
+
+function _rsZoneColor(zone) {
+    if (zone === 'AST') return 'var(--gtb-green)';
+    if (zone === 'ASO') return '#6cb96c';
+    if (zone === 'BSO') return '#d47f7f';
+    if (zone === 'BST') return 'var(--gtb-red)';
+    return 'var(--gtb-muted)';
+}
+
+function _rsAction(row) {
+    if (row.rs > 0.5 && (row.zone === 'ASO' || row.zone === 'AST')) return { text: 'LONG CANDIDATE', col: 'var(--gtb-green)' };
+    if (row.rs < -0.5 && (row.zone === 'BSO' || row.zone === 'BST')) return { text: 'SHORT CANDIDATE', col: 'var(--gtb-red)' };
+    if (row.rs > 0.5) return { text: 'RS+ watch', col: '#6cb96c' };
+    if (row.rs < -0.5) return { text: 'RS− avoid', col: '#d47f7f' };
+    return { text: '—', col: 'var(--gtb-muted)' };
+}
+
+var _RS_INTERVAL = null;
+
+function _gtbShowRsScanner() {
+    var _cls = 'popup-custom-style-rs-scanner';
+
+    var html = '<div id="rs-scanner-wrap" style="height:100%;display:flex;flex-direction:column;overflow:hidden;">'
+        + '<div style="padding:6px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--gtb-border);">'
+        +   '<span style="font-size:0.42rem;color:var(--gtb-muted);">Nifty %: <span id="rs-bench-pct" style="font-family:var(--gtb-mono);font-weight:700;color:var(--gtb-text);">—</span></span>'
+        +   '<span style="font-size:0.42rem;color:var(--gtb-muted);margin-left:auto;">Sort:</span>'
+        +   '<select id="rs-sort" style="font-size:0.42rem;padding:1px 4px;background:var(--gtb-surface2);border:1px solid var(--gtb-border);color:var(--gtb-text);">'
+        +     '<option value="rs-desc">RS ▼</option>'
+        +     '<option value="rs-asc">RS ▲</option>'
+        +     '<option value="chg-desc">% Chg ▼</option>'
+        +     '<option value="chg-asc">% Chg ▲</option>'
+        +     '<option value="score-desc">Score ▼</option>'
+        +   '</select>'
+        +   '<select id="rs-filter" style="font-size:0.42rem;padding:1px 4px;background:var(--gtb-surface2);border:1px solid var(--gtb-border);color:var(--gtb-text);">'
+        +     '<option value="all">All</option>'
+        +     '<option value="n50">N50 only</option>'
+        +     '<option value="bnk">BNK only</option>'
+        +     '<option value="long">Long candidates</option>'
+        +     '<option value="short">Short candidates</option>'
+        +   '</select>'
+        +   '<button id="rs-refresh" style="font-size:0.42rem;padding:2px 7px;background:var(--gtb-surface2);border:1px solid var(--gtb-border);color:var(--gtb-text);cursor:pointer;">↺</button>'
+        + '</div>'
+        + '<div id="rs-table-wrap" style="flex:1;overflow-y:auto;"></div>'
+        + '</div>';
+
+    showPopUpWindow('rs-scanner', html, 'RS Scanner', 700, 520);
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-bar-chart-fill" style="color:var(--gtb-accent);"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">RELATIVE STRENGTH</span>'
+        + '<span style="font-size:0.38rem;color:var(--gtb-muted);">vs NIFTY 50</span>'
+        + popupWinControls(_cls)
+        + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+
+    function _render() {
+        var benchChg = _rsGetBenchChg();
+        var benchCol = benchChg >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        jQ('#rs-bench-pct').css('color', benchCol).text((benchChg >= 0 ? '+' : '') + benchChg.toFixed(2) + '%');
+
+        var universe = _rsGetUniverse();
+        var filterVal = jQ('#rs-filter').val();
+        if (filterVal === 'n50') universe = Object.keys(NIFTY_50_WEIGHTED_STOCKS || {});
+        if (filterVal === 'bnk') universe = Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {});
+
+        var rows = universe.map(function(n) { return _rsCalcRow(n, benchChg); }).filter(Boolean);
+
+        if (filterVal === 'long')  rows = rows.filter(function(r) { return r.rs > 0.5 && (r.zone === 'ASO' || r.zone === 'AST'); });
+        if (filterVal === 'short') rows = rows.filter(function(r) { return r.rs < -0.5 && (r.zone === 'BSO' || r.zone === 'BST'); });
+
+        var sortVal = jQ('#rs-sort').val();
+        rows.sort(function(a, b) {
+            if (sortVal === 'rs-desc')   return b.rs - a.rs;
+            if (sortVal === 'rs-asc')    return a.rs - b.rs;
+            if (sortVal === 'chg-desc')  return b.stockChg - a.stockChg;
+            if (sortVal === 'chg-asc')   return a.stockChg - b.stockChg;
+            if (sortVal === 'score-desc') return b.score - a.score;
+            return b.rs - a.rs;
+        });
+
+        if (!rows.length) {
+            jQ('#rs-table-wrap').html('<div style="padding:24px;text-align:center;color:var(--gtb-muted);font-size:0.5rem;">No data — run the main scanner first (9:15 scan must be complete).</div>');
+            return;
+        }
+
+        var h = '<table class="gtb-t915-table" style="width:100%;"><thead><tr>'
+            + '<th>Symbol</th><th>LTP</th><th>% Chg</th>'
+            + '<th title="Stock % − Nifty %">RS vs N50</th>'
+            + '<th>RS Bar</th>'
+            + '<th>Zone</th><th>Score</th><th>Signal</th>'
+            + '</tr></thead><tbody>';
+
+        // Find max RS magnitude for bar scaling
+        var maxAbs = rows.reduce(function(m, r) { return Math.max(m, Math.abs(r.rs)); }, 0.01);
+
+        rows.forEach(function(r) {
+            var isN50 = NIFTY_50_WEIGHTED_STOCKS  && NIFTY_50_WEIGHTED_STOCKS[r.name];
+            var isBnk = NIFTY_BANK_WEIGHTED_STOCKS && NIFTY_BANK_WEIGHTED_STOCKS[r.name];
+            var badge = isN50 ? '<span style="font-size:0.35rem;font-weight:800;padding:1px 3px;background:var(--gtb-blue)22;color:var(--gtb-blue);">N50</span>'
+                      : isBnk ? '<span style="font-size:0.35rem;font-weight:800;padding:1px 3px;background:var(--gtb-amber)22;color:var(--gtb-amber);">BNK</span>'
+                      : '';
+
+            var chgCol  = r.stockChg >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+            var rsCol   = r.rs > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+            var zoneCol = _rsZoneColor(r.zone);
+            var scoreCol = r.score >= 4 ? 'var(--gtb-green)' : r.score >= 0 ? 'var(--gtb-amber)' : 'var(--gtb-red)';
+            var act = _rsAction(r);
+
+            // Mini bar: centred at 0, fills left (bearish) or right (bullish)
+            var barPct = Math.min(Math.abs(r.rs) / maxAbs * 100, 100);
+            var barHtml = '<div style="display:flex;align-items:center;width:80px;height:8px;background:var(--gtb-surface2);">'
+                + (r.rs >= 0
+                    ? '<div style="width:50%;"></div><div style="width:' + (barPct/2).toFixed(0) + '%;height:100%;background:var(--gtb-green);"></div>'
+                    : '<div style="width:' + (50 - barPct/2).toFixed(0) + '%;"></div><div style="width:' + (barPct/2).toFixed(0) + '%;height:100%;background:var(--gtb-red);"></div>'
+                  )
+                + '</div>';
+
+            h += '<tr>'
+                + '<td><span style="font-weight:700;">' + r.name + '</span> ' + badge + '</td>'
+                + '<td style="font-family:var(--gtb-mono);">₹' + r.ltp.toFixed(2) + '</td>'
+                + '<td style="font-family:var(--gtb-mono);font-weight:700;color:' + chgCol + ';">' + (r.stockChg >= 0 ? '+' : '') + r.stockChg.toFixed(2) + '%</td>'
+                + '<td style="font-family:var(--gtb-mono);font-weight:800;color:' + rsCol + ';">' + (r.rs >= 0 ? '+' : '') + r.rs.toFixed(2) + '%</td>'
+                + '<td>' + barHtml + '</td>'
+                + '<td style="font-weight:700;color:' + zoneCol + ';">' + r.zone + '</td>'
+                + '<td style="font-family:var(--gtb-mono);font-weight:700;color:' + scoreCol + ';">' + (r.score >= 0 ? '+' : '') + r.score.toFixed(1) + '</td>'
+                + '<td style="font-weight:700;color:' + act.col + ';white-space:nowrap;">' + act.text + '</td>'
+                + '</tr>';
+        });
+
+        h += '</tbody></table>';
+        jQ('#rs-table-wrap').html(h);
+    }
+
+    jQ(document).off('change.rssort').on('change.rssort', '#rs-sort, #rs-filter', function() {
+        try { _render(); } catch(e) { jQ('#rs-table-wrap').html('<div style="color:var(--gtb-red);padding:12px;font-size:0.48rem;">Render error: ' + e.message + '</div>'); }
+    });
+    jQ(document).off('click.rsrefresh').on('click.rsrefresh', '#rs-refresh', function() {
+        try { _render(); } catch(e) { jQ('#rs-table-wrap').html('<div style="color:var(--gtb-red);padding:12px;font-size:0.48rem;">Render error: ' + e.message + '</div>'); }
+    });
+
+    // Defer first render until popup DOM is in place
+    setTimeout(function() {
+        try { _render(); } catch(e) { jQ('#rs-table-wrap').html('<div style="color:var(--gtb-red);padding:12px;font-size:0.48rem;">Render error: ' + e.message + '</div>'); }
+    }, 120);
+
+    if (_RS_INTERVAL) clearInterval(_RS_INTERVAL);
+    _RS_INTERVAL = setInterval(function() {
+        if (!document.querySelector('.' + _cls)) {
+            clearInterval(_RS_INTERVAL); _RS_INTERVAL = null; return;
+        }
+        try { _render(); } catch(_e) {}
+    }, 15000);
+}
+
+
+
+// ── Signal Scanners (OBV Divergence + Strike Absorption) ─────────────────────
+
+var _SS_INTERVAL = null;
+
+// ── Helpers shared by both scanner tabs ──────────────────────────────────────
+
+function _ssGetUniverse() {
+    var seen = {}, list = [];
+    var add = function(n) { if (!seen[n]) { seen[n] = 1; list.push(n); } };
+    ['NIFTY 50','NIFTY BANK','RELIANCE','HDFCBANK','ICICIBANK'].forEach(add);
+    Object.keys(NIFTY_50_WEIGHTED_STOCKS  || {}).forEach(add);
+    Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {}).forEach(add);
+    return list;
+}
+
+function _ssBadge(name) {
+    var isN50 = NIFTY_50_WEIGHTED_STOCKS  && NIFTY_50_WEIGHTED_STOCKS[name];
+    var isBnk = NIFTY_BANK_WEIGHTED_STOCKS && NIFTY_BANK_WEIGHTED_STOCKS[name];
+    return isN50 ? '<span style="font-size:0.35rem;font-weight:800;padding:1px 3px;background:var(--gtb-blue)22;color:var(--gtb-blue);">N50</span>'
+         : isBnk ? '<span style="font-size:0.35rem;font-weight:800;padding:1px 3px;background:var(--gtb-amber)22;color:var(--gtb-amber);">BNK</span>'
+         : '';
+}
+
+function _ssLtp(name) {
+    try {
+        var s = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}');
+        return parseFloat((s[name] || {}).ltp) || 0;
+    } catch(_e) { return 0; }
+}
+
+// ── OBV Divergence scanner ───────────────────────────────────────────────────
+// Bullish divergence: price below open (falling) but OBV net bullish → quiet accumulation
+// Bearish divergence: price above open (rising) but OBV net bearish → distribution
+
+function _ssBuildObvHtml() {
+    var benchLtp  = _ssLtp('NIFTY 50');
+    var benchOpen = parseFloat((INSTRUMENT_SCORE_MAP['NIFTY 50'] || {}).open) || 0;
+    var benchChg  = (benchLtp && benchOpen) ? ((benchLtp - benchOpen) / benchOpen * 100) : 0;
+
+    var rows = [];
+    _ssGetUniverse().forEach(function(name) {
+        var ism = INSTRUMENT_SCORE_MAP[name] || {};
+        var ltp  = _ssLtp(name);
+        var open = parseFloat(ism.open) || 0;
+        if (!ltp || !open) return;
+
+        var priceChg = ((ltp - open) / open) * 100;
+        var instr = computeInstrumentScore(name);
+        var oiObv = instr.oi_obv;   // > 0 bullish OBV, < 0 bearish OBV
+        if (oiObv === 0) return;     // no OI/OBV data
+
+        // Divergence: price and OBV disagree
+        var div = null;
+        if (priceChg < -0.2 && oiObv > 0) div = 'BULL';   // price down, OBV buying
+        if (priceChg >  0.2 && oiObv < 0) div = 'BEAR';   // price up, OBV selling
+
+        rows.push({ name: name, ltp: ltp, priceChg: priceChg, oiObv: oiObv, div: div, score: instr.total });
+    });
+
+    // Sort: divergent rows first (by strength), then rest by |oiObv|
+    rows.sort(function(a, b) {
+        var aDiv = a.div ? 1 : 0, bDiv = b.div ? 1 : 0;
+        if (aDiv !== bDiv) return bDiv - aDiv;
+        return Math.abs(b.oiObv) - Math.abs(a.oiObv);
+    });
+
+    if (!rows.length) return '<div style="padding:24px;text-align:center;color:var(--gtb-muted);font-size:0.5rem;">No OI/OBV data — run OI scan first.</div>';
+
+    var divCount = rows.filter(function(r) { return r.div; }).length;
+    var h = '<div style="font-size:0.42rem;color:var(--gtb-muted);padding:4px 2px 6px;">'
+        + 'Nifty: <b style="color:' + (benchChg >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + ';">'
+        + (benchChg >= 0 ? '+' : '') + benchChg.toFixed(2) + '%</b>'
+        + ' &nbsp;|&nbsp; <b style="color:var(--gtb-accent);">' + divCount + '</b> divergences found'
+        + '</div>';
+
+    h += '<div style="overflow-x:auto;"><table class="gtb-t915-table" style="width:100%;"><thead><tr>'
+        + '<th>Symbol</th><th>LTP</th><th>Price %</th>'
+        + '<th title="OI+OBV score: positive = net bullish OBV, negative = net bearish">OBV Score</th>'
+        + '<th>Divergence</th><th>Signal</th>'
+        + '</tr></thead><tbody>';
+
+    rows.forEach(function(r) {
+        var priceCol = r.priceChg >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        var obvCol   = r.oiObv   >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+
+        var divCell = '—', sigCell = '—', sigCol = 'var(--gtb-muted)', rowHighlight = '';
+        if (r.div === 'BULL') {
+            divCell = '<span style="color:var(--gtb-green);font-weight:800;">▲ BULLISH</span>';
+            sigCell = 'Quiet accumulation — consider CE';
+            sigCol  = 'var(--gtb-green)';
+            rowHighlight = 'background:var(--gtb-green)08;';
+        } else if (r.div === 'BEAR') {
+            divCell = '<span style="color:var(--gtb-red);font-weight:800;">▼ BEARISH</span>';
+            sigCell = 'Distribution in progress — consider PE';
+            sigCol  = 'var(--gtb-red)';
+            rowHighlight = 'background:var(--gtb-red)08;';
+        }
+
+        h += '<tr style="' + rowHighlight + '">'
+            + '<td><span style="font-weight:700;">' + r.name + '</span> ' + _ssBadge(r.name) + '</td>'
+            + '<td style="font-family:var(--gtb-mono);">₹' + r.ltp.toFixed(2) + '</td>'
+            + '<td style="font-family:var(--gtb-mono);font-weight:700;color:' + priceCol + ';">' + (r.priceChg >= 0 ? '+' : '') + r.priceChg.toFixed(2) + '%</td>'
+            + '<td style="font-family:var(--gtb-mono);font-weight:800;color:' + obvCol + ';">' + (r.oiObv >= 0 ? '+' : '') + r.oiObv.toFixed(1) + '</td>'
+            + '<td>' + divCell + '</td>'
+            + '<td style="font-size:0.42rem;color:' + sigCol + ';">' + sigCell + '</td>'
+            + '</tr>';
+    });
+
+    h += '</tbody></table></div>';
+    return h;
+}
+
+// ── Strike Absorption scanner ─────────────────────────────────────────────────
+// Detects when price is near a key level (ASO/BSO) AND OI is actively building there
+// (writers adding positions) — that level acts as a wall, limiting breakout potential
+
+function _ssAbsorbStrength(strikeRow) {
+    // CE absorption: call writers adding = CHG_OI_CE positive AND CE OBV building (positive delta)
+    var ceChg = parseFloat(strikeRow['CHG_OI_CE']) || 0;
+    var peChg = parseFloat(strikeRow['CHG_OI_PE']) || 0;
+    var ceObv = 0, peObv = 0;
+    try {
+        var ceList = strikeRow['CE_OBV'];
+        if (ceList && ceList.length >= 2) ceObv = parseFloat(ceList[ceList.length-1].obv) - parseFloat(ceList[0].obv);
+    } catch(_e) {}
+    try {
+        var peList = strikeRow['PE_OBV'];
+        if (peList && peList.length >= 2) peObv = parseFloat(peList[peList.length-1].obv) - parseFloat(peList[0].obv);
+    } catch(_e) {}
+    return { ceChg: ceChg, peChg: peChg, ceObv: ceObv, peObv: peObv };
+}
+
+function _ssBuildAbsorbHtml() {
+    var rows = [];
+
+    _ssGetUniverse().forEach(function(name) {
+        var ism = INSTRUMENT_SCORE_MAP[name] || {};
+        var oiData = ism.oiData;
+        var sm = ism.strikeMap;
+        if (!oiData || !oiData.tableData || !sm) return;
+
+        var ltp  = _ssLtp(name);
+        var open = parseFloat(ism.open) || 0;
+        if (!ltp) return;
+
+        var aso = parseFloat(sm.ustrikeOne) || 0;
+        var ast = parseFloat(sm.ustrikeTwo) || 0;
+        var bso = parseFloat(sm.bstrikeOne) || 0;
+        var bst = parseFloat(sm.bstrikeTwo) || 0;
+
+        // Check each level — is price within 0.3% of it?
+        var levels = [
+            { key: 'AST', price: ast, side: 'CE' },
+            { key: 'ASO', price: aso, side: 'CE' },
+            { key: 'BSO', price: bso, side: 'PE' },
+            { key: 'BST', price: bst, side: 'PE' },
+        ];
+
+        levels.forEach(function(lv) {
+            if (!lv.price) return;
+            var dist = Math.abs((ltp - lv.price) / lv.price) * 100;
+            if (dist > 0.5) return;   // too far — not approaching
+
+            // Find the strike row in oiData
+            var td = oiData.tableData;
+            var strikeRow = null;
+            var closestDiff = Infinity;
+            for (var i = 0; i < td.length; i++) {
+                var sd = Math.abs(parseFloat(td[i]['STRIKE']) - lv.price);
+                if (sd < closestDiff) { closestDiff = sd; strikeRow = td[i]; }
+            }
+            if (!strikeRow) return;
+
+            var abs = _ssAbsorbStrength(strikeRow);
+
+            // Absorption: writers actively adding at that strike
+            var isAbsorbing = false;
+            var wallType = '', wallCol = '', wallDesc = '';
+
+            if (lv.side === 'CE' && abs.ceChg > 0 && abs.ceObv > 0) {
+                isAbsorbing = true;
+                wallType = 'CALL WALL';
+                wallCol  = 'var(--gtb-red)';
+                wallDesc = 'Call writers adding at ' + lv.key + ' (' + lv.price.toLocaleString('en-IN') + ') — upside defended';
+            } else if (lv.side === 'PE' && abs.peChg > 0 && abs.peObv > 0) {
+                isAbsorbing = true;
+                wallType = 'PUT WALL';
+                wallCol  = 'var(--gtb-green)';
+                wallDesc = 'Put writers adding at ' + lv.key + ' (' + lv.price.toLocaleString('en-IN') + ') — downside defended';
+            }
+
+            rows.push({
+                name: name, ltp: ltp, level: lv.key, levelPrice: lv.price,
+                dist: dist, abs: abs, isAbsorbing: isAbsorbing,
+                wallType: wallType, wallCol: wallCol, wallDesc: wallDesc
+            });
+        });
+    });
+
+    // Sort: absorbing walls first, then by proximity
+    rows.sort(function(a, b) {
+        if (a.isAbsorbing !== b.isAbsorbing) return b.isAbsorbing - a.isAbsorbing;
+        return a.dist - b.dist;
+    });
+
+    if (!rows.length) return '<div style="padding:24px;text-align:center;color:var(--gtb-muted);font-size:0.5rem;">No instruments near key levels, or OI scan not run yet.</div>';
+
+    var wallCount = rows.filter(function(r) { return r.isAbsorbing; }).length;
+    var h = '<div style="font-size:0.42rem;color:var(--gtb-muted);padding:4px 2px 6px;">'
+        + rows.length + ' instruments near key levels &nbsp;|&nbsp; '
+        + '<b style="color:var(--gtb-accent);">' + wallCount + '</b> active walls detected'
+        + '</div>';
+
+    h += '<div style="overflow-x:auto;"><table class="gtb-t915-table" style="width:100%;"><thead><tr>'
+        + '<th>Symbol</th><th>LTP</th><th>Level</th><th>Distance</th>'
+        + '<th title="CE OI change at that strike">CE ΔOI</th>'
+        + '<th title="PE OI change at that strike">PE ΔOI</th>'
+        + '<th title="CE OBV net change session">CE ΔOBV</th>'
+        + '<th title="PE OBV net change session">PE ΔOBV</th>'
+        + '<th>Signal</th>'
+        + '</tr></thead><tbody>';
+
+    rows.forEach(function(r) {
+        var a = r.abs;
+        var distCol = r.dist < 0.15 ? 'var(--gtb-amber)' : 'var(--gtb-muted)';
+        var ceChgCol = a.ceChg > 0 ? 'var(--gtb-red)' : a.ceChg < 0 ? 'var(--gtb-green)' : 'var(--gtb-muted)';
+        var peChgCol = a.peChg > 0 ? 'var(--gtb-green)' : a.peChg < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        var ceObvCol = a.ceObv > 0 ? 'var(--gtb-red)' : a.ceObv < 0 ? 'var(--gtb-green)' : 'var(--gtb-muted)';
+        var peObvCol = a.peObv > 0 ? 'var(--gtb-green)' : a.peObv < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        var levelCol = (r.level === 'AST' || r.level === 'ASO') ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        var rowBg = r.isAbsorbing ? 'background:' + r.wallCol + '08;' : '';
+
+        var sigCell = r.isAbsorbing
+            ? '<span style="color:' + r.wallCol + ';font-weight:800;">' + r.wallType + '</span>'
+            + '<div style="font-size:0.4rem;color:var(--gtb-muted);margin-top:1px;">' + r.wallDesc + '</div>'
+            : '<span style="color:var(--gtb-muted);">Approaching — no absorption yet</span>';
+
+        h += '<tr style="' + rowBg + '">'
+            + '<td><span style="font-weight:700;">' + r.name + '</span> ' + _ssBadge(r.name) + '</td>'
+            + '<td style="font-family:var(--gtb-mono);">₹' + r.ltp.toFixed(2) + '</td>'
+            + '<td style="font-weight:800;color:' + levelCol + ';">' + r.level + ' ' + r.levelPrice.toLocaleString('en-IN') + '</td>'
+            + '<td style="font-family:var(--gtb-mono);color:' + distCol + ';">' + r.dist.toFixed(2) + '%</td>'
+            + '<td style="font-family:var(--gtb-mono);font-weight:700;color:' + ceChgCol + ';">' + (a.ceChg >= 0 ? '+' : '') + Math.round(a.ceChg).toLocaleString('en-IN') + '</td>'
+            + '<td style="font-family:var(--gtb-mono);font-weight:700;color:' + peChgCol + ';">' + (a.peChg >= 0 ? '+' : '') + Math.round(a.peChg).toLocaleString('en-IN') + '</td>'
+            + '<td style="font-family:var(--gtb-mono);color:' + ceObvCol + ';">' + (a.ceObv >= 0 ? '+' : '') + a.ceObv.toFixed(0) + '</td>'
+            + '<td style="font-family:var(--gtb-mono);color:' + peObvCol + ';">' + (a.peObv >= 0 ? '+' : '') + a.peObv.toFixed(0) + '</td>'
+            + '<td>' + sigCell + '</td>'
+            + '</tr>';
+    });
+
+    h += '</tbody></table></div>';
+    return h;
+}
+
+// ── Main popup ────────────────────────────────────────────────────────────────
+
+function _gtbShowSignalScanners() {
+    var _cls = 'popup-custom-style-signal-scan';
+
+    var tabBtn = function(id, icon, label, active) {
+        return '<button class="gtb-ss-tab" data-ss-tab="' + id + '" style="'
+            + 'padding:7px 14px;font-size:0.5rem;font-weight:800;border:none;cursor:pointer;letter-spacing:0.04em;'
+            + 'background:transparent;color:' + (active ? 'var(--gtb-accent)' : 'var(--gtb-muted)') + ';'
+            + 'border-bottom:2px solid ' + (active ? 'var(--gtb-accent)' : 'transparent') + ';">'
+            + '<i class="bi ' + icon + '"></i> ' + label + '</button>';
+    };
+
+    var html = '<div style="height:100%;display:flex;flex-direction:column;overflow:hidden;">'
+        + '<div style="display:flex;align-items:center;border-bottom:1px solid var(--gtb-border);flex-shrink:0;padding:0 4px;">'
+        +   tabBtn('obv',    'bi-activity',        'OBV DIVERGENCE',    true)
+        +   tabBtn('absorb', 'bi-shield-fill-check','STRIKE ABSORPTION', false)
+        +   '<button id="ss-refresh" style="margin-left:auto;font-size:0.42rem;padding:2px 8px;'
+        +     'background:var(--gtb-surface2);border:1px solid var(--gtb-border);color:var(--gtb-text);cursor:pointer;">↺ Refresh</button>'
+        + '</div>'
+        + '<div id="ss-pane-obv"    style="flex:1;overflow-y:auto;padding:8px;"></div>'
+        + '<div id="ss-pane-absorb" style="display:none;flex:1;overflow-y:auto;padding:8px;"></div>'
+        + '</div>';
+
+    showPopUpWindow('signal-scan', html, 'Signal Scanners', 860, 540);
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-toggles" style="color:var(--gtb-accent);"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">SIGNAL SCANNERS</span>'
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    jQ('.' + _cls).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+
+    var _activeTab = 'obv';
+
+    function _render() {
+        if (_activeTab === 'obv')    jQ('#ss-pane-obv').html(_ssBuildObvHtml());
+        if (_activeTab === 'absorb') jQ('#ss-pane-absorb').html(_ssBuildAbsorbHtml());
+    }
+
+    jQ(document).off('click.sstab').on('click.sstab', '.gtb-ss-tab', function() {
+        _activeTab = jQ(this).data('ss-tab');
+        jQ('.gtb-ss-tab')
+            .css({ color: 'var(--gtb-muted)', borderBottomColor: 'transparent' });
+        jQ(this).css({ color: 'var(--gtb-accent)', borderBottomColor: 'var(--gtb-accent)' });
+        jQ('#ss-pane-obv, #ss-pane-absorb').hide();
+        jQ('#ss-pane-' + _activeTab).show();
+        _render();
+    });
+
+    jQ(document).off('click.ssrefresh').on('click.ssrefresh', '#ss-refresh', function() {
+        try { _render(); } catch(e) { console.error('[SS] render error', e); }
+    });
+
+    setTimeout(function() {
+        try { _render(); } catch(e) { console.error('[SS] render error', e); }
+    }, 120);
+
+    if (_SS_INTERVAL) clearInterval(_SS_INTERVAL);
+    _SS_INTERVAL = setInterval(function() {
+        if (!document.querySelector('.' + _cls)) {
+            clearInterval(_SS_INTERVAL); _SS_INTERVAL = null; return;
+        }
+        try { _render(); } catch(_e) {}
+    }, 15000);
+}
+
+// ── Overnight Carry Strategy Scanner ────────────────────────────────────────
+// Fetches everything fresh per selected stock: spot 5-min candles (zone),
+// futures 5-min candles (REMARK), then scores carry direction.
+// No dependency on INSTRUMENT_SCORE_MAP or INSTRUMENT_LTP_PRICE.
+
+var _OC_RESULTS = {};  // { name: { zone, futures, idxAlign, total, remark, pct, ltp, open } }
+
+function _ocFutToken(name) {
+    var list = (typeof FUTURE_INTRUMENT_LIST !== 'undefined' ? FUTURE_INTRUMENT_LIST : []);
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].name === name) return { token: list[i].instrument_token, lot: parseInt(list[i].lot_size) || 1 };
+    }
+    return null;
+}
+
+function _ocSpotToken(name) {
+    return (typeof INSTRUMENT_TOKENS !== 'undefined' && INSTRUMENT_TOKENS[name]) ? INSTRUMENT_TOKENS[name] : null;
+}
+
+function _ocZoneFromCandles(candles, name) {
+    if (!candles || candles.length < 2) return { zone: 0, zone915: 0, ltp: 0, open: 0, pct: 0 };
+    var first = candles[0];  // 9:15 candle — open is strike reference
+    var last  = candles[candles.length - 1];
+    var open  = parseFloat(first.open)  || parseFloat(first[1]) || 0;
+    var c915  = parseFloat(first.close) || parseFloat(first[4]) || 0; // 9:15 candle CLOSE
+    var close = parseFloat(last.close)  || parseFloat(last[4])  || 0; // latest CLOSE (current)
+    if (!open || !close) return { zone: 0, zone915: 0, ltp: close, open: open, pct: 0 };
+
+    var pct = ((close - open) / open) * 100;
+
+    var diff  = (typeof NSE_STRIKE_DIFF !== 'undefined' && NSE_STRIKE_DIFF[name]) ? NSE_STRIKE_DIFF[name] : '100';
+    var parts = diff.split(',');
+    var s1 = parseFloat(parts[0]) || 100;
+    var s2 = parseFloat(parts[1]) || s1;
+    var aso = open + s1, ast = aso + s2;
+    var bso = open - s1, bst = bso - s2;
+
+    // Classify any price into the strike zone (+2 AST … −2 BST, 0 = within)
+    var _z = function(p) {
+        if (p >= ast) return 2;
+        if (p >= aso) return 1;
+        if (p <= bst) return -2;
+        if (p <= bso) return -1;
+        return 0;
+    };
+
+    return {
+        zone:    _z(close),  // CURRENT zone (live, moves through the day)
+        zone915: _z(c915),   // 9:15 BREAKOUT zone (fixed for the day)
+        ltp: close, open: open, pct: pct
+    };
+}
+
+function _ocFuturesRemark(todayCandles, prevCandles, lotSize) {
+    if (!todayCandles || !todayCandles.length || !prevCandles || !prevCandles.length) return 0;
+    var norm = function(c) {
+        if (Array.isArray(c)) return { open: c[1], high: c[2], low: c[3], close: c[4], volume: c[5], oi: c[6] };
+        return c;
+    };
+    var today = norm(todayCandles[todayCandles.length - 1]);
+    var prev  = norm(prevCandles[prevCandles.length - 1]);
+    var normAll = todayCandles.map(norm);
+    try {
+        var result = _gtbClassifyFutures(today, prev, lotSize, normAll, {});
+        return { score: getFuturesTrendScore(result.remark), remark: result.remark };
+    } catch(e) { return { score: 0, remark: 'ERROR' }; }
+}
+
+async function _ocAnalyzeStock(name, onProgress) {
+    var spotToken = _ocSpotToken(name);
+    // _ocFutToken matches FO_LIST stock names directly; fall back to _gtbFutTokenFor
+    // which also maps index display-names (NIFTY 50 → NIFTY) so indices work too.
+    var futInfo   = _ocFutToken(name) || _gtbFutTokenFor(name);
+
+    if (!spotToken) { if (onProgress) onProgress(name + ': no spot token'); return null; }
+    if (!futInfo)   { if (onProgress) onProgress(name + ': no futures token'); return null; }
+
+    var fromDay = _gtbPrevDay(), toDay = CURRENT_DAY;
+
+    // ── 1. Spot candles → zone score ─────────────────────────────────────────
+    if (onProgress) onProgress('[1/3] Spot candles: ' + name);
+    var spotRaw = await getHistoricalDataUsingPromise(spotToken, CURRENT_DAY, toDay, '5minute').catch(function(){ return null; });
+    var spotCandles = spotRaw && spotRaw.data && spotRaw.data.candles ? spotRaw.data.candles : [];
+    var zoneData = _ocZoneFromCandles(spotCandles, name);
+
+    // ── 2. Futures candles → REMARK → futures score ──────────────────────────
+    if (onProgress) onProgress('[2/3] Futures candles: ' + name);
+    var futRaw = await getHistoricalDataUsingPromise(futInfo.token, fromDay, toDay, '5minute').catch(function(){ return null; });
+    var futAllCandles = futRaw && futRaw.data && futRaw.data.candles ? futRaw.data.candles : [];
+    var todayStr = CURRENT_DAY.substring(0, 10);
+    var todayFut = futAllCandles.filter(function(c) { return (c[0] || '').startsWith(todayStr); });
+    var prevFut  = futAllCandles.filter(function(c) { return !(c[0] || '').startsWith(todayStr); });
+    var futData  = _ocFuturesRemark(todayFut, prevFut, futInfo.lot);
+
+    // ── 3. OI/OBV + Max Pain + IV Skew via showTrendingOI (all Kite candles) ─
+    if (onProgress) onProgress('[3/3] OI/OBV + MaxPain + IVSkew: ' + name);
+    var oiScore = 0, mpScore = 0, ivScore = 0, pcr = null;
+    try {
+        // Temporarily seed INSTRUMENT_SCORE_MAP so _gtbComputeOIExtras/MaxPain/IVSkew can write
+        if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+        var oiData = await showTrendingOI(name, 2);
+        if (oiData && oiData.tableData) {
+            oiScore = computeOIScoreFromData(oiData);
+            INSTRUMENT_SCORE_MAP[name].oi_obv = oiScore;
+            INSTRUMENT_SCORE_MAP[name].oiData  = oiData;
+            _gtbComputeOIExtras(name, oiData);   // populates .oiExtras (ivSkew, maxPain inputs)
+            mpScore = _gtbMaxPainScore(name);
+            ivScore = _gtbIVSkewScore(name);
+            pcr     = oiData.pcr;
+        }
+    } catch(e) { console.log('OI fetch error for ' + name, e); }
+
+    var total = zoneData.zone + futData.score + oiScore + mpScore + ivScore;
+    return {
+        name: name, ltp: zoneData.ltp, open: zoneData.open, pct: zoneData.pct,
+        zone: zoneData.zone,        // CURRENT zone (live)
+        zone915: zoneData.zone915,  // 9:15 breakout zone (fixed for the day)
+        futures: futData.score, remark: futData.remark,
+        oi_obv: oiScore, max_pain: mpScore, iv_skew: ivScore, pcr: pcr,
+        total: total
+    };
+}
+
+function _gtbShowCarryScanner() {
+    var _cls = 'popup-custom-style-carry-scan';
+
+    var _allStocks = (typeof FO_LIST !== 'undefined' ? FO_LIST : []);
+
+    var html = '<div id="oc-wrap" style="height:100%;display:flex;flex-direction:column;background:var(--gtb-bg);color:var(--gtb-text);font-size:0.65rem;">'
+
+        // ── Stock selector row ────────────────────────────────────────────────
+        + '<div style="display:flex;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;flex-wrap:wrap;">'
+        + '<span style="color:var(--gtb-muted);font-size:0.6rem;">Select stocks:</span>'
+        + '<input id="oc-search" placeholder="Search…" style="width:110px;padding:2px 6px;font-size:0.6rem;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<button id="oc-sel-all" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Select All</button>'
+        + '<button id="oc-sel-n50" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Nifty 50</button>'
+        + '<button id="oc-sel-bnk" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Bank Nifty</button>'
+        + '<button id="oc-sel-clear" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Clear</button>'
+        + '<button id="oc-fetch-btn" style="margin-left:auto;padding:3px 12px;font-size:0.65rem;background:var(--gtb-accent,#58a6ff);color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:600;"><i class="bi bi-lightning-fill"></i> Fetch &amp; Analyze</button>'
+        + '</div>'
+
+        // ── Stock checkbox list ───────────────────────────────────────────────
+        + '<div id="oc-stock-list" style="max-height:100px;overflow-y:auto;padding:4px 10px;border-bottom:1px solid var(--gtb-border);display:flex;flex-wrap:wrap;gap:2px 8px;flex-shrink:0;"></div>'
+
+        // ── Progress / status ─────────────────────────────────────────────────
+        + '<div id="oc-progress" style="padding:4px 10px;font-size:0.6rem;color:var(--gtb-muted);border-bottom:1px solid var(--gtb-border);flex-shrink:0;min-height:22px;"></div>'
+
+        // ── Filter + sort ─────────────────────────────────────────────────────
+        + '<div style="display:flex;gap:6px;align-items:center;padding:4px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;">'
+        + '<select id="oc-filter" style="font-size:0.6rem;padding:2px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="all">All</option><option value="long">Long Carry</option><option value="short">Short Carry</option><option value="avoid">Avoid</option>'
+        + '</select>'
+        + '<select id="oc-sort" style="font-size:0.6rem;padding:2px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="score">Sort: Score</option><option value="name">Sort: Name</option><option value="pct">Sort: Chg%</option>'
+        + '</select>'
+        + '<span id="oc-count" style="color:var(--gtb-muted);font-size:0.6rem;margin-left:auto;"></span>'
+        + '</div>'
+
+        // ── Results table ─────────────────────────────────────────────────────
+        + '<div id="oc-table-wrap" style="flex:1;overflow:auto;padding:4px 10px;">'
+        + '<div style="padding:24px;text-align:center;color:var(--gtb-muted);">Select stocks above and click <b>Fetch &amp; Analyze</b></div>'
+        + '</div>'
+        + '</div>';
+
+    showPopUpWindow('carry-scan', html, 'Carry Scanner', 860, 600);
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-moon-stars-fill" style="font-size:0.75rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">OVERNIGHT CARRY SCANNER</span>'
+        + _ii('oc-carry')
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+
+    // ── Build checkbox list ───────────────────────────────────────────────────
+    function _buildList(filter) {
+        var f = (filter || '').toUpperCase();
+        var items = _allStocks.filter(function(n) { return !f || n.toUpperCase().indexOf(f) >= 0; });
+        var h = items.map(function(n) {
+            var checked = jQ('#oc-cb-' + n).prop('checked') ? ' checked' : '';
+            return '<label style="white-space:nowrap;cursor:pointer;user-select:none;">'
+                + '<input type="checkbox" id="oc-cb-' + n + '" value="' + n + '"' + checked + ' style="margin-right:2px;"> ' + n + '</label>';
+        }).join('');
+        jQ('#oc-stock-list').html(h);
+    }
+
+    function _selected() {
+        return jQ('#oc-stock-list input:checked').map(function(){ return this.value; }).get();
+    }
+
+    function _setAll(names) {
+        jQ('#oc-stock-list input[type=checkbox]').prop('checked', false);
+        names.forEach(function(n) { jQ('#oc-cb-' + n).prop('checked', true); });
+    }
+
+    setTimeout(function() { _buildList(''); }, 120);
+
+    jQ(document).off('input.ocsearch').on('input.ocsearch', '#oc-search', function() { _buildList(this.value); });
+    jQ(document).off('click.ocselall').on('click.ocselall', '#oc-sel-all', function() {
+        jQ('#oc-stock-list input').prop('checked', true);
+    });
+    jQ(document).off('click.ocseln50').on('click.ocseln50', '#oc-sel-n50', function() {
+        _buildList('');
+        _setAll(Object.keys(typeof NIFTY_50_WEIGHTED_STOCKS !== 'undefined' ? NIFTY_50_WEIGHTED_STOCKS : {}));
+    });
+    jQ(document).off('click.ocselbnk').on('click.ocselbnk', '#oc-sel-bnk', function() {
+        _buildList('');
+        _setAll(Object.keys(typeof NIFTY_BANK_WEIGHTED_STOCKS !== 'undefined' ? NIFTY_BANK_WEIGHTED_STOCKS : {}));
+    });
+    jQ(document).off('click.ocselclear').on('click.ocselclear', '#oc-sel-clear', function() {
+        jQ('#oc-stock-list input').prop('checked', false);
+    });
+
+    // ── Render results ────────────────────────────────────────────────────────
+    function _sc(v) { return v > 0 ? 'var(--gtb-green)' : v < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)'; }
+    function _sv(v) { return (v > 0 ? '+' : '') + v; }
+
+    function _renderResults() {
+        var all = Object.values(_OC_RESULTS);
+        var filterVal = jQ('#oc-filter').val() || 'all';
+        var sortVal   = jQ('#oc-sort').val()   || 'score';
+
+        var rows = all.slice();
+        if (filterVal === 'long')  rows = rows.filter(function(r){ return r.total >= 3; });
+        if (filterVal === 'short') rows = rows.filter(function(r){ return r.total <= -3; });
+        if (filterVal === 'avoid') rows = rows.filter(function(r){ return r.total > -3 && r.total < 3; });
+
+        if (sortVal === 'score') rows.sort(function(a,b){ return b.total - a.total; });
+        else if (sortVal === 'pct') rows.sort(function(a,b){ return b.pct - a.pct; });
+        else rows.sort(function(a,b){ return a.name.localeCompare(b.name); });
+
+        jQ('#oc-count').text(rows.length + ' / ' + all.length + ' stocks');
+
+        if (!rows.length) {
+            jQ('#oc-table-wrap').html('<div style="padding:16px;color:var(--gtb-muted);">No results match filter.</div>');
+            return;
+        }
+
+        var th = function(t, al) { return '<th style="padding:4px 6px;text-align:' + (al||'center') + ';border-bottom:1px solid var(--gtb-border);white-space:nowrap;">' + t + '</th>'; };
+
+        var h = '<table style="width:100%;border-collapse:collapse;font-size:0.65rem;">'
+            + '<thead><tr style="background:var(--gtb-surface2);position:sticky;top:0;z-index:1;">'
+            + th('Symbol','left') + th('Close','right') + th('Chg%','right')
+            + th('Zone') + th('Futures') + th('OI/OBV') + th('Max Pain') + th('IV Skew') + th('PCR')
+            + '<th style="padding:4px 6px;text-align:center;border-bottom:1px solid var(--gtb-border);font-weight:700;background:var(--gtb-surface);">Total</th>'
+            + th('Action')
+            + '</tr></thead><tbody>';
+
+        rows.forEach(function(r) {
+            var scoreCol  = r.total >= 3 ? 'var(--gtb-green)' : r.total <= -3 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+            var action    = r.total >= 3 ? 'LONG CARRY' : r.total <= -3 ? 'SHORT CARRY' : 'AVOID';
+            var actCol    = r.total >= 3 ? 'var(--gtb-green)' : r.total <= -3 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+            var pctCol    = r.pct > 0 ? 'var(--gtb-green)' : r.pct < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+            var zoneLabel = r.zone === 2 ? 'AST' : r.zone === 1 ? 'ASO' : r.zone === -1 ? 'BSO' : r.zone === -2 ? 'BST' : 'B/W';
+            var pcrStr    = (r.pcr != null) ? parseFloat(r.pcr).toFixed(2) : '—';
+            var pcrCol    = (r.pcr != null) ? (r.pcr > 1.2 ? 'var(--gtb-green)' : r.pcr < 0.8 ? 'var(--gtb-red)' : 'var(--gtb-muted)') : 'var(--gtb-muted)';
+            h += '<tr style="border-bottom:1px solid var(--gtb-border);">'
+                + '<td style="padding:3px 6px;font-weight:600;">' + r.name + '</td>'
+                + '<td style="padding:3px 6px;text-align:right;">' + r.ltp.toFixed(2) + '</td>'
+                + '<td style="padding:3px 6px;text-align:right;color:' + pctCol + ';">' + (r.pct >= 0 ? '+' : '') + r.pct.toFixed(2) + '%</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + _sc(r.zone) + ';font-weight:600;">' + zoneLabel + '&nbsp;(' + _sv(r.zone) + ')</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + _sc(r.futures) + ';">' + (r.remark || '—') + '&nbsp;(' + _sv(r.futures) + ')</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + _sc(r.oi_obv) + ';">' + _sv(parseFloat((r.oi_obv||0).toFixed(2))) + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + _sc(r.max_pain) + ';">' + _sv(r.max_pain||0) + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + _sc(r.iv_skew) + ';">' + _sv(r.iv_skew||0) + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + pcrCol + ';">' + pcrStr + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;font-weight:700;color:' + scoreCol + ';background:var(--gtb-surface);">' + _sv(r.total) + '</td>'
+                + '<td style="padding:3px 6px;font-weight:700;color:' + actCol + ';">' + action + '</td>'
+                + '</tr>';
+        });
+        h += '</tbody></table>';
+        jQ('#oc-table-wrap').html(h);
+    }
+
+    jQ(document).off('change.ocfilter').on('change.ocfilter', '#oc-filter, #oc-sort', function() { _renderResults(); });
+
+    // ── Fetch & Analyze ───────────────────────────────────────────────────────
+    jQ(document).off('click.ocfetch').on('click.ocfetch', '#oc-fetch-btn', async function() {
+        var selected = _selected();
+        if (!selected.length) {
+            jQ('#oc-progress').html('<span style="color:var(--gtb-amber);">Select at least one stock first.</span>');
+            return;
+        }
+
+        _OC_RESULTS = {};
+        jQ('#oc-table-wrap').html('<div style="padding:16px;color:var(--gtb-muted);">Analyzing…</div>');
+        jQ('#oc-fetch-btn').prop('disabled', true).html('<i class="bi bi-arrow-clockwise"></i> Analyzing…');
+
+        var done = 0, total = selected.length;
+        for (var i = 0; i < selected.length; i++) {
+            var name = selected[i];
+            jQ('#oc-progress').html('<i class="bi bi-arrow-clockwise"></i> [' + (done+1) + '/' + total + '] Fetching ' + name + '…');
+            try {
+                var result = await _ocAnalyzeStock(name, null);
+                if (result) { _OC_RESULTS[name] = result; }
+            } catch(e) {}
+            done++;
+            _renderResults();
+        }
+
+        jQ('#oc-progress').html('<span style="color:var(--gtb-green);">Done — ' + Object.keys(_OC_RESULTS).length + ' stocks analyzed at ' + new Date().toLocaleTimeString() + '</span>');
+        jQ('#oc-fetch-btn').prop('disabled', false).html('<i class="bi bi-lightning-fill"></i> Fetch &amp; Analyze');
+        _renderResults();
+    });
+}
+
+// ── Volume Profile / Point of Control (POC) ─────────────────────────────────
+// Volume-over-PRICE (not over time). Buckets Kite candle volume into price bins
+// to reveal where institutions accepted value. All pure-Kite historical data.
+//   POC        — price bin with the most traded volume (value magnet)
+//   Value Area — the 70%-of-volume band around POC (fair-value range)
+//   VAH / VAL  — value area high / low (edges tend to revert)
+//   HVN / LVN  — high/low volume nodes (shelves vs air pockets)
+
+function _vpInstrumentList() {
+    var set = {};
+    var add = function(n) { if (n) set[n] = 1; };
+    ['NIFTY 50','NIFTY BANK','SENSEX','NIFTY FIN SERVICE','RELIANCE','HDFCBANK','ICICIBANK'].forEach(add);
+    (typeof FO_LIST !== 'undefined' ? FO_LIST : []).forEach(add);
+    // Only keep names we actually have a spot token for
+    return Object.keys(set).filter(function(n) { return typeof INSTRUMENT_TOKENS !== 'undefined' && INSTRUMENT_TOKENS[n]; });
+}
+
+function _vpDateMinus(baseYmd, days) {
+    var d = new Date(baseYmd + 'T00:00:00');
+    d.setDate(d.getDate() - days);
+    return d.toISOString().substring(0, 10);
+}
+
+// Resolve the FUTURES token for any instrument, mapping index display-names to
+// their futures symbols (NIFTY 50 → NIFTY, NIFTY BANK → BANKNIFTY, etc.).
+function _gtbFutTokenFor(name) {
+    var n = name === 'NIFTY 50'  ? 'NIFTY'
+          : name === 'NIFTY BANK' ? 'BANKNIFTY'
+          : name === 'NIFTY FIN SERVICE' ? 'FINNIFTY'
+          : name === 'NIFTY MID SELECT'  ? 'MIDCPNIFTY'
+          : name;
+    var list = (typeof FUTURE_INTRUMENT_LIST !== 'undefined') ? FUTURE_INTRUMENT_LIST : [];
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].name === n) return { token: list[i].instrument_token, lot: parseInt(list[i].lot_size) || 1 };
+    }
+    return null;
+}
+
+// Indices have NO volume in their spot candles (an index is computed, not traded).
+// For any candle set whose total volume is 0, overlay real volume + OI from the
+// index FUTURES (which DO trade), matched by timestamp — so prices/levels stay on
+// spot but volume becomes meaningful. Returns { candles, source }.
+//   source: 'spot' (already had volume) | 'futures' (overlaid) | 'none' (no futures)
+async function _gtbAttachVolume(name, spotCandles, interval, fromDay, toDay) {
+    if (!spotCandles || !spotCandles.length) return { candles: spotCandles, source: 'none' };
+    var tot = 0;
+    for (var i = 0; i < spotCandles.length; i++) tot += parseFloat(spotCandles[i][5]) || 0;
+    if (tot > 0) return { candles: spotCandles, source: 'spot' };
+
+    var fi = _gtbFutTokenFor(name);
+    if (!fi) return { candles: spotCandles, source: 'none' }; // e.g. SENSEX (BSE) may be absent
+    var raw = await getHistoricalDataUsingPromise(fi.token, fromDay, toDay, interval).catch(function(){ return null; });
+    var fut = raw && raw.data && raw.data.candles ? raw.data.candles : null;
+    if (!fut || !fut.length) return { candles: spotCandles, source: 'none' };
+
+    var vmap = {}, omap = {};
+    fut.forEach(function(c) { vmap[c[0]] = parseFloat(c[5]) || 0; omap[c[0]] = parseFloat(c[6]) || 0; });
+    // Keep spot OHLC (c[1..4]); take volume (c[5]) and OI (c[6]) from the futures contract
+    var merged = spotCandles.map(function(c) {
+        return [c[0], c[1], c[2], c[3], c[4], vmap[c[0]] || 0, omap[c[0]] || 0];
+    });
+    return { candles: merged, source: 'futures' };
+}
+
+// Build the volume-by-price profile from candle array [[ts,o,h,l,c,vol,oi], ...]
+function _vpBuildProfile(candles, nbins) {
+    nbins = nbins || 48;
+    if (!candles || !candles.length) return null;
+
+    var loMin = Infinity, hiMax = -Infinity;
+    candles.forEach(function(c) {
+        var lo = parseFloat(c[3]), hi = parseFloat(c[2]);
+        if (lo < loMin) loMin = lo;
+        if (hi > hiMax) hiMax = hi;
+    });
+    if (!isFinite(loMin) || !isFinite(hiMax) || hiMax <= loMin) return null;
+
+    var binSize = (hiMax - loMin) / nbins;
+    var bins = new Array(nbins).fill(0);
+
+    // Distribute each candle's volume evenly across the price bins its range spans
+    candles.forEach(function(c) {
+        var lo = parseFloat(c[3]), hi = parseFloat(c[2]), vol = parseFloat(c[5]) || 0;
+        if (vol <= 0) return;
+        var iLo = Math.max(0, Math.min(nbins - 1, Math.floor((lo - loMin) / binSize)));
+        var iHi = Math.max(0, Math.min(nbins - 1, Math.floor((hi - loMin) / binSize)));
+        var span = (iHi - iLo) + 1;
+        var per = vol / span;
+        for (var i = iLo; i <= iHi; i++) bins[i] += per;
+    });
+
+    var total = bins.reduce(function(a, b) { return a + b; }, 0);
+    if (total <= 0) return null;
+
+    // POC = max-volume bin
+    var poc = 0;
+    for (var i = 1; i < nbins; i++) if (bins[i] > bins[poc]) poc = i;
+
+    // Value Area = expand from POC until 70% of total volume is enclosed
+    var target = total * 0.70;
+    var acc = bins[poc], up = poc + 1, dn = poc - 1, vaTop = poc, vaBot = poc;
+    while (acc < target && (up < nbins || dn >= 0)) {
+        var vUp = (up < nbins) ? bins[up] : -1;
+        var vDn = (dn >= 0)    ? bins[dn] : -1;
+        if (vUp >= vDn) { acc += Math.max(0, vUp); vaTop = up; up++; }
+        else            { acc += Math.max(0, vDn); vaBot = dn; dn--; }
+    }
+
+    var maxBin = bins[poc];
+    var binMid = function(i) { return loMin + (i + 0.5) * binSize; };
+
+    return {
+        bins: bins, nbins: nbins, binSize: binSize, loMin: loMin, hiMax: hiMax,
+        total: total, maxBin: maxBin, poc: poc,
+        pocPrice: binMid(poc),
+        vah: loMin + (vaTop + 1) * binSize,   // top edge of highest VA bin
+        val: loMin + vaBot * binSize,         // bottom edge of lowest VA bin
+        vaTop: vaTop, vaBot: vaBot,
+        binMid: binMid
+    };
+}
+
+// Shared price formatter for the profile/scanner UIs
+function _vpFmt(v) { return (v >= 1000 ? v.toFixed(0) : v.toFixed(2)); }
+
+// Derive the volume-profile trade setup from price position vs POC/VAH/VAL.
+// Classic auction-market logic: outside value = trend/continuation on retest;
+// inside value = mean-reversion toward POC; at POC = balance / no edge.
+// Global (shared by the Volume Profile tool AND the Master Scanner).
+// Returns { action, option, col, bg, entry, stop, target, rr, rationale, dir }
+// where dir = +1 bullish / -1 bearish / 0 no-trade.
+function _vpTradeSetup(prof, ltp) {
+    var GREEN = 'var(--gtb-green)', RED = 'var(--gtb-red)', AMBER = 'var(--gtb-amber)';
+    var gBg = 'color-mix(in srgb, var(--gtb-green) 12%, transparent)';
+    var rBg = 'color-mix(in srgb, var(--gtb-red) 12%, transparent)';
+    var aBg = 'color-mix(in srgb, var(--gtb-amber) 12%, transparent)';
+    var vaRange = Math.max(1e-9, prof.vah - prof.val);
+    var poc = prof.pocPrice;
+    var F = _vpFmt;
+
+    function rr(entry, stop, target) {
+        var risk = Math.abs(entry - stop), reward = Math.abs(target - entry);
+        return risk > 0 ? (reward / risk).toFixed(1) + ' : 1' : '';
+    }
+
+    // ── Above Value Area → bullish; long the pullback to VAH ──────────────
+    if (ltp > prof.vah) {
+        var e1 = prof.vah, s1 = poc, t1 = prof.vah + vaRange;
+        return { action: 'BUY / LONG', option: 'Buy CE (or long futures)', col: GREEN, bg: gBg, dir: 1,
+            entry: F(e1), stop: F(s1), target: F(t1), rr: rr(e1, s1, t1),
+            rationale: 'Price accepted ABOVE value — bullish auction. Best entry is a pullback into VAH (' + F(prof.vah) + ') which flips to support. Invalidated if it falls back below POC (' + F(poc) + ') = breakout failed, back into balance. Chasing here is worse R:R than waiting for the retest.' };
+    }
+    // ── Below Value Area → bearish; short the bounce to VAL ───────────────
+    if (ltp < prof.val) {
+        var e2 = prof.val, s2 = poc, t2 = prof.val - vaRange;
+        return { action: 'SELL / SHORT', option: 'Buy PE (or short futures)', col: RED, bg: rBg, dir: -1,
+            entry: F(e2), stop: F(s2), target: F(t2), rr: rr(e2, s2, t2),
+            rationale: 'Price rejected BELOW value — bearish auction. Best entry is a bounce back to VAL (' + F(prof.val) + ') which flips to resistance. Invalidated if it reclaims POC (' + F(poc) + '). Selling the low directly is poor R:R — wait for the retest.' };
+    }
+    // ── Inside Value Area → mean-reversion toward POC ─────────────────────
+    var pocBand = vaRange * 0.12; // "at POC" dead-zone
+    if (Math.abs(ltp - poc) <= pocBand) {
+        return { action: 'WAIT / NO TRADE', option: 'At POC — balance zone', col: AMBER, bg: aBg, dir: 0,
+            entry: '', stop: '', target: '', rr: '',
+            rationale: 'Price is sitting on POC (' + F(poc) + ') — maximum acceptance, no directional edge. Let it pick a side: a push to VAH/VAL gives a fade back to POC; acceptance outside value gives a continuation trade. Trading here is coin-flip.' };
+    }
+    if (ltp > poc) {
+        // Upper half of value → fade short back toward POC
+        var e3 = ltp, s3 = prof.vah + (vaRange * 0.10), t3 = poc;
+        return { action: 'FADE SHORT', option: 'Buy PE (short-term / scalp)', col: RED, bg: rBg, dir: -1,
+            entry: F(e3), stop: F(s3), target: F(t3), rr: rr(e3, s3, t3),
+            rationale: 'Inside value, upper half. Rotational market — mean-reverts toward POC (' + F(poc) + '). Short the drift up, stop just beyond VAH (' + F(prof.vah) + '). If VAH breaks with acceptance, flip to the LONG breakout setup instead.' };
+    }
+    // Lower half of value → long back toward POC
+    var e4 = ltp, s4 = prof.val - (vaRange * 0.10), t4 = poc;
+    return { action: 'FADE LONG', option: 'Buy CE (short-term / scalp)', col: GREEN, bg: gBg, dir: 1,
+        entry: F(e4), stop: F(s4), target: F(t4), rr: rr(e4, s4, t4),
+        rationale: 'Inside value, lower half. Rotational market — mean-reverts toward POC (' + F(poc) + '). Long the dip, stop just below VAL (' + F(prof.val) + '). If VAL breaks with acceptance, flip to the SHORT breakdown setup instead.' };
+}
+
+function _gtbShowVolumeProfile() {
+    var _cls = 'popup-custom-style-vol-profile';
+    var _instruments = _vpInstrumentList();
+
+    var opts = _instruments.map(function(n) { return '<option value="' + n + '">'; }).join('');
+
+    var html = '<div id="vp-wrap" style="height:100%;display:flex;flex-direction:column;background:var(--gtb-bg);color:var(--gtb-text);font-size:0.65rem;">'
+        + '<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;flex-wrap:wrap;">'
+        + '<span style="color:var(--gtb-muted);">Instrument:</span>'
+        + '<input id="vp-instr" list="vp-instr-list" placeholder="e.g. RELIANCE" value="NIFTY 50" style="width:150px;padding:3px 6px;font-size:0.65rem;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<datalist id="vp-instr-list">' + opts + '</datalist>'
+        + '<span style="color:var(--gtb-muted);">Lookback:</span>'
+        + '<select id="vp-lookback" style="font-size:0.65rem;padding:3px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="1">Today (5min)</option>'
+        + '<option value="3">3 days (15min)</option>'
+        + '<option value="5" selected>5 days (15min)</option>'
+        + '<option value="10">10 days (30min)</option>'
+        + '<option value="20">20 days (30min)</option>'
+        + '</select>'
+        + '<button id="vp-build-btn" style="margin-left:auto;padding:3px 14px;font-size:0.65rem;background:var(--gtb-accent,#58a6ff);color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:600;"><i class="bi bi-bar-chart-steps"></i> Build Profile</button>'
+        + '</div>'
+        + '<div id="vp-progress" style="padding:4px 10px;font-size:0.6rem;color:var(--gtb-muted);border-bottom:1px solid var(--gtb-border);flex-shrink:0;min-height:20px;"></div>'
+        + '<div id="vp-summary" style="flex-shrink:0;"></div>'
+        + '<div id="vp-chart" style="flex:1;overflow:auto;padding:6px 10px;">'
+        + '<div style="padding:24px;text-align:center;color:var(--gtb-muted);">Pick an instrument and click <b>Build Profile</b></div>'
+        + '</div>'
+        + '</div>';
+
+    showPopUpWindow('vol-profile', html, 'Volume Profile', 720, 640);
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-bar-chart-steps" style="font-size:0.75rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">VOLUME PROFILE / POC</span>'
+        + _ii('vp-profile')
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+
+    function _fmt(v) { return (v >= 1000 ? v.toFixed(0) : v.toFixed(2)); }
+    function _volFmt(v) {
+        if (v >= 1e7) return (v / 1e7).toFixed(2) + 'Cr';
+        if (v >= 1e5) return (v / 1e5).toFixed(2) + 'L';
+        if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+        return v.toFixed(0);
+    }
+
+    function _render(name, prof, lastClose) {
+        if (!prof) {
+            jQ('#vp-chart').html('<div style="padding:20px;color:var(--gtb-red);">No volume data returned.</div>');
+            jQ('#vp-summary').html('');
+            return;
+        }
+
+        // ── Summary + interpretation ─────────────────────────────────────────
+        var pos, posCol, interp;
+        if (lastClose > prof.vah)      { pos = 'ABOVE Value Area'; posCol = 'var(--gtb-green)'; interp = 'Trading above fair value — bullish acceptance. Watch for pullback to VAH (' + _fmt(prof.vah) + ') as support.'; }
+        else if (lastClose < prof.val) { pos = 'BELOW Value Area'; posCol = 'var(--gtb-red)';   interp = 'Trading below fair value — bearish. VAL (' + _fmt(prof.val) + ') now acts as resistance on bounces.'; }
+        else                           { pos = 'INSIDE Value Area'; posCol = 'var(--gtb-amber)'; interp = 'Balanced / rotational. Price is at fair value — expect mean-reversion toward POC (' + _fmt(prof.pocPrice) + ').'; }
+
+        var vsPoc = lastClose >= prof.pocPrice
+            ? '<span style="color:var(--gtb-green);">above POC</span>'
+            : '<span style="color:var(--gtb-red);">below POC</span>';
+
+        var tr = _vpTradeSetup(prof, lastClose);
+
+        var s = '<div style="display:flex;gap:10px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--gtb-border);align-items:stretch;">'
+            + _vpStat('POC', _fmt(prof.pocPrice), 'var(--gtb-amber)', 'Point of Control')
+            + _vpStat('VAH', _fmt(prof.vah), 'var(--gtb-text)', 'Value Area High')
+            + _vpStat('VAL', _fmt(prof.val), 'var(--gtb-text)', 'Value Area Low')
+            + _vpStat('LTP', _fmt(lastClose), posCol, 'Last Close · ' + vsPoc)
+            + '<div style="flex:1;min-width:180px;background:var(--gtb-surface);border:1px solid var(--gtb-border);border-radius:4px;padding:6px 8px;">'
+            + '<div style="font-size:0.55rem;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.4px;">Position — <span style="color:' + posCol + ';font-weight:700;">' + pos + '</span></div>'
+            + '<div style="font-size:0.6rem;margin-top:2px;line-height:1.35;">' + interp + '</div>'
+            + '</div>'
+            + '</div>';
+
+        // ── Trade recommendation card ────────────────────────────────────────
+        s += '<div style="padding:8px 10px;border-bottom:1px solid var(--gtb-border);">'
+            + '<div style="font-size:0.55rem;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Trade Setup' + _ii('vp-trade') + '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:' + tr.bg + ';border:1px solid ' + tr.col + ';border-radius:5px;padding:8px 10px;">'
+            + '<span style="font-size:0.9rem;font-weight:800;color:' + tr.col + ';white-space:nowrap;">' + tr.action + '</span>'
+            + '<span style="font-size:0.62rem;color:var(--gtb-text);border-left:1px solid var(--gtb-border);padding-left:8px;">' + tr.option + '</span>'
+            + (tr.entry ? '<span style="margin-left:auto;display:flex;gap:12px;font-size:0.6rem;font-family:var(--gtb-mono,monospace);">'
+                + '<span><span style="color:var(--gtb-muted);">Entry </span><b>' + tr.entry + '</b></span>'
+                + '<span><span style="color:var(--gtb-muted);">SL </span><b style="color:var(--gtb-red);">' + tr.stop + '</b></span>'
+                + '<span><span style="color:var(--gtb-muted);">Target </span><b style="color:var(--gtb-green);">' + tr.target + '</b></span>'
+                + (tr.rr ? '<span><span style="color:var(--gtb-muted);">R:R </span><b>' + tr.rr + '</b></span>' : '')
+                + '</span>' : '')
+            + '</div>'
+            + '<div style="font-size:0.58rem;color:var(--gtb-muted);margin-top:5px;line-height:1.35;">' + tr.rationale + '</div>'
+            + '</div>';
+
+        jQ('#vp-summary').html(s);
+
+        // ── Horizontal histogram (price on Y, volume bars →) ─────────────────
+        var rowH = Math.max(8, Math.floor(430 / prof.nbins));
+        var h = '<div style="display:flex;flex-direction:column-reverse;">'; // low at bottom, high at top
+        for (var i = 0; i < prof.nbins; i++) {
+            var v = prof.bins[i];
+            var pct = prof.maxBin > 0 ? (v / prof.maxBin * 100) : 0;
+            var mid = prof.binMid(i);
+            var inVA = (i >= prof.vaBot && i <= prof.vaTop);
+            var isPOC = (i === prof.poc);
+            var barCol = isPOC ? 'var(--gtb-amber)' : inVA ? 'var(--gtb-blue,#58a6ff)' : 'var(--gtb-border)';
+            // Current-price marker row
+            var ltpHere = (lastClose >= mid - prof.binSize / 2 && lastClose < mid + prof.binSize / 2);
+            var rowBg = ltpHere ? 'background:var(--gtb-surface2);' : '';
+            h += '<div style="display:flex;align-items:center;height:' + rowH + 'px;gap:5px;' + rowBg + '">'
+                + '<span style="width:58px;text-align:right;font-family:var(--gtb-mono,monospace);font-size:0.55rem;color:' + (isPOC ? 'var(--gtb-amber)' : 'var(--gtb-muted)') + ';white-space:nowrap;">' + _fmt(mid) + (ltpHere ? ' ◄' : '') + '</span>'
+                + '<div style="flex:1;position:relative;height:100%;display:flex;align-items:center;">'
+                +   '<div style="height:' + Math.max(2, rowH - 2) + 'px;width:' + pct + '%;background:' + barCol + ';border-radius:0 2px 2px 0;min-width:1px;"></div>'
+                +   (isPOC ? '<span style="position:absolute;left:4px;font-size:0.5rem;font-weight:700;color:var(--gtb-bg);">POC</span>' : '')
+                + '</div>'
+                + '<span style="width:52px;font-size:0.5rem;color:var(--gtb-muted);text-align:right;">' + _volFmt(v) + '</span>'
+                + '</div>';
+        }
+        h += '</div>';
+        // Legend
+        h += '<div style="display:flex;gap:14px;padding:6px 4px 2px;font-size:0.55rem;color:var(--gtb-muted);border-top:1px solid var(--gtb-border);margin-top:6px;">'
+            + '<span><span style="display:inline-block;width:9px;height:9px;background:var(--gtb-amber);border-radius:2px;vertical-align:middle;"></span> POC</span>'
+            + '<span><span style="display:inline-block;width:9px;height:9px;background:var(--gtb-blue,#58a6ff);border-radius:2px;vertical-align:middle;"></span> Value Area (70%)</span>'
+            + '<span><span style="display:inline-block;width:9px;height:9px;background:var(--gtb-border);border-radius:2px;vertical-align:middle;"></span> Outside VA (low-volume nodes = fast moves)</span>'
+            + '</div>';
+        jQ('#vp-chart').html(h);
+    }
+
+    function _vpStat(label, val, col, sub) {
+        return '<div style="background:var(--gtb-surface);border:1px solid var(--gtb-border);border-radius:4px;padding:6px 10px;min-width:78px;">'
+            + '<div style="font-size:0.5rem;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.4px;">' + label + '</div>'
+            + '<div style="font-size:0.85rem;font-weight:700;color:' + col + ';font-family:var(--gtb-mono,monospace);">' + val + '</div>'
+            + '<div style="font-size:0.48rem;color:var(--gtb-muted);">' + (sub || '') + '</div>'
+            + '</div>';
+    }
+
+    jQ(document).off('click.vpbuild').on('click.vpbuild', '#vp-build-btn', async function() {
+        var name = (jQ('#vp-instr').val() || '').trim();
+        var token = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS[name] : null;
+        if (!token) {
+            jQ('#vp-progress').html('<span style="color:var(--gtb-amber);">No spot token for "' + name + '". Pick from the list.</span>');
+            return;
+        }
+        var lookback = parseInt(jQ('#vp-lookback').val()) || 5;
+        var interval = lookback <= 1 ? '5minute' : lookback <= 5 ? '15minute' : '30minute';
+        var fromDay = lookback <= 1 ? CURRENT_DAY : _vpDateMinus(CURRENT_DAY, lookback * 2 + 4); // buffer for weekends/holidays
+        var toDay = _gtbCurrDayTo();
+
+        jQ('#vp-progress').html('<i class="bi bi-arrow-clockwise"></i> Fetching ' + name + ' ' + interval + ' candles…');
+        jQ('#vp-build-btn').prop('disabled', true);
+        try {
+            var raw = await getHistoricalDataUsingPromise(token, fromDay, toDay, interval);
+            var candles = raw && raw.data && raw.data.candles ? raw.data.candles : [];
+            if (!candles.length) {
+                jQ('#vp-progress').html('<span style="color:var(--gtb-red);">No candles returned.</span>');
+                jQ('#vp-build-btn').prop('disabled', false);
+                return;
+            }
+            // Indices carry no spot volume — overlay futures volume by timestamp
+            var vres = await _gtbAttachVolume(name, candles, interval, fromDay, toDay);
+            candles = vres.candles;
+            if (vres.source === 'none') {
+                jQ('#vp-progress').html('<span style="color:var(--gtb-amber);">' + name + ' has no volume data (index with no futures volume available) — profile cannot be built.</span>');
+                jQ('#vp-chart').html('<div style="padding:20px;color:var(--gtb-amber);">No volume available for this instrument.</div>');
+                jQ('#vp-summary').html('');
+                jQ('#vp-build-btn').prop('disabled', false);
+                return;
+            }
+            var prof = _vpBuildProfile(candles, 48);
+            var lastClose = parseFloat(candles[candles.length - 1][4]);
+            _render(name, prof, lastClose);
+            var srcNote = vres.source === 'futures' ? ' · <b>volume from futures</b> (index has no spot volume)' : '';
+            jQ('#vp-progress').html('<span style="color:var(--gtb-green);">' + name + ' — ' + candles.length + ' candles (' + interval + ')' + srcNote + ' · built ' + new Date().toLocaleTimeString() + '</span>');
+        } catch(e) {
+            jQ('#vp-progress').html('<span style="color:var(--gtb-red);">Error: ' + (e && e.message ? e.message : e) + '</span>');
+        }
+        jQ('#vp-build-btn').prop('disabled', false);
+    });
+}
+
+// ── Liquidity / Stop-Loss Hunt Scanner ──────────────────────────────────────
+// Detects "stop runs" (liquidity grabs): price sweeps THROUGH a stop-cluster
+// level, triggers retail stops, then reclaims the level and reverses. All from
+// Kite candles. A genuine hunt = sweep + volume spike + reclaim + futures OI
+// NOT confirming the breakout direction. Pairs with Volume Profile: hunts fire
+// at the low-volume nodes just outside the Value Area, targeting the POC.
+
+// Cumulative session VWAP series from candle array [[ts,o,h,l,c,vol,oi], ...]
+function _lqVwapSeries(candles) {
+    var cumPV = 0, cumV = 0, out = [];
+    candles.forEach(function(c) {
+        var tp = (parseFloat(c[2]) + parseFloat(c[3]) + parseFloat(c[4])) / 3; // typical price
+        var v = parseFloat(c[5]) || 0;
+        cumPV += tp * v; cumV += v;
+        out.push(cumV > 0 ? cumPV / cumV : tp);
+    });
+    return out;
+}
+
+// Round-number step scaled to price magnitude (stops cluster at round levels)
+function _lqRoundStep(price) {
+    if (price >= 20000) return 100;
+    if (price >= 5000)  return 50;
+    if (price >= 1000)  return 10;
+    if (price >= 100)   return 5;
+    return 1;
+}
+
+// Build the stop-cluster level map for an instrument. Each entry {name, price}.
+function _lqBuildLevels(candles, name, profile, prevDayCandle) {
+    var levels = [];
+    var lastClose = parseFloat(candles[candles.length - 1][4]);
+    var dayOpen = parseFloat(candles[0][1]);
+
+    // Prior-day high / low — classic stop magnets just beyond them
+    if (prevDayCandle) {
+        levels.push({ name: 'PDH', price: parseFloat(prevDayCandle[2]) });
+        levels.push({ name: 'PDL', price: parseFloat(prevDayCandle[3]) });
+    }
+    // Day open
+    levels.push({ name: 'Day Open', price: dayOpen });
+
+    // Value Area edges + POC (from the volume profile) — the highest-value targets
+    if (profile) {
+        levels.push({ name: 'VAH', price: profile.vah });
+        levels.push({ name: 'VAL', price: profile.val });
+        levels.push({ name: 'POC', price: profile.pocPrice });
+    }
+
+    // 9:15 strike levels (BSO/BST/ASO/AST) — stops sit right under/over these
+    var diff = (typeof NSE_STRIKE_DIFF !== 'undefined' && NSE_STRIKE_DIFF[name]) ? NSE_STRIKE_DIFF[name] : null;
+    if (diff) {
+        var parts = diff.split(','), s1 = parseFloat(parts[0]) || 0, s2 = parseFloat(parts[1]) || s1;
+        if (s1) {
+            levels.push({ name: 'ASO', price: dayOpen + s1 });
+            levels.push({ name: 'AST', price: dayOpen + s1 + s2 });
+            levels.push({ name: 'BSO', price: dayOpen - s1 });
+            levels.push({ name: 'BST', price: dayOpen - s1 - s2 });
+        }
+    }
+
+    // Nearest round numbers above and below the last price
+    var step = _lqRoundStep(lastClose);
+    var below = Math.floor(lastClose / step) * step;
+    var above = below + step;
+    levels.push({ name: 'Round ' + below, price: below });
+    levels.push({ name: 'Round ' + above, price: above });
+
+    return levels;
+}
+
+// Detect sweep-and-reclaim events across the session candles.
+// bull hunt = wicked BELOW a level then closed back ABOVE it (stops below run, reversal up)
+// bear hunt = wicked ABOVE a level then closed back BELOW it (stops above run, reversal down)
+function _lqDetectSweeps(candles, levels, vwap, minVolRatio) {
+    minVolRatio = minVolRatio || 1.3;
+    var W = 20, out = [];
+
+    for (var i = 1; i < candles.length; i++) {
+        var o = parseFloat(candles[i][1]), h = parseFloat(candles[i][2]),
+            l = parseFloat(candles[i][3]), cl = parseFloat(candles[i][4]),
+            vol = parseFloat(candles[i][5]) || 0;
+
+        // Rolling average volume over the prior W candles
+        var s = 0, c = 0;
+        for (var j = Math.max(0, i - W); j < i; j++) { s += parseFloat(candles[j][5]) || 0; c++; }
+        var avg = c > 0 ? s / c : vol;
+        var volR = avg > 0 ? vol / avg : 1;
+        if (volR < minVolRatio) continue; // no liquidity spike = not a hunt
+
+        // Static levels + the moving VWAP for this candle
+        var checkLevels = levels.slice();
+        if (vwap && vwap[i] != null) checkLevels.push({ name: 'VWAP', price: vwap[i] });
+
+        checkLevels.forEach(function(lv) {
+            var p = lv.price;
+            if (!isFinite(p)) return;
+            if (l < p && cl > p) {
+                out.push({ idx: i, time: candles[i][0], level: lv.name, price: p,
+                    dir: 'bull', volR: volR, pen: p - l, close: cl });
+            } else if (h > p && cl < p) {
+                out.push({ idx: i, time: candles[i][0], level: lv.name, price: p,
+                    dir: 'bear', volR: volR, pen: h - p, close: cl });
+            }
+        });
+    }
+
+    // Most recent first
+    out.sort(function(a, b) { return b.idx - a.idx; });
+    return out;
+}
+
+function _gtbShowLiquidityScanner() {
+    var _cls = 'popup-custom-style-liq-scan';
+    var _instruments = _vpInstrumentList();
+    var opts = _instruments.map(function(n) { return '<option value="' + n + '">'; }).join('');
+
+    var html = '<div id="lq-wrap" style="height:100%;display:flex;flex-direction:column;background:var(--gtb-bg);color:var(--gtb-text);font-size:0.65rem;">'
+        + '<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;flex-wrap:wrap;">'
+        + '<span style="color:var(--gtb-muted);">Instrument:</span>'
+        + '<input id="lq-instr" list="lq-instr-list" placeholder="e.g. RELIANCE" value="NIFTY 50" style="width:150px;padding:3px 6px;font-size:0.65rem;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<datalist id="lq-instr-list">' + opts + '</datalist>'
+        + '<span style="color:var(--gtb-muted);">Sensitivity:</span>'
+        + '<select id="lq-sens" style="font-size:0.65rem;padding:3px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="1.5">Strict (vol ≥ 1.5×)</option>'
+        + '<option value="1.3" selected>Normal (vol ≥ 1.3×)</option>'
+        + '<option value="1.15">Loose (vol ≥ 1.15×)</option>'
+        + '</select>'
+        + '<button id="lq-scan-btn" style="margin-left:auto;padding:3px 14px;font-size:0.65rem;background:var(--gtb-accent,#58a6ff);color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:600;"><i class="bi bi-magnet-fill"></i> Scan</button>'
+        + '</div>'
+        + '<div id="lq-progress" style="padding:4px 10px;font-size:0.6rem;color:var(--gtb-muted);border-bottom:1px solid var(--gtb-border);flex-shrink:0;min-height:20px;"></div>'
+        + '<div id="lq-body" style="flex:1;overflow:auto;padding:6px 10px;">'
+        + '<div style="padding:24px;text-align:center;color:var(--gtb-muted);">Pick an instrument and click <b>Scan</b> — uses 1-min candles for the current session.</div>'
+        + '</div>'
+        + '</div>';
+
+    showPopUpWindow('liq-scan', html, 'Liquidity Scanner', 760, 640);
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-magnet-fill" style="font-size:0.75rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">LIQUIDITY / SL-HUNT SCANNER</span>'
+        + _ii('lq-scan')
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+
+    function _fmt(v) { return (v >= 1000 ? v.toFixed(0) : v.toFixed(2)); }
+    function _hhmm(ts) { var m = (ts || '').match(/T(\d{2}:\d{2})/); return m ? m[1] : (ts || '').substring(11, 16); }
+
+    function _render(name, sweeps, levels, profile, lastClose, futRemark, futScore) {
+        // ── Futures OI context (non-confirmation filter) ─────────────────────
+        var futBull = futScore > 0, futBear = futScore < 0;
+
+        // ── Active setup = most recent hunt within the last ~3 candles ───────
+        var active = sweeps.length ? sweeps[0] : null;
+        var lastIdx = active ? active.idx : -1;
+
+        var h = '';
+
+        // Setup card
+        if (active) {
+            var isBull = active.dir === 'bull';
+            // A bull hunt is confirmed if futures are NOT freshly bearish (breakdown not real)
+            var confirmed = isBull ? !futBear : !futBull;
+            var col = isBull ? 'var(--gtb-green)' : 'var(--gtb-red)';
+            var bg  = isBull ? 'color-mix(in srgb, var(--gtb-green) 12%, transparent)'
+                             : 'color-mix(in srgb, var(--gtb-red) 12%, transparent)';
+            var action = isBull ? 'LONG reversal' : 'SHORT reversal';
+            var opt = isBull ? 'Buy CE (or long futures)' : 'Buy PE (or short futures)';
+
+            // Targets from the profile: reclaim toward POC, then value-area far edge
+            var t1, t2;
+            if (isBull) { t1 = profile ? (lastClose < profile.pocPrice ? profile.pocPrice : profile.vah) : null; t2 = profile ? profile.vah : null; }
+            else        { t1 = profile ? (lastClose > profile.pocPrice ? profile.pocPrice : profile.val) : null; t2 = profile ? profile.val : null; }
+            var sl = isBull ? active.close - active.pen - Math.abs(active.close * 0.0005) : active.close + active.pen;
+
+            h += '<div style="background:' + bg + ';border:1px solid ' + col + ';border-radius:6px;padding:10px 12px;margin-bottom:10px;">'
+                + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+                + '<span style="font-size:0.95rem;font-weight:800;color:' + col + ';">' + (isBull ? '▲ ' : '▼ ') + action + '</span>'
+                + '<span style="font-size:0.62rem;color:var(--gtb-text);border-left:1px solid var(--gtb-border);padding-left:8px;">' + opt + '</span>'
+                + '<span style="margin-left:auto;font-size:0.58rem;padding:2px 8px;border-radius:10px;background:' + (confirmed ? 'var(--gtb-green)' : 'var(--gtb-amber)') + ';color:#0b0f16;font-weight:700;">'
+                + (confirmed ? 'OI CONFIRMS' : 'OI UNCONFIRMED') + '</span>'
+                + '</div>'
+                + '<div style="font-size:0.62rem;margin-top:6px;line-height:1.4;">'
+                + 'Liquidity grab ' + (isBull ? 'below' : 'above') + ' <b>' + active.level + ' (' + _fmt(active.price) + ')</b> at <b>' + _hhmm(active.time) + '</b> — '
+                + 'wicked ' + (isBull ? 'under and reclaimed' : 'over and rejected') + ' on <b>' + active.volR.toFixed(1) + '×</b> volume. '
+                + 'Futures OI: <b style="color:' + (futBull ? 'var(--gtb-green)' : futBear ? 'var(--gtb-red)' : 'var(--gtb-muted)') + ';">' + (futRemark || '—') + '</b>'
+                + (confirmed ? ' — not confirming the ' + (isBull ? 'breakdown' : 'breakout') + ', so the sweep is likely a trap.'
+                             : ' — actually confirms the move, so this may be a real ' + (isBull ? 'breakdown' : 'breakout') + ', not a hunt. Lower confidence.')
+                + '</div>'
+                + '<div style="display:flex;gap:14px;margin-top:8px;font-size:0.62rem;font-family:var(--gtb-mono,monospace);flex-wrap:wrap;">'
+                + '<span><span style="color:var(--gtb-muted);">Entry </span><b>' + _fmt(active.close) + '</b></span>'
+                + '<span><span style="color:var(--gtb-muted);">SL </span><b style="color:var(--gtb-red);">' + _fmt(sl) + '</b></span>'
+                + (t1 != null ? '<span><span style="color:var(--gtb-muted);">T1 </span><b style="color:var(--gtb-green);">' + _fmt(t1) + '</b></span>' : '')
+                + (t2 != null ? '<span><span style="color:var(--gtb-muted);">T2 </span><b style="color:var(--gtb-green);">' + _fmt(t2) + '</b></span>' : '')
+                + '</div>'
+                + '</div>';
+        } else {
+            h += '<div style="padding:14px;text-align:center;color:var(--gtb-muted);border:1px dashed var(--gtb-border);border-radius:6px;margin-bottom:10px;">'
+                + 'No stop-hunt detected this session at the current sensitivity. Institutions haven\'t swept a key level with a volume spike yet.</div>';
+        }
+
+        // ── Detected hunts table ─────────────────────────────────────────────
+        h += '<div style="font-size:0.55rem;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.4px;margin:4px 0;">Detected Sweeps (' + sweeps.length + ')</div>';
+        if (sweeps.length) {
+            h += '<table style="width:100%;border-collapse:collapse;font-size:0.62rem;margin-bottom:10px;">'
+                + '<thead><tr style="background:var(--gtb-surface2);">'
+                + '<th style="padding:4px 6px;text-align:left;border-bottom:1px solid var(--gtb-border);">Time</th>'
+                + '<th style="padding:4px 6px;text-align:left;border-bottom:1px solid var(--gtb-border);">Level</th>'
+                + '<th style="padding:4px 6px;text-align:right;border-bottom:1px solid var(--gtb-border);">Price</th>'
+                + '<th style="padding:4px 6px;text-align:center;border-bottom:1px solid var(--gtb-border);">Type</th>'
+                + '<th style="padding:4px 6px;text-align:right;border-bottom:1px solid var(--gtb-border);">Vol</th>'
+                + '</tr></thead><tbody>';
+            sweeps.slice(0, 30).forEach(function(sw) {
+                var isBull = sw.dir === 'bull';
+                var col = isBull ? 'var(--gtb-green)' : 'var(--gtb-red)';
+                var rowBg = (sw.idx === lastIdx) ? 'background:var(--gtb-surface2);' : '';
+                h += '<tr style="border-bottom:1px solid var(--gtb-border);' + rowBg + '">'
+                    + '<td style="padding:3px 6px;font-family:var(--gtb-mono,monospace);">' + _hhmm(sw.time) + '</td>'
+                    + '<td style="padding:3px 6px;">' + sw.level + '</td>'
+                    + '<td style="padding:3px 6px;text-align:right;font-family:var(--gtb-mono,monospace);">' + _fmt(sw.price) + '</td>'
+                    + '<td style="padding:3px 6px;text-align:center;color:' + col + ';font-weight:700;">' + (isBull ? '▲ Bull grab' : '▼ Bear grab') + '</td>'
+                    + '<td style="padding:3px 6px;text-align:right;color:' + (sw.volR >= 2 ? 'var(--gtb-amber)' : 'var(--gtb-text)') + ';">' + sw.volR.toFixed(1) + '×</td>'
+                    + '</tr>';
+            });
+            h += '</tbody></table>';
+        }
+
+        // ── Stop-cluster level map (what's being watched) ────────────────────
+        h += '<div style="font-size:0.55rem;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.4px;margin:4px 0;">Watched Stop-Cluster Levels</div>';
+        var sorted = levels.slice().sort(function(a, b) { return b.price - a.price; });
+        h += '<div style="display:flex;flex-direction:column;gap:2px;">';
+        sorted.forEach(function(lv) {
+            var above = lv.price > lastClose;
+            h += '<div style="display:flex;align-items:center;gap:8px;font-size:0.6rem;padding:2px 4px;">'
+                + '<span style="width:70px;color:var(--gtb-muted);">' + lv.name + '</span>'
+                + '<span style="width:64px;text-align:right;font-family:var(--gtb-mono,monospace);">' + _fmt(lv.price) + '</span>'
+                + '<span style="font-size:0.52rem;color:' + (above ? 'var(--gtb-red)' : 'var(--gtb-green)') + ';">' + (above ? 'resistance (stops above)' : 'support (stops below)') + '</span>'
+                + '</div>';
+        });
+        h += '<div style="display:flex;align-items:center;gap:8px;font-size:0.6rem;padding:3px 4px;margin-top:2px;border-top:1px dashed var(--gtb-border);">'
+            + '<span style="width:70px;color:var(--gtb-text);font-weight:700;">LTP</span>'
+            + '<span style="width:64px;text-align:right;font-family:var(--gtb-mono,monospace);font-weight:700;">' + _fmt(lastClose) + '</span>'
+            + '</div>';
+        h += '</div>';
+
+        jQ('#lq-body').html(h);
+    }
+
+    jQ(document).off('click.lqscan').on('click.lqscan', '#lq-scan-btn', async function() {
+        var name = (jQ('#lq-instr').val() || '').trim();
+        var token = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS[name] : null;
+        if (!token) {
+            jQ('#lq-progress').html('<span style="color:var(--gtb-amber);">No spot token for "' + name + '". Pick from the list.</span>');
+            return;
+        }
+        var minVolR = parseFloat(jQ('#lq-sens').val()) || 1.3;
+        jQ('#lq-scan-btn').prop('disabled', true);
+        try {
+            // 1-min spot candles for the current session — precision matters for sweeps
+            jQ('#lq-progress').html('<i class="bi bi-arrow-clockwise"></i> Fetching 1-min candles: ' + name + '…');
+            var raw = await getHistoricalDataUsingPromise(token, CURRENT_DAY, _gtbCurrDayTo(), 'minute');
+            var candles = raw && raw.data && raw.data.candles ? raw.data.candles : [];
+            if (candles.length < 5) {
+                jQ('#lq-progress').html('<span style="color:var(--gtb-red);">Not enough 1-min candles yet (' + candles.length + ').</span>');
+                jQ('#lq-scan-btn').prop('disabled', false);
+                return;
+            }
+            // Indices carry no spot volume — overlay 1-min futures volume by timestamp
+            // so the volume-spike filter (which defines a "hunt") actually works.
+            var vres = await _gtbAttachVolume(name, candles, 'minute', CURRENT_DAY, _gtbCurrDayTo());
+            candles = vres.candles;
+            var volSource = vres.source;
+            if (volSource === 'none') {
+                jQ('#lq-progress').html('<span style="color:var(--gtb-amber);">' + name + ' has no volume (index with no futures volume) — sweep detection needs volume, cannot scan.</span>');
+                jQ('#lq-body').html('<div style="padding:20px;color:var(--gtb-amber);">No volume available for this instrument — the stop-hunt filter requires a volume spike, which needs futures volume. Try the index futures directly, or a stock.</div>');
+                jQ('#lq-scan-btn').prop('disabled', false);
+                return;
+            }
+
+            // Prior-day daily candle → PDH / PDL
+            jQ('#lq-progress').html('<i class="bi bi-arrow-clockwise"></i> Fetching prior-day range…');
+            var pdRaw = await getHistoricalDataUsingPromise(token, _gtbPrevDay(), _gtbPrevDay(), 'day').catch(function(){ return null; });
+            var prevDayCandle = pdRaw && pdRaw.data && pdRaw.data.candles && pdRaw.data.candles.length ? pdRaw.data.candles[0] : null;
+
+            // Session volume profile → POC / VAH / VAL (targets + stop clusters)
+            var profile = _vpBuildProfile(candles, 48);
+
+            // Futures OI context for the non-confirmation filter
+            jQ('#lq-progress').html('<i class="bi bi-arrow-clockwise"></i> Fetching futures OI…');
+            var futRemark = '—', futScore = 0;
+            var futInfo = _ocFutToken(name);
+            if (futInfo) {
+                var fRaw = await getHistoricalDataUsingPromise(futInfo.token, _gtbPrevDay(), _gtbCurrDayTo(), '5minute').catch(function(){ return null; });
+                var fAll = fRaw && fRaw.data && fRaw.data.candles ? fRaw.data.candles : [];
+                var todayStr = CURRENT_DAY.substring(0, 10);
+                var fToday = fAll.filter(function(c) { return (c[0] || '').startsWith(todayStr); });
+                var fPrev  = fAll.filter(function(c) { return !(c[0] || '').startsWith(todayStr); });
+                var fd = _ocFuturesRemark(fToday, fPrev, futInfo.lot);
+                if (fd && fd.remark) { futRemark = fd.remark; futScore = fd.score; }
+            }
+
+            var lastClose = parseFloat(candles[candles.length - 1][4]);
+            var vwap = _lqVwapSeries(candles);
+            var levels = _lqBuildLevels(candles, name, profile, prevDayCandle);
+            var sweeps = _lqDetectSweeps(candles, levels, vwap, minVolR);
+
+            _render(name, sweeps, levels, profile, lastClose, futRemark, futScore);
+            var lqSrcNote = volSource === 'futures' ? ' · <b>volume from futures</b> (index)' : '';
+            jQ('#lq-progress').html('<span style="color:var(--gtb-green);">' + name + ' — ' + candles.length + ' 1-min candles' + lqSrcNote + ' · ' + sweeps.length + ' sweeps · ' + new Date().toLocaleTimeString() + '</span>');
+        } catch(e) {
+            jQ('#lq-progress').html('<span style="color:var(--gtb-red);">Error: ' + (e && e.message ? e.message : e) + '</span>');
+        }
+        jQ('#lq-scan-btn').prop('disabled', false);
+    });
+}
+
+// ── Master Scanner (Carry + Volume Profile + SL-Hunt fused) ─────────────────
+// One scan per instrument runs all three engines and merges them into a single
+// confluence verdict:
+//   • Carry     → overnight/positional bias  (zone + futures + OI + MaxPain + IV)
+//   • Volume Profile → intraday value structure (POC/VAH/VAL + auction setup)
+//   • SL-Hunt   → immediate reversal trigger  (sweep + reclaim + volume + OI)
+// All data is fresh Kite historical (indices use futures volume via _gtbAttachVolume).
+
+var _UNI_RESULTS = {};   // { name: analysisObject }
+var _UNI_SELECTED = null; // name currently expanded in the detail panel
+
+// Run all three engines for one instrument and merge. Returns null if unusable.
+async function _uniAnalyze(name, onProgress) {
+    var spotToken = _ocSpotToken(name);
+    if (!spotToken) { if (onProgress) onProgress(name + ': no spot token'); return null; }
+
+    // ── 1. Carry (also gives us zone / futures / OI / MaxPain / IV) ───────────
+    if (onProgress) onProgress(name + ' · carry…');
+    var carry = await _ocAnalyzeStock(name, null);   // may be null if no futures at all
+
+    // ── 2. Volume Profile — ~10 trading days of 15-min candles ────────────────
+    if (onProgress) onProgress(name + ' · volume profile…');
+    var vpFrom = _vpDateMinus(CURRENT_DAY, 14), vpTo = _gtbCurrDayTo();
+    var vpRaw = await getHistoricalDataUsingPromise(spotToken, vpFrom, vpTo, '15minute').catch(function(){ return null; });
+    var vpC = vpRaw && vpRaw.data && vpRaw.data.candles ? vpRaw.data.candles : [];
+    var vpAtt = await _gtbAttachVolume(name, vpC, '15minute', vpFrom, vpTo);
+    var prof = (vpAtt.source !== 'none' && vpAtt.candles.length) ? _vpBuildProfile(vpAtt.candles, 48) : null;
+    var vpLast = vpC.length ? parseFloat(vpC[vpC.length - 1][4]) : (carry ? carry.ltp : 0);
+    var vpTrade = prof ? _vpTradeSetup(prof, vpLast) : null;
+    var vpPos = null;
+    if (prof) {
+        vpPos = vpLast > prof.vah ? 'ABOVE' : vpLast < prof.val ? 'BELOW' : 'INSIDE';
+    }
+
+    // ── 3. SL-Hunt — today's 1-min candles ────────────────────────────────────
+    if (onProgress) onProgress(name + ' · liquidity…');
+    var minRaw = await getHistoricalDataUsingPromise(spotToken, CURRENT_DAY, _gtbCurrDayTo(), 'minute').catch(function(){ return null; });
+    var minC = minRaw && minRaw.data && minRaw.data.candles ? minRaw.data.candles : [];
+    var slAtt = (minC.length >= 5) ? await _gtbAttachVolume(name, minC, 'minute', CURRENT_DAY, _gtbCurrDayTo()) : { candles: minC, source: 'none' };
+    var sweeps = [], active = null, slConfirmed = false, slRecent = false;
+    if (slAtt.source !== 'none' && slAtt.candles.length >= 5) {
+        var pdRaw = await getHistoricalDataUsingPromise(spotToken, _gtbPrevDay(), _gtbPrevDay(), 'day').catch(function(){ return null; });
+        var prevDayCandle = pdRaw && pdRaw.data && pdRaw.data.candles && pdRaw.data.candles.length ? pdRaw.data.candles[0] : null;
+        var vwap = _lqVwapSeries(slAtt.candles);
+        var levels = _lqBuildLevels(slAtt.candles, name, prof, prevDayCandle);
+        sweeps = _lqDetectSweeps(slAtt.candles, levels, vwap, 1.3);
+        active = sweeps.length ? sweeps[0] : null;
+        if (active) {
+            var futScore = carry ? carry.futures : 0;
+            // OI confirms the reversal when futures do NOT confirm the sweep direction
+            slConfirmed = active.dir === 'bull' ? (futScore >= 0) : (futScore <= 0);
+            slRecent = active.idx >= (slAtt.candles.length - 10); // within last ~10 min
+        }
+    }
+
+    var res = {
+        name: name,
+        ltp: carry ? carry.ltp : vpLast,
+        pct: carry ? carry.pct : 0,
+        carry: carry,
+        vp: prof ? { prof: prof, trade: vpTrade, last: vpLast, pos: vpPos, source: vpAtt.source } : null,
+        sl: { sweeps: sweeps, active: active, confirmed: slConfirmed, recent: slRecent, source: slAtt.source }
+    };
+    res.verdict = _uniVerdict(res);
+    return res;
+}
+
+// Merge the three engines' directional votes into one confluence verdict.
+function _uniVerdict(r) {
+    // Carry vote (overnight bias)
+    var vCarry = 0;
+    if (r.carry) {
+        var t = r.carry.total;
+        vCarry = t >= 3 ? 1 : t <= -3 ? -1 : t >= 1 ? 0.5 : t <= -1 ? -0.5 : 0;
+    }
+    // Volume-profile vote (intraday structure) — full weight for breakout/breakdown, half for fades
+    var vVP = 0;
+    if (r.vp && r.vp.trade) {
+        var a = r.vp.trade.action;
+        vVP = a === 'BUY / LONG' ? 1 : a === 'SELL / SHORT' ? -1
+            : a === 'FADE LONG' ? 0.5 : a === 'FADE SHORT' ? -0.5 : 0;
+    }
+    // SL-hunt vote (immediate trigger) — only if recent; confirmed = full, else half
+    var vSL = 0;
+    if (r.sl && r.sl.active && r.sl.recent) {
+        vSL = (r.sl.active.dir === 'bull' ? 1 : -1) * (r.sl.confirmed ? 1 : 0.5);
+    }
+
+    var score = vCarry + vVP + vSL;
+    var label, col;
+    if (score >= 2)       { label = 'STRONG LONG';  col = 'var(--gtb-green)'; }
+    else if (score >= 1)  { label = 'LONG';         col = 'var(--gtb-green)'; }
+    else if (score <= -2) { label = 'STRONG SHORT'; col = 'var(--gtb-red)'; }
+    else if (score <= -1) { label = 'SHORT';        col = 'var(--gtb-red)'; }
+    else                  { label = 'WAIT / NO EDGE'; col = 'var(--gtb-amber)'; }
+
+    // Conflict flag — overnight bias vs intraday trigger disagree
+    var conflict = null;
+    if (vCarry > 0 && vSL < 0) conflict = 'Overnight bias bullish but an intraday bear-grab just fired — reduce size / wait for reclaim.';
+    else if (vCarry < 0 && vSL > 0) conflict = 'Overnight bias bearish but an intraday bull-grab just fired — reduce size / wait for rejection.';
+    else if (vVP > 0 && vCarry < 0) conflict = 'Intraday structure bullish but carry score bearish — mixed; treat as intraday-only.';
+    else if (vVP < 0 && vCarry > 0) conflict = 'Intraday structure bearish but carry score bullish — mixed; treat as intraday-only.';
+
+    // Choose the most actionable trade: a recent SL-hunt trigger > VP setup > carry zone
+    var trade = null;
+    if (r.sl && r.sl.active && r.sl.recent) {
+        var isB = r.sl.active.dir === 'bull';
+        var t1 = r.vp && r.vp.prof ? (isB ? (r.ltp < r.vp.prof.pocPrice ? r.vp.prof.pocPrice : r.vp.prof.vah) : (r.ltp > r.vp.prof.pocPrice ? r.vp.prof.pocPrice : r.vp.prof.val)) : null;
+        trade = {
+            source: 'SL-Hunt trigger',
+            dir: isB ? 'LONG' : 'SHORT',
+            col: isB ? 'var(--gtb-green)' : 'var(--gtb-red)',
+            entry: _vpFmt(r.sl.active.close),
+            stop: _vpFmt(isB ? r.sl.active.close - r.sl.active.pen : r.sl.active.close + r.sl.active.pen),
+            target: t1 != null ? _vpFmt(t1) : '—',
+            note: 'Liquidity grab ' + (isB ? 'below' : 'above') + ' ' + r.sl.active.level + ' on ' + r.sl.active.volR.toFixed(1) + '× vol' + (r.sl.confirmed ? ', OI confirms.' : ', OI unconfirmed.')
+        };
+    } else if (r.vp && r.vp.trade && r.vp.trade.dir !== 0) {
+        var vt = r.vp.trade;
+        trade = { source: 'Volume Profile', dir: vt.action, col: vt.col, entry: vt.entry, stop: vt.stop, target: vt.target, note: vt.option };
+    } else if (r.carry) {
+        var cb = r.carry.total >= 1 ? 'LONG' : r.carry.total <= -1 ? 'SHORT' : 'WAIT';
+        trade = { source: 'Carry bias', dir: cb, col: cb === 'LONG' ? 'var(--gtb-green)' : cb === 'SHORT' ? 'var(--gtb-red)' : 'var(--gtb-amber)', entry: _vpFmt(r.ltp), stop: '—', target: '—', note: 'Positional bias only — no fresh intraday trigger.' };
+    }
+
+    return { score: score, label: label, col: col, conflict: conflict, trade: trade,
+             votes: { carry: vCarry, vp: vVP, sl: vSL } };
+}
+
+function _gtbShowMasterScanner() {
+    var _cls = 'popup-custom-style-master-scan';
+    var _all = _vpInstrumentList();
+    var _msZoneNames = null;   // when set, the checkbox list shows only these names
+    var _MS_CUR_ZONES = null;  // { name: 'AST'|'ASO'|'BSO'|'BST'|'B·W' } — lazy current-zone prescan cache
+
+    // Zone quick-pick buttons (mode '915' = 9:15 breakout, 'cur' = current live zone)
+    function _msZoneBtns(mode) {
+        var defs = [['AST','var(--gtb-green)'],['ASO','var(--gtb-green)'],['BSO','var(--gtb-red)'],['BST','var(--gtb-red)'],['BW','var(--gtb-muted)']];
+        return defs.map(function(z) {
+            return '<button class="ms-zbtn" data-mode="' + mode + '" data-zone="' + z[0] + '" style="padding:2px 7px;font-size:0.58rem;border:1px solid ' + z[1] + ';background:var(--gtb-surface);color:' + z[1] + ';border-radius:3px;cursor:pointer;">' + (z[0] === 'BW' ? 'B·W' : z[0]) + '</button>';
+        }).join('');
+    }
+
+    var html = '<div id="ms-wrap" style="height:100%;display:flex;flex-direction:column;background:var(--gtb-bg);color:var(--gtb-text);font-size:0.65rem;">'
+        + '<div style="display:flex;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;flex-wrap:wrap;">'
+        + '<span style="color:var(--gtb-muted);">Select:</span>'
+        + '<input id="ms-search" placeholder="Search…" style="width:110px;padding:2px 6px;font-size:0.6rem;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<button id="ms-sel-idx" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Indices</button>'
+        + '<button id="ms-sel-n50" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Nifty 50</button>'
+        + '<button id="ms-sel-fno" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">All F&amp;O</button>'
+        + '<button id="ms-sel-clear" style="padding:2px 7px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Clear</button>'
+        + '<button id="ms-scan-btn" style="margin-left:auto;padding:3px 14px;font-size:0.65rem;background:var(--gtb-accent,#58a6ff);color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:600;"><i class="bi bi-binoculars-fill"></i> Analyze</button>'
+        + '</div>'
+        // ── Zone quick-pick bar: select stocks by 9:15 breakout or current zone ──
+        + '<div id="ms-zonepick" style="display:flex;gap:3px;align-items:center;padding:4px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;flex-wrap:wrap;">'
+        + '<span style="color:var(--gtb-muted);font-size:0.58rem;font-weight:700;">9:15 break:</span>' + _msZoneBtns('915')
+        + '<span style="width:1px;height:14px;background:var(--gtb-border);margin:0 5px;"></span>'
+        + '<span style="color:var(--gtb-muted);font-size:0.58rem;font-weight:700;" title="First click runs a one-time current-zone prescan (1 fetch/stock)">Now:</span>' + _msZoneBtns('cur')
+        + '<button id="ms-zone-all" style="padding:2px 7px;font-size:0.58rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;">Show All</button>'
+        + '<span id="ms-zone-status" style="margin-left:auto;color:var(--gtb-muted);font-size:0.58rem;"></span>'
+        + '</div>'
+        + '<div id="ms-list" style="max-height:88px;overflow-y:auto;padding:4px 10px;border-bottom:1px solid var(--gtb-border);display:flex;flex-wrap:wrap;gap:2px 8px;flex-shrink:0;"></div>'
+        + '<div id="ms-timing" style="display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.58rem;border-bottom:1px solid var(--gtb-border);flex-shrink:0;"></div>'
+        + '<div id="ms-progress" style="padding:4px 10px;font-size:0.6rem;color:var(--gtb-muted);border-bottom:1px solid var(--gtb-border);flex-shrink:0;min-height:20px;"></div>'
+        + '<div id="ms-filters" style="display:flex;gap:6px;align-items:center;padding:4px 10px;border-bottom:1px solid var(--gtb-border);flex-shrink:0;flex-wrap:wrap;">'
+        + '<span style="color:var(--gtb-muted);font-size:0.6rem;">9:15:</span>'
+        + '<select id="ms-f-zone915" style="font-size:0.6rem;padding:2px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="all">All</option><option value="AST">AST</option><option value="ASO">ASO</option><option value="BSO">BSO</option><option value="BST">BST</option><option value="BW">B·W</option>'
+        + '</select>'
+        + '<span style="color:var(--gtb-muted);font-size:0.6rem;">Now:</span>'
+        + '<select id="ms-f-zone" style="font-size:0.6rem;padding:2px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="all">All</option><option value="AST">AST</option><option value="ASO">ASO</option><option value="BSO">BSO</option><option value="BST">BST</option><option value="BW">B·W</option>'
+        + '</select>'
+        + '<span style="color:var(--gtb-muted);font-size:0.6rem;">Verdict:</span>'
+        + '<select id="ms-f-verdict" style="font-size:0.6rem;padding:2px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="all">All</option><option value="long">Long (any)</option><option value="short">Short (any)</option><option value="strong">Strong only</option><option value="wait">Wait</option>'
+        + '</select>'
+        + '<span style="color:var(--gtb-muted);font-size:0.6rem;">SL-Hunt:</span>'
+        + '<select id="ms-f-sl" style="font-size:0.6rem;padding:2px 5px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);border-radius:3px;">'
+        + '<option value="all">All</option><option value="active">Active grab</option><option value="confirmed">Confirmed grab</option>'
+        + '</select>'
+        + '<button id="ms-export" style="padding:2px 8px;font-size:0.6rem;border:1px solid var(--gtb-border);background:var(--gtb-surface);color:var(--gtb-text);border-radius:3px;cursor:pointer;" title="Export the filtered rows to CSV"><i class="bi bi-download"></i> Export CSV</button>'
+        + '<span id="ms-count" style="margin-left:auto;color:var(--gtb-muted);font-size:0.6rem;"></span>'
+        + '</div>'
+        + '<div id="ms-table-wrap" style="flex-shrink:0;max-height:40%;overflow:auto;border-bottom:1px solid var(--gtb-border);">'
+        + '<div style="padding:20px;text-align:center;color:var(--gtb-muted);">Select instruments and click <b>Analyze</b> — each runs Carry + Volume Profile + SL-Hunt.</div>'
+        + '</div>'
+        + '<div id="ms-detail" style="flex:1;overflow:auto;padding:8px 10px;"></div>'
+        + '</div>';
+
+    showPopUpWindow('master-scan', html, 'Master Scanner', 940, 680);
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<i class="bi bi-binoculars-fill" style="font-size:0.75rem;"></i>'
+        + '<span style="font-weight:800;font-size:0.7rem;">MASTER SCANNER</span>'
+        + _ii('uni-scan')
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+
+    // Names can contain &, - etc. (M&M, GVT&D, L&TFH) which break both HTML attributes
+    // and jQuery ID selectors — so escape for HTML and look up checkboxes by value.
+    function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function _cb(n) { return jQ('#ms-list input[value="' + String(n).replace(/(["\\])/g, '\\$1') + '"]'); }
+
+    function _buildList(filter) {
+        var f = (filter || '').toUpperCase();
+        var base = _msZoneNames ? _all.filter(function(n){ return _msZoneNames.indexOf(n) >= 0; }) : _all;
+        var items = base.filter(function(n) { return !f || n.toUpperCase().indexOf(f) >= 0; });
+        if (!items.length) { jQ('#ms-list').html('<span style="color:var(--gtb-muted);font-size:0.6rem;">No stocks in this bucket.</span>'); return; }
+        jQ('#ms-list').html(items.map(function(n) {
+            var chk = _cb(n).prop('checked') ? ' checked' : '';
+            return '<label style="white-space:nowrap;cursor:pointer;user-select:none;"><input type="checkbox" value="' + _esc(n) + '"' + chk + ' style="margin-right:2px;"> ' + _esc(n) + '</label>';
+        }).join(''));
+    }
+    function _selected() { return jQ('#ms-list input:checked').map(function(){ return this.value; }).get(); }
+    function _setAll(names) { jQ('#ms-list input').prop('checked', false); names.forEach(function(n){ _cb(n).prop('checked', true); }); }
+
+    setTimeout(function(){ _buildList(''); jQ('#ms-timing').html(_msTimingHint()); }, 120);
+    // Keep the timing hint fresh while the popup is open; stop when it's closed
+    var _msTimer = setInterval(function() {
+        if (!jQ('#ms-timing').length) { clearInterval(_msTimer); return; }
+        jQ('#ms-timing').html(_msTimingHint());
+    }, 60000);
+    // Typing in search clears any zone-bucket restriction so you search the full universe
+    jQ(document).off('input.mssearch').on('input.mssearch', '#ms-search', function(){ _msZoneNames = null; jQ('#ms-zone-status').text(''); _buildList(this.value); });
+    jQ(document).off('click.mssidx').on('click.mssidx', '#ms-sel-idx', function(){ _msZoneNames = null; jQ('#ms-zone-status').text(''); _buildList(''); _setAll(['NIFTY 50','NIFTY BANK','SENSEX','NIFTY FIN SERVICE'].filter(function(n){ return _cb(n).length; })); });
+    jQ(document).off('click.mssn50').on('click.mssn50', '#ms-sel-n50', function(){ _msZoneNames = null; jQ('#ms-zone-status').text(''); _buildList(''); _setAll(Object.keys(typeof NIFTY_50_WEIGHTED_STOCKS !== 'undefined' ? NIFTY_50_WEIGHTED_STOCKS : {})); });
+    jQ(document).off('click.mssfno').on('click.mssfno', '#ms-sel-fno', function(){ _msZoneNames = null; jQ('#ms-zone-status').text(''); jQ('#ms-search').val(''); _buildList(''); _setAll((typeof FO_LIST !== 'undefined' ? FO_LIST : []).filter(function(n){ return _cb(n).length; })); });
+    jQ(document).off('click.mssclr').on('click.mssclr', '#ms-sel-clear', function(){ jQ('#ms-list input').prop('checked', false); });
+    jQ(document).off('click.mszall').on('click.mszall', '#ms-zone-all', function(){ _msZoneNames = null; jQ('#ms-zone-status').text(''); jQ('#ms-search').val(''); _buildList(''); });
+
+    function _vv(v) { return (v > 0 ? '+' : '') + v; }
+    function _vcol(v) { return v > 0 ? 'var(--gtb-green)' : v < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)'; }
+
+    function _zoneLabel(z) { return z === 2 ? 'AST' : z === 1 ? 'ASO' : z === -1 ? 'BSO' : z === -2 ? 'BST' : 'B·W'; }
+
+    // Live IST-clock hint: what the scan is best used for at the current time of day.
+    function _msTimingHint() {
+        var now = new Date();
+        var ist = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 5.5 * 3600000);
+        var m = ist.getHours() * 60 + ist.getMinutes(), hhmm = ist.toTimeString().substring(0, 5);
+        var t, c;
+        if      (m < 555) { t = 'Pre-open — 9:15 zones seal at 9:20. Wait before scanning.'; c = 'var(--gtb-amber)'; }
+        else if (m < 585) { t = 'OPENING READ — 9:15 breakout + early SL-hunts. Use the 9:15 AST/BST buttons.'; c = 'var(--gtb-green)'; }
+        else if (m < 645) { t = 'PRIME WINDOW — liquidity grabs / SL-hunt entries are most active now.'; c = 'var(--gtb-green)'; }
+        else if (m < 690) { t = 'Trend settling — good for confirming the morning bias.'; c = 'var(--gtb-text)'; }
+        else if (m < 810) { t = 'LUNCH LULL (12:00–1:30) — thin volume, noisy signals. Prefer to wait.'; c = 'var(--gtb-amber)'; }
+        else if (m < 870) { t = 'Afternoon trend sets in — re-check bias (watch 9:15 vs Now divergence).'; c = 'var(--gtb-green)'; }
+        else if (m < 915) { t = 'BEST FOR OVERNIGHT CARRY — structure settled. Run + Export now.'; c = 'var(--gtb-green)'; }
+        else if (m <= 930){ t = 'Near close — carry decisions only; avoid fresh intraday entries.'; c = 'var(--gtb-amber)'; }
+        else              { t = 'Market closed — scan runs on the last available data.'; c = 'var(--gtb-muted)'; }
+        return '<i class="bi bi-clock-history" style="color:' + c + ';"></i>'
+            + '<b style="font-variant-numeric:tabular-nums;">' + hhmm + ' IST</b>'
+            + '<span style="color:' + c + ';">' + t + '</span>'
+            + '<span style="margin-left:auto;color:var(--gtb-muted);cursor:pointer;" title="Full timing guide">' + _ii('uni-scan') + '</span>';
+    }
+
+    // ── Zone quick-pick logic ─────────────────────────────────────────────────
+    // 9:15 breakout zones come free from localStorage (VALID_BREAKOUT_NINE_FIFTEEN,
+    // populated by the app's 9:15 scan). Current zones need a light one-time prescan.
+    function _names915(zone) {
+        var want = zone === 'BW' ? 'B/W' : zone;
+        var m; try { m = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}'); } catch(e) { m = {}; }
+        return _all.filter(function(n){ return m[n] && m[n].CLOSE_9_15 === want; });
+    }
+    // Classify a live LTP into its strike zone using the day's open as the level base.
+    function _curZoneFromLtp(name, open, ltp) {
+        if (!open || !ltp) return null;
+        var lv = getStrikeDetails({ price: open }, name);   // ASO/AST/BSO/BST from open + NSE_STRIKE_DIFF
+        var aso = parseFloat(lv.ustrikeOne), ast = parseFloat(lv.ustrikeTwo),
+            bso = parseFloat(lv.bstrikeOne), bst = parseFloat(lv.bstrikeTwo);
+        if (ltp >= ast) return 'AST';
+        if (ltp >= aso) return 'ASO';
+        if (ltp <= bst) return 'BST';
+        if (ltp <= bso) return 'BSO';
+        return 'B·W';
+    }
+
+    // Current zone from the live LTP already stored by the dashboard refresh — no API,
+    // no fetch. Reads INSTRUMENT_LTP_PRICE (live LTP) + INSTRUMENT_LIST_GLOBAL (day open)
+    // from localStorage and classifies each into its strike zone. Recomputed on each
+    // call so it always reflects the latest stored LTP. Only covers instruments whose
+    // LTP is loaded (watchlist / loaded instruments).
+    function _ensureCurZones() {
+        _MS_CUR_ZONES = {};
+        var opens = {}, ltps = {};
+        try { opens = JSON.parse(localStorage.getItem('INSTRUMENT_LIST_GLOBAL') || '{}'); } catch(e) {}
+        try { ltps  = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE')   || '{}'); } catch(e) {}
+
+        var n = 0, miss = 0;
+        _all.forEach(function(nm) {
+            var o = opens[nm], l = ltps[nm];
+            if (!o || !l) { miss++; return; }
+            var z = _curZoneFromLtp(nm, parseFloat(o.price), parseFloat(l.ltp));
+            if (z) { _MS_CUR_ZONES[nm] = z; n++; }
+        });
+
+        var msg = 'Current zones from stored LTP (' + n + ' stocks';
+        if (miss) msg += ', ' + miss + ' without live LTP yet';
+        msg += ') — pick a "Now" zone.';
+        jQ('#ms-progress').html('<span style="color:' + (n ? 'var(--gtb-green)' : 'var(--gtb-amber)') + ';">' + (n ? '' : 'No stored LTP found — load/refresh the dashboard first. ') + msg + '</span>');
+        return _MS_CUR_ZONES;
+    }
+    function _namesCur(zone) {
+        var want = zone === 'BW' ? 'B·W' : zone;
+        return _all.filter(function(n){ return _MS_CUR_ZONES && _MS_CUR_ZONES[n] === want; });
+    }
+    function _applyZonePick(names, label) {
+        jQ('#ms-list input').prop('checked', false);
+        _msZoneNames = names.slice();
+        jQ('#ms-search').val('');
+        _buildList('');
+        names.forEach(function(n){ _cb(n).prop('checked', true); });
+        jQ('#ms-zone-status').html('<b>' + label + '</b>: ' + names.length + ' stocks selected');
+    }
+
+    jQ(document).off('click.mszbtn').on('click.mszbtn', '.ms-zbtn', async function() {
+        var mode = jQ(this).data('mode'), zone = jQ(this).data('zone');
+        var lbl = (zone === 'BW' ? 'B·W' : zone);
+        if (mode === '915') {
+            _applyZonePick(_names915(zone), lbl + ' (9:15)');
+        } else {
+            jQ('.ms-zbtn').prop('disabled', true);
+            await _ensureCurZones();
+            jQ('.ms-zbtn').prop('disabled', false);
+            _applyZonePick(_namesCur(zone), lbl + ' (Now)');
+        }
+    });
+
+    // Apply the active filter dropdowns → sorted rows (shared by table render + export)
+    function _msFilteredRows() {
+        var all = Object.values(_UNI_RESULTS);
+        var fZone915 = jQ('#ms-f-zone915').val() || 'all';
+        var fZone = jQ('#ms-f-zone').val() || 'all';
+        var fVerd = jQ('#ms-f-verdict').val() || 'all';
+        var fSL   = jQ('#ms-f-sl').val() || 'all';
+        var _match = function(z, f) { return _zoneLabel(z) === (f === 'BW' ? 'B·W' : f); };
+        var rows = all.filter(function(r) {
+            if (fZone915 !== 'all') { if (!r.carry || !_match(r.carry.zone915, fZone915)) return false; }
+            if (fZone !== 'all')    { if (!r.carry || !_match(r.carry.zone, fZone)) return false; }
+            if (fVerd !== 'all') {
+                var lbl = r.verdict.label;
+                if (fVerd === 'long'   && lbl.indexOf('LONG')  < 0) return false;
+                if (fVerd === 'short'  && lbl.indexOf('SHORT') < 0) return false;
+                if (fVerd === 'strong' && lbl.indexOf('STRONG') < 0) return false;
+                if (fVerd === 'wait'   && lbl.indexOf('WAIT')  < 0) return false;
+            }
+            if (fSL === 'active'    && !(r.sl.active && r.sl.recent)) return false;
+            if (fSL === 'confirmed' && !(r.sl.active && r.sl.recent && r.sl.confirmed)) return false;
+            return true;
+        });
+        rows.sort(function(a, b){ return b.verdict.score - a.verdict.score; });
+        return rows;
+    }
+
+    function _renderTable() {
+        var all = Object.values(_UNI_RESULTS);
+        if (!all.length) { jQ('#ms-table-wrap').html('<div style="padding:16px;color:var(--gtb-muted);">No results.</div>'); jQ('#ms-count').text(''); return; }
+
+        var rows = _msFilteredRows();
+        jQ('#ms-count').text(rows.length + ' / ' + all.length + ' shown');
+        if (!rows.length) { jQ('#ms-table-wrap').html('<div style="padding:16px;color:var(--gtb-muted);">No instruments match the filter.</div>'); return; }
+
+        var th = function(t, al){ return '<th style="padding:4px 6px;text-align:' + (al||'center') + ';border-bottom:1px solid var(--gtb-border);white-space:nowrap;position:sticky;top:0;background:var(--gtb-surface2);">' + t + '</th>'; };
+        var h = '<table style="width:100%;border-collapse:collapse;font-size:0.63rem;">'
+            + '<thead><tr>' + th('Instrument','left') + th('LTP','right') + th('Chg%','right')
+            + th('9:15') + th('Now') + th('Carry') + th('VP') + th('SL-Hunt') + th('Verdict') + th('Score') + '</tr></thead><tbody>';
+        rows.forEach(function(r) {
+            var v = r.verdict;
+            var z915Lbl = r.carry ? _zoneLabel(r.carry.zone915) : '—';
+            var z915Col = r.carry ? _vcol(r.carry.zone915) : 'var(--gtb-muted)';
+            var zLbl = r.carry ? _zoneLabel(r.carry.zone) : '—';
+            var zCol = r.carry ? _vcol(r.carry.zone) : 'var(--gtb-muted)';
+            var carryTxt = r.carry ? (_vv(r.carry.total) + ' ' + (r.carry.total >= 3 ? 'LONG' : r.carry.total <= -3 ? 'SHORT' : 'AVOID')) : '—';
+            var carryCol = r.carry ? _vcol(r.carry.total) : 'var(--gtb-muted)';
+            var vpTxt = r.vp ? (r.vp.pos + (r.vp.source === 'futures' ? '*' : '')) : '—';
+            var vpCol = r.vp ? (r.vp.pos === 'ABOVE' ? 'var(--gtb-green)' : r.vp.pos === 'BELOW' ? 'var(--gtb-red)' : 'var(--gtb-amber)') : 'var(--gtb-muted)';
+            var slTxt = (r.sl.active && r.sl.recent) ? ((r.sl.active.dir === 'bull' ? '▲ grab' : '▼ grab') + (r.sl.confirmed ? ' ✓' : '?')) : (r.sl.active ? 'old grab' : '—');
+            var slCol = (r.sl.active && r.sl.recent) ? (r.sl.active.dir === 'bull' ? 'var(--gtb-green)' : 'var(--gtb-red)') : 'var(--gtb-muted)';
+            var sel = (_UNI_SELECTED === r.name) ? 'background:var(--gtb-surface2);' : '';
+            h += '<tr class="ms-row" data-name="' + _esc(r.name) + '" style="border-bottom:1px solid var(--gtb-border);cursor:pointer;' + sel + '">'
+                + '<td style="padding:3px 6px;font-weight:600;">' + _esc(r.name) + '</td>'
+                + '<td style="padding:3px 6px;text-align:right;">' + r.ltp.toFixed(2) + '</td>'
+                + '<td style="padding:3px 6px;text-align:right;color:' + _vcol(r.pct) + ';">' + (r.pct >= 0 ? '+' : '') + r.pct.toFixed(2) + '%</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + z915Col + ';font-weight:700;">' + z915Lbl + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + zCol + ';font-weight:700;">' + zLbl + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + carryCol + ';">' + carryTxt + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + vpCol + ';font-weight:600;">' + vpTxt + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;color:' + slCol + ';">' + slTxt + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;font-weight:800;color:' + v.col + ';">' + v.label + '</td>'
+                + '<td style="padding:3px 6px;text-align:center;font-weight:700;color:' + v.col + ';">' + _vv(parseFloat(v.score.toFixed(1))) + '</td>'
+                + '</tr>';
+        });
+        h += '</tbody></table><div style="font-size:0.5rem;color:var(--gtb-muted);padding:2px 6px;">* volume from futures (index) · click a row for the full breakdown</div>';
+        jQ('#ms-table-wrap').html(h);
+    }
+
+    // Compact volume-profile histogram for the detail panel
+    function _miniProfile(prof, last) {
+        if (!prof) return '<span style="color:var(--gtb-muted);">no volume data</span>';
+        var rowH = 6;
+        var h = '<div style="display:flex;flex-direction:column-reverse;">';
+        for (var i = 0; i < prof.nbins; i++) {
+            var pct = prof.maxBin > 0 ? (prof.bins[i] / prof.maxBin * 100) : 0;
+            var mid = prof.binMid(i);
+            var isPOC = i === prof.poc, inVA = i >= prof.vaBot && i <= prof.vaTop;
+            var col = isPOC ? 'var(--gtb-amber)' : inVA ? 'var(--gtb-blue,#58a6ff)' : 'var(--gtb-border)';
+            var here = (last >= mid - prof.binSize / 2 && last < mid + prof.binSize / 2);
+            h += '<div style="display:flex;align-items:center;height:' + rowH + 'px;gap:4px;">'
+                + '<span style="width:52px;text-align:right;font-family:var(--gtb-mono,monospace);font-size:0.48rem;color:' + (isPOC ? 'var(--gtb-amber)' : 'var(--gtb-muted)') + ';">' + _vpFmt(mid) + (here ? '◄' : '') + '</span>'
+                + '<div style="height:' + (rowH - 1) + 'px;width:' + pct + '%;background:' + col + ';min-width:1px;"></div></div>';
+        }
+        return h + '</div>';
+    }
+
+    function _renderDetail(name) {
+        var r = _UNI_RESULTS[name];
+        if (!r) { jQ('#ms-detail').html(''); return; }
+        var v = r.verdict;
+        var _hhmm = function(ts){ var m = (ts||'').match(/T(\d{2}:\d{2})/); return m ? m[1] : ''; };
+
+        var h = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">'
+            + '<span style="font-size:0.85rem;font-weight:800;">' + _esc(r.name) + '</span>'
+            + '<span style="font-size:0.95rem;font-weight:800;color:' + v.col + ';">' + v.label + '</span>'
+            + '<span style="font-size:0.6rem;color:var(--gtb-muted);">confluence ' + _vv(parseFloat(v.score.toFixed(1))) + '  (carry ' + _vv(v.votes.carry) + ' · VP ' + _vv(v.votes.vp) + ' · SL ' + _vv(v.votes.sl) + ')</span>'
+            + '</div>';
+
+        // Master trade card
+        if (v.trade) {
+            h += '<div style="background:var(--gtb-surface);border:1px solid ' + v.trade.col + ';border-radius:6px;padding:8px 10px;margin-bottom:8px;">'
+                + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+                + '<span style="font-size:0.8rem;font-weight:800;color:' + v.trade.col + ';">' + v.trade.dir + '</span>'
+                + '<span style="font-size:0.55rem;padding:1px 7px;border-radius:9px;background:var(--gtb-surface2);color:var(--gtb-muted);">via ' + v.trade.source + '</span>'
+                + '<span style="margin-left:auto;display:flex;gap:12px;font-size:0.6rem;font-family:var(--gtb-mono,monospace);">'
+                + '<span><span style="color:var(--gtb-muted);">Entry </span><b>' + v.trade.entry + '</b></span>'
+                + '<span><span style="color:var(--gtb-muted);">SL </span><b style="color:var(--gtb-red);">' + v.trade.stop + '</b></span>'
+                + '<span><span style="color:var(--gtb-muted);">Target </span><b style="color:var(--gtb-green);">' + v.trade.target + '</b></span>'
+                + '</span></div>'
+                + '<div style="font-size:0.58rem;color:var(--gtb-muted);margin-top:4px;">' + v.trade.note + '</div>'
+                + (v.conflict ? '<div style="font-size:0.58rem;color:var(--gtb-amber);margin-top:4px;"><i class="bi bi-exclamation-triangle-fill"></i> ' + v.conflict + '</div>' : '')
+                + '</div>';
+        }
+
+        // Three-column breakdown
+        h += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">';
+
+        // Carry column
+        h += '<div style="flex:1;min-width:180px;background:var(--gtb-surface);border:1px solid var(--gtb-border);border-radius:5px;padding:8px;">'
+            + '<div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;"><i class="bi bi-moon-stars-fill"></i> Carry (overnight)</div>';
+        if (r.carry) {
+            var c = r.carry;
+            var crow = function(l, val){ return '<div style="display:flex;justify-content:space-between;font-size:0.6rem;padding:1px 0;"><span style="color:var(--gtb-muted);">' + l + '</span><span style="color:' + _vcol(val) + ';font-weight:600;">' + _vv(parseFloat((val||0).toFixed(2))) + '</span></div>'; };
+            var zrow = function(l, z){ return '<div style="display:flex;justify-content:space-between;font-size:0.6rem;padding:1px 0;"><span style="color:var(--gtb-muted);">' + l + '</span><span style="color:' + _vcol(z) + ';font-weight:700;">' + _zoneLabel(z) + ' (' + _vv(z) + ')</span></div>'; };
+            h += zrow('9:15 breakout', c.zone915) + zrow('Current zone', c.zone) + crow('Futures (' + (c.remark || '—') + ')', c.futures) + crow('OI / OBV', c.oi_obv) + crow('Max Pain', c.max_pain) + crow('IV Skew', c.iv_skew)
+                + '<div style="display:flex;justify-content:space-between;font-size:0.62rem;padding:3px 0 0;border-top:1px solid var(--gtb-border);margin-top:3px;"><b>Total</b><b style="color:' + _vcol(c.total) + ';">' + _vv(c.total) + ' ' + (c.total >= 3 ? 'LONG CARRY' : c.total <= -3 ? 'SHORT CARRY' : 'AVOID') + '</b></div>';
+        } else { h += '<span style="font-size:0.6rem;color:var(--gtb-muted);">No carry data (no futures / OI).</span>'; }
+        h += '</div>';
+
+        // Volume profile column
+        h += '<div style="flex:1;min-width:200px;background:var(--gtb-surface);border:1px solid var(--gtb-border);border-radius:5px;padding:8px;">'
+            + '<div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;"><i class="bi bi-bar-chart-steps"></i> Volume Profile' + (r.vp && r.vp.source === 'futures' ? ' <span style="color:var(--gtb-muted);font-weight:400;">(fut vol)</span>' : '') + '</div>';
+        if (r.vp) {
+            h += '<div style="display:flex;gap:8px;font-size:0.58rem;margin-bottom:4px;">'
+                + '<span>POC <b style="color:var(--gtb-amber);">' + _vpFmt(r.vp.prof.pocPrice) + '</b></span>'
+                + '<span>VAH <b>' + _vpFmt(r.vp.prof.vah) + '</b></span>'
+                + '<span>VAL <b>' + _vpFmt(r.vp.prof.val) + '</b></span></div>'
+                + '<div style="font-size:0.58rem;margin-bottom:4px;">Position: <b style="color:' + (r.vp.pos === 'ABOVE' ? 'var(--gtb-green)' : r.vp.pos === 'BELOW' ? 'var(--gtb-red)' : 'var(--gtb-amber)') + ';">' + r.vp.pos + ' value</b>'
+                + (r.vp.trade ? ' → <b style="color:' + r.vp.trade.col + ';">' + r.vp.trade.action + '</b>' : '') + '</div>'
+                + _miniProfile(r.vp.prof, r.vp.last);
+        } else { h += '<span style="font-size:0.6rem;color:var(--gtb-muted);">No volume data.</span>'; }
+        h += '</div>';
+
+        // SL-hunt column
+        h += '<div style="flex:1;min-width:180px;background:var(--gtb-surface);border:1px solid var(--gtb-border);border-radius:5px;padding:8px;">'
+            + '<div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;"><i class="bi bi-magnet-fill"></i> SL-Hunt (intraday)</div>';
+        if (r.sl.source === 'none') { h += '<span style="font-size:0.6rem;color:var(--gtb-muted);">No 1-min volume — cannot scan sweeps.</span>'; }
+        else if (r.sl.active) {
+            var isB = r.sl.active.dir === 'bull';
+            h += '<div style="font-size:0.6rem;margin-bottom:4px;color:' + (isB ? 'var(--gtb-green)' : 'var(--gtb-red)') + ';font-weight:700;">' + (isB ? '▲ Bull grab' : '▼ Bear grab') + ' @ ' + _hhmm(r.sl.active.time) + (r.sl.recent ? ' (recent)' : ' (old)') + '</div>'
+                + '<div style="font-size:0.58rem;color:var(--gtb-muted);margin-bottom:4px;">' + r.sl.active.level + ' ' + _vpFmt(r.sl.active.price) + ' · ' + r.sl.active.volR.toFixed(1) + '× vol · ' + (r.sl.confirmed ? '<span style="color:var(--gtb-green);">OI confirms</span>' : '<span style="color:var(--gtb-amber);">OI unconfirmed</span>') + '</div>';
+            var list = r.sl.sweeps.slice(0, 6).map(function(sw){ return '<div style="font-size:0.55rem;color:var(--gtb-muted);">' + _hhmm(sw.time) + ' ' + (sw.dir === 'bull' ? '▲' : '▼') + ' ' + sw.level + ' ' + sw.volR.toFixed(1) + '×</div>'; }).join('');
+            h += '<div style="border-top:1px solid var(--gtb-border);margin-top:3px;padding-top:3px;">' + list + '</div>';
+        } else { h += '<span style="font-size:0.6rem;color:var(--gtb-muted);">No stop-hunt detected this session.</span>'; }
+        h += '</div>';
+
+        h += '</div>';
+        jQ('#ms-detail').html(h);
+    }
+
+    jQ(document).off('click.msrow').on('click.msrow', '.ms-row', function() {
+        _UNI_SELECTED = jQ(this).data('name');
+        _renderTable();
+        _renderDetail(_UNI_SELECTED);
+    });
+
+    jQ(document).off('change.msfilter').on('change.msfilter', '#ms-f-zone915, #ms-f-zone, #ms-f-verdict, #ms-f-sl', function() { _renderTable(); });
+
+    // Export the currently-filtered rows to a CSV download
+    jQ(document).off('click.msexport').on('click.msexport', '#ms-export', function() {
+        var rows = _msFilteredRows();
+        if (!rows.length) { jQ('#ms-progress').html('<span style="color:var(--gtb-amber);">Nothing to export — run a scan first.</span>'); return; }
+        var cols = ['Instrument','LTP','Chg%','Zone_9_15','Zone_Now','Carry_Total','Carry_Action',
+                    'Futures','Futures_Remark','OI_OBV','Max_Pain','IV_Skew','PCR',
+                    'VP_Position','SL_Grab','SL_Confirmed','Verdict','Confluence_Score','Trade_Dir','Entry','SL','Target'];
+        var esc = function(x) {
+            if (x === null || x === undefined) return '';
+            var s = String(x);
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        };
+        var lines = [cols.join(',')];
+        rows.forEach(function(r) {
+            var c = r.carry, v = r.verdict, t = v.trade || {};
+            var slGrab = (r.sl.active && r.sl.recent) ? (r.sl.active.dir === 'bull' ? 'Bull' : 'Bear') : (r.sl.active ? 'old' : '');
+            lines.push([
+                r.name, r.ltp.toFixed(2), r.pct.toFixed(2),
+                c ? _zoneLabel(c.zone915) : '', c ? _zoneLabel(c.zone) : '',
+                c ? c.total : '', c ? (c.total >= 3 ? 'LONG CARRY' : c.total <= -3 ? 'SHORT CARRY' : 'AVOID') : '',
+                c ? c.futures : '', c ? (c.remark || '') : '', c ? c.oi_obv : '', c ? c.max_pain : '', c ? c.iv_skew : '',
+                (c && c.pcr != null) ? c.pcr : '',
+                r.vp ? r.vp.pos : '', slGrab, (r.sl.active && r.sl.recent) ? (r.sl.confirmed ? 'Yes' : 'No') : '',
+                v.label, v.score, t.dir || '', t.entry || '', t.stop || '', t.target || ''
+            ].map(esc).join(','));
+        });
+        var csv = lines.join('\n');
+        try {
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'master-scan-' + (CURRENT_DAY || '').substring(0, 10) + '-' + new Date().toTimeString().substring(0, 5).replace(':', '') + '.csv';
+            document.body.appendChild(a); a.click();
+            setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            jQ('#ms-progress').html('<span style="color:var(--gtb-green);">Exported ' + rows.length + ' rows to CSV.</span>');
+        } catch(e) {
+            jQ('#ms-progress').html('<span style="color:var(--gtb-red);">Export failed: ' + (e && e.message ? e.message : e) + '</span>');
+        }
+    });
+
+    jQ(document).off('click.msscan').on('click.msscan', '#ms-scan-btn', async function() {
+        var sel = _selected();
+        if (!sel.length) { jQ('#ms-progress').html('<span style="color:var(--gtb-amber);">Select at least one instrument.</span>'); return; }
+        _UNI_RESULTS = {}; _UNI_SELECTED = null;
+        jQ('#ms-detail').html('');
+        jQ('#ms-table-wrap').html('<div style="padding:16px;color:var(--gtb-muted);">Analyzing…</div>');
+        jQ('#ms-scan-btn').prop('disabled', true).html('<i class="bi bi-arrow-clockwise"></i> Analyzing…');
+        for (var i = 0; i < sel.length; i++) {
+            jQ('#ms-progress').html('<i class="bi bi-arrow-clockwise"></i> [' + (i+1) + '/' + sel.length + '] ' + sel[i] + '…');
+            try { var r = await _uniAnalyze(sel[i], function(t){ jQ('#ms-progress').html('<i class="bi bi-arrow-clockwise"></i> [' + (i+1) + '/' + sel.length + '] ' + t); }); if (r) _UNI_RESULTS[sel[i]] = r; } catch(e) { console.log('master scan error', sel[i], e); }
+            _renderTable();
+        }
+        // Auto-open the top-ranked result
+        var top = Object.values(_UNI_RESULTS).sort(function(a,b){ return Math.abs(b.verdict.score) - Math.abs(a.verdict.score); })[0];
+        if (top) { _UNI_SELECTED = top.name; _renderTable(); _renderDetail(top.name); }
+        jQ('#ms-progress').html('<span style="color:var(--gtb-green);">Done — ' + Object.keys(_UNI_RESULTS).length + ' analyzed at ' + new Date().toLocaleTimeString() + '</span>');
+        jQ('#ms-scan-btn').prop('disabled', false).html('<i class="bi bi-binoculars-fill"></i> Analyze');
+    });
+}
+
 // ── Floating quick-access toolbar ───────────────────────────────────────────
 function _gtbCreateFloatingBar() {
     if (document.getElementById('gtb-float-bar')) return;
 
     var _tools = [
+        { id: 'show-master-scanner',         icon: 'bi-binoculars-fill',      title: 'Master Scanner (Carry + Profile + SL-Hunt)' },
         { id: 'show-chartgrid',              icon: 'bi-grid-3x3-gap-fill',    title: 'Chart Grid' },
         { id: 'show-915-backtest',           icon: 'bi-calendar-week',        title: '9:15 Backtest' },
         { id: 'show-all-oi',                 icon: 'bi-layers-fill',          title: 'OI Scan' },
@@ -14940,6 +18143,11 @@ function _gtbCreateFloatingBar() {
         { id: 'show-snap-replay',            icon: 'bi-collection-play-fill', title: 'Historical Day Replay' },
         { id: 'show-trade-setup',            icon: 'bi-lightning-fill',       title: 'Trade Recommender' },
         { id: 'show-trade-checklist',        icon: 'bi-clipboard-check',      title: 'Pre-Trade Checklist' },
+        { id: 'show-rs-scanner',             icon: 'bi-bar-chart-fill',       title: 'Relative Strength' },
+        { id: 'show-signal-scanners',        icon: 'bi-toggles',              title: 'OBV Divergence + Strike Absorption' },
+        { id: 'show-carry-scanner',          icon: 'bi-moon-stars-fill',      title: 'Overnight Carry Scanner' },
+        { id: 'show-vol-profile',            icon: 'bi-bar-chart-steps',      title: 'Volume Profile / POC' },
+        { id: 'show-liq-scanner',            icon: 'bi-magnet-fill',          title: 'Liquidity / SL-Hunt Scanner' },
         { id: 'show-help',                   icon: 'bi-question-circle-fill', title: 'Help' },
         { id: 'data-load',                   icon: 'bi-sliders',              title: 'Data Settings' },
     ];
@@ -14971,7 +18179,13 @@ function _gtbCreateFloatingBar() {
             var id = this.dataset.toolId;
             if (id === 'show-snap-replay')     { _gtbShowHistoricalReplay(); return; }
             if (id === 'show-trade-setup')     { _gtbShowTradeSetup(); return; }
-            if (id === 'show-trade-checklist') { _gtbShowTradeChecklist(); return; }
+            if (id === 'show-trade-checklist')  { _gtbShowTradeChecklist(); return; }
+            if (id === 'show-rs-scanner')        { _gtbShowRsScanner(); return; }
+            if (id === 'show-signal-scanners')   { _gtbShowSignalScanners(); return; }
+            if (id === 'show-carry-scanner')     { _gtbShowCarryScanner(); return; }
+            if (id === 'show-vol-profile')       { _gtbShowVolumeProfile(); return; }
+            if (id === 'show-liq-scanner')       { _gtbShowLiquidityScanner(); return; }
+            if (id === 'show-master-scanner')    { _gtbShowMasterScanner(); return; }
             var $el = jQ('#' + id);
             if ($el.length) {
                 $el[0].click();

@@ -100,6 +100,10 @@ function buildHelpHTML() {
           <tr><td><i class="bi bi-graph-up"></i></td><td>Market Quotes</td><td>Live quote analyzer with sector/index breadth view</td></tr>
           <tr><td><i class="bi bi-bar-chart-steps"></i></td><td>Max Pain / GEX</td><td>Max pain level and gamma exposure chart across strikes</td></tr>
           <tr><td><i class="bi bi-clipboard-check"></i></td><td>Pre-Trade Checklist</td><td>Step-by-step checklist before entering a trade + per-instrument score table + trade recommendation</td></tr>
+          <tr><td><i class="bi bi-binoculars-fill"></i></td><td>Master Scanner</td><td>Fuses Carry + Volume Profile + SL-Hunt into one confluence verdict per instrument</td></tr>
+          <tr><td><i class="bi bi-moon-stars-fill"></i></td><td>Overnight Carry Scanner</td><td>Fresh per-stock Kite fetch (spot + futures + OI) → LONG / SHORT / AVOID carry verdict</td></tr>
+          <tr><td><i class="bi bi-bar-chart-steps"></i></td><td>Volume Profile / POC</td><td>Volume-by-price histogram: POC, Value Area (VAH/VAL), low-volume nodes + trade setup</td></tr>
+          <tr><td><i class="bi bi-magnet-fill"></i></td><td>Liquidity / SL-Hunt Scanner</td><td>Detects stop runs: sweep + reclaim + volume spike + OI non-confirmation → reversal setup</td></tr>
           <tr><td><i class="bi bi-gear-fill"></i></td><td>Settings</td><td>Theme, row height, refresh interval, display options</td></tr>
           <tr><td><i class="bi bi-question-circle-fill"></i></td><td>Help</td><td>This popup</td></tr>
           <tr><td><i class="bi bi-sliders"></i></td><td>Data Settings</td><td>Trading dates, load prices, clear storage, external links</td></tr>
@@ -681,6 +685,53 @@ function buildHelpHTML() {
 
       <h4 class="hlp-h4"><i class="bi bi-droplet-fill"></i> Commodities</h4>
       <p style="font-size:0.72rem;">Shows GIFT NIFTY and CRUDEOILM panels. Level labels (OPEN / VIXL / VIXU / BST / BSO / ASO / AST) appear above each chart once the futures data is loaded. OI table shows CE/PE ΔOI per strike for CRUDEOILM. Popup is non-draggable (clicking titlebar won't move it).</p>
+
+      <h4 class="hlp-h4"><i class="bi bi-binoculars-fill"></i> Master Scanner (Carry + Profile + SL-Hunt)</h4>
+      <p style="font-size:0.72rem;">Opens via the <i class="bi bi-binoculars-fill"></i> button (top of the floating toolbar). Runs all three scanners per instrument and fuses them into <strong>one confluence verdict</strong> — so you get a single decision instead of cross-checking three tools. Select instruments, click <strong>Analyze</strong>.</p>
+      <table class="hlp-table">
+        <thead><tr><th>Engine</th><th>Answers</th><th>Vote</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Carry</strong></td><td>Overnight / positional bias (zone + futures + OI + Max Pain + IV)</td><td>±1 if |total| ≥ 3, ±0.5 if ≥ 1</td></tr>
+          <tr><td><strong>Volume Profile</strong></td><td>Intraday structure — price vs POC/VAH/VAL</td><td>±1 breakout/breakdown, ±0.5 fade</td></tr>
+          <tr><td><strong>SL-Hunt</strong></td><td>Immediate reversal trigger (recent sweep + reclaim)</td><td>±1 if OI confirms, ±0.5 if not (last ~10 min only)</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.72rem;"><strong>Confluence score</strong> = sum of votes: <span style="color:var(--gtb-green);font-weight:700;">≥ 2 STRONG LONG</span>, ≥ 1 LONG, <span style="color:var(--gtb-red);font-weight:700;">≤ −2 STRONG SHORT</span>, ≤ −1 SHORT, else WAIT. The <strong>master trade card</strong> picks the most actionable setup (live SL-hunt trigger &gt; volume-profile setup &gt; carry bias) with Entry/SL/Target, and flags a <span style="color:var(--gtb-amber);font-weight:700;">conflict</span> when overnight bias and intraday trigger disagree. Click any row to expand the full three-engine breakdown with a mini volume profile. ~13 Kite calls per instrument; indices use futures volume (* flag), SENSEX can't be volume-scanned.</p>
+      <p style="font-size:0.72rem;"><strong>Zone quick-pick + filters:</strong> above the stock list, the <strong>9:15 break</strong> buttons (AST/ASO/BSO/BST/B·W) instantly pre-select every stock whose 9:15 candle closed in that zone (from the app's 9:15 scan). The <strong>Now</strong> buttons select by live zone, classified instantly from the <strong>LTP already stored by the dashboard refresh</strong> (<code>INSTRUMENT_LTP_PRICE</code>) vs strike levels from the day open — no fetch. Covers only instruments whose LTP is loaded, so refresh the dashboard first. "Show All" clears the bucket. After analysing, the result table also has separate <strong>9:15</strong> and <strong>Now</strong> zone columns and filter dropdowns, so you can e.g. find stocks that opened AST but faded to BSO (failed breakout) or opened BST but reclaimed to ASO (reversal).</p>
+
+      <h4 class="hlp-h4"><i class="bi bi-moon-stars-fill"></i> Overnight Carry Scanner</h4>
+      <p style="font-size:0.72rem;">Opens via the <i class="bi bi-moon-stars-fill"></i> button in the floating toolbar. Predicts whether a position can be safely <strong>carried overnight</strong> (held for the next-day gap) for stocks you select. <strong>Everything is fetched fresh from Kite historical data — no cached data is used.</strong></p>
+      <p style="font-size:0.72rem;">Select stocks (search, or the Nifty 50 / Bank Nifty quick-picks) then click <strong>Fetch &amp; Analyze</strong>. Per stock it runs 3 phases, all Kite:</p>
+      <ol class="hlp-list" style="font-size:0.72rem;">
+        <li><strong>Spot 5-min candles</strong> → 9:15 open + last close → zone score (AST +2 / ASO +1 / BSO −1 / BST −2)</li>
+        <li><strong>Futures 5-min candles</strong> (today + yesterday) → REMARK via <code>_gtbClassifyFutures</code> → futures score (±1)</li>
+        <li><strong>Option CE/PE candles</strong> (ATM±2, via <code>showTrendingOI</code>) → OI/OBV + Max Pain + IV Skew scores</li>
+      </ol>
+      <p style="font-size:0.72rem;"><strong>Total = Zone + Futures + OI/OBV + Max Pain + IV Skew.</strong> Action: <span style="color:var(--gtb-green);font-weight:700;">Total ≥ 3 → LONG CARRY</span>, <span style="color:var(--gtb-red);font-weight:700;">≤ −3 → SHORT CARRY</span>, otherwise <span style="color:var(--gtb-amber);font-weight:700;">AVOID</span>. Filter/sort the result table by action, score, name or % change. Each stock is ~10 Kite calls, so keep the selection focused.</p>
+
+      <h4 class="hlp-h4"><i class="bi bi-bar-chart-steps"></i> Volume Profile / POC</h4>
+      <p style="font-size:0.72rem;">Opens via the <i class="bi bi-bar-chart-steps"></i> button in the floating toolbar. Plots volume over <strong>PRICE</strong> instead of time to reveal where institutions accepted value. Pick an instrument + lookback (Today 5min → 20 days 30min) and click <strong>Build Profile</strong> — it fetches Kite candles and buckets each candle's volume across the price bins its high–low spans.</p>
+      <table class="hlp-table">
+        <thead><tr><th>Level</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><strong>POC</strong> (amber)</td><td>Point of Control — the price bin with the most volume. The value magnet price returns to.</td></tr>
+          <tr><td><strong>Value Area</strong> (blue)</td><td>The band holding 70% of volume = the fair-value range. Edges are VAH (high) / VAL (low).</td></tr>
+          <tr><td><strong>Low-volume nodes</strong> (dim)</td><td>Bins outside the value area — price rips through fast, nobody defending.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.72rem;">A <strong>Trade Setup</strong> card is derived from where price sits (auction-market logic): <span style="color:var(--gtb-green);font-weight:700;">above VAH → LONG</span> the pullback to VAH; <span style="color:var(--gtb-red);font-weight:700;">below VAL → SHORT</span> the bounce to VAL; <strong>inside value → mean-revert to POC</strong> (fade); <span style="color:var(--gtb-amber);font-weight:700;">at POC → NO TRADE</span>. Each card shows Entry / SL / Target / R:R and the flip condition.</p>
+
+      <h4 class="hlp-h4"><i class="bi bi-magnet-fill"></i> Liquidity / SL-Hunt Scanner</h4>
+      <p style="font-size:0.72rem;">Opens via the <i class="bi bi-magnet-fill"></i> button in the floating toolbar. Detects <strong>stop runs / liquidity grabs</strong> — where institutions push price through an obvious level to trigger clustered retail stops, then reclaim and reverse. Uses fresh Kite <strong>1-min</strong> candles for the current session. Pick an instrument + sensitivity, click <strong>Scan</strong>.</p>
+      <p style="font-size:0.72rem;">A genuine hunt needs all four:</p>
+      <ol class="hlp-list" style="font-size:0.72rem;">
+        <li><strong>Sweep</strong> — a candle wicks beyond a stop-cluster level (PDH/PDL, VAH/VAL, POC, day open, VWAP, 9:15 BSO/BST/ASO/AST, nearest round numbers)</li>
+        <li><strong>Reclaim</strong> — closes back on the original side (lower wick = bull grab, upper wick = bear grab)</li>
+        <li><strong>Volume spike</strong> — ≥ 1.3× (adjustable) the rolling-average volume on that candle = stops firing</li>
+        <li><strong>OI non-confirmation</strong> — futures REMARK does <em>not</em> confirm the breakout direction → the move was a trap</li>
+      </ol>
+      <p style="font-size:0.72rem;">The <strong>setup card</strong> shows Entry / SL / T1 (POC) / T2 (far value-area edge), plus an <span style="color:var(--gtb-green);font-weight:700;">OI CONFIRMS</span> / <span style="color:var(--gtb-amber);font-weight:700;">OI UNCONFIRMED</span> badge. Below it: a table of every detected sweep (time, level, type, volume ×) and the full watched stop-cluster level map with support/resistance labels relative to LTP.</p>
+      <p style="font-size:0.72rem;"><strong>Indices &amp; volume:</strong> NIFTY 50 / BANK NIFTY spot candles carry <em>no volume</em> (an index isn't traded), so both this scanner and the Volume Profile overlay volume from the <strong>index futures</strong> — matched by timestamp onto the spot price candles. Prices/levels stay on spot; the volume-spike filter and profile use real futures volume. SENSEX (no NSE future) can't be scanned this way. The status line notes "volume from futures" when the overlay is used.</p>
     `);
 
     // ── EXIT SIGNAL ───────────────────────────────────────────────────────────────

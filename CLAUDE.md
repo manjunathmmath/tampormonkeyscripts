@@ -217,3 +217,61 @@ The popup (`showPopUpWindow('trade-checklist', ...)`, 620×580) has three sectio
 - `node_modules/` — only direct dependency is `express`.
 
 When extending this server (adding routes, views, etc.), `server.js` is the natural entry point — there's no router/controller structure to preserve since none exists yet.
+
+---
+
+## React Widget System (groot-platform/)
+
+The new widget-based React UI lives at `groot-platform/groot-ui` (Vite + React + TypeScript). The Spring Boot backend is at `groot-platform/groot-server`. The Tampermonkey code above is the **reference implementation** — when building widgets, always check the TM source first to get the exact formula and data flow.
+
+### Architecture
+
+- `groot-ui/src/widgets/widgetStore.ts` — Zustand persisted store for widget layout (localStorage `groot-widget-layout-v1`). `WidgetType` union must be updated for every new widget.
+- `groot-ui/src/widgets/Widget.tsx` — generic draggable/resizable shell (@dnd-kit + custom resize handle)
+- `groot-ui/src/widgets/WidgetCanvas.tsx` — renders all widgets on a dot-grid canvas
+- `groot-ui/src/trading/TickerProvider.tsx` — single WebSocket connection to Kite ticker; all widgets call `useTicker()` for live prices
+- `groot-ui/src/trading/strikeCalc.ts` — strike level math (see formula below)
+- `groot-ui/src/trading/api.ts` — all backend API calls (`fetchLtp`, `fetchDay915Candles`, etc.)
+
+### Strike Level Formula (CRITICAL — do NOT use VIX-based formula)
+
+Mirrors `getStrikeDetails()` in `utils.js`. Computed from the **9:15 candle's OPEN** price (not prevClose, not LTP):
+
+```
+NSE_STRIKE_DIFF[name] = "strikeOne,strikeTwo"  (absolute points)
+ASO = candleOpen + strikeOne
+AST = candleOpen + strikeOne + strikeTwo
+BSO = candleOpen - strikeOne
+BST = candleOpen - strikeOne - strikeTwo
+```
+
+Zone classification (mirrors TM scanNineFifteenCandle):
+- `candleClose > AST` → AST
+- `candleClose > ASO` → ASO
+- `candleClose < BST` → BST
+- `candleClose < BSO` → BSO
+- else → B/W
+
+### 9:15 Breakout Scanner Widget
+
+`groot-ui/src/widgets/breakout915/Breakout915Widget.tsx`
+
+The widget **requires a historical API call** — the 9:15 candle OPEN and CLOSE are NOT available from the live WebSocket ticker. The flow:
+
+1. User clicks **SCAN** (after 9:20 AM when the first candle is complete)
+2. Widget calls `GET /api/candles/day915?tokens=...&date=YYYY-MM-DD`
+3. Spring Boot (`Candle915Controller.java`) calls `kite.getHistoricalData(from=9:00, to=9:25, interval=5minute)` for each token, returns `{ candles: [{token, open, high, low, close, volume}] }`
+4. Widget computes `getStrikeLevels(name, candle.open)` → `classifyZone(candle.close, levels)`
+5. Results cached in localStorage as `GROOT_915_YYYY-MM-DD` (same concept as TM's `VALID_BREAKOUT_NINE_FIFTEEN`)
+6. On next page load, cached results are restored automatically — no re-scan needed
+
+Displays 3 universe cards: NIFTY 50 Components (10 stocks), BANK NIFTY Components (10 stocks), All F&O Stocks (~200). Each card shows bull/bear/neutral count + ratio bar + bias label (STRONG BULL / BULL / NEUTRAL / BEAR / STRONG BEAR). Expandable per-stock breakdown sorted AST→BST.
+
+### Adding a New Widget
+
+1. Add type to `WidgetType` union in `widgetStore.ts`
+2. Set default size in `addWidget` switch in `widgetStore.ts`
+3. Create `src/widgets/<name>/<Name>Widget.tsx`
+4. Import + render in `WidgetCanvas.tsx`
+5. Add to dropdown in `App.tsx` `WIDGET_TYPES` array
+6. If backend data needed: add controller in `groot-server`, add fetch fn in `api.ts`
