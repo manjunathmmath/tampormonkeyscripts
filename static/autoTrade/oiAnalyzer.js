@@ -264,21 +264,31 @@ async function showTrendingOI(instrument, strikToShowOverride) {
         strikToShow = 3
     }
 
+    // Every name below is filtered to ONE specific expiry — previously only NIFTY/SENSEX
+    // were (nifty_expiry_date/sensex_expiry_date), and everything else (BANKNIFTY,
+    // FINNIFTY, MIDCPNIFTY, every F&O stock) pushed items from ALL expiries into the same
+    // table unfiltered, which could mix strikes from different expiries under one OI/OBV
+    // read. BANKNIFTY now has its own dedicated Settings field (banknifty_expiry_date);
+    // every other name shares one Settings field (fo_stocks_expiry_date, same "one shared
+    // setting for many instruments" convention as future_expiry_month). Either falls back
+    // to that name's own nearest live expiry (_dlNearestLiveExpiry, dataLoad.js) when left
+    // blank ("Nearest expiry (auto)") or when the configured date doesn't actually exist
+    // for this particular name.
     let atmStrike = 0;
+    let allMatches = [];
     jQ.each(OPTION_STRIKE_LIST, function (index, item) {
+        if (item.name == instrument) allMatches.push(item);
+    });
+
+    var availableExpiries = Array.from(new Set(allMatches.map(function (item) {
+        return moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD");
+    }))).sort();
+    var targetExpiry = _dlResolveExpiryFor(_dlConfiguredExpiryForName(instrument), availableExpiries);
+
+    jQ.each(allMatches, function (index, item) {
         let date = moment(item.expiry, 'DD-MM-YYYY').format("YYYY-MM-DD")
-        if (item.name == instrument) {
-            if (instrument == "NIFTY") {
-                if (date == NIFTY_EXPIRY_DATE) {
-                    selectedStrike.push(item)
-                }
-            } else if (instrument == "SENSEX") {
-                if (date == SENSEX_EXPIRY_DATE) {
-                    selectedStrike.push(item)
-                }
-            } else {
-                selectedStrike.push(item)
-            }
+        if (date == targetExpiry) {
+            selectedStrike.push(item)
         }
     });
 
@@ -531,8 +541,16 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
 
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
-            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, oiCE)
-            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, oiPE)
+
+            // Drop the still-forming last candle before OBV/IV — it keeps changing
+            // tick-by-tick until its interval closes, which was making CE/PE WRITE/BUY
+            // labels (and the OI/OBV score) flicker between refreshes seconds apart.
+            let _ivInterval = jQ("#api-data-interval option:selected").val() || '5minute';
+            let obvIvCE = _gtbDropFormingCandle(oiCE, _ivInterval);
+            let obvIvPE = _gtbDropFormingCandle(oiPE, _ivInterval);
+
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, obvIvCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, obvIvPE)
 
             // Today's total option volume (sum of 5-min candle volumes)
             obj['VOL_CE'] = parseFloat(oiCE.reduce(function(s, c) { return s + (c[5] || 0); }, 0) / OI_DIVISOR).toFixed(1)
@@ -543,8 +561,8 @@ async function showOITrendingDetails(strikeData, selectedStrike, spotCandles, ex
 
             // IV series — one IV per candle using Black-Scholes inversion
             if (expiryDateStr && spotCandles.length) {
-                obj['CE_IV'] = calculateIVSeries(oiCE, index, true,  expiryDateStr, spotCandles)
-                obj['PE_IV'] = calculateIVSeries(oiPE, index, false, expiryDateStr, spotCandles)
+                obj['CE_IV'] = calculateIVSeries(obvIvCE, index, true,  expiryDateStr, spotCandles)
+                obj['PE_IV'] = calculateIVSeries(obvIvPE, index, false, expiryDateStr, spotCandles)
             } else {
                 obj['CE_IV'] = []
                 obj['PE_IV'] = []

@@ -2,6 +2,69 @@
   z-index: 9;
 }
 
+/* Native Settings popup (MonkeyConfig) 3-column layout: NOT here — that dialog renders
+   inside its own isolated iframe document (default mode:'iframe' in monkeyconfig.js), which
+   this page-level stylesheet can never reach regardless of selector specificity. The actual
+   fix lives in common/popupwindow/../monkeyconfig.js itself, injected as a second <style>
+   directly into that iframe's document right after the library's own. See instead
+   .gtb-cfg-* below — the custom Market Trend Settings popup (_gtbShowMarketTrendSettings,
+   grootTradeBot.js) that replaces that native dialog entirely, rendered through this app's
+   own PopupWindow/CSS the same as every other popup here, fully under our control. */
+.gtb-cfg-wrap {
+  display: flex; flex-direction: column; height: 100%;
+  background: var(--gtb-bg); color: var(--gtb-text); font-size: 0.65rem;
+}
+.gtb-cfg-jumpnav {
+  flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; padding: 8px 10px;
+  border-bottom: 1px solid var(--gtb-border); background: var(--gtb-surface2);
+}
+.gtb-cfg-jump-link {
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; text-decoration: none;
+  color: var(--gtb-text); background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+  padding: 3px 8px; white-space: nowrap; cursor: pointer; font-family: inherit;
+}
+.gtb-cfg-jump-link:hover { color: var(--gtb-accent); border-color: var(--gtb-accent); }
+.gtb-cfg-body { flex: 1 1 auto; overflow-y: auto; padding: 10px; }
+.gtb-cfg-section { margin-bottom: 14px; scroll-margin-top: 8px; }
+.gtb-cfg-section-hdr {
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; color: var(--gtb-accent);
+  border-bottom: 1px solid var(--gtb-border); padding-bottom: 3px; margin-bottom: 8px;
+}
+.gtb-cfg-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px;
+}
+@media (max-width: 900px) { .gtb-cfg-grid { grid-template-columns: repeat(2, 1fr); } }
+.gtb-cfg-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gtb-cfg-field label {
+  font-size: 0.5rem; color: var(--gtb-muted); white-space: normal; line-height: 1.3;
+}
+.gtb-cfg-field input[type="text"], .gtb-cfg-field select {
+  background: var(--gtb-surface); color: var(--gtb-text); border: 1px solid var(--gtb-border);
+  padding: 3px 6px; font-size: 0.6rem; font-family: var(--gtb-mono); width: 100%; box-sizing: border-box;
+}
+.gtb-cfg-field-row { display: flex; gap: 4px; align-items: stretch; }
+.gtb-cfg-field-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+.gtb-cfg-fetch-btn {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--gtb-surface); color: var(--gtb-accent); border: 1px solid var(--gtb-border);
+  padding: 0 7px; cursor: pointer; font-size: 0.65rem;
+}
+.gtb-cfg-fetch-btn:hover { border-color: var(--gtb-accent); }
+.gtb-cfg-fetch-btn:disabled { opacity: 0.5; cursor: default; }
+.gtb-cfg-field-checkbox {
+  flex-direction: row; align-items: center; gap: 5px; font-size: 0.58rem; color: var(--gtb-text);
+  grid-column: span 3;
+}
+.gtb-cfg-footer {
+  flex-shrink: 0; display: flex; gap: 8px; justify-content: flex-end;
+  padding: 8px 10px; border-top: 1px solid var(--gtb-border); background: var(--gtb-surface2);
+}
+.gtb-cfg-btn {
+  padding: 5px 14px; font-size: 0.62rem; font-weight: 700; cursor: pointer;
+  background: var(--gtb-surface); color: var(--gtb-text); border: 1px solid var(--gtb-border);
+}
+.gtb-cfg-btn-primary { background: var(--gtb-accent, #58a6ff); color: #fff; border-color: var(--gtb-accent, #58a6ff); }
+
 /* ── Maximize overlay (dark modal) ─────────────────────────── */
 #groot-maximize-overlay {
   display: none;
@@ -85,6 +148,7 @@
 #gtb-info-pop {
   display: none; position: fixed; z-index: 100000;
   width: 280px; max-width: 90vw;
+  max-height: 80vh; overflow-y: auto;
   background: var(--gtb-surface); color: var(--gtb-text);
   border: 1px solid var(--gtb-border);
   box-shadow: 0 12px 40px rgba(0,0,0,0.55);
@@ -224,6 +288,12 @@
 }
 .gtb-t915-today-note b { font-family: var(--gtb-mono); }
 
+/* Combo rows contributing a heavy share of the total losses (Per-combo edge table) */
+.gtb-t915-table tr.gtb-t915-heavy-loss td {
+  background: rgba(248, 81, 73, 0.08) !important;
+  box-shadow: inset 2px 0 0 var(--gtb-red);
+}
+
 /* Day-chart button + popup */
 .gtb-day-chart-btn {
   background: var(--gtb-surface2); border: 1px solid var(--gtb-border2);
@@ -239,7 +309,7 @@
 #gtb-daychart-overlay.active { display: flex; }
 #gtb-daychart-panel {
   background: var(--gtb-surface); border: 1px solid var(--gtb-border);
-  width: 92vw; max-width: 1100px;
+  width: 95vw; max-width: 1500px;
   box-shadow: 0 24px 80px rgba(0,0,0,0.7);
 }
 #gtb-daychart-hd {
@@ -296,8 +366,9 @@
   font-size: 0.54rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--gtb-muted); padding: 4px 8px 1px;
 }
-/* Day-chart popup: NIFTY + BANK side by side */
-.gtb-daychart-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Day-chart popup: GIFT NIFTY + NIFTY + BANK side by side */
+.gtb-daychart-pair { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 1100px) { .gtb-daychart-pair { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 800px) { .gtb-daychart-pair { grid-template-columns: 1fr; } }
 
 /* ── OI Scan — all instruments accordion ───────────────────────── */
@@ -2321,6 +2392,7 @@ td.details-control {
 .gtb-fut-card.long-card  { border-left: 3px solid var(--gtb-green); }
 .gtb-fut-card.short-card { border-left: 3px solid var(--gtb-red); }
 .gtb-fut-name { font-size: 0.58rem; font-weight: 800; color: var(--gtb-muted); margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
+.gtb-fut-ltp { font-family: var(--gtb-mono); font-weight: 700; color: var(--gtb-text); text-transform: none; letter-spacing: 0; }
 .gtb-fut-remark { font-size: 0.68rem; font-weight: 900; margin-bottom: 1px; font-variant-numeric: tabular-nums; }
 .gtb-fut-remark.long  { color: var(--gtb-green); }
 .gtb-fut-remark.short { color: var(--gtb-red); }
@@ -2606,7 +2678,9 @@ td.details-control {
 /* ══════════════════════════════════════════════════════════════════════
    OVERVIEW BANNER — top-level "what is the dashboard saying" summary
    ══════════════════════════════════════════════════════════════════════ */
-#gtb-overview {
+/* #gtb-overview-dash is the Dashboard tab's mirror of this same banner
+   (see _gtbDashboardOverviewHtml / _renderGtbOverview's _both() helper) */
+#gtb-overview, #gtb-overview-dash {
   flex-shrink: 0;
   min-height: 76px;
   display: grid;
@@ -2634,6 +2708,64 @@ td.details-control {
   font-size: 0.46rem; font-weight: 800; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--gtb-muted);
 }
+
+/* Pre-Trade Checklist highlight — marks the ~13 panels the user checks before every trade
+   (see _gtbApplyChecklistHighlights). Gold glow + a small corner ribbon, applied via JS after
+   render since the target elements are scattered across the Overview block, instrument rows,
+   the futures strip, and the score-history panel.
+   .gtb-key-check       — for existing block-level containers (safe: only outline/shadow/
+                           position, no display change, so flex/grid layouts aren't disturbed).
+   .gtb-key-check-inline — for small inline elements (badges, spans) that need display:
+                           inline-block for the outline + ribbon to render correctly. */
+.gtb-key-check {
+  position: relative;
+  outline: 1.5px solid var(--gtb-amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gtb-amber) 22%, transparent), 0 0 10px 0 color-mix(in srgb, var(--gtb-amber) 35%, transparent);
+  border-radius: 4px;
+}
+.gtb-key-check-inline {
+  position: relative; display: inline-block; padding: 1px 4px; margin: 1px;
+  outline: 1.5px solid var(--gtb-amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gtb-amber) 22%, transparent), 0 0 8px 0 color-mix(in srgb, var(--gtb-amber) 35%, transparent);
+  border-radius: 4px;
+}
+.gtb-key-check::before, .gtb-key-check-inline::before {
+  content: "\2605"; /* ★ */
+  position: absolute; top: -7px; left: -7px;
+  width: 14px; height: 14px; line-height: 14px; text-align: center;
+  font-size: 8px; color: #1a1300;
+  background: var(--gtb-amber); border-radius: 50%;
+  box-shadow: 0 0 4px 0 color-mix(in srgb, var(--gtb-amber) 60%, transparent);
+  z-index: 5; pointer-events: none;
+}
+
+/* ── Notes tab (end-of-day trading diary) ──────────────────────────────────── */
+.gtb-diary-card {
+  border: 1px solid var(--gtb-border);
+  background: var(--gtb-surface);
+}
+.gtb-diary-card-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  font-size: 0.55rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--gtb-muted);
+  background: var(--gtb-surface2);
+  border-bottom: 1px solid var(--gtb-border);
+}
+.gtb-diary-table {
+  width: 100%; border-collapse: collapse; font-size: 0.6rem; color: var(--gtb-text);
+}
+.gtb-diary-table th, .gtb-diary-table td {
+  padding: 4px 6px; border-bottom: 1px solid var(--gtb-border); text-align: left; white-space: nowrap;
+}
+.gtb-diary-table th {
+  color: var(--gtb-muted); font-weight: 700; text-transform: uppercase; font-size: 0.5rem;
+}
+.gtb-diary-inp {
+  width: 100%; background: var(--gtb-surface2); color: var(--gtb-text);
+  border: 1px solid var(--gtb-border); font-size: 0.6rem; padding: 2px 4px; font-family: inherit;
+}
+.gtb-diary-inp:focus { outline: 1px solid var(--gtb-accent); }
 
 /* Verdict block */
 .gtb-ov-verdict {
@@ -2717,6 +2849,8 @@ td.details-control {
   --gtb-col-oiobv:   280px;
   --gtb-col-wt:      170px;
   --gtb-col-detail:  160px;
+  --gtb-col-predict: 130px;
+  --gtb-col-futacc:  150px;
 }
 
 /* ── Individual View popup — same layout as main panel, scaled to 1400px wide ── */
@@ -2929,6 +3063,12 @@ td.details-control {
 .gtb-oim-meta b { font-weight: 800; }
 
 /* ── Inline OI/OBV column ────────────────────────────────────────────── */
+/* Labels + the shared x-axis strike row are pinned (flex-shrink:0) so they are ALWAYS
+   visible; the two mini charts flex to fill whatever height is actually left. Previously
+   both charts had a fixed height (58px each) totalling more than the row's available
+   height on many row-height settings — the column's overflow:hidden then silently clipped
+   the LAST child in DOM order (the shared x-axis strike labels), so the strike scale below
+   the OI/OBV bars disappeared even though the charts above it looked fine. */
 .gtb-row-oiobv {
   display: flex; flex-direction: column; justify-content: flex-start;
   padding: 3px 4px; border-right: 1px solid var(--gtb-border2);
@@ -2939,9 +3079,11 @@ td.details-control {
   font-size: 0.44rem; font-weight: 700; letter-spacing: 0.06em;
   color: #7d8590; padding: 1px 0 1px 2px; flex-shrink: 0; line-height: 1;
 }
-/* Fixed-height containers for the SVG mini charts */
+/* Flexible-height containers for the SVG mini charts — shrink together to guarantee
+   room for the pinned label/x-axis rows below, instead of a fixed height that can push
+   the x-axis out of the visible/clipped area. */
 .gtb-row-oiobv .gtb-chart-oi {
-  height: 58px; flex-shrink: 0; width: 100%; overflow: hidden;
+  flex: 1 1 0; min-height: 28px; width: 100%; overflow: hidden;
 }
 /* Signal row — hidden scrollbar, scrollable by drag */
 .gtb-row-oiobv .gtb-signal-row {
@@ -2950,8 +3092,9 @@ td.details-control {
   scrollbar-width: none;
 }
 .gtb-row-oiobv .gtb-signal-row::-webkit-scrollbar { display: none; }
-/* Shared x-axis strike labels below both OI and OBV charts */
-.gtb-oiobv-xaxis { flex-shrink: 0; width: 100%; height: 14px; overflow: hidden; }
+/* Shared x-axis strike labels below both OI and OBV charts — always pinned to its own
+   height so it never gets clipped by the column's overflow:hidden. */
+.gtb-oiobv-xaxis { flex-shrink: 0; width: 100%; height: 18px; overflow: hidden; }
 .gtb-row-oiobv .gtb-signal-row > div { font-size: 0.44rem !important; min-width: 46px !important; padding: 1px !important; }
 .gtb-row-oiobv .gtb-signal-row > div > div { font-size: 0.42rem !important; }
 
@@ -2976,6 +3119,15 @@ td.details-control {
   padding: 3px 6px; border-right: none;
   min-width: 0; overflow: hidden; gap: 2px;
 }
+/* ── Prediction column (Stock Viewer only) — always-visible condensed
+   version of the per-stock prediction model, click for the full popup.
+   Sits right after INSTRUMENT, so (unlike DETAIL) it needs its own divider. ── */
+.gtb-row-predict {
+  display: flex; flex-direction: column; justify-content: center;
+  border-right: 1px solid var(--gtb-border2);
+  min-width: 0; overflow: hidden;
+}
+.sv-predict-compact:hover { background: color-mix(in srgb, var(--gtb-accent) 8%, transparent); }
 .gtb-det-row {
   display: flex; align-items: flex-start; flex-direction: column; gap: 3px;
   font-size: 0.44rem; overflow: hidden;
@@ -3313,6 +3465,38 @@ td.details-control {
   font-size: 0.52rem;
   font-variant-numeric: tabular-nums;
   color: var(--gtb-muted);
+}
+
+/* ── OHLC crosshair-hover tooltip (LightweightCharts price panels) ────── */
+.lw-ohlc-tooltip {
+  position: absolute;
+  z-index: 10;
+  background: rgba(13,17,23,0.9);
+  border: 1px solid rgba(48,54,61,0.7);
+  border-radius: 3px;
+  padding: 4px 6px;
+  pointer-events: none;
+  min-width: 96px;
+  font-variant-numeric: tabular-nums;
+}
+.gtb-light .lw-ohlc-tooltip {
+  background: rgba(255,255,255,0.92);
+  border-color: rgba(208,215,222,0.8);
+}
+.lw-ohlc-time {
+  font-size: 0.5rem; font-weight: 800;
+  color: var(--gtb-muted, #7d8590);
+  margin-bottom: 2px; letter-spacing: 0.03em;
+}
+.lw-ohlc-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; line-height: 1.4;
+}
+.lw-ohlc-row span {
+  font-size: 0.48rem; color: var(--gtb-muted, #7d8590); font-weight: 700;
+}
+.lw-ohlc-row b {
+  font-size: 0.5rem; color: var(--gtb-text, #c9d1d9);
 }
 .gtb-chart-oi   { height: 110px; }
 .gtb-chart-ad   { height: 80px; }
@@ -3847,7 +4031,7 @@ td.details-control {
 }
 
 /* ── Filter bar ───────────────────────────────────────────── */
-#sv-filter-row {
+#sv-filter-row, #dv-filter-row, #ps-filter-row {
   background: var(--gtb-surface);
   border-bottom: 1px solid var(--gtb-border);
   padding: 4px 8px;
@@ -3880,16 +4064,16 @@ td.details-control {
 }
 
 /* ── Chip panel ───────────────────────────────────────────── */
-#sv-chip-panel {
+#sv-chip-panel, #dv-chip-panel, #ps-chip-panel {
   display: none; flex-shrink: 0;
   background: var(--gtb-surface);
   border-bottom: 1px solid var(--gtb-border);
   padding: 3px 8px 4px;
 }
-#sv-chip-controls {
-  display: flex; align-items: center; gap: 4px; margin-bottom: 3px;
+#sv-chip-controls, #dv-chip-controls, #ps-chip-controls {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap;
 }
-#sv-chip-label {
+#sv-chip-label, #dv-chip-label, #ps-chip-label {
   font-size: 0.44rem; color: var(--gtb-muted); font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
 }
@@ -3909,9 +4093,24 @@ td.details-control {
 .sv-load-btn:hover { opacity: 0.85; }
 .sv-load-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-#sv-chip-list {
+/* ── Auto-refresh (Start/Stop/interval) control ──────────────── */
+.sv-autoref-group { display: inline-flex; align-items: center; gap: 4px; }
+.sv-autoref-btn { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
+.sv-autoref-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#sv-autoref-start:not(:disabled) { border-color: var(--gtb-green); color: var(--gtb-green); }
+#sv-autoref-stop:not(:disabled) { border-color: var(--gtb-red); color: var(--gtb-red); }
+.sv-autoref-status {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 0.44rem; font-weight: 700; color: var(--gtb-muted);
+  margin-left: 2px; white-space: nowrap;
+}
+.sv-autoref-status.sv-autoref-running { color: var(--gtb-green); }
+.sv-autoref-status.sv-autoref-running i { animation: sv-autoref-pulse 1.4s ease-in-out infinite; }
+@keyframes sv-autoref-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+#sv-chip-list, #dv-chip-list, #ps-chip-list {
   display: flex; flex-wrap: wrap; gap: 2px;
-  max-height: 56px; overflow-y: auto;
+  max-height: 90px; overflow-y: auto;
   scrollbar-width: thin;
 }
 
@@ -3942,15 +4141,16 @@ td.details-control {
   display: grid;
   grid-template-columns:
     var(--gtb-col-instr)
+    var(--gtb-col-predict)
+    var(--gtb-col-oiobv)
     var(--gtb-col-chart)
     var(--gtb-col-915)
     var(--gtb-col-fut)
     var(--gtb-col-oi)
-    var(--gtb-col-oiobv)
     var(--gtb-col-wt)
     var(--gtb-col-detail);
   min-width: calc(
-    var(--gtb-col-instr) + var(--gtb-col-chart) + var(--gtb-col-915) +
+    var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-chart) + var(--gtb-col-915) +
     var(--gtb-col-fut)   + var(--gtb-col-oi)    + var(--gtb-col-oiobv) +
     var(--gtb-col-wt)    + var(--gtb-col-detail)
   );
@@ -3960,6 +4160,31 @@ td.details-control {
   font-size: 0.46rem; font-weight: 800; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--gtb-muted);
 }
+/* Stock Viewer rows get the 9th (PREDICT) column too — scoped here so the main
+   dashboard / Instrument Detail View's plain .gtb-row (8 columns) is untouched. */
+#sv-card-area .gtb-row {
+  grid-template-columns:
+    var(--gtb-col-instr)
+    var(--gtb-col-predict)
+    var(--gtb-col-oiobv)
+    var(--gtb-col-chart)
+    var(--gtb-col-915)
+    var(--gtb-col-fut)
+    var(--gtb-col-oi)
+    var(--gtb-col-wt)
+    var(--gtb-col-detail);
+  min-width: calc(
+    var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-chart) + var(--gtb-col-915) +
+    var(--gtb-col-fut)   + var(--gtb-col-oi)    + var(--gtb-col-oiobv) +
+    var(--gtb-col-wt)    + var(--gtb-col-detail)
+  );
+}
+/* Comparison-table polish — zebra striping + clearer hover so scanning down a
+   column (comparing the same field across many stocks) is easier to track. */
+#sv-card-area .gtb-row:nth-child(even) { background: color-mix(in srgb, var(--gtb-surface2) 14%, var(--gtb-bg)); }
+#sv-card-area .gtb-row:nth-child(even) .gtb-row-id { background: color-mix(in srgb, var(--gtb-surface2) 14%, var(--gtb-bg)); }
+#sv-card-area .gtb-row:hover { background: color-mix(in srgb, var(--gtb-accent) 7%, var(--gtb-bg)); }
+#sv-card-area .gtb-row:hover .gtb-row-id { background: color-mix(in srgb, var(--gtb-accent) 7%, var(--gtb-bg)); }
 #sv-rows-head > span {
   padding: 4px 8px; border-right: 1px solid var(--gtb-border2);
   display: flex; align-items: center;
@@ -5096,6 +5321,316 @@ td.details-control {
     font-size: 0.56rem; color: var(--gtb-muted); font-style: italic;
 }
 
+/* ── Dashboard tab — instrument matrix (2-panel: Index/Stock | Weighted Constituents) ──
+   One row per instrument (Instrument | Predict | OI/OBV), reusing Stock Viewer's
+   own .gtb-row/.gtb-row-id/.gtb-row-predict/.gtb-row-oiobv classes/CSS so both
+   tables look and behave the same — sticky identity column, zebra striping, etc.
+   Only the column set (3 vs 9) differs, via the scoped override below (same
+   convention Stock Viewer's own #sv-card-area .gtb-row uses). Two panels
+   (#gtb-dash-matrix-index / #gtb-dash-matrix-wtd) share this styling via the
+   common .gtb-dash-matrix-head class + [id^="gtb-dash-matrix-"] prefix selector. */
+.gtb-dash-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .gtb-dash-2col { grid-template-columns: 1fr; }
+}
+.gtb-dash-matrix-head {
+  position: sticky; top: 0; z-index: 6;
+  display: grid;
+  grid-template-columns: var(--gtb-col-instr) var(--gtb-col-predict) var(--gtb-col-oiobv);
+  min-width: calc(var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-oiobv));
+  flex-shrink: 0;
+  background: var(--gtb-surface2);
+  border-bottom: 1px solid var(--gtb-border);
+  font-size: 0.46rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gtb-muted);
+}
+.gtb-dash-matrix-head > span {
+  padding: 4px 8px; border-right: 1px solid var(--gtb-border2);
+  display: flex; align-items: center;
+}
+.gtb-dash-matrix-head > span:first-child {
+  position: sticky; left: 0; z-index: 3; background: var(--gtb-surface2);
+}
+[id^="gtb-dash-matrix-"] .gtb-row {
+  grid-template-columns: var(--gtb-col-instr) var(--gtb-col-predict) var(--gtb-col-oiobv);
+  min-width: calc(var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-oiobv));
+  height: auto;
+}
+[id^="gtb-dash-matrix-"] .gtb-row-oiobv { border-right: none; }
+[id^="gtb-dash-matrix-"] .gtb-row:nth-child(even) { background: color-mix(in srgb, var(--gtb-surface2) 14%, var(--gtb-bg)); }
+[id^="gtb-dash-matrix-"] .gtb-row:nth-child(even) .gtb-row-id { background: color-mix(in srgb, var(--gtb-surface2) 14%, var(--gtb-bg)); }
+[id^="gtb-dash-matrix-"] .gtb-row:hover { background: color-mix(in srgb, var(--gtb-accent) 7%, var(--gtb-bg)); }
+[id^="gtb-dash-matrix-"] .gtb-row:hover .gtb-row-id { background: color-mix(in srgb, var(--gtb-accent) 7%, var(--gtb-bg)); }
+/* .gtb-row-oiobv .gtb-chart-oi sets flex:1 1 0 (flex-basis:0) for Stock Viewer's compact
+   rows — in a flex-column layout that OVERRIDES any `height` (inline or CSS): flexbox
+   sizes a flex-basis:0 item from flex-grow, not from `height`, so the Dashboard matrix's
+   inline height:120px was silently losing to that rule, actually rendering at the 28px
+   min-height floor with overflow:hidden — clipping everything below the chart's own
+   midline, i.e. every negative bar. flex:0 0 120px opts back out of grow-based sizing. */
+[id^="gtb-dash-matrix-"] .gtb-row-oiobv .gtb-chart-oi { flex: 0 0 60px; min-height: 60px; height: 60px; }
+
+/* Optional 4th column (extraCol param in _gtbDashMatrixColHtml) — currently only the MCX
+   Dashboard's FUT ACC win-rate chip. Scoped to .gtb-dash-matrix-4col so every other caller of
+   the shared function (the NSE Dashboard's Index/Stock + Weighted Constituents panels) keeps
+   its original 3-column layout untouched. Higher specificity ([id^=...].class) than the plain
+   3-column [id^="gtb-dash-matrix-"] rules above, so it wins for matrices that opt in. */
+[id^="gtb-dash-matrix-"].gtb-dash-matrix-4col .gtb-dash-matrix-head,
+[id^="gtb-dash-matrix-"].gtb-dash-matrix-4col .gtb-row {
+  grid-template-columns: var(--gtb-col-instr) var(--gtb-col-predict) var(--gtb-col-oiobv) var(--gtb-col-futacc);
+  min-width: calc(var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-oiobv) + var(--gtb-col-futacc));
+}
+.gtb-row-futacc {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 5px 8px; text-align: center;
+  border-right: 1px solid var(--gtb-border2);
+  min-width: 0; overflow: hidden;
+}
+[id^="gtb-dash-matrix-"].gtb-dash-matrix-4col .gtb-row-oiobv { border-right: 1px solid var(--gtb-border2); }
+
+/* MCX Dashboard — per-instrument vertical card (name → OI/OBV → Predict → Fut Acc), laid out
+   in a horizontally-scrolling row (grid-auto-flow:column on the parent .gtb-card-body, see
+   _gtbShowMcxDashboard) instead of the row-table _gtbDashMatrixColHtml normally builds. */
+.gtb-mcxdash-card {
+  display: flex; flex-direction: column;
+  background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+  overflow: hidden;
+}
+.gtb-mcxdash-card-hdr {
+  padding: 6px 8px; border-bottom: 1px solid var(--gtb-border2);
+  flex-shrink: 0;
+}
+.gtb-mcxdash-card-sec {
+  padding: 5px 8px; border-bottom: 1px solid var(--gtb-border2);
+  min-width: 0; overflow: hidden;
+}
+.gtb-mcxdash-card-sec:last-child { border-bottom: none; }
+.gtb-mcxdash-card-predict { min-height: 60px; }
+.gtb-mcxdash-card-futacc {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; min-height: 40px;
+}
+
+/* ── F&O Backtest popup ──────────────────────────────────────────────────── */
+.popup-custom-style-backtest-popup .popupwindow_content:after { display: none !important; content: none !important; }
+.bt-bk-wrap { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.bt-bk-header { flex: 0 0 auto; display: flex; flex-direction: column; }
+.bt-bk-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto;
+}
+.bt-bk-controls label {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.5rem; font-weight: 700; color: var(--gtb-muted); text-transform: uppercase;
+}
+.bt-bk-controls input[type="date"], .bt-bk-controls input[type="time"] {
+  background: var(--gtb-surface); border: 1px solid var(--gtb-border); color: var(--gtb-text);
+  font-size: 0.55rem; padding: 3px 5px; border-radius: 3px;
+}
+.bt-bk-search { position: relative; display: flex; align-items: center; gap: 4px; flex: 1; min-width: 180px; }
+.bt-bk-search input[type="text"] {
+  flex: 1; background: var(--gtb-surface); border: 1px solid var(--gtb-border); color: var(--gtb-text);
+  font-size: 0.55rem; padding: 4px 6px; border-radius: 3px;
+}
+.bt-bk-chip-box {
+  flex: 0 0 auto; margin: 0; padding: 5px 8px; min-height: 0;
+  border-bottom: 1px solid var(--gtb-border);
+}
+.bt-bk-status {
+  flex: 0 0 auto; padding: 4px 8px; font-size: 0.5rem; color: var(--gtb-muted);
+  border-bottom: 1px solid var(--gtb-border); min-height: 14px;
+}
+.bt-bk-rows-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; }
+#bt-bk-rows-head {
+  display: grid;
+  grid-template-columns: var(--gtb-col-instr) var(--gtb-col-predict) var(--gtb-col-oiobv) var(--gtb-col-chart) var(--gtb-col-fut);
+  min-width: calc(var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-oiobv) + var(--gtb-col-chart) + var(--gtb-col-fut));
+  position: sticky; top: 0; z-index: 5;
+  background: var(--gtb-surface2); border-bottom: 1px solid var(--gtb-border);
+  font-size: 0.46rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gtb-muted);
+}
+#bt-bk-rows-head > span { padding: 4px 8px; border-right: 1px solid var(--gtb-border2); display: flex; align-items: center; }
+#bt-bk-rows-wrap .gtb-row {
+  grid-template-columns: var(--gtb-col-instr) var(--gtb-col-predict) var(--gtb-col-oiobv) var(--gtb-col-chart) var(--gtb-col-fut);
+  min-width: calc(var(--gtb-col-instr) + var(--gtb-col-predict) + var(--gtb-col-oiobv) + var(--gtb-col-chart) + var(--gtb-col-fut));
+}
+
+/* ── Option Strike Search popup ──────────────────────────────────────────── */
+.popup-custom-style-option-strike-search .popupwindow_content:after { display: none !important; content: none !important; }
+.oss-wrap { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.oss-header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 8px; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; }
+.oss-ltp-override { display: flex; align-items: center; gap: 5px; font-size: 0.5rem; font-weight: 700; color: var(--gtb-muted); text-transform: uppercase; }
+.oss-ltp-override input {
+  width: 80px; background: var(--gtb-surface); border: 1px solid var(--gtb-border); color: var(--gtb-text);
+  font-size: 0.55rem; padding: 3px 5px; border-radius: 3px;
+}
+.oss-result { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px; }
+.oss-error { color: var(--gtb-red); font-size: 0.6rem; padding: 10px; }
+.oss-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 8px 4px 12px; }
+.oss-summary-name { font-size: 0.85rem; font-weight: 900; color: var(--gtb-text); }
+.oss-summary-ltp, .oss-summary-expiry, .oss-summary-hedge {
+  font-size: 0.55rem; font-weight: 700; color: var(--gtb-muted);
+  padding: 3px 8px; border: 1px solid var(--gtb-border); border-radius: 4px;
+}
+.oss-override-tag { color: var(--gtb-amber); font-weight: 800; }
+.oss-table { width: 100%; border-collapse: collapse; font-size: 0.6rem; }
+.oss-table th {
+  text-align: left; padding: 6px 8px; font-size: 0.46rem; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--gtb-muted); border-bottom: 1px solid var(--gtb-border);
+}
+.oss-table td { padding: 8px; border-bottom: 1px solid var(--gtb-border2); color: var(--gtb-text); vertical-align: middle; }
+.oss-target-note { font-size: 0.44rem; color: var(--gtb-muted); font-weight: 500; margin-top: 2px; }
+.oss-type-badge {
+  display: inline-block; font-size: 0.44rem; font-weight: 800; border: 1px solid; border-radius: 3px;
+  padding: 0 4px; margin-right: 4px;
+}
+.oss-strike { font-weight: 800; font-family: var(--gtb-mono); }
+.oss-symbol { font-family: var(--gtb-mono); color: var(--gtb-accent); }
+.oss-token { font-family: var(--gtb-mono); color: var(--gtb-muted); font-size: 0.52rem; }
+.oss-na { color: var(--gtb-muted); font-style: italic; }
+.oss-chart-link { color: var(--gtb-blue); font-size: 0.7rem; }
+.oss-chart-link:hover { opacity: 0.7; }
+
+/* ── Data Load popup ─────────────────────────────────────────────────────── */
+.popup-custom-style-data-load-popup .popupwindow_content:after { display: none !important; content: none !important; }
+.dl-wrap { display: flex; flex-direction: column; height: 100%; overflow: auto; padding: 10px; gap: 16px; }
+.dl-section-title { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.08em; color: var(--gtb-muted); margin-bottom: 8px; text-transform: uppercase; }
+
+/* Tab layout variant — overrides .dl-wrap's own scroll/padding so only the active panel
+   scrolls, matching every other tabbed popup in this app (help.js's .hlp-tab pattern). */
+.dl-wrap-tabs { overflow: hidden; padding: 0; gap: 0; }
+.dl-tabs {
+  display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+  padding: 6px 8px 0; border-bottom: 1px solid var(--gtb-border); background: var(--gtb-surface);
+}
+.dl-clear-btn {
+  margin-left: auto; align-self: center; display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border: 1px solid var(--gtb-red); border-radius: 3px;
+  background: transparent; color: var(--gtb-red); cursor: pointer;
+  font-size: 0.5rem; font-weight: 700;
+}
+.dl-clear-btn:hover { background: var(--gtb-red); color: #fff; }
+.dl-clear-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dl-tab {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border: none; border-bottom: 2px solid transparent;
+  background: transparent; color: var(--gtb-muted); cursor: pointer;
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em;
+  transition: color 0.12s, border-color 0.12s;
+}
+.dl-tab:hover { color: var(--gtb-text); }
+.dl-tab.dl-tab-active { color: var(--gtb-accent); border-bottom-color: var(--gtb-accent); }
+.dl-panel {
+  display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px;
+  /* Hard viewport-relative ceiling as a safety net — Constant Lists especially can stack
+     several full sections with no inherent height cap, so this must not rely purely on
+     the flex chain resolving correctly to get a scrollbar (same fix already applied to
+     .ps-table-wrap for the same reason). */
+  max-height: calc(90vh - 110px);
+}
+.dl-panel.dl-panel-active { display: block; }
+.dl-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+  padding: 8px 10px; margin-bottom: 6px;
+}
+.dl-row-info { flex: 1; min-width: 0; font-size: 0.6rem; color: var(--gtb-text); }
+.dl-row-sub { font-size: 0.48rem; color: var(--gtb-muted); margin-top: 2px; }
+.dl-search {
+  width: 100%; box-sizing: border-box; margin-bottom: 6px;
+  background: var(--gtb-surface); border: 1px solid var(--gtb-border); color: var(--gtb-text);
+  font-size: 0.58rem; padding: 4px 6px; border-radius: 3px;
+}
+.dl-table { border: 1px solid var(--gtb-border); }
+.dl-table-head, .dl-table-row {
+  display: grid; grid-template-columns: 1.4fr 1.6fr 0.7fr 0.7fr 0.9fr 0.7fr;
+  gap: 4px; padding: 4px 8px;
+}
+.dl-table-head {
+  font-size: 0.44rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--gtb-muted); background: var(--gtb-surface2); border-bottom: 1px solid var(--gtb-border);
+}
+.dl-table-4col .dl-table-head, .dl-table-row-4col { grid-template-columns: 2fr 1fr 1fr 1fr; }
+.dl-table-2col .dl-table-head, .dl-table-row-2col { grid-template-columns: 1.4fr 1fr; }
+.dl-table-3col .dl-table-head, .dl-table-row-3col { grid-template-columns: 1.2fr 0.8fr 2fr; }
+.dl-table-5col .dl-table-head, .dl-table-row-5col { grid-template-columns: 1.3fr 1.6fr 1fr 1fr 0.8fr; }
+.dl-table-body { max-height: 260px; overflow-y: auto; }
+.dl-derived-hint { font-size: 0.48rem; color: var(--gtb-muted); margin-bottom: 8px; padding: 6px 8px; background: var(--gtb-surface); border: 1px solid var(--gtb-border); border-left: 2px solid var(--gtb-accent); }
+.dl-rawg-btn {
+  font-size: 0.52rem; font-weight: 700; font-family: var(--gtb-mono);
+  color: var(--gtb-text); background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+  padding: 4px 9px; cursor: pointer; border-radius: 3px;
+}
+.dl-rawg-btn:hover { border-color: var(--gtb-accent); color: var(--gtb-accent); }
+.dl-rawg-btn.dl-rawg-btn-active { background: var(--gtb-accent); border-color: var(--gtb-accent); color: #fff; }
+.dl-stock-chips { display: flex; flex-wrap: wrap; gap: 4px; max-height: 420px; overflow-y: auto; padding: 4px; border: 1px solid var(--gtb-border); }
+.dl-stock-chip {
+  font-size: 0.52rem; font-weight: 700; color: var(--gtb-text);
+  background: var(--gtb-surface); border: 1px solid var(--gtb-border2); border-radius: 3px;
+  padding: 2px 7px;
+}
+.dl-table-row { font-size: 0.56rem; border-bottom: 1px solid var(--gtb-border2); }
+.dl-cell-strong { font-weight: 700; color: var(--gtb-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-cell-muted { color: var(--gtb-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-table-more { padding: 4px 8px; font-size: 0.46rem; color: var(--gtb-muted); border-top: 1px solid var(--gtb-border); }
+
+/* ── Positional Screener popup ───────────────────────────────────────────── */
+.popup-custom-style-positional-screener .popupwindow_content:after { display: none !important; content: none !important; }
+.ps-wrap { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.ps-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; }
+.ps-progress { font-size: 0.5rem; color: var(--gtb-muted); white-space: nowrap; }
+.ps-summary { display: inline-flex; align-items: center; gap: 6px; font-size: 0.5rem; font-weight: 800; white-space: nowrap; }
+.ps-summary-buy { color: var(--gtb-green); }
+.ps-summary-sell { color: var(--gtb-red); }
+.ps-summary-watch { color: var(--gtb-amber); }
+.ps-summary-total { color: var(--gtb-muted); font-weight: 500; }
+.ps-table-wrap {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: auto; padding: 8px;
+  /* Hard viewport-relative ceiling as a safety net — a screener can render ~200 rows, so
+     this must never rely purely on the flex chain resolving correctly to get a scrollbar;
+     this guarantees overflow-y kicks in even if some ancestor's height comes out "auto". */
+  max-height: calc(90vh - 140px);
+}
+.ps-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.6rem; }
+.ps-table th {
+  text-align: left; padding: 6px 8px; font-size: 0.44rem; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--gtb-muted); border-bottom: 1px solid var(--gtb-border);
+  position: sticky; top: 0; background: var(--gtb-surface2); z-index: 1;
+}
+.ps-table td { padding: 6px 8px; border-bottom: 1px solid var(--gtb-border2); color: var(--gtb-text); white-space: nowrap; }
+.ps-cell-strong { font-weight: 800; }
+.ps-verdict {
+  display: inline-block; font-size: 0.46rem; font-weight: 800; border: 1px solid; border-radius: 3px;
+  padding: 1px 6px; letter-spacing: 0.04em;
+}
+.ps-top-picks { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ps-top-picks-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ps-top-picks-label { font-size: 0.46rem; font-weight: 800; letter-spacing: 0.08em; min-width: 62px; }
+.ps-pick-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 0.56rem; font-weight: 700;
+  border: 1px solid; border-radius: 4px; padding: 3px 8px; text-decoration: none;
+  background: var(--gtb-surface);
+}
+.ps-pick-chip:hover { opacity: 0.8; }
+.ps-pick-score { font-family: var(--gtb-mono); font-size: 0.5rem; opacity: 0.85; }
+.ps-exit-icon { color: var(--gtb-muted); cursor: help; font-size: 0.7rem; }
+.ps-exit-icon:hover { color: var(--gtb-accent); }
+
+.gtb-dash-sig-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.gtb-dash-sig-col { margin: 0 !important; }
+.gtb-dash-sig-col .gtb-card-body { max-height: 320px; }
+@media (max-width: 900px) {
+    .gtb-dash-sig-cols { grid-template-columns: 1fr; }
+}
+
 /* Tab grid for non-main panes */
 .gtb-tp-grid {
     display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; height: 100%; align-content: flex-start;
@@ -5163,6 +5698,14 @@ td.details-control {
 .popupwindow_overlay { z-index: 8999 !important; }
 /* Maximize overlay stays highest */
 #groot-maximize-overlay { z-index: 99999 !important; }
+
+/* Force-hide on minimize via !important — jQuery's plain .hide()/.show() (inline,
+   non-important display) loses to Kite's own page CSS on some routes (confirmed: the
+   Kite chart page /markets/ext/chart/ has its own stylesheet that can win the specificity
+   fight against a bare inline style, the same class of issue the win-control-button rule
+   below already works around). Toggled by the .popup-win-minimize handler instead of
+   relying on .hide()/.show() alone. */
+.gtb-popupwin-minimized .popupwindow_content { display: none !important; }
 
 /* ── Win control buttons: force visible even if host page resets buttons ─ */
 .popup-win-close, .popup-win-minimize, .popup-win-restore {
@@ -5687,19 +6230,22 @@ td.details-control {
     z-index: 8500 !important;
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
+    align-items: flex-end !important;
     gap: 0 !important;
     user-select: none !important;
     font-family: inherit !important;
     box-sizing: border-box !important;
-    width: 28px !important;
 }
-/* Flyout panel — slides up from trigger */
+/* Flyout panel — slides up from trigger. 2-column grid (was a single vertical column) —
+   with 30 tools that stacked to ~700px tall, running off-screen on shorter viewports with
+   no way to reach the bottom entries. Grid roughly halves the height; the max-height +
+   overflow-y:auto is a hard safety-net ceiling on top of that, same pattern as the Data
+   Load popup's own tab panels (a tool count that keeps growing shouldn't rely purely on
+   the grid math fitting the viewport). */
 #gtb-float-panel {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 24px) !important;
+    gap: 1px !important;
     background: #0b1220 !important;
     border: 1px solid #1e2f46 !important;
     border-right: none !important;
@@ -5708,13 +6254,14 @@ td.details-control {
     padding: 0 2px !important;
     box-shadow: -2px -4px 14px rgba(0,0,0,0.65) !important;
     box-sizing: border-box !important;
-    width: 28px !important;
+    width: 54px !important;
     overflow: hidden !important;
     max-height: 0 !important;
     transition: max-height 0.22s ease, padding 0.22s ease !important;
 }
 #gtb-float-bar.gtb-fb-open #gtb-float-panel {
-    max-height: 700px !important;
+    max-height: min(75vh, 480px) !important;
+    overflow-y: auto !important;
     padding: 3px 2px !important;
 }
 #gtb-float-bar.gtb-light #gtb-float-panel {
@@ -5759,6 +6306,7 @@ td.details-control {
 #gtb-float-bar.gtb-light.gtb-fb-open #gtb-float-trigger { color: #1a6fa8 !important; border-top-color: #c8cdd6 !important; }
 /* Handle (drag) inside panel */
 .gtb-fb-handle {
+    grid-column: 1 / -1 !important;
     color: #2d4160 !important;
     font-size: 10px !important;
     cursor: move !important;
@@ -5860,6 +6408,67 @@ td.details-control {
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 0;
 }
+.cmd-single-col {
+    flex: 1; min-width: 0; min-height: 0;
+    padding: 8px 10px;
+    background: var(--gtb-bg, #0b1220);
+    overflow-y: auto;
+}
+/* NOTE: named cmd-grid2, NOT cmd-2col — .cmd-2col already exists below (a different,
+   pre-existing flex-based OI+OBV layout) and colliding with that name here silently made
+   every paired row in the redesigned Commodities popup stretch to equal, mostly-empty
+   height instead of laying out as an actual 2-column grid. */
+.cmd-grid2 {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px 16px; align-items: start;
+}
+.cmd-grid2 > div { min-width: 0; }
+@media (max-width: 700px) {
+    .cmd-grid2 { grid-template-columns: 1fr; }
+}
+
+/* ── Instrument header strip (icon + picker + meta chips) ────────────────── */
+.cmd-instr-hdr {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 10px; flex-shrink: 0;
+    background: var(--gtb-surface); border-bottom: 1px solid var(--gtb-border);
+}
+.cmd-instr-hdr-icon { color: var(--gtb-accent); font-size: 0.85rem; }
+.cmd-instr-hdr-select {
+    background: var(--gtb-bg); color: var(--gtb-text); border: 1px solid var(--gtb-border);
+    font-weight: 800; font-size: 0.58rem; letter-spacing: 0.03em; padding: 3px 6px;
+}
+.cmd-instr-hdr-meta {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    font-size: 0.48rem; color: var(--gtb-muted);
+    padding-left: 8px; border-left: 1px solid var(--gtb-border); flex: 1; min-width: 0;
+}
+
+/* ── Tabs (Overview / OI & Signals / Analysis) — same pattern as .dl-tabs ── */
+.cmd-tab-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cmd-tabs {
+    display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+    padding: 6px 8px 0; border-bottom: 1px solid var(--gtb-border); background: var(--gtb-surface);
+}
+.cmd-tab {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border: none; border-bottom: 2px solid transparent;
+    background: transparent; color: var(--gtb-muted); cursor: pointer;
+    font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em;
+    transition: color 0.12s, border-color 0.12s;
+}
+.cmd-tab:hover { color: var(--gtb-text); }
+.cmd-tab.cmd-tab-active { color: var(--gtb-accent); border-bottom-color: var(--gtb-accent); }
+.cmd-tab-body { flex: 1; min-height: 0; background: var(--gtb-bg); }
+.cmd-panel { display: none; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 10px; }
+.cmd-panel.cmd-panel-active { display: block; }
+
+/* ── Bordered card used to group each section inside a tab panel ─────────── */
+.cmd-card {
+    background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+    padding: 8px 10px;
+}
+.cmd-card > .cmd-st:first-child { margin-top: 0; }
 .cmd-col-hdr {
     font-size: 0.6rem; font-weight: 800;
     letter-spacing: 0.08em; text-transform: uppercase;
@@ -5888,7 +6497,7 @@ td.details-control {
 .cmd-prob-pcts { font-size: 0.55rem; color: var(--gtb-muted, #7d8590); }
 .cmd-prob-pcts b { font-size: 0.6rem; }
 .cmd-prob-conf { display: flex; align-items: center; gap: 5px; font-size: 0.5rem; color: var(--gtb-muted, #7d8590); margin-top: 2px; }
-.cmd-prob-conf-bar-bg { flex: 1; height: 4px; background: var(--gtb-surface3, #1c2433); border-radius: 2px; overflow: hidden; }
+.cmd-prob-conf-bar-bg { flex: 1; height: 4px; background: var(--gtb-surface2); border-radius: 2px; overflow: hidden; }
 
 /* Signal rows */
 .cmd-sig-list { display: flex; flex-direction: column; gap: 3px; }
@@ -5905,7 +6514,7 @@ td.details-control {
 }
 .cmd-sig-bar-bg {
     flex: 1; height: 4px; min-width: 30px;
-    background: var(--gtb-surface3, #1c2433);
+    background: var(--gtb-surface2);
     border-radius: 2px; overflow: hidden;
 }
 .cmd-sig-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
@@ -5949,7 +6558,7 @@ td.details-control {
 }
 .mp-block {
     flex: 1; min-width: 130px;
-    background: var(--gtb-surface3, #1c2433);
+    background: var(--gtb-surface2);
     border: 1px solid var(--gtb-border, #21262d);
     border-radius: 5px; padding: 8px 10px;
 }
@@ -5966,7 +6575,7 @@ td.details-control {
     font-size: 0.48rem; color: var(--gtb-muted, #7d8590);
 }
 .mp-gex-chart {
-    background: var(--gtb-surface3, #1c2433);
+    background: var(--gtb-surface2);
     border: 1px solid var(--gtb-border, #21262d);
     border-radius: 4px; padding: 4px; overflow: hidden;
 }
@@ -6041,7 +6650,7 @@ td.details-control {
     gap: 4px;
     padding: 4px 6px;
     border-bottom: 1px solid var(--gtb-border2);
-    background: var(--gtb-surface3, var(--gtb-surface2));
+    background: var(--gtb-surface2);
     flex-shrink: 0;
     min-height: 26px;
     flex-wrap: wrap;
@@ -6173,7 +6782,7 @@ td.details-control {
     flex-wrap: wrap;
 }
 .gtb-ic-panel-title {
-    font-size: 0.44rem;
+    font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: .06em;
     color: var(--gtb-muted);
@@ -6329,7 +6938,7 @@ td.details-control {
 
 /* ── Settings popup window ───────────────────────────────────────── */
 .popup-custom-style-gtb-settings { background: var(--gtb-bg) !important; color: var(--gtb-text) !important; }
-.popup-custom-style-gtb-settings .popupwindow_titlebar { background: var(--gtb-surface3, #1a2030) !important; border-bottom: 1px solid var(--gtb-border2) !important; }
+.popup-custom-style-gtb-settings .popupwindow_titlebar { background: var(--gtb-surface2) !important; border-bottom: 1px solid var(--gtb-border2) !important; }
 .popup-custom-style-gtb-settings .popupwindow_titlebar_text { color: var(--gtb-text) !important; }
 .popup-custom-style-gtb-settings .popupwindow_content { background: var(--gtb-bg) !important; overflow-y: auto !important; }
 .popup-custom-style-gtb-settings .popupwindow_titlebar_button,
@@ -6349,7 +6958,7 @@ td.details-control {
 .gtb-dv-card { display: flex; flex-direction: column; gap: 0; }
 .gtb-dv-identity {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 8px 12px; background: var(--gtb-surface3, #1a2030);
+    padding: 8px 12px; background: var(--gtb-surface2);
     border-bottom: 2px solid var(--gtb-border2); position: sticky; top: 0; z-index: 10;
 }
 .gtb-dv-name { font-size: 1rem; font-weight: 800; letter-spacing: .04em; color: var(--gtb-text); }

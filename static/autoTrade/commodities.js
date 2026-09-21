@@ -17,8 +17,9 @@
 //        CRUDEOIL / CRUDEOILM  → OVX  (CBOE Crude Oil Volatility Index)
 //        GOLD / GOLDM          → GVZ  (CBOE Gold Volatility Index)
 //        SILVER / SILVERM      → VXSLV (CBOE Silver Volatility Index)
-//        NATURALGAS / NATGASMINI → VIX (India VIX as proxy — no gas-specific index)
+//        NATURALGAS / NATGASMINI → VIX (config.js manual proxy — no gas-specific index)
 //        USDINR                → 4.85 (fixed 4.85% implied vol for USD/INR FX pair)
+//        ZINC / COPPER / other tracked MCX → VIX (same manual-proxy fallback as gas)
 //      Range formula: range = prevClose × (VIX% / √246) — same as calculateVixRange("DAILY")
 //
 //   4. DATE CONSTANTS: Uses MCX_CURRENT_DAY / MCX_PREVIOUS_DAY (may differ from
@@ -32,7 +33,7 @@
 // Fetches intraday 5-min candles (MCX_CURRENT_DAY) + prev day close for strike levels.
 // Draws ASO/AST/BSO/BST + VIXL/VIXU reference lines using _renderLWChart.
 // Updates LTP display and ATR/stop-loss badges via _buildATRBadges.
-async function showTopChartMCX(name, chartHeight, bindtoDivId) {
+async function showTopChartMCX(name, chartHeight, bindtoDivId, interval, extraOpts) {
     try {
 
         let futures;
@@ -46,7 +47,7 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
         let tempName = name.replaceAll(" ", "-")
         tempName = tempName.replaceAll("&", "-")
 
-        let data = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), HISTORICAL_DATA_INTERVAL);
+        let data = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), interval || HISTORICAL_DATA_INTERVAL);
         let prevData = await getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day');
         data.data.candles = _gtbTrimCandles(data.data.candles, MCX_CURRENT_DAY);
         if (!data.data.candles || !data.data.candles.length) {
@@ -101,6 +102,14 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
 
         if (name == "USDINR") {
             vix = "4.85"
+        }
+
+        // Any other tracked MCX commodity (ZINC, COPPER, …) has no commodity-specific
+        // CBOE index either — same NATURALGAS fallback: the manually-entered VIX proxy
+        // (config.js), not 0 (which would collapse VIXU/VIXL to the spot price, i.e. a
+        // silently zero-width "expected range" instead of a missing-data signal).
+        if (!parseFloat(vix)) {
+            vix = VIX
         }
 
         ovxChg = parseFloat(vix) / Math.sqrt(365 - 104 - 15)
@@ -171,10 +180,20 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
             INSTRUMENT_SCORE_MAP[name].open      = open;
         }
 
+        // Dead zone (same weak-conviction band as showTopChart's NSE charts — see
+        // _gtbDeadZone() in grootTradeBot.js): nearest OI-wall S1/R1, falling back to
+        // BSO/ASO, only drawn while the composite score is inside the weak-conviction range.
+        var _dzMCX = null;
+        try { if (typeof _gtbDeadZone === 'function') _dzMCX = _gtbDeadZone(name); } catch (_dzeMCX) {}
+        if (_dzMCX) {
+            refLines.push({ key: 'DEADLO', value: _dzMCX.lo, text: 'DEAD ' + _dzMCX.lo });
+            refLines.push({ key: 'DEADHI', value: _dzMCX.hi, text: 'DEAD ' + _dzMCX.hi });
+        }
+
         // Use LightweightCharts candlestick (defined in grootTradeBot.js)
         if (typeof _renderLWChart === 'function') {
             var _noYAxis = (name === 'CRUDEOILM' || name === 'USDINR');
-            _renderLWChart((bindtoDivId ? bindtoDivId.replace('#', '') : (tempName + '-chart')), data.data.candles, refLines, chartHeight || 150, { hideLegend: true, hideYAxis: _noYAxis });
+            _renderLWChart((bindtoDivId ? bindtoDivId.replace('#', '') : (tempName + '-chart')), data.data.candles, refLines, chartHeight || 150, Object.assign({ hideLegend: true, hideYAxis: _noYAxis }, extraOpts || {}));
         }
 
         // Derive suffix: if bindtoDivId is e.g. '#CRUDEOILM-chart-dv-CRUDEOILM',
@@ -245,7 +264,8 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
             + _lbl('A+',  _sm.ustrikeTwo,  true)
             + _lbl('A',   _sm.ustrikeOne,  true)
             + _lbl('B',   _sm.bstrikeOne,  false)
-            + _lbl('B-',  _sm.bstrikeTwo,  false);
+            + _lbl('B-',  _sm.bstrikeTwo,  false)
+            + (_dzMCX ? '<span style="font-size:0.5rem;white-space:nowrap;color:#8b5cf6;" title="Dead zone — weak-conviction band, wait for a close through it"><b>D↓</b> ' + _dzMCX.lo.toFixed(2) + ' <b>D↑</b> ' + _dzMCX.hi.toFixed(2) + '</span>' : '');
         // Write levels to every known target
         var _ids = [
             tempName + '-chart-levels',
@@ -261,6 +281,13 @@ async function showTopChartMCX(name, chartHeight, bindtoDivId) {
     }
 }
 
+// NOTE (snapshot end time): today's OHLC is derived from the '5minute' intraday series
+// (ires), NOT a separate 'day'-interval fetch. Kite's 'day' candle always reflects the true
+// live intraday state and can't be truncated to an earlier time-of-day, so it would silently
+// ignore the app-wide snapshot end time picker (#gtb-hist-time) — the same structural issue
+// scanLtpPrice() had before it was switched off the 'day' interval. Deriving "today" from the
+// trimmed 5-minute series also removes a redundant historical call (was fetching both 'day'
+// and '5minute' for the same day).
 async function showFutureDetailsMCX(name) {
     let tempName = name.replaceAll(" ", "-")
     tempName = tempName.replaceAll("&", "-")
@@ -271,27 +298,43 @@ async function showFutureDetailsMCX(name) {
             futures = item;
         }
     })
-    let [pres, cres, ires] = await Promise.all([
+    let [pres, ires] = await Promise.all([
         getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxPrevDay(), _gtbMcxPrevDay(), 'day'),
-        getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), 'day'),
         getHistoricalDataUsingPromise(futures['instrument_token'], _gtbMcxCurrDay(), _gtbMcxCurrDayTo(), '5minute').catch(function() { return null; }),
     ]);
 
+    let rawIresCandles = (ires && ires.data && ires.data.candles) ? ires.data.candles : [];
+    let trimmedIres = (typeof _gtbTrimCandles === 'function') ? _gtbTrimCandles(rawIresCandles, MCX_CURRENT_DAY) : rawIresCandles;
 
+    // Single aggregated "today so far" entry — same one-item shape the old 'day'-candle
+    // array had (data[0] and data[data.length-1] are the same object), so downstream usage
+    // (data[0]['close'], data[data.length-1]) keeps identical meaning. close/high/low/volume
+    // are now built from the trimmed intraday series instead of the live day-candle.
     let data = []
-    let prevData = []
-    jQ.each(cres.data.candles, function (index, item) {
-        let map = {}
-        map['date'] = moment(item[0]).format("HH:mm")
-        map.open = item[1]
-        map.high = item[2]
-        map.low = item[3]
-        map.close = item[4]
-        map.volume = item[5]
-        map.oi = item[6]
-        data.push(map);
-    });
+    if (trimmedIres.length) {
+        let sumVol = 0, high = -Infinity, low = Infinity;
+        trimmedIres.forEach(function (c) {
+            sumVol += parseFloat(c[5]) || 0;
+            high = Math.max(high, parseFloat(c[2]));
+            low = Math.min(low, parseFloat(c[3]));
+        });
+        let first = trimmedIres[0], last = trimmedIres[trimmedIres.length - 1];
+        data.push({
+            date: moment(last[0]).format("HH:mm"),
+            open: first[1], high: high, low: low, close: last[4],
+            volume: sumVol, oi: last[6]
+        });
+    } else {
+        // No intraday candles for this instrument today (e.g. thin/no data yet for this
+        // MCX/currency-derivative segment) — data[data.length-1] would be undefined and
+        // showTableAiNiftyPrediction() crashes reading .volume off it. Fail loudly with a
+        // clear message instead of that opaque TypeError three calls deep; the caller
+        // (_refreshMCX) already wraps this in a try/catch and logs '<name> mcx', so this
+        // surfaces as a readable one-line reason there instead.
+        throw new Error('showFutureDetailsMCX: no intraday candles for ' + name + ' today');
+    }
 
+    let prevData = []
     jQ.each(pres.data.candles, function (index, item) {
         let map = {}
         map['date'] = moment(item[0]).format("HH:mm")
@@ -307,12 +350,9 @@ async function showFutureDetailsMCX(name) {
     prevData = prevData[prevData.length - 1];
 
     // Build 5-min intraday candle array for AVWAP + futures signal (same format as NSE)
-    var intradayCandles5MCX = [];
-    if (ires && ires.data && ires.data.candles && ires.data.candles.length) {
-        ires.data.candles.forEach(function(c) {
-            intradayCandles5MCX.push({ date: moment(c[0]).format('HH:mm'), open: c[1], high: c[2], low: c[3], close: c[4], volume: c[5], oi: c[6] });
-        });
-    }
+    var intradayCandles5MCX = trimmedIres.map(function(c) {
+        return { date: moment(c[0]).format('HH:mm'), open: c[1], high: c[2], low: c[3], close: c[4], volume: c[5], oi: c[6] };
+    });
 
     // MCX: pass instrument name for trend-persistence; vix (OVX/GVZ) optional — left
     // unscaled here so commodity thresholds stay at their legacy baseline.
@@ -336,11 +376,18 @@ async function showFutureDetailsMCX(name) {
     return resp;
 }
 
-async function showTrendingOIMCX(instrument, strikToShowOverride) {
+// ltpOverride/openOverride (optional, appended so the existing 2-arg call site in
+// grootTradeBot.js's Master Scanner keeps working unchanged): pass these explicitly to
+// avoid the shared `stock[0]` global entirely — callPredictionAnalyseTrendMCX() reading
+// stock[0] here was a real race, since every instrument's refresh runs in parallel
+// (Promise.all) and stock is a single global mutated by ALL of them concurrently. Whichever
+// instrument's fetch happened to still hold `stock[0]` at the moment THIS instrument's
+// fetch reached this line got its price used instead — silently making every MCX
+// instrument's OI/OBV table (wrong strikes entirely) collapse onto one winner.
+async function showTrendingOIMCX(instrument, strikToShowOverride, ltpOverride, openOverride) {
     OI_DIVISOR = 1000;
-    let name = stock[0]['TRADINGSYMBOL']
-    let ltp = stock[0]['LTP']
-    let open = stock[0]['OPEN']
+    let ltp = (ltpOverride !== undefined) ? ltpOverride : stock[0]['LTP']
+    let open = (openOverride !== undefined) ? openOverride : stock[0]['OPEN']
 
     let strikToShow = (strikToShowOverride !== undefined) ? strikToShowOverride : 4
     let strikeData = []
@@ -580,13 +627,21 @@ async function showMCXOITrendingDetails(strikeData, selectedStrike, spotCandles,
 
             obj['prevDataCE'] = prevDataCE
             obj['prevDataPE'] = prevDataPE
-            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, currDataCE)
-            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, currDataPE)
+
+            // Drop the still-forming last candle before OBV/IV — same fix as the NSE
+            // path (oiAnalyzer.js): a partial candle keeps changing tick-by-tick until
+            // its interval closes, which was making CE/PE labels flicker between refreshes.
+            let _mcxIvInterval = jQ("#api-data-interval option:selected").val() || '5minute';
+            let obvIvCE = _gtbDropFormingCandle(currDataCE, _mcxIvInterval);
+            let obvIvPE = _gtbDropFormingCandle(currDataPE, _mcxIvInterval);
+
+            obj['CE_OBV'] = calculateOBVFiveMinutesInterval(prevDataCE, obvIvCE)
+            obj['PE_OBV'] = calculateOBVFiveMinutesInterval(prevDataPE, obvIvPE)
 
             // IV series using futures price as underlying (MCX has no cash spot)
             if (expiryDateStr && spotCandles.length) {
-                obj['CE_IV'] = calculateIVSeries(currDataCE, index, true,  expiryDateStr, spotCandles)
-                obj['PE_IV'] = calculateIVSeries(currDataPE, index, false, expiryDateStr, spotCandles)
+                obj['CE_IV'] = calculateIVSeries(obvIvCE, index, true,  expiryDateStr, spotCandles)
+                obj['PE_IV'] = calculateIVSeries(obvIvPE, index, false, expiryDateStr, spotCandles)
             } else {
                 obj['CE_IV'] = []
                 obj['PE_IV'] = []
@@ -608,32 +663,42 @@ async function showMCXOITrendingDetails(strikeData, selectedStrike, spotCandles,
     map['tableData'] = tableData
     map['pcr'] = pcr
     map['chPcr'] = chPcr
+    // Underlying spot candles retained for per-5min score reconstruction (see
+    // _oiScoreAtTime()/_cmdBuildCrudeScoreHistoryToday() in grootTradeBot.js) — the NSE
+    // counterpart (showOITrendingDetails, oiAnalyzer.js) already attaches this; it was
+    // missing here even though spotCandles is fetched locally above (only used for IV calc),
+    // so any per-candle reconstruction for MCX instruments silently had nothing to read.
+    map['spotCandles'] = spotCandles
     return map
 }
 
 
+// Builds a LOCAL entry object and fetches OI data directly with this instrument's own
+// ltp/open passed explicitly — never touches the shared `stock` global for its own fetch,
+// mirroring oiAnalyzer.js's showPrictionProbabilty (NSE), which was already safe this way.
+// _refreshMCX/_refreshNSE run every instrument in parallel (Promise.all); the previous
+// version funneled through `stock` (reset + rebuilt here, then read back inside
+// showTrendingOIMCX/callPredictionAnalyseTrendMCX) — a real race, since another
+// instrument's parallel call could reset/overwrite `stock` mid-fetch. `stock = [obj]` is
+// kept at the end only for legacy synchronous readers (e.g. showOIOBVBarChart's fallback).
 async function showPrictionProbabiltyMCX(name, intr) {
-    stock = []
-    let scripts = []
-    let obj = {}
-    obj['TRADINGSYMBOL'] = name;
-    obj['LTP'] = intr['ltp']
-    scripts.push(obj)
-
-    for (let i = 0; i < scripts.length; i++) {
-        let obj = {}
-        obj['TRADINGSYMBOL'] = scripts[i]['TRADINGSYMBOL']
-        obj['LTP'] = intr['ltp']
-        obj['OPEN'] = intr['open']
-        obj['DATA'] = ''
-        stock.push(obj)
+    let obj = { TRADINGSYMBOL: name, LTP: intr['ltp'], OPEN: intr['open'], DATA: '' };
+    if (name !== 'GIFT NIFTY') {
+        try {
+            obj['DATA'] = await showTrendingOIMCX(name, undefined, intr['ltp'], intr['open']);
+        } catch (err) {
+            console.log('Error while analyzing stock : ' + name);
+            console.log(err);
+        }
     }
 
-    if (stock.length > 0) {
-        await callPredictionAnalyseTrendMCX();
-    }
+    if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
+    INSTRUMENT_SCORE_MAP[name].stockEntry = obj;
+    stock = [obj];
 }
 
+// Legacy — no longer called from showPrictionProbabiltyMCX (see the race-condition fix
+// there); kept only in case another caller still depends on the shared-stock loop.
 async function callPredictionAnalyseTrendMCX() {
     let scriptsCount = stock.length
     for (let i = 0; i < scriptsCount; i++) {

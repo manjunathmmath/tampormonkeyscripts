@@ -51,6 +51,7 @@ function _btBodyHtml() {
         +   '<div class="bt-panel"><div class="bt-ph">SCORE MATRIX</div><div id="gdb-body-score" style="max-height:260px;overflow-y:auto;"></div></div>'
         +   '<div class="bt-panel"><div class="bt-ph">OPPORTUNITY RANKER</div><div id="gdb-body-opps" style="max-height:260px;overflow-y:auto;"></div></div>'
         + '</div>'
+        + '<div class="bt-panel" style="border:2px solid orange;"><div class="bt-ph">NIFTY / BANK NIFTY DIVERGENCE' + ii('gdb-nb-div') + '</div><div id="gdb-body-nbdiv" style="min-height:70px;"><span style="color:orange;font-size:0.6rem;">[v26.79 placeholder — if you see this orange text/border after a refresh, the HTML template updated but _gdbWidgetNbDiv() itself never ran or never replaced this]</span></div></div>'
         + '<div class="bt-row-2">'
         +   '<div class="bt-panel"><div class="bt-ph">INDEX DIVERGENCE</div><div id="gdb-body-divergence"></div></div>'
         +   '<div class="bt-panel"><div class="bt-ph">LEVEL MAPS <span id="gdb-lm-sel-wrap" style="font-weight:400;"></span></div><div id="gdb-body-levelmap"></div></div>'
@@ -120,23 +121,36 @@ function _btShow() {
     setTimeout(_btRenderAll, 100);
 }
 
+// Each section is independent — one panel's data problem (missing LTP, a bad candle fetch,
+// an undefined helper) must never stop the rest of the terminal from rendering. Previously
+// only the GDB widgets (Market Pulse, Score Matrix, etc.) were try/catch-guarded; an uncaught
+// exception in any of the un-guarded calls above them (_btRenderVIX, _btRenderOptionsFlow,
+// etc.) silently halted every call after it in this function, leaving those panels blank with
+// no error shown anywhere — exactly what "VIX Regime and everything below it is empty, but
+// Heat Map/Relative Strength/Market Breadth above it are fine" looks like.
 function _btRenderAll() {
-    _btRenderTape();
-    _btRenderHeatmap();
-    _btRenderRelStrength();
-    _btRenderBreadth();
-    _btRenderVIX();
-    _btRenderOptionsFlow();
-    _btRenderStats();
-    _btRenderPrediction();
+    var _sections = [
+        ['tape',    _btRenderTape],
+        ['heatmap', _btRenderHeatmap],
+        ['relstr',  _btRenderRelStrength],
+        ['breadth', _btRenderBreadth],
+        ['vix',     _btRenderVIX],
+        ['flow',    _btRenderOptionsFlow],
+        ['stats',   _btRenderStats],
+        ['pred',    _btRenderPrediction],
+    ];
+    _sections.forEach(function(s) {
+        try { s[1](); } catch (e) { console.error('[Groot Market Terminal] ' + s[0] + ' render failed:', e); }
+    });
     // GDB widget panels (only rendered when in Analysis tab pane)
-    if (jQ('#gdb-body-pulse').length)      { try { _gdbWidgetPulse();      } catch(e) {} }
-    if (jQ('#gdb-body-score').length)      { try { _gdbWidgetScore();      } catch(e) {} }
-    if (jQ('#gdb-body-opps').length)       { try { _gdbWidgetOpps();       } catch(e) {} }
-    if (jQ('#gdb-body-divergence').length) { try { _gdbWidgetDivergence(); } catch(e) {} }
-    if (jQ('#gdb-body-levelmap').length)   { try { _gdbWidgetLevelMap();   } catch(e) {} }
-    if (jQ('#gdb-body-backtest').length)   { try { _gdbWidgetBacktest();   } catch(e) {} }
-    if (jQ('#gdb-body-risk').length)       { try { _gdbWidgetRisk();       } catch(e) {} }
+    if (jQ('#gdb-body-pulse').length)      { try { _gdbWidgetPulse();      } catch(e) { console.error('[Groot Market Terminal] pulse render failed:', e); } }
+    if (jQ('#gdb-body-nbdiv').length)      { try { _gdbWidgetNbDiv();      } catch(e) { console.error('[Groot Market Terminal] nbdiv render failed:', e); } }
+    if (jQ('#gdb-body-score').length)      { try { _gdbWidgetScore();      } catch(e) { console.error('[Groot Market Terminal] score render failed:', e); } }
+    if (jQ('#gdb-body-opps').length)       { try { _gdbWidgetOpps();       } catch(e) { console.error('[Groot Market Terminal] opps render failed:', e); } }
+    if (jQ('#gdb-body-divergence').length) { try { _gdbWidgetDivergence(); } catch(e) { console.error('[Groot Market Terminal] divergence render failed:', e); } }
+    if (jQ('#gdb-body-levelmap').length)   { try { _gdbWidgetLevelMap();   } catch(e) { console.error('[Groot Market Terminal] levelmap render failed:', e); } }
+    if (jQ('#gdb-body-backtest').length)   { try { _gdbWidgetBacktest();   } catch(e) { console.error('[Groot Market Terminal] backtest render failed:', e); } }
+    if (jQ('#gdb-body-risk').length)       { try { _gdbWidgetRisk();       } catch(e) { console.error('[Groot Market Terminal] risk render failed:', e); } }
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -259,13 +273,18 @@ function _btRenderVIX() {
     var ltps = _btLtps();
     var vixVal = 0;
     try { vixVal = parseFloat((ltps['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
-    if (!vixVal) try { vixVal = VIX || 0; } catch(e) {}
+    // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+    // dashboard — never use it as an India VIX fallback here (NSE context).
 
+    // vixVal === 0 means "no India VIX LTP cached yet" (e.g. before the first LTP scan),
+    // NOT "volatility is actually zero" — must not fall into the LOW bucket, which would
+    // misleadingly imply a real, calm reading instead of missing data.
     var regime, col, desc;
-    if      (vixVal < 13) { regime='LOW';      col='#3fb950'; desc='Low volatility — trend days likely'; }
-    else if (vixVal < 18) { regime='NORMAL';   col='#fbbf24'; desc='Normal range — balanced risk/reward'; }
-    else if (vixVal < 25) { regime='ELEVATED'; col='#f97316'; desc='Elevated — wider swings expected'; }
-    else                  { regime='HIGH';     col='#f85149'; desc='High fear — whipsaws, wide spreads'; }
+    if      (!vixVal)      { regime='NO DATA'; col='#7d8590'; desc='India VIX not loaded yet — run a refresh'; }
+    else if (vixVal < 13)  { regime='LOW';      col='#3fb950'; desc='Low volatility — trend days likely'; }
+    else if (vixVal < 18)  { regime='NORMAL';   col='#fbbf24'; desc='Normal range — balanced risk/reward'; }
+    else if (vixVal < 25)  { regime='ELEVATED'; col='#f97316'; desc='Elevated — wider swings expected'; }
+    else                   { regime='HIGH';     col='#f85149'; desc='High fear — whipsaws, wide spreads'; }
 
     var gaugePos = Math.min(98, (vixVal / 35) * 100).toFixed(1);
     var vixL = '—', vixU = '—';

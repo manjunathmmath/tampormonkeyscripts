@@ -26,7 +26,7 @@ function _btoShow() {
 
     var body = '<div id="bto-wrap">'
         + '<div class="bto-tabs">'
-        +   '<button class="bto-tab active" data-tab="scanner"><i class="bi bi-radar"></i> Scanner</button>'
+        +   '<button class="bto-tab active" data-tab="scanner"><i class="bi bi-search"></i> Scanner</button>'
         +   '<button class="bto-tab" data-tab="liquidity"><i class="bi bi-droplet-fill"></i> Liquidity</button>'
         +   '<button class="bto-tab" data-tab="divergence"><i class="bi bi-arrows-expand"></i> Divergence</button>'
         +   '<button class="bto-tab" data-tab="feed"><i class="bi bi-lightning-charge-fill"></i> Opportunity Feed</button>'
@@ -85,7 +85,7 @@ function _btoShow() {
 function _btoShow_inpane(targetEl) {
     var body = '<div id="bto-wrap">'
         + '<div class="bto-tabs">'
-        +   '<button class="bto-tab active" data-tab="scanner"><i class="bi bi-radar"></i> Scanner</button>'
+        +   '<button class="bto-tab active" data-tab="scanner"><i class="bi bi-search"></i> Scanner</button>'
         +   '<button class="bto-tab" data-tab="liquidity"><i class="bi bi-droplet-fill"></i> Liquidity</button>'
         +   '<button class="bto-tab" data-tab="divergence"><i class="bi bi-arrows-expand"></i> Divergence</button>'
         +   '<button class="bto-tab" data-tab="feed"><i class="bi bi-lightning-charge-fill"></i> Opportunity Feed</button>'
@@ -332,7 +332,7 @@ function _btoRenderLiquidity() {
     var sign = function(v) { return v >= 0 ? '+' : ''; };
 
     // Section 1: PCR extremes
-    var pcrHtml = '<div class="bto-section-hdr"><i class="bi bi-activity"></i> PCR EXTREMES <span class="bto-section-sub">(deviation from 1.0 = strongest signal)</span></div>';
+    var pcrHtml = '<div class="bto-section-hdr"><i class="bi bi-thermometer-half"></i> PCR EXTREMES <span class="bto-section-sub">(deviation from 1.0 = strongest signal)</span></div>';
     if (!pcrList.length) {
         pcrHtml += '<div class="bto-empty-msg">No PCR data -- run main refresh first</div>';
     } else {

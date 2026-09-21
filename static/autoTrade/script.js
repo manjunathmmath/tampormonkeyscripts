@@ -2,13 +2,26 @@
 // Main Tampermonkey entry point for kite.zerodha.com.
 //
 // Responsibilities:
-//   1. LTP scan — scrapes live prices from the Kite watchlist DOM every minute
-//      (autoStartScanLtp, scanLtpPrice) and injects strike labels (ASO/AST/BSO/BST/VIXU/VIXL)
-//      next to each instrument in the sidebar.
-//   2. Open price load — fetches today's open + previous close via Kite historical API
-//      (loadOpenPrice) or scrapes from pre-market DOM (loadPreMarketOpenPrice).
+//   1. LTP scan (scanLtpPrice) — fetches live prices via a '5minute' intraday historical
+//      fetch (getHistoricalDataUsingPromise(token, CURRENT_DAY, _gtbCurrDayTo(), '5minute'),
+//      keyed by INSTRUMENT_TOKENS, enctoken session auth) instead of a separate API call or
+//      scraping the sidebar watchlist DOM. Trimmed with _gtbTrimCandles() (same helper every
+//      other historical fetch uses) so it respects the app-wide snapshot end time
+//      (#gtb-hist-time) — LTP = close of the last candle at-or-before that time, not
+//      necessarily the true live price, matching the rest of the dashboard when reviewing an
+//      earlier point in the day. Only writes INSTRUMENT_LTP_PRICE. No standalone poll — it
+//      only runs as part of an actual refresh cycle (autoRefreshEachTabs →
+//      updateStrorageLtpPrice), triggered by either the manual "Start Refresh" button or the
+//      5-minute auto-refresh timer below. Independent of which watchlist tab/instruments
+//      happen to be visible.
+//   2. Open price load — a separate 'day'-interval historical fetch, run once explicitly via
+//      the "Load Price" button (loadOpenPrice), writing INSTRUMENT_LIST_GLOBAL (today's open +
+//      yesterday's close) — a one-time daily value that doesn't need snapshot-time slicing
+//      (open/prevClose don't change intraday) and isn't re-touched by the LTP refresh cycle.
+//      No DOM scraping anywhere, pre-market included — before 09:15, today's day-candle doesn't exist yet,
+//      so those instruments are just skipped until the first post-09:15 load.
 //   3. Auto-refresh — every 5 minutes during market hours (09:15–16:30), triggers
-//      the full grootTradeBot score refresh (startTimer → commonShowPopupWindow).
+//      autoRefreshEachTabs (LTP refresh + full grootTradeBot score refresh) via startTimer.
 //   4. Chart page detection — on Kite chart pages, auto-opens the individual stock
 //      popup (showDetailsOnChartPage) for the instrument in the URL.
 //   5. OAuth — handles Kite Connect API OAuth callback (getSetAccessToken) —
@@ -17,8 +30,16 @@
 
 let timerInstance = null
 
+// Single source of truth for "a refresh is in flight" — covers the whole cycle (LTP scan +,
+// when manual/auto-triggered, the full grootTradeBot dashboard render), not just the LTP
+// scan's own _LTP_SCAN_IN_PROGRESS guard. Drives #start-auto-refresh's disabled state so the
+// button can't be clicked again — and doesn't get overlapped by the 5-minute auto-refresh
+// timer either — while a cycle is still running.
+let _GTB_REFRESH_IN_PROGRESS = false;
+
 // Core refresh orchestrator. Called by the "Start Refresh" button or auto-refresh timer.
-// Guards: only runs between 09:15 and 16:30 on market days (unless isManual=true).
+// Guards: only runs between 09:15 and 16:30 on market days (unless isManual=true), and never
+// overlaps a cycle already in progress (_GTB_REFRESH_IN_PROGRESS).
 // Steps: scan LTP prices → if manual, also render the grootTradeBot popup.
 // After run, schedules next auto-refresh timer via startRefresh().
 async function autoRefreshEachTabs(instance, isManual) {
@@ -43,9 +64,18 @@ async function autoRefreshEachTabs(instance, isManual) {
         allow = false;
     }
 
-    if (allow || isManual) {
-        await updateStrorageLtpPrice(instance);
-        if (isManual) { await commonShowPopupWindow(); }
+    if (_GTB_REFRESH_IN_PROGRESS) {
+        console.log("Refresh already in progress — skipping this trigger");
+    } else if (allow || isManual) {
+        _GTB_REFRESH_IN_PROGRESS = true;
+        jQ("#start-auto-refresh").attr("disabled", true);
+        try {
+            await updateStrorageLtpPrice(instance);
+            if (isManual) { await commonShowPopupWindow(); }
+        } finally {
+            _GTB_REFRESH_IN_PROGRESS = false;
+            jQ("#start-auto-refresh").attr("disabled", false);
+        }
     }
     startRefresh();
 }
@@ -54,7 +84,7 @@ async function autoRefreshEachTabs(instance, isManual) {
 jQ(document).on("click", "#start-auto-refresh", function (e) {
     e.preventDefault();
     var that = jQ(this);
-    that.attr("disabled", true);
+    that.attr("disabled", true); // immediate visual feedback — autoRefreshEachTabs owns re-enabling
     jQ("#status-bar-container").append('')
     commonRefresh(that, true)
 });
@@ -65,19 +95,19 @@ async function commonRefresh(that, isManual) {
 }
 
 // Starts the interval-based auto-refresh countdown displayed in #refresh-timer-one.
-// Calls startTimer(REFRESH_TIME) which ticks every second and fires commonShowPopupWindow
-// at every 5-minute mark (m % 5 == 0 && s == 10) when #enable-auto-refresh is checked.
+// Calls startTimer(REFRESH_TIME) which ticks every second and fires autoRefreshEachTabs
+// (LTP refresh + full dashboard refresh) at every 5-minute mark (m % 5 == 0 && s == 10)
+// when #enable-auto-refresh is checked.
 function startRefresh() {
     var display = document.querySelector('#refresh-timer-one');
     startTimer(REFRESH_TIME, display);
 };
 
 
-// Background LTP poller — runs every second via setInterval (started on DOM ready).
-// At s==59 (last second of each minute): if INSTRUMENT_LTP_PRICE is already cached,
-// triggers updateStrorageLtpPrice() to re-scan the Kite DOM for fresh LTP values.
-// The clock is also displayed in #refresh-timer-one.
-// This runs independently of the manual refresh button — always on while the page is loaded.
+// Clock display only — ticks every second via setInterval (started on DOM ready), updating
+// #refresh-timer-one. LTP no longer has its own standalone poll here: it refreshes only as
+// part of an actual refresh cycle (autoRefreshEachTabs, via the manual button or the 5-minute
+// auto-refresh in startTimer() below) — see updateStrorageLtpPrice()/scanLtpPrice().
 function autoStartScanLtp() {
     setInterval(function () {
         var d = new Date();
@@ -87,13 +117,6 @@ function autoStartScanLtp() {
         var display = document.querySelector('#refresh-timer-one');
         if (display) {
             display.textContent = ("0" + h).substr(-2) + ":" + ("0" + m).substr(-2) + ":" + ("0" + s).substr(-2);
-        }
-        if (s == 59) {
-            let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
-            if (storageLtpObj != null) {
-                console.log("Loading ltp prices ........")
-                updateStrorageLtpPrice();
-            }
         }
     }, 1000);
 }
@@ -112,7 +135,11 @@ function startTimer(duration, display) {
         if (m % 5 == 0 && s == 10) {
             let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
             if (enableAutoRefresh) {
-                commonShowPopupWindow();
+                // Routes through autoRefreshEachTabs (isManual=true) so LTP gets refreshed
+                // first, then the full dashboard — same single refresh path as the manual
+                // "Start Refresh" button, instead of calling commonShowPopupWindow() directly
+                // with whatever LTP happened to be cached.
+                autoRefreshEachTabs(null, true);
             }
         }
     }, 1000);
@@ -126,261 +153,231 @@ jQ(document).on("click", "#load-price", function (e) {
     }
 });
 
-// Loads today's open price and yesterday's close for all instruments.
-// Before 09:15: uses pre-market DOM scan (loadPreMarketOpenPrice) — scrapes Kite sidebar.
-// After 09:15:  uses Kite historical API day candle — candles[0]=prev day, candles[1]=today.
+// Loads today's open price and yesterday's close for all instruments via the Kite
+// historical API day candle — candles[0]=prev day, candles[1]=today (still-forming
+// intraday, so current[1]=today's open even before the candle closes).
 // Saves result to INSTRUMENT_LIST_GLOBAL: { name: { price(open), prevPrice, perc } }
-// Also saves India VIX quote (for VIXL/VIXU levels) and then scans LTP.
+// Also saves India VIX quote (for VIXL/VIXU levels).
+// Before 09:15, today's day-candle doesn't exist yet — those instruments are simply skipped
+// (no more pre-market sidebar DOM scrape); they'll populate on the first refresh after 09:15.
+// Runs the LTP scan (scanLtpPrice) at the end so INSTRUMENT_LTP_PRICE is populated
+// immediately, without waiting for the next manual/auto refresh.
 async function loadOpenPrice() {
     if (typeof _gtbProgress === 'function') _gtbProgress('Fetching VIX quote…');
     await saveVixQuote();
-    let currentTime = moment().format("HH:mm")
-    let checkTime = moment(PREVIOUS_DAY + " 09:15:00", 'YYYY-MM-DD HH:mm:ss').format("HH:mm")
 
-    if (currentTime < checkTime) {
-        if (typeof _gtbProgress === 'function') _gtbProgress('Pre-market: scanning open prices…');
-        await loadPreMarketOpenPrice()
-    } else {
-        let instru = []
-        jQ.each(INSTRUMENT_TOKENS, function (index, item) {
+    let instru = []
+    jQ.each(INSTRUMENT_TOKENS, function (index, item) {
+        let obj = {}
+        obj['TRADINGSYMBOL'] = index
+        obj['TOKEN'] = item
+        instru.push(obj)
+    });
+    let storageObj = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL")) || {};
+    for (let i = 0; i < instru.length; i++) {
+        try {
+            let _pMsg = 'Load prices: ' + instru[i]['TRADINGSYMBOL'] + ' (' + (i+1) + '/' + instru.length + ')';
+            jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
+            if (typeof _gtbProgress === 'function') _gtbProgress(_pMsg);
+            let name = instru[i]['TRADINGSYMBOL']
+            let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY, CURRENT_DAY, 'day');
+            let candles = data && data.data && data.data.candles;
+            if (!candles || candles.length < 2) continue; // today's candle not open yet (pre-market)
+            let previous = candles[0]
+            let current = candles[1]
             let obj = {}
-            obj['TRADINGSYMBOL'] = index
-            obj['TOKEN'] = item
-            instru.push(obj)
-        });
-        let storageObj = {};
-        for (let i = 0; i < instru.length; i++) {
-            try {
-                let _pMsg = 'Load prices: ' + instru[i]['TRADINGSYMBOL'] + ' (' + (i+1) + '/' + instru.length + ')';
-                jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
-                if (typeof _gtbProgress === 'function') _gtbProgress(_pMsg);
-                let name = instru[i]['TRADINGSYMBOL']
-                let tempName = name.replaceAll(" ", "-")
-                tempName = tempName.replaceAll("&", "-")
-                let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY, CURRENT_DAY, 'day');
-                let previous = data.data.candles[0]
-                let current = data.data.candles[1]
-                let obj = {}
-                obj['name'] = name
-                obj['price'] = current[1]
-                obj['prevPrice'] = previous[4]
-                obj['perc'] = parseFloat(current[1] - previous[4]).toFixed(2)
-                storageObj[name] = obj
-            } catch (err) {
-                console.log("Error while loading stock : " + instru[i]['TRADINGSYMBOL'])
-                console.log(err)
-            }
-
+            obj['name'] = name
+            obj['price'] = current[1]
+            obj['prevPrice'] = previous[4]
+            obj['perc'] = parseFloat(current[1] - previous[4]).toFixed(2)
+            storageObj[name] = obj
+        } catch (err) {
+            console.log("Error while loading stock : " + instru[i]['TRADINGSYMBOL'])
+            console.log(err)
         }
-        localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
-        if (typeof _gtbProgress === 'function') _gtbProgress('Prices loaded', 'green');
-        setTimeout(function(){ if (typeof _gtbProgressHide === 'function') _gtbProgressHide(); }, 2500);
+
     }
+    localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
+    if (typeof _gtbProgress === 'function') _gtbProgress('Prices loaded', 'green');
+    setTimeout(function(){ if (typeof _gtbProgressHide === 'function') _gtbProgressHide(); }, 2500);
+
     await updateStrorageLtpPrice();
     alert("Price loaded successfully.")
 
 }
 
-async function loadPreMarketOpenPrice() {
-    let marketWatchSideBar = jQ(".marketwatch-pagination");
-    let tabs = marketWatchSideBar.find(".pagination a.item");
-    for (let i = 0; i < 1; i++) {
-        jQ(".marketwatch-pagination a.item")[i].click();
-        await callSleepForAWhile(1000);
-        await scanPreMarketpPrice();
-    }
 
-}
-
-async function scanPreMarketpPrice() {
-    await callSleepForAWhile(1000)
-    let marketWatchSideBar = jQ(".marketwatch-pagination");
-    let tabs = marketWatchSideBar.find(".pagination a.item");
-    let instrumentsWrapper = jQ(".draggable-wrapper");
-    let instruments = instrumentsWrapper.find(".items .item-wrapper");
-    let storageOpenPriceObj = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
-    if (!storageOpenPriceObj) {
-        storageOpenPriceObj = {}
-    }
-
-    jQ.each(tabs, function (index, item) {
-        if (index == 0 || index == 1) {
-            if (jQ(item).hasClass("selected")) {
-                if (instruments.length > 0) {
-                    jQ(instruments).each(function (iindex, iitem) {
-                        let name = jQ(this).find(".symbol").find(".name").html();
-                        let price = jQ(this).find(".price").find(".last-price").html();
-                        let perc = jQ(this).find(".price-change").find(".change-absolute").html();
-                        if (name == "M&amp;M") {
-                            name = "M&M"
-                        }
-
-                        if (name == "M&amp;MFIN") {
-                            name = "M&MFIN"
-                        }
-
-                        if (name == "GVT&amp;D") {
-                            name = "GVT&D"
-                        }
-
-                        
-
-                        let obj = {}
-                        obj['name'] = name
-                        obj['price'] = parseFloat(price.trim()).toFixed(2)
-                        obj['perc'] = perc.trim();
-                        let prevPrice = parseFloat(price.trim()) - parseFloat(perc.trim());
-                        obj['prevPrice'] = parseFloat(prevPrice).toFixed(2);
-                        storageOpenPriceObj[name] = obj
-                    });
-                }
-            }
-        }
-    });
-
-    localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageOpenPriceObj));
-}
-
-
+// instance param kept for call-site compatibility but no longer used to toggle the button —
+// autoRefreshEachTabs now owns disabling/re-enabling #start-auto-refresh for the whole cycle
+// (LTP scan + dashboard render), not just this LTP-only phase.
 async function updateStrorageLtpPrice(instance) {
-    let marketWatchSideBar = jQ(".marketwatch-pagination");
-    let tabs = marketWatchSideBar.find(".pagination a.item");
-    if (tabs.length != 0) {
-        for (let i = 0; i < 1; i++) {
-            jQ(".marketwatch-pagination a.item")[i].click();
-            await callSleepForAWhile(1000);
-            await scanLtpPrice();
-        }
-        if (instance) {
-            instance.attr("disabled", false)
-        }
-        jQ(".marketwatch-pagination a.item")[0].click();
-
-    }
+    await scanLtpPrice();
 }
 
-function updateStatusBar(that) {
+// Renders the top status bar (INDIA VIX / NIFTY 50 / NIFTY BANK / SENSEX) from the
+// API-fetched LTP + the stored open/prevClose (INSTRUMENT_LIST_GLOBAL) — no DOM read.
+function updateStatusBarFromApi(ltpObj) {
+    jQ("#status-bar-container").html('');
+    let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL")) || {};
+    ["INDIA VIX", "NIFTY 50", "NIFTY BANK", "SENSEX"].forEach(function (name) {
+        let l = ltpObj[name];
+        if (!l) return;
+        let prevPrice = openDetails[name] ? parseFloat(openDetails[name]['prevPrice']) : NaN;
+        let ltp = parseFloat(l.ltp);
+        let change = isNaN(prevPrice) ? null : (ltp - prevPrice).toFixed(2);
 
-    let name = that.find(".symbol").find(".name").html();
-    let price = that.find(".price").find(".last-price").html();
-    let perc = that.find(".price-change").find(".change-absolute").html();
-
-    let html = ''
-
-    html += '<div class="col-md-3">'
-    html += '<span>' + name + ': </span>'
-    html += '<span badge bg-info>' + price + ' </span>'
-    if (perc > 0) {
-        html += '<span class="badge bg-success"> [' + perc + ']</span>'
-    } else {
-        html += '<span class="badge bg-danger"> [' + perc + ']</span>'
-    }
-    html += '</div>'
-    jQ("#status-bar-container").append(html)
-}
-
-// Core DOM scraper — reads live LTP from Kite watchlist sidebar for each instrument.
-// For each instrument in the active watchlist tab:
-//   1. Reads name (.symbol .name) and price (.price .last-price) from the DOM
-//   2. Saves to INSTRUMENT_LTP_PRICE: { name: { name, ltp } }
-//   3. Injects ASO/AST/BSO/BST/VIXU/VIXL badges based on current price vs strike levels
-//   4. Updates the top status bar for INDIA VIX, NIFTY 50, NIFTY BANK, SENSEX
-//
-// HTML entity handling: M&amp;M → M&M, M&amp;MFIN → M&MFIN, GVT&amp;D → GVT&D
-// Badge injection: removes old .strike-info badges then re-adds current ones.
-async function scanLtpPrice() {
-    jQ("#status-bar-container").html('')
-    await callSleepForAWhile(1000)
-    let marketWatchSideBar = jQ(".marketwatch-pagination");
-    let tabs = marketWatchSideBar.find(".pagination a.item");
-    let instrumentsWrapper = jQ(".draggable-wrapper");
-    let instruments = instrumentsWrapper.find(".items .item-wrapper");
-    let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
-    if (!storageLtpObj) {
-        storageLtpObj = {}
-    }
-    let scriptData = generateTrends()
-    jQ.each(tabs, function (index, item) {
-        if (index == 0 || index == 1) {
-            if (jQ(item).hasClass("selected")) {
-                if (instruments.length > 0) {
-                    jQ(instruments).each(function (iindex, iitem) {
-                        let that = jQ(this);
-                        let name = jQ(this).find(".symbol").find(".name").html();
-                        let price = jQ(this).find(".price").find(".last-price").html();
-                        let obj = {}
-                        if (name == "M&amp;M") {
-                            name = "M&M"
-                        }
-
-                        if (name == "M&amp;MFIN") {
-                            name = "M&MFIN"
-                        }
-
-                        if (name == "GVT&amp;D") {
-                            name = "GVT&D"
-                        }
-
-                        obj['name'] = name.trim()
-                        obj['ltp'] = parseFloat(price.trim()).toFixed(2);
-                        storageLtpObj[name] = obj
-
-
-                        that.find(".item-info-wrapper").find(".strike-info").remove();
-
-                        let currentPrice = parseFloat(price.trim()).toFixed(2);
-                        if (name != "INDIA VIX") {
-                            if (scriptData) {
-                                let asoPrice = parseFloat(scriptData[name]['strikeData']['ustrikeOne']);
-                                let bsoPrice = parseFloat(scriptData[name]['strikeData']['bstrikeOne']);
-
-                                let astPrice = parseFloat(scriptData[name]['strikeData']['ustrikeTwo']);
-                                let bstPrice = parseFloat(scriptData[name]['strikeData']['bstrikeTwo']);
-
-                                let vixDDUpper = scriptData[name]['vix']['vixDDUpper']
-                                let vixDDLower = scriptData[name]['vix']['vixDDLower']
-
-                                if (currentPrice >= parseFloat(astPrice)) {
-                                    let strike = '<div class="badge bg-info above-strike-two strike-info">AST</div>'
-                                    that.find(".item-info-wrapper").append(strike);
-                                }
-
-                                if (currentPrice >= parseFloat(asoPrice)) {
-                                    let strike = '<div class="badge bg-info above-strike-one strike-info">ASO</div>'
-                                    that.find(".item-info-wrapper").append(strike);
-                                }
-                                if (currentPrice <= parseFloat(bstPrice)) {
-                                    let strike = '<div class="badge bg-info below-strike-two strike-info">BST</div>'
-                                    that.find(".item-info-wrapper").append(strike);
-                                }
-
-                                if (currentPrice <= parseFloat(bsoPrice)) {
-                                    let strike = '<div class="badge bg-info below-strike-one strike-info">BSO</div>'
-                                    that.find(".item-info-wrapper").append(strike);
-                                }
-
-                                if (currentPrice <= parseFloat(vixDDLower)) {
-                                    let strike = '<div class="badge bg-info below-strike-one strike-info">VIXL</div>'
-                                    that.find(".item-info-wrapper").append(strike);
-                                }
-
-                                if (currentPrice >= parseFloat(vixDDUpper)) {
-                                    let strike = '<div class="badge bg-info below-strike-one strike-info">VIXU</div>'
-                                    that.find(".item-info-wrapper").append(strike);
-                                }
-                            }
-                        }
-                        if (name == "INDIA VIX" || name == "NIFTY 50" || name == "NIFTY BANK" || name == "SENSEX") {
-                            updateStatusBar(that)
-                        }
-                    });
-                }
-            }
+        let html = '<div class="col-md-3">'
+            + '<span>' + name + ': </span>'
+            + '<span badge bg-info>' + l.ltp + ' </span>';
+        if (change !== null) {
+            html += change > 0
+                ? '<span class="badge bg-success"> [' + change + ']</span>'
+                : '<span class="badge bg-danger"> [' + change + ']</span>';
         }
+        html += '</div>';
+        jQ("#status-bar-container").append(html);
     });
-    localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));
 }
 
+// Core LTP loader — fetches a '5minute' intraday series (CURRENT_DAY → _gtbCurrDayTo())
+// per instrument_token instead of a separate API call or scraping the sidebar watchlist DOM.
+// Deliberately NOT the 'day' interval loadOpenPrice() uses: Kite's day-candle always reflects
+// the true live intraday state and can't be truncated to an earlier time, so it silently
+// ignored the app-wide "snapshot end time" picker (#gtb-hist-time / _gtbHistTime()) that
+// every other historical fetch in this app respects via _gtbCurrDayTo()/_gtbTrimCandles().
+// With a real snapshot time set, LTP now comes from the last candle at-or-before that time
+// instead of the actual current price — consistent with the rest of the dashboard when
+// reviewing/backtesting an earlier point in the day. The forming (most recent, still-open)
+// candle is deliberately kept, not dropped — for LTP specifically we want the freshest
+// available price, unlike OBV/IV calcs which drop it to avoid flicker.
+// Only writes INSTRUMENT_LTP_PRICE — INSTRUMENT_LIST_GLOBAL (today's open + yesterday's
+// close) is set once by loadOpenPrice() and doesn't change intraday, so this does NOT
+// rewrite it every cycle.
+// Same enctoken-session auth + rate-limited queue (_gtbHistPump) already used by every other
+// historical fetch in this app — no separate Kite Connect API app needed.
+// Guarded against overlapping runs — a full scan (~215 instruments through a ≤5-concurrent,
+// ~10/sec queue) can take longer than the 60s tick that triggers it.
+let _LTP_SCAN_IN_PROGRESS = false;
+async function scanLtpPrice() {
+    if (_LTP_SCAN_IN_PROGRESS) {
+        console.log("LTP scan still in progress from the previous cycle — skipping this tick");
+        return;
+    }
+    _LTP_SCAN_IN_PROGRESS = true;
+    try {
+        let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE")) || {};
+        let names = Object.keys(INSTRUMENT_TOKENS);
+        let total = names.length;
+        let completed = 0;
+        let toTime = (typeof _gtbCurrDayTo === 'function') ? _gtbCurrDayTo() : CURRENT_DAY;
+
+        if (typeof _gtbProgress === 'function') _gtbProgress('LTP: 0/' + total);
+
+        let results = await Promise.all(names.map(function (name) {
+            let token = INSTRUMENT_TOKENS[name];
+            return getHistoricalDataUsingPromise(token, CURRENT_DAY, toTime, '5minute')
+                .then(function (res) {
+                    completed++;
+                    if (typeof _gtbProgress === 'function') _gtbProgress('LTP: ' + completed + '/' + total + ' (' + name + ')');
+                    return { name: name, res: res };
+                })
+                .catch(function () {
+                    completed++;
+                    if (typeof _gtbProgress === 'function') _gtbProgress('LTP: ' + completed + '/' + total + ' (' + name + ')');
+                    return { name: name, res: null };
+                });
+        }));
+
+        let anyOk = false;
+        results.forEach(function (r) {
+            let raw = r.res && r.res.data && r.res.data.candles;
+            let candles = (typeof _gtbTrimCandles === 'function') ? _gtbTrimCandles(raw) : raw;
+            if (!candles || !candles.length) return;
+            anyOk = true;
+            let lastClose = candles[candles.length - 1][4];
+            storageLtpObj[r.name] = { name: r.name, ltp: parseFloat(lastClose).toFixed(2) };
+        });
+
+        if (!anyOk) {
+            console.log("LTP historical fetch returned no candles for any instrument — market closed, or enctoken session expired");
+            callSackBar("LTP fetch failed — no candle data returned (market closed, or re-login to Kite)");
+            if (typeof _gtbProgress === 'function') _gtbProgress('LTP fetch failed', 'orange');
+            return;
+        }
+
+        localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));
+        updateStatusBarFromApi(storageLtpObj);
+        if (typeof _gtbProgress === 'function') _gtbProgress('LTP loaded (' + total + ')', 'green');
+    } finally {
+        _LTP_SCAN_IN_PROGRESS = false;
+    }
+}
+
+// Quick, targeted OI/OBV check for a small set of instruments (e.g. NIFTY 50 + NIFTY BANK)
+// BEFORE the full ~215-217 instrument sweep (loadOpenPrice + scanLtpPrice) completes.
+// showPrictionProbabilty(name) → generateTrend(name) only needs THIS instrument's entry in
+// INSTRUMENT_LIST_GLOBAL (open/prevClose) + INSTRUMENT_LTP_PRICE (live LTP) — it has no
+// dependency on the 9:15 scan (scanNineFifteenCandle/VALID_BREAKOUT_NINE_FIFTEEN) at all.
+// loadOpenPrice() fetches ALL instruments sequentially (one `await` per instrument in a for
+// loop) and scanLtpPrice() fetches all of them in parallel but still queued through the shared
+// rate limiter — either way NIFTY 50/BANK NIFTY's own price has often already moved by the time
+// their turn comes up in a 215-instrument pass. This fetches ONLY the requested names (typically
+// 2), merges the result into the SAME two localStorage objects those functions write (so it
+// never clobbers data already collected for other instruments), then opens the existing
+// Instrument Detail View popup for each — reusing the same OI/OBV pipeline, no new UI needed.
+async function _gtbQuickOIOBV(names) {
+    try {
+        if (typeof _gtbProgress === 'function') _gtbProgress('Quick OI/OBV: fetching ' + names.join(', ') + '…');
+        let listGlobal = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL")) || {};
+        let ltpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE")) || {};
+        let toTime = (typeof _gtbCurrDayTo === 'function') ? _gtbCurrDayTo() : CURRENT_DAY;
+
+        await Promise.all(names.map(async function (name) {
+            let token = INSTRUMENT_TOKENS[name];
+            if (!token) return;
+            try {
+                let dayRes = await getHistoricalDataUsingPromise(token, PREVIOUS_DAY, CURRENT_DAY, 'day');
+                let dayCandles = dayRes && dayRes.data && dayRes.data.candles;
+                if (dayCandles && dayCandles.length >= 2) {
+                    let previous = dayCandles[0];
+                    let current = dayCandles[1];
+                    listGlobal[name] = {
+                        name: name,
+                        price: current[1],
+                        prevPrice: previous[4],
+                        perc: parseFloat(current[1] - previous[4]).toFixed(2)
+                    };
+                }
+            } catch (e) { console.log('Quick OI/OBV: day-candle fetch failed for ' + name, e); }
+
+            try {
+                let ltpRes = await getHistoricalDataUsingPromise(token, CURRENT_DAY, toTime, '5minute');
+                let raw = ltpRes && ltpRes.data && ltpRes.data.candles;
+                let candles = (typeof _gtbTrimCandles === 'function') ? _gtbTrimCandles(raw) : raw;
+                if (candles && candles.length) {
+                    ltpObj[name] = { name: name, ltp: parseFloat(candles[candles.length - 1][4]).toFixed(2) };
+                }
+            } catch (e) { console.log('Quick OI/OBV: LTP fetch failed for ' + name, e); }
+        }));
+
+        localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(listGlobal));
+        localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(ltpObj));
+        if (typeof _gtbProgress === 'function') _gtbProgress('Quick OI/OBV ready', 'green');
+
+        names.forEach(function (name) {
+            if (typeof _gtbOpenInstrDetailFor === 'function') _gtbOpenInstrDetailFor(name, false);
+        });
+    } catch (err) {
+        console.log('Quick OI/OBV failed', err);
+        if (typeof callSackBar === 'function') callSackBar('Quick OI/OBV failed — see console');
+    }
+}
+
+// .ready() callback must stay a plain (non-async) function here — confirmed live that an
+// `async function` passed directly to jQ(document).ready(...) never fires its callback at
+// all on this page (Kite's chart page specifically), while a plain function does. The
+// async/await logic that used to be the callback's own body now runs in a nested async
+// IIFE instead.
 jQ(document).ready(function () {
     let location = window.location.href;
     const url = new URL(location);
@@ -397,7 +394,25 @@ jQ(document).ready(function () {
         symbol = "NIFTY BANK"
     }
     if (exhange && symbol && token) {
-        showDetailsOnChartPage(exhange, symbol, token);
+        (async function () {
+            // Wait for dataLoad.js's boot-time restore (FUTURE_INTRUMENT_LIST/INSTRUMENT_TOKENS
+            // from cached IndexedDB) to actually finish, instead of firing immediately — this
+            // used to race a blind setTimeout(..., 500) in dataLoad.js and could call
+            // showFutureDetails(symbol) against an empty FUTURE_INTRUMENT_LIST on a slow load
+            // (confirmed live: COFORGE showing "No NSE future contract" on direct chart-page
+            // load despite the data being present moments later). Raced against a 2s timeout —
+            // an IndexedDB read that never resolves (e.g. a blocked/stuck connection) must not
+            // be able to hang this popup open forever with no visible error.
+            try {
+                if (window.gtbDataReadyPromise) {
+                    await Promise.race([
+                        window.gtbDataReadyPromise,
+                        new Promise(function (resolve) { setTimeout(resolve, 2000); }),
+                    ]);
+                }
+            } catch (e) {}
+            showDetailsOnChartPage(exhange, symbol, token);
+        })();
     }
 });
 
@@ -422,8 +437,11 @@ async function commonShowInidividuslStockPopupWindow(symbol) {
     // Delegate to the redesigned Instrument Detail View popup (2-column card layout).
     // _gtbOpenInstrDetailFor opens #show-futures-signal popup (or reuses it if already open)
     // then calls _gtbLoadInstrDetailPanel(symbol) which fetches all live data.
+    // minimal=true: this function's only caller is showDetailsOnChartPage (landing directly
+    // on a Kite chart page), which only ever wants THIS one instrument's panel, not the full
+    // multi-instrument search/picker chrome — per explicit request.
     if (typeof _gtbOpenInstrDetailFor === 'function') {
-        _gtbOpenInstrDetailFor(symbol);
+        _gtbOpenInstrDetailFor(symbol, true);
         return;
     }
 
@@ -498,10 +516,16 @@ async function getSetAccessToken(){
             jQ.post('https://api.kite.trade/session/token',
                 { 'api_key': g_config.get('api_key'), 'request_token': q.request_token, 'checksum': sha256(g_config.get('api_key') + q.request_token + g_config.get('api_secret')) },
                 function (data, status) {
-                    callSackBarInfo(`AT status ${status}`);
-                    alert(data.data.access_token)
                     g_config.set('api_access_token', data.data.access_token);
-                    redirectToDashboard()
+                    // g_config.set() alone never survives a reload (see
+                    // _gtbPersistConfigSnapshot's comment, grootTradeBot.js) — this used to be
+                    // worked around with alert(data.data.access_token) so the token could be
+                    // manually copy-pasted into Settings and saved for real. Persist it
+                    // properly instead, same as the new Market Trend Settings popup's own
+                    // Save button does, so the manual step is no longer needed.
+                    var persisted = (typeof _gtbPersistConfigSnapshot === 'function') && _gtbPersistConfigSnapshot();
+                    callSackBarInfo(persisted ? `AT status ${status} — access token saved automatically` : `AT status ${status} — token: ${data.data.access_token} (auto-save unavailable, enter manually in Settings)`);
+                    redirectToDashboard(data.data.access_token)
                 })
                 .fail(function (xhr, status, error) {
                     var resp = JSON.parse(xhr.responseText);
@@ -513,7 +537,7 @@ async function getSetAccessToken(){
     }
 }
 
-async function redirectToDashboard() {
+async function redirectToDashboard(access_token) {
      await callSleepForAWhile(2000)
-    window.location.href = "https://kite.zerodha.com/dashboard";
+    window.location.href = "https://kite.zerodha.com/dashboard?access_token=" + access_token;
 }

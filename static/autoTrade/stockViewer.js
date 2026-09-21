@@ -43,6 +43,30 @@ function showStockViewer() {
     html += _svSegBtn('bank',   'BANK NIFTY', null,          '');
     html += _svSegBtn('weight', 'WEIGHTED',   null,          '');
     html += '</div>';
+    // Confidence filter — reads the .sv-predict-compact card's own data-confidence
+    // (set once at LOAD time, same source as what's shown on the card), so it filters
+    // whatever's already loaded rather than requiring a re-fetch.
+    html += '<select id="sv-conf-filter" class="sv-pill-btn" style="margin-left:8px;" title="Only show rows at or above this Prediction confidence">';
+    html +=   '<option value="0">All confidence</option>';
+    html +=   '<option value="65">HIGH only (&ge;65%)</option>';
+    html +=   '<option value="45">MODERATE+ (&ge;45%)</option>';
+    html += '</select>';
+    // Auto-refresh: re-runs the same LOAD pipeline for whatever's currently loaded on
+    // an interval, and after each refresh checks every loaded instrument's LTP against
+    // its R1/R2/S1/S2 OI walls (_gtbFindWalls — the same wall ranking the OI Matrix
+    // column already labels), toasting + beeping once per wall as price enters range.
+    html += '<div class="sv-autoref-group" style="margin-left:8px;">';
+    html +=   '<button id="sv-autoref-start" class="sv-pill-btn sv-autoref-btn" type="button" title="Start auto-refresh"><i class="bi bi-play-fill"></i> Start</button>';
+    html +=   '<button id="sv-autoref-stop" class="sv-pill-btn sv-autoref-btn" type="button" disabled title="Stop auto-refresh"><i class="bi bi-stop-fill"></i> Stop</button>';
+    html +=   '<select id="sv-autoref-interval" class="sv-pill-btn">';
+    html +=     '<option value="1">Every 1 min</option>';
+    html +=     '<option value="3">Every 3 min</option>';
+    html +=     '<option value="5" selected>Every 5 min</option>';
+    html +=     '<option value="10">Every 10 min</option>';
+    html +=     '<option value="15">Every 15 min</option>';
+    html +=   '</select>';
+    html +=   '<span id="sv-autoref-status" class="sv-autoref-status"><i class="bi bi-circle"></i> Stopped</span>';
+    html += '</div>';
     html += '</div>';
 
     // ── Chip panel ────────────────────────────────────────────────────────────
@@ -166,6 +190,9 @@ jQ(document).on("click", ".refresh-oi-stock-viewer", async function () {
         INSTRUMENT_SCORE_MAP[name].score = sc;
         _gtbUpdateWeightBars(name, _SV_SUFFIX);
         _svRenderScoreConfidence(name, sc, _SV_SUFFIX);
+        _gtbRefreshAllPredictCards(name);
+        _gtbRefreshAllOIOBVCharts(name);
+        _svApplyConfFilter();
     } catch(e) {}
     jQ(this).html('<i class="bi bi-bar-chart-fill"></i>');
 });
@@ -183,8 +210,22 @@ function _svRenderScoreConfidence(name, sc, suffix) {
     var bears  = scores.filter(function(v){ return v < 0; }).length;
     var total  = sc.total || 0;
 
+    // If price action (9:15 + current trend) actually disagrees with the direction the
+    // total implies, the total's sign is being carried by a MINORITY of the 4 sub-signals
+    // — almost always a single large OI/OBV swing outweighing the rest (OI/OBV is noisier/
+    // lower-liquidity per-stock than index options, see [[trade-signal-priority]]-style
+    // reasoning). The confidence number below (bulls or bears / 4) already reflects this,
+    // but a bold "STRONG SHORT/LONG" banner reads as confident regardless of that number —
+    // demote to a plain WAIT with an explicit conflict note instead of showing a strong
+    // directional call that the majority of independent signals don't actually support.
+    var conflict = (total > 0 && bears > bulls) || (total < 0 && bulls > bears);
+
     var direction, conf, color, bg, icon;
-    if      (total >= 4)  { direction = 'STRONG LONG';  conf = Math.round(bulls/4*100); color = '#3fb950'; bg = 'rgba(63,185,80,0.12)';  icon = 'bi-arrow-up-circle-fill'; }
+    if (conflict) {
+        direction = 'WAIT'; conf = Math.round(Math.min(bulls, bears) / 4 * 100);
+        color = '#d29922'; bg = 'rgba(210,153,34,0.08)'; icon = 'bi-exclamation-triangle-fill';
+    }
+    else if (total >= 4)  { direction = 'STRONG LONG';  conf = Math.round(bulls/4*100); color = '#3fb950'; bg = 'rgba(63,185,80,0.12)';  icon = 'bi-arrow-up-circle-fill'; }
     else if (total > 0)   { direction = 'LONG';          conf = Math.round(bulls/4*100); color = '#3fb950'; bg = 'rgba(63,185,80,0.08)';  icon = 'bi-arrow-up-circle'; }
     else if (total <= -4) { direction = 'STRONG SHORT'; conf = Math.round(bears/4*100); color = '#f85149'; bg = 'rgba(248,81,73,0.12)';  icon = 'bi-arrow-down-circle-fill'; }
     else if (total < 0)   { direction = 'SHORT';         conf = Math.round(bears/4*100); color = '#f85149'; bg = 'rgba(248,81,73,0.08)';  icon = 'bi-arrow-down-circle'; }
@@ -294,6 +335,9 @@ function _svRenderScoreConfidence(name, sc, suffix) {
         +   '<span style="font-size:0.56rem;font-weight:900;color:' + color + ';background:' + bg
         +     ';padding:2px 7px;border-radius:4px;border:1px solid ' + color + '44;letter-spacing:0.06em;">' + direction + '</span>'
         + '</div>'
+        + (conflict ? '<div style="font-size:0.42rem;color:' + color + ';line-height:1.4;margin-bottom:5px;">'
+            + '⚠ Price action (9:15' + (bulls > bears ? '+Trend bullish' : '+Trend bearish') + ') disagrees with the OI-driven score — demoted from a ' + (total > 0 ? 'LONG' : 'SHORT') + ' call, wait for signals to agree.'
+            + '</div>' : '')
         + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">'
         +   '<span style="font-size:0.44rem;color:var(--gtb-muted);min-width:50px;">Confidence</span>'
         +   '<div style="flex:1;height:4px;background:var(--gtb-surface2);border-radius:3px;overflow:hidden;">'
@@ -333,35 +377,10 @@ function _svRowHtml(name, scriptData, breakOut915) {
     h +=   '</div>';
     h += '</div>';
 
-    // col 2 — chart
-    h += '<div class="gtb-row-col-chart">';
-    h +=   '<div id="' + tid + '-chart-levels' + s + '" class="gtb-chart-levels"></div>';
-    h +=   '<div id="' + tid + '-chart' + s + '" class="gtb-chart-mini gtb-row-chart"></div>';
-    h += '</div>';
+    // col 2 — prediction (always-visible condensed card, click for full popup)
+    h += '<div class="gtb-row-predict" id="' + tid + '-predict' + s + '"><span class="gtb-row-na" style="margin:auto">—</span></div>';
 
-    // col 3 — 9:15
-    h += '<div class="gtb-row-col gtb-row-915">';
-    h +=   '<span class="gtb-915-badge" id="' + tid + '-915-badge' + s + '"></span>';
-    h +=   '<button class="gtb-prob-btn" data-name="' + name + '" title="Strike-level probability"><i class="bi bi-percent"></i></button>';
-    h += '</div>';
-
-    // col 4 — futures
-    h += '<div class="gtb-row-col gtb-row-fut">';
-    if (hasFut) {
-        h +=   '<span id="' + tid + '-futures-premium' + s + '" class="gtb-cell-premium-chip"></span>';
-        h +=   '<div id="' + tid + '-futures' + s + '" class="gtb-cell-fut-signals"></div>';
-        h +=   '<div id="' + tid + '-futures-trend' + s + '" class="gtb-cell-fut-remark"></div>';
-    } else {
-        h +=   '<span class="gtb-row-na">—</span>';
-    }
-    h += '</div>';
-
-    // col 5 — OI matrix
-    h += '<div class="gtb-row-oimatrix" id="' + tid + '-oimatrix' + s + '">';
-    if (!hasFut) h += '<span class="gtb-row-na">—</span>';
-    h += '</div>';
-
-    // col 6 — OI/OBV
+    // col 3 — OI/OBV
     h += '<div class="gtb-row-oiobv">';
     if (hasFut) {
         h += '<div class="gtb-oiobv-lbl">OI</div>';
@@ -375,7 +394,35 @@ function _svRowHtml(name, scriptData, breakOut915) {
     }
     h += '</div>';
 
-    // col 7 — weights (sub-score bars)
+    // col 4 — chart
+    h += '<div class="gtb-row-col-chart">';
+    h +=   '<div id="' + tid + '-chart-levels' + s + '" class="gtb-chart-levels"></div>';
+    h +=   '<div id="' + tid + '-chart' + s + '" class="gtb-chart-mini gtb-row-chart"></div>';
+    h += '</div>';
+
+    // col 5 — 9:15
+    h += '<div class="gtb-row-col gtb-row-915">';
+    h +=   '<span class="gtb-915-badge" id="' + tid + '-915-badge' + s + '"></span>';
+    h +=   '<button class="gtb-prob-btn" data-name="' + name + '" title="Strike-level probability"><i class="bi bi-percent"></i></button>';
+    h += '</div>';
+
+    // col 6 — futures
+    h += '<div class="gtb-row-col gtb-row-fut">';
+    if (hasFut) {
+        h +=   '<span id="' + tid + '-futures-premium' + s + '" class="gtb-cell-premium-chip"></span>';
+        h +=   '<div id="' + tid + '-futures' + s + '" class="gtb-cell-fut-signals"></div>';
+        h +=   '<div id="' + tid + '-futures-trend' + s + '" class="gtb-cell-fut-remark"></div>';
+    } else {
+        h +=   '<span class="gtb-row-na">—</span>';
+    }
+    h += '</div>';
+
+    // col 7 — OI matrix
+    h += '<div class="gtb-row-oimatrix" id="' + tid + '-oimatrix' + s + '">';
+    if (!hasFut) h += '<span class="gtb-row-na">—</span>';
+    h += '</div>';
+
+    // col 8 — weights (sub-score bars)
     var subRows = [
         { lbl:'9:15',  id: tid + '-sub-915'  + s },
         { lbl:'Trend', id: tid + '-sub-trend' + s },
@@ -397,7 +444,7 @@ function _svRowHtml(name, scriptData, breakOut915) {
     }
     h += '</div>';
 
-    // col 8 — detail: SL row (persistent) + confidence panel (overwritten by _svRenderScoreConfidence)
+    // col 9 — detail: SL row (persistent) + confidence panel (overwritten by _svRenderScoreConfidence)
     h += '<div class="gtb-row-detail" id="' + tid + '-detail' + s + '">';
     if (hasFut) {
         h += '<div class="gtb-det-row"><div id="' + tid + '-atr-sl' + s + '" class="gtb-cell-sl-wrap" style="margin-left:0"></div></div>';
@@ -419,11 +466,12 @@ async function _svLoadCards(list) {
     // Column header inside card area — same 8 columns as #gtb-rows-head
     let header = '<div id="sv-rows-head">'
         + '<span class="gtb-rh-instr">INSTRUMENT</span>'
+        + '<span class="gtb-rh-predict"><i class="bi bi-lightbulb-fill"></i> PREDICT</span>'
+        + '<span class="gtb-rh-oiobv">OI / OBV</span>'
         + '<span class="gtb-rh-chart">PRICE ACTION</span>'
         + '<span class="gtb-rh-915">9:15</span>'
         + '<span class="gtb-rh-fut">FUTURES</span>'
         + '<span class="gtb-rh-oi">OI MATRIX</span>'
-        + '<span class="gtb-rh-oiobv">OI / OBV</span>'
         + '<span class="gtb-rh-weights">SCORE</span>'
         + '<span class="gtb-rh-detail">DETAIL</span>'
         + '</div>';
@@ -432,6 +480,7 @@ async function _svLoadCards(list) {
     list.forEach(function (name) { html += _svRowHtml(name, scriptData, breakOut915); });
     jQ('#sv-card-area').html(html);
     jQ('#sv-titlebar-count').text(list.length + ' instruments');
+    _SV_LOADED_LIST = list.slice();
 
     for (let i = 0; i < list.length; i++) {
         let name = list[i];
@@ -450,7 +499,143 @@ async function _svLoadCards(list) {
                 _svRenderScoreConfidence(name, sc, _SV_SUFFIX);
             } catch(e2) { console.log(e2); }
         } catch(e) { console.log(e); }
+        try { _gtbRefreshAllPredictCards(name); } catch(e3) { console.log(e3); }
+        try { _gtbRefreshAllOIOBVCharts(name); } catch(e4) { console.log(e4); }
+        _svApplyConfFilter();
     }
 }
 
+// Hides/shows loaded rows by the Prediction confidence % already on their
+// .sv-predict-compact card (data-confidence) — no re-fetch, just a display filter.
+// IMPORTANT: .gtb-row's CSS declares `display: grid` — jQuery's .show()/.hide()/.toggle()
+// don't know that and fall back to a guessed default ('block'), which breaks the row's
+// column layout (columns stack vertically instead of side-by-side) the moment this runs.
+// Set style.display directly instead: '' removes the inline override and lets the
+// stylesheet's `display: grid` apply; 'none' hides it same as jQuery would.
+function _svApplyConfFilter() {
+    var min = parseInt(jQ('#sv-conf-filter').val() || '0', 10);
+    document.querySelectorAll('#sv-card-area .gtb-row').forEach(function (row) {
+        if (!min) { row.style.display = ''; return; }
+        var pred = row.querySelector('.sv-predict-compact[data-confidence]');
+        // Not loaded yet (still mid-LOAD, hasn't reached this instrument) — leave it
+        // visible rather than hiding it. Hiding here was the bug: with a threshold
+        // already selected, every row this call hadn't reached yet vanished, so the
+        // grid looked like it emptied out row-by-row as the batch loaded instead of
+        // filtering only once each row's real confidence was known.
+        if (!pred) { row.style.display = ''; return; }
+        var conf = parseInt(pred.getAttribute('data-confidence'), 10);
+        row.style.display = (!isNaN(conf) && conf >= min) ? '' : 'none';
+    });
+}
+jQ(document).on('change', '#sv-conf-filter', _svApplyConfFilter);
+
 async function showStockAnalyzer(type) { _svShowChipPanel(_svBuildList(type)); }
+
+// ── Auto-refresh (Start/Stop/interval) + R1/R2/S1/S2 wall proximity alerts ──────
+var _SV_LOADED_LIST = [];
+var _SV_AUTO_TIMER = null;
+var _SV_AUTO_TICKING = false;
+var _SV_WALL_PROXIMITY_PCT = 0.003; // 0.3% — same "near level" threshold used elsewhere in this app
+var _SV_ACTIVE_WALL_ALERTS = {};    // key "name|R1|strike" -> true while price is still within range, so re-entry re-alerts but sitting still doesn't spam every tick
+
+function _svSetAutoRefreshUI(running) {
+    jQ('#sv-autoref-start').prop('disabled', running);
+    jQ('#sv-autoref-stop').prop('disabled', !running);
+    jQ('#sv-autoref-interval').prop('disabled', running);
+    jQ('#sv-autoref-status').toggleClass('sv-autoref-running', running)
+        .html(running
+            ? '<i class="bi bi-record-circle-fill"></i> Running'
+            : '<i class="bi bi-circle"></i> Stopped');
+}
+
+function _svStartAutoRefresh() {
+    if (_SV_AUTO_TIMER) return;
+    var mins = parseFloat(jQ('#sv-autoref-interval').val() || '5');
+    _SV_AUTO_TIMER = setInterval(_svAutoRefreshTick, mins * 60 * 1000);
+    _svSetAutoRefreshUI(true);
+    _gtbToast('Stock Viewer auto-refresh started — every ' + mins + ' min', 'success');
+}
+
+function _svStopAutoRefresh() {
+    if (_SV_AUTO_TIMER) { clearInterval(_SV_AUTO_TIMER); _SV_AUTO_TIMER = null; }
+    _svSetAutoRefreshUI(false);
+}
+
+async function _svAutoRefreshTick() {
+    if (_SV_AUTO_TICKING || !_SV_LOADED_LIST.length) return;
+    _SV_AUTO_TICKING = true;
+    try {
+        await _svLoadCards(_SV_LOADED_LIST);
+        _svCheckWallProximityAlerts(_SV_LOADED_LIST);
+    } catch (e) { console.log('[sv-autorefresh]', e); }
+    _SV_AUTO_TICKING = false;
+}
+
+// Short two-tone beep via Web Audio — no dependency on the (unused) alertSound.js resource.
+function _svBeep() {
+    try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [880, 660].forEach(function (freq, i) {
+            var osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.frequency.value = freq; osc.type = 'sine';
+            osc.connect(gain); gain.connect(ctx.destination);
+            var t0 = ctx.currentTime + i * 0.16;
+            gain.gain.setValueAtTime(0.0001, t0);
+            gain.gain.exponentialRampToValueAtTime(0.2, t0 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.15);
+            osc.start(t0); osc.stop(t0 + 0.16);
+        });
+    } catch (e) {}
+}
+
+function _svCheckWallProximityAlerts(list) {
+    var ltpMap = {}; try { ltpMap = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}'); } catch (e) {}
+    var seenKeys = {};
+
+    list.forEach(function (name) {
+        var sm = INSTRUMENT_SCORE_MAP[name];
+        var oiData = sm && sm.oiData;
+        var tableData = oiData && oiData.tableData;
+        if (!tableData || !tableData.length) return;
+
+        var tid = name.replace(/ /g, '-').replace(/&/g, '-');
+        var ltp = (ltpMap[name] && parseFloat(ltpMap[name].ltp)) || parseFloat(sm.mcxLtp)
+            || parseFloat((document.getElementById(tid + '-ltp' + _SV_SUFFIX) || {}).innerText);
+        if (!ltp || isNaN(ltp)) return;
+
+        var walls;
+        try { walls = _gtbFindWalls(tableData, 0, ltp); } catch (e) { return; }
+
+        function _check(arr, side) {
+            (arr || []).forEach(function (w, i) {
+                var label = side + (i + 1); // R1/R2 or S1/S2
+                var distPct = Math.abs(ltp - w.strike) / ltp;
+                var key = name + '|' + label + '|' + w.strike;
+                if (distPct <= _SV_WALL_PROXIMITY_PCT) {
+                    seenKeys[key] = true;
+                    if (!_SV_ACTIVE_WALL_ALERTS[key]) {
+                        _SV_ACTIVE_WALL_ALERTS[key] = true;
+                        var dir = side === 'R' ? 'resistance' : 'support';
+                        _gtbToast(name + ' near ' + label + ' ' + dir + ' wall (' + w.strike + ') — LTP ' + ltp.toFixed(1), 'warn');
+                        _svBeep();
+                    }
+                }
+            });
+        }
+        _check(walls.resistance, 'R');
+        _check(walls.support, 'S');
+    });
+
+    // Clear alerts for walls price has moved away from, so a later re-entry alerts again.
+    Object.keys(_SV_ACTIVE_WALL_ALERTS).forEach(function (key) { if (!seenKeys[key]) delete _SV_ACTIVE_WALL_ALERTS[key]; });
+}
+
+// Wall-building is now shown directly on the OI/OBV chart (a pulsing marker at the
+// forming strike, drawn in showOIOBVBarChart via _gtbWallVelocity) instead of firing a
+// toast — visible for as long as the buildup lasts rather than a one-shot notification.
+
+jQ(document).on('click', '#sv-autoref-start', _svStartAutoRefresh);
+jQ(document).on('click', '#sv-autoref-stop', _svStopAutoRefresh);
+// Popup close (native + custom close button) should stop the timer, not leave it running
+// in the background firing full reloads against a closed/gone card area.
+jQ(document).on('click', '.popup-custom-style-stock-viewer-scanner .popupwindow_titlebar_button_close, .popup-custom-style-stock-viewer-scanner .gtb-popup-close', _svStopAutoRefresh);

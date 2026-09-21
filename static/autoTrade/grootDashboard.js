@@ -74,9 +74,12 @@ function _gdbWidgetPulse() {
     ];
     var vixVal = 0;
     try { vixVal = parseFloat((ltps['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
-    if (!vixVal) try { vixVal = VIX || 0; } catch(e) {}
-    var vixLabel = vixVal < 13 ? 'LOW -- trend day' : vixVal < 18 ? 'NORMAL' : vixVal < 25 ? 'ELEVATED' : 'HIGH -- caution';
-    var vixCol   = vixVal < 13 ? '#3fb950' : vixVal < 18 ? '#fbbf24' : vixVal < 25 ? '#f97316' : '#f85149';
+    // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+    // dashboard — never use it as an India VIX fallback here (NSE context).
+    // vixVal === 0 means no India VIX LTP cached yet, not "actually zero" — don't let it
+    // fall into the LOW bucket, which would misleadingly imply a real calm reading.
+    var vixLabel = !vixVal ? 'NO DATA' : vixVal < 13 ? 'LOW -- trend day' : vixVal < 18 ? 'NORMAL' : vixVal < 25 ? 'ELEVATED' : 'HIGH -- caution';
+    var vixCol   = !vixVal ? '#7d8590' : vixVal < 13 ? '#3fb950' : vixVal < 18 ? '#fbbf24' : vixVal < 25 ? '#f97316' : '#f85149';
     var fc = function(v) { return parseFloat(v).toLocaleString('en-IN',{maximumFractionDigits:1}); };
 
     var scoreCards = metrics.map(function(m) {
@@ -222,6 +225,77 @@ function _gdbWidgetOpps() {
 }
 
 // ── WIDGET: Divergence ─────────────────────────────────────────────────────────
+// ── WIDGET: NIFTY / BANK NIFTY Divergence ─────────────────────────────────────
+// NIFTY 50 and BANK NIFTY are correlated but not locked together — one frequently leads or
+// drags the other. Historically, Bank Nifty's own conviction (its composite score) tends to
+// win more often than not when the two disagree: a strong Bank Nifty either drags a weak
+// Nifty up/down with it, or at minimum stops Nifty from moving hard the other way. This
+// widget makes that relationship explicit instead of leaving it as a gut feel.
+function _gdbWidgetNbDiv() {
+    var el = document.getElementById('gdb-body-nbdiv');
+    if (!el) return;
+    // Whole body wrapped so a failure shows an explicit message in the panel itself instead
+    // of silently leaving it blank (which visually collapses the panel to just its header,
+    // making it look like it's "behind"/merged into whatever panel follows it).
+    try {
+        _gdbWidgetNbDivInner(el);
+    } catch (e) {
+        el.innerHTML = '<span style="color:var(--gtb-red);font-size:0.5rem;">Render error: ' + (e && e.message ? e.message : e) + '</span>';
+        console.error('[Groot Market Terminal] nbdiv inner render failed:', e);
+    }
+}
+
+function _gdbWidgetNbDivInner(el) {
+    var n50Sc = 0, bnSc = 0, n50Pc = 0, bnPc = 0;
+    try { n50Sc = computeInstrumentScore('NIFTY 50').total; } catch(e) {}
+    try { bnSc  = computeInstrumentScore('NIFTY BANK').total; } catch(e) {}
+    try { n50Pc = parseFloat(generateTrend('NIFTY 50').change) || 0; } catch(e) {}
+    try { bnPc  = parseFloat(generateTrend('NIFTY BANK').change) || 0; } catch(e) {}
+
+    // Direction threshold — small scores/moves are treated as "flat", not a real lean,
+    // so noise doesn't get classified as a genuine divergence.
+    var n50Dir = n50Sc > 1 ? 1 : n50Sc < -1 ? -1 : 0;
+    var bnDir  = bnSc  > 1 ? 1 : bnSc  < -1 ? -1 : 0;
+
+    var state, stateCol, verdict;
+    if (n50Dir === 0 && bnDir === 0) {
+        state = 'BOTH FLAT'; stateCol = 'var(--gtb-muted)';
+        verdict = 'Neither index has real conviction right now — no cross-index read to lean on.';
+    } else if (n50Dir === bnDir) {
+        state = 'ALIGNED'; stateCol = n50Dir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        verdict = 'Both indices agree (' + (n50Dir > 0 ? 'bullish' : 'bearish') + ') — highest-conviction setup; no cross-index drag risk to worry about.';
+    } else if (n50Dir === 0) {
+        state = 'BANK LEADING'; stateCol = bnDir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        verdict = 'BANK NIFTY has conviction (' + (bnSc >= 0 ? '+' : '') + bnSc.toFixed(1) + '), NIFTY 50 is flat. Bank typically drags the broader index with it — lean ' + (bnDir > 0 ? 'bullish' : 'bearish') + ' via Bank Nifty rather than waiting for Nifty to confirm first.';
+    } else if (bnDir === 0) {
+        state = 'NIFTY LEADING'; stateCol = n50Dir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
+        verdict = 'NIFTY 50 has conviction (' + (n50Sc >= 0 ? '+' : '') + n50Sc.toFixed(1) + '), BANK NIFTY is flat. Without Bank Nifty confirming, this is a weaker read than it looks — Bank often ends up setting the real direction once it wakes up.';
+    } else {
+        // Genuine fight — opposite directions, both with real conviction. Bias the call
+        // toward Bank Nifty per the observed pattern (bank conviction plays off more often),
+        // rather than a naive "bigger score wins".
+        state = 'FIGHTING'; stateCol = 'var(--gtb-amber)';
+        verdict = 'Indices are pulling opposite ways — NIFTY 50 ' + (n50Dir > 0 ? 'bullish' : 'bearish') + ' (' + (n50Sc >= 0 ? '+' : '') + n50Sc.toFixed(1) + ') vs BANK NIFTY ' + (bnDir > 0 ? 'bullish' : 'bearish') + ' (' + (bnSc >= 0 ? '+' : '') + bnSc.toFixed(1) + '). Bank Nifty conviction wins more often than not in this fight — lean ' + (bnDir > 0 ? 'bullish' : 'bearish') + ' via Bank, and treat a pure Nifty-only trade here as lower conviction until Bank either flips or Nifty catches up to Bank\'s side.';
+    }
+
+    var n50Col = n50Sc > 0 ? 'var(--gtb-green)' : n50Sc < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var bnCol  = bnSc  > 0 ? 'var(--gtb-green)' : bnSc  < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var n50BarW = Math.min(100, Math.max(0, (n50Sc + 10) / 20 * 100)).toFixed(0);
+    var bnBarW  = Math.min(100, Math.max(0, (bnSc  + 10) / 20 * 100)).toFixed(0);
+
+    el.innerHTML =
+          '<div class="gdb-div-row"><span>NIFTY 50</span><div class="gdb-div-track"><div class="gdb-div-bar" style="width:' + n50BarW + '%;background:' + n50Col + ';"></div></div>'
+        +   '<span style="color:' + n50Col + ';font-weight:700;">' + (n50Sc >= 0 ? '+' : '') + n50Sc.toFixed(1) + '</span>'
+        +   '<span style="color:var(--gtb-muted);font-size:0.46rem;">' + (n50Pc >= 0 ? '+' : '') + n50Pc.toFixed(2) + '%</span></div>'
+        + '<div class="gdb-div-row"><span>BANK NIFTY</span><div class="gdb-div-track"><div class="gdb-div-bar" style="width:' + bnBarW + '%;background:' + bnCol + ';"></div></div>'
+        +   '<span style="color:' + bnCol + ';font-weight:700;">' + (bnSc >= 0 ? '+' : '') + bnSc.toFixed(1) + '</span>'
+        +   '<span style="color:var(--gtb-muted);font-size:0.46rem;">' + (bnPc >= 0 ? '+' : '') + bnPc.toFixed(2) + '%</span></div>'
+        + '<div class="gdb-div-verdict" style="border-color:' + stateCol + '44;background:' + stateCol + '11;">'
+        +   '<span style="color:' + stateCol + ';font-weight:700;font-size:0.58rem;">' + state + '</span>'
+        +   '<span style="color:var(--gtb-muted);font-size:0.5rem;display:block;margin-top:2px;">' + verdict + '</span>'
+        + '</div>';
+}
+
 function _gdbWidgetDivergence() {
     var indices = [
         { idx:'NIFTY 50',   map: NIFTY_50_WEIGHTED_STOCKS,   label:'N50' },
@@ -469,10 +543,13 @@ function _gdbWidgetRisk() {
     var ltps = _btLtps();
     var vixVal = 0;
     try { vixVal = parseFloat((ltps['INDIA VIX']||{}).ltp) || 0; } catch(e) {}
-    if (!vixVal) try { vixVal = VIX || 0; } catch(e) {}
-    var vixSizeMult = vixVal > 25 ? 0.5 : vixVal > 18 ? 0.7 : vixVal > 13 ? 0.85 : 1.0;
-    var vixLabel    = vixVal > 25 ? 'Reduce to 50%' : vixVal > 18 ? 'Reduce to 70%' : vixVal > 13 ? 'Reduce to 85%' : 'Full size OK';
-    var vixCol      = vixVal > 25 ? '#f85149' : vixVal > 18 ? '#f97316' : vixVal > 13 ? '#fbbf24' : '#3fb950';
+    // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+    // dashboard — never use it as an India VIX fallback here (NSE context).
+    // vixVal === 0 means no India VIX LTP cached yet, not "actually zero" — don't let it
+    // silently read as "Full size OK", which would misleadingly imply a real calm reading.
+    var vixSizeMult = !vixVal ? 1.0 : vixVal > 25 ? 0.5 : vixVal > 18 ? 0.7 : vixVal > 13 ? 0.85 : 1.0;
+    var vixLabel    = !vixVal ? 'NO DATA' : vixVal > 25 ? 'Reduce to 50%' : vixVal > 18 ? 'Reduce to 70%' : vixVal > 13 ? 'Reduce to 85%' : 'Full size OK';
+    var vixCol      = !vixVal ? '#7d8590' : vixVal > 25 ? '#f85149' : vixVal > 18 ? '#f97316' : vixVal > 13 ? '#fbbf24' : '#3fb950';
 
     var totalPL = 0, posCount = _GDB.positions.length;
     var posHtml = _GDB.positions.map(function(p, i) {

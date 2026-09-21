@@ -71,7 +71,7 @@ function _btRenderPrediction() {
         var bp = aso / total;
         var dir = bp >= 0.6 ? 'bull' : bp <= 0.4 ? 'bear' : 'neutral';
         signals.push({
-            key: 'zone', label: 'Strike Zone', icon: 'bi-crosshair',
+            key: 'zone', label: 'Strike Zone', icon: 'bi-record-circle',
             dir: dir, weight: 2, strength: Math.abs(bp - 0.5) * 2,
             detail: 'ASO+ ' + aso + ' vs BSO- ' + bso + ' in F&O universe',
             value: 'ASO ' + aso + ' / BSO ' + bso
@@ -112,13 +112,17 @@ function _btRenderPrediction() {
     (function() {
         var v = 0;
         try { v = parseFloat((ltps['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
-        if (!v) try { v = VIX || 0; } catch(e) {}
-        vixMod = v < 13 ? 1.15 : v < 18 ? 1.0 : v < 25 ? 0.85 : 0.65;
-        var detail = v < 13  ? 'Low VIX ' + v.toFixed(1) + ' -- trend day likely, signals amplified'
+        // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+        // dashboard — never use it as an India VIX fallback here (NSE context).
+        // v === 0 means no India VIX LTP cached yet, not "actually zero" — don't let it
+        // silently amplify confidence (×1.15) as if it were a genuine low-VIX reading.
+        vixMod = !v ? 1.0 : v < 13 ? 1.15 : v < 18 ? 1.0 : v < 25 ? 0.85 : 0.65;
+        var detail = !v     ? 'India VIX not loaded yet — confidence unmodified'
+                   : v < 13  ? 'Low VIX ' + v.toFixed(1) + ' -- trend day likely, signals amplified'
                    : v < 18  ? 'Normal VIX ' + v.toFixed(1) + ' -- balanced conviction'
                    : v < 25  ? 'Elevated VIX ' + v.toFixed(1) + ' -- wider swings, lower conviction'
                               : 'High VIX ' + v.toFixed(1) + ' -- choppy; reducing confidence';
-        signals.push({ key:'vix', label:'VIX Regime', icon:'bi-activity',
+        signals.push({ key:'vix', label:'VIX Regime', icon:'bi-thermometer-half',
             dir:'neutral', weight:0, strength:0,
             detail: detail, value: (v ? v.toFixed(1) : '--'), isVix: true, vixMod: vixMod });
     })();
@@ -250,7 +254,8 @@ function _btAnalyzeInstrument(name, targetEl) {
 
     var vixVal = 0;
     try { vixVal = parseFloat((ltps['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
-    if (!vixVal) try { vixVal = VIX || 0; } catch(e) {}
+    // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+    // dashboard — never use it as an India VIX fallback here (NSE context).
 
     var f2 = function(v) { return v != null ? parseFloat(v).toLocaleString('en-IN', {maximumFractionDigits:2}) : '--'; };
     var zoneCss = function(z) {
@@ -294,6 +299,12 @@ function _btAnalyzeInstrument(name, targetEl) {
         + '</div>'
         + '</div>';
 
+    // Entry Triggers and Scenario Analysis both key off cs.total for direction/probability --
+    // pass the SAME adjusted conviction _btStrategyFor already computed (folding in futures
+    // accuracy, level probability, and Max Pain/GEX), so every card in this view agrees with
+    // the recommendation instead of two of them silently using the pre-adjustment score.
+    var csAdj = Object.assign({}, cs, { total: strat.adjTotal });
+
     var body = headerHtml
         + '<div class="bt-ta-card bt-ta-full"><div class="bt-ta-card-hdr"><i class="bi bi-map"></i> PRICE LEVEL MAP</div>'
         +   _btLevelMap(ltp, openP, vixL, bst, bso, aso, ast, vixU)
@@ -302,7 +313,7 @@ function _btAnalyzeInstrument(name, targetEl) {
         +   strat.html
         + '</div>'
         + '<div class="bt-ta-card bt-ta-full"><div class="bt-ta-card-hdr"><i class="bi bi-play-circle"></i> ENTRY TRIGGERS</div>'
-        +   _btEntryConditions(cs, zoneLabel, nine15, aso, ast, bso, bst)
+        +   _btEntryConditions(csAdj, zoneLabel, nine15, aso, ast, bso, bst)
         + '</div>'
         + '<div class="bt-ta-card bt-ta-full"><div class="bt-ta-card-hdr"><i class="bi bi-shield-exclamation"></i> RISK / REWARD</div>'
         +   _btRiskReward(strat, ltp, vixVal, aso, ast, bso, bst, vixL, vixU)
@@ -311,7 +322,7 @@ function _btAnalyzeInstrument(name, targetEl) {
         +   _btOISummary(oiData, pcr, chPcr, name)
         + '</div>'
         + '<div class="bt-ta-card bt-ta-full"><div class="bt-ta-card-hdr"><i class="bi bi-signpost-split"></i> SCENARIO ANALYSIS</div>'
-        +   _btScenarios(cs, zoneLabel, nine15, aso, ast, bso, bst, vixU, vixL, ltp)
+        +   _btScenarios(csAdj, zoneLabel, nine15, aso, ast, bso, bst, vixU, vixL, ltp)
         + '</div>';
 
     // Render into drawer if targetEl provided, otherwise use the maximize overlay
@@ -464,39 +475,116 @@ function _btConfluenceCard(cs, nine15, zone, futRemark) {
 }
 
 // ── Strategy Recommendation ───────────────────────────────────────────────────
+// Faithfully keeps cs.total (9:15 + trend + futures + OI/OBV + Max Pain + IV Skew) as the base
+// signal, then folds in three more Instrument Detail View panels that weren't previously
+// consulted at all, each as an independent +/- adjustment with a visible reason attached:
+//   1. Futures REMARK accuracy (today, THIS instrument) — is the current remark actually
+//      reliable, or has it been a coin-flip/wrong today?
+//   2. Level Probability (live-signal likelihood model) — does it actually favour reaching
+//      the next level in the direction cs.total suggests, or is that unconfirmed?
+//   3. Max Pain / GEX — pain pulling against the direction is a real headwind; GEX regime
+//      says whether to trust a directional trade or prefer range/premium-selling instead.
+// The adjustment is deliberately capped (+/-2.5) so no single extra signal can flip a strong
+// base score's direction outright — it can dampen conviction into NEUTRAL or add confidence
+// within a tier, but a genuine reversal still has to come from cs.total itself.
 function _btStrategyFor(cs, nine15, zone, vixVal, name, aso, ast, bso, bst, ltp, vixL, vixU) {
     var total   = cs.total;
     var isIndex = ['NIFTY 50','NIFTY BANK','GIFT NIFTY','SENSEX'].indexOf(name) >= 0;
     var vixWide = vixVal > 18;
     var isBull  = total > 0, isBear = total < 0;
 
-    var dirLabel = total >= 6 ? 'STRONG BULL' : total >= 3 ? 'BULL' : total >= 1 ? 'MILD BULL'
-                 : total <= -6 ? 'STRONG BEAR' : total <= -3 ? 'BEAR' : total <= -1 ? 'MILD BEAR' : 'NEUTRAL';
-    var dirCol  = isBull ? '#3fb950' : isBear ? '#f85149' : '#7d8590';
-    var dirIcon = isBull ? 'bi-arrow-up-right' : isBear ? 'bi-arrow-down-right' : 'bi-arrow-left-right';
+    var adjust = 0;
+    var notes = []; // { text, tone: 'boost'|'dampen'|'info' }
+    var sm = INSTRUMENT_SCORE_MAP[name] || {};
+
+    // 1. Futures REMARK accuracy — reconstructed per-instrument in the Futures Remark
+    // Accuracy panel (_dvLoadFutAcc), cached as sm.futAccMap keyed by REMARK string.
+    var curRemark = sm.futures_trend_remark;
+    if (curRemark && sm.futAccMap && sm.futAccMap[curRemark]) {
+        var fa = sm.futAccMap[curRemark];
+        var faWin = fa.total ? Math.round(fa.hits / fa.total * 100) : 0;
+        if (fa.total >= 8) {
+            if (faWin >= 60) {
+                adjust += 1;
+                notes.push({ text: 'Futures REMARK "' + curRemark + '" has been reliable today (' + faWin + '% win-rate, ' + fa.total + ' samples).', tone:'boost' });
+            } else if (faWin <= 40) {
+                adjust -= 1;
+                notes.push({ text: 'Futures REMARK "' + curRemark + '" has only ' + faWin + '% win-rate today (' + fa.total + ' samples) -- treat with caution.', tone:'dampen' });
+            }
+        } else {
+            notes.push({ text: 'Futures REMARK "' + curRemark + '" has only ' + fa.total + ' sample(s) today -- not enough yet to judge reliability.', tone:'info' });
+        }
+    }
+
+    // 2. Level Probability — _gtbLevelProb() is a synchronous read of already-cached live
+    // signals (composite score + OBV flow + OI wall pressure), no extra fetch needed here.
+    var lp = null; try { lp = _gtbLevelProb(name); } catch(e) {}
+    if (lp && lp.ok) {
+        if (isBull) {
+            if (lp.pASO >= 65)      { adjust += 1;   notes.push({ text: 'Level Probability favours reaching ASO (' + lp.pASO + '%) -- supports the bullish case.', tone:'boost' }); }
+            else if (lp.pASO <= 35) { adjust -= 1;   notes.push({ text: 'Level Probability gives only ' + lp.pASO + '% chance of reaching ASO -- bullish case is unconfirmed.', tone:'dampen' }); }
+        } else if (isBear) {
+            if (lp.pBSO >= 65)      { adjust -= 1;   notes.push({ text: 'Level Probability favours reaching BSO (' + lp.pBSO + '%) -- supports the bearish case.', tone:'boost' }); }
+            else if (lp.pBSO <= 35) { adjust += 1;   notes.push({ text: 'Level Probability gives only ' + lp.pBSO + '% chance of reaching BSO -- bearish case is unconfirmed.', tone:'dampen' }); }
+        }
+    }
+
+    // 3. Max Pain / GEX — _gtbComputeMaxPainGEX() reads already-cached oiData.tableData.
+    // NOTE: Max Pain does NOT dampen conviction, even when it sits against the flow direction.
+    // Futures + OI/OBV flow is the faster, leading signal; Max Pain is a slower, gravitational
+    // pull that tends to matter more right at expiry. Surfaced as an informational level/target
+    // to watch on the way (possible support/resistance), not a reason to fade the flow.
+    var mp = null; try { mp = _gtbComputeMaxPainGEX(name); } catch(e) {}
+    var gexRegime = null;
+    if (mp) {
+        gexRegime = mp.netGEX > 0 ? 'Stabilising' : mp.netGEX < 0 ? 'Trending' : 'Neutral';
+        if (Math.abs(mp.maxPainPct) > 0.5) {
+            if (isBull && mp.maxPainDist < 0) { notes.push({ text: 'Max Pain (' + mp.maxPainK + ') sits below spot -- treat as a possible target/support level on the way, not a reason to fade the bullish flow.', tone:'info' }); }
+            else if (isBear && mp.maxPainDist > 0) { notes.push({ text: 'Max Pain (' + mp.maxPainK + ') sits above spot -- treat as a possible target/resistance level on the way, not a reason to fade the bearish flow.', tone:'info' }); }
+        }
+        if (gexRegime === 'Stabilising' && Math.abs(total) < 3) {
+            notes.push({ text: 'GEX regime is Stabilising (dealers net long gamma) -- range / premium-selling setups may work better than a weak directional lean here.', tone:'info' });
+        } else if (gexRegime === 'Trending') {
+            notes.push({ text: 'GEX regime is Trending (dealers net short gamma) -- supports following the directional bias rather than fading it.', tone:'info' });
+        }
+    }
+
+    adjust = Math.max(-2.5, Math.min(2.5, adjust));
+    var adjTotal = total + adjust;
+    var isBullAdj = adjTotal > 0, isBearAdj = adjTotal < 0;
+
+    var dirLabel = adjTotal >= 6 ? 'STRONG BULL' : adjTotal >= 3 ? 'BULL' : adjTotal >= 1 ? 'MILD BULL'
+                 : adjTotal <= -6 ? 'STRONG BEAR' : adjTotal <= -3 ? 'BEAR' : adjTotal <= -1 ? 'MILD BEAR' : 'NEUTRAL';
+    var dirCol  = isBullAdj ? '#3fb950' : isBearAdj ? '#f85149' : '#7d8590';
+    var dirIcon = isBullAdj ? 'bi-arrow-up-right' : isBearAdj ? 'bi-arrow-down-right' : 'bi-arrow-left-right';
 
     var strats = [];
-    if (isIndex) {
-        if      (total >= 6)  strats = [
+    var rangeOverride = isIndex && gexRegime === 'Stabilising' && Math.abs(adjTotal) < 3 && Math.abs(total) < 3;
+    if (rangeOverride) {
+        strats = [
+            { name:'Iron Condor',        risk:'LOW',  reward:'LOW',  note:'Sell OTM CE + OTM PE, collect premium -- GEX regime favours mean-reversion over trend-following here' },
+        ];
+    } else if (isIndex) {
+        if      (adjTotal >= 6)  strats = [
             { name:'CE Buy (ITM)',       risk:'HIGH', reward:'HIGH', note:'Buy 1 strike below ATM CE for strong momentum continuation' },
             { name:'PE Sell (OTM)',      risk:'MED',  reward:'MED',  note:'Sell 1-2 strikes below BSO, SL if price breaks BSO' },
         ];
-        else if (total >= 3)  strats = [
+        else if (adjTotal >= 3)  strats = [
             { name:'CE Buy (ATM)',       risk:'MED',  reward:'HIGH', note:'Buy ATM CE, target AST or VIXU' },
             { name:'Bull Call Spread',   risk:'LOW',  reward:'MED',  note:'Buy ATM CE + Sell 1 strike above, defined risk' },
         ];
-        else if (total >= 1)  strats = [
+        else if (adjTotal >= 1)  strats = [
             { name:'CE Buy (OTM)',       risk:'LOW',  reward:'MED',  note:'Small position only. Wait for ASO breakout confirmation first' },
         ];
-        else if (total <= -6) strats = [
+        else if (adjTotal <= -6) strats = [
             { name:'PE Buy (ITM)',       risk:'HIGH', reward:'HIGH', note:'Buy 1 strike above ATM PE for strong breakdown continuation' },
             { name:'CE Sell (OTM)',      risk:'MED',  reward:'MED',  note:'Sell 1-2 strikes above BSO, SL if price reclaims BSO' },
         ];
-        else if (total <= -3) strats = [
+        else if (adjTotal <= -3) strats = [
             { name:'PE Buy (ATM)',       risk:'MED',  reward:'HIGH', note:'Buy ATM PE, target BST or VIXL' },
             { name:'Bear Put Spread',    risk:'LOW',  reward:'MED',  note:'Buy ATM PE + Sell 1 strike below, defined risk' },
         ];
-        else if (total <= -1) strats = [
+        else if (adjTotal <= -1) strats = [
             { name:'PE Buy (OTM)',       risk:'LOW',  reward:'MED',  note:'Small position only. Wait for BSO breakdown confirmation first' },
         ];
         else strats = [
@@ -504,8 +592,8 @@ function _btStrategyFor(cs, nine15, zone, vixVal, name, aso, ast, bso, bst, ltp,
             { name:'WAIT',               risk:'--',   reward:'--',   note:'No directional bias. Watch for breakout above ASO or below BSO' },
         ];
     } else {
-        if      (isBull) strats = [{ name:'Long CE / Stock Buy', risk:'MED', reward:'HIGH', note:'Entry on pullback to ASO, SL below BSO' }];
-        else if (isBear) strats = [{ name:'Long PE / Stock Sell', risk:'MED', reward:'HIGH', note:'Entry on bounce to BSO, SL above ASO' }];
+        if      (isBullAdj) strats = [{ name:'Long CE / Stock Buy', risk:'MED', reward:'HIGH', note:'Entry on pullback to ASO, SL below BSO' }];
+        else if (isBearAdj) strats = [{ name:'Long PE / Stock Sell', risk:'MED', reward:'HIGH', note:'Entry on bounce to BSO, SL above ASO' }];
         else strats = [{ name:'WAIT', risk:'--', reward:'--', note:'Mixed signals -- wait for trend confirmation' }];
     }
 
@@ -518,6 +606,15 @@ function _btStrategyFor(cs, nine15, zone, vixVal, name, aso, ast, bso, bst, ltp,
     else if ((nine15==='BST'||nine15==='BSO') && (zone==='ASO'||zone==='AST'))
         conflictNote = '<div class="bt-ta-warning"><i class="bi bi-exclamation-triangle"></i> Bearish 9:15 but price recovered to ' + zone + ' -- short-squeeze risk</div>';
 
+    var notesHtml = '';
+    if (notes.length) {
+        notesHtml = '<div class="bt-ta-signal-notes">' + notes.map(function(n) {
+            var col  = n.tone === 'boost' ? '#3fb950' : n.tone === 'dampen' ? '#f85149' : '#7d8590';
+            var icon = n.tone === 'boost' ? 'bi-arrow-up-circle' : n.tone === 'dampen' ? 'bi-arrow-down-circle' : 'bi-info-circle';
+            return '<div class="bt-ta-signal-note" style="color:' + col + ';font-size:0.6rem;padding:2px 0;"><i class="bi ' + icon + '"></i> ' + n.text + '</div>';
+        }).join('') + '</div>';
+    }
+
     var stratRows = strats.map(function(s) {
         var rCol = s.risk==='HIGH' ? '#f85149' : s.risk==='MED' ? '#fbbf24' : s.risk==='LOW' ? '#3fb950' : '#7d8590';
         return '<div class="bt-ta-strat-row">'
@@ -528,8 +625,11 @@ function _btStrategyFor(cs, nine15, zone, vixVal, name, aso, ast, bso, bst, ltp,
     }).join('');
 
     return {
-        direction: dirLabel, dirCol: dirCol,
-        html: '<div class="bt-ta-direction" style="color:' + dirCol + '"><i class="bi ' + dirIcon + '"></i> ' + dirLabel + '</div>'
+        direction: dirLabel, dirCol: dirCol, adjTotal: adjTotal,
+        html: '<div class="bt-ta-direction" style="color:' + dirCol + '"><i class="bi ' + dirIcon + '"></i> ' + dirLabel
+            + (adjust !== 0 ? ' <span style="font-size:0.55rem;color:var(--gtb-muted);">(base ' + (total>=0?'+':'') + total.toFixed(1) + (adjust>=0?' + ':' - ') + Math.abs(adjust).toFixed(1) + ' adj = ' + (adjTotal>=0?'+':'') + adjTotal.toFixed(1) + ')</span>' : '')
+            + '</div>'
+            + notesHtml
             + vixNote + conflictNote + stratRows
     };
 }
@@ -696,10 +796,14 @@ function _btBreadthContext() {
 
     var vixVal = 0, vixRegime = '--', vixCol = '#7d8590';
     try { vixVal = parseFloat((ltps['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
-    if (!vixVal) try { vixVal = VIX || 0; } catch(e) {}
-    if      (vixVal < 13) { vixRegime = 'LOW -- trend day likely';   vixCol = '#3fb950'; }
-    else if (vixVal < 18) { vixRegime = 'NORMAL -- balanced';        vixCol = '#fbbf24'; }
-    else if (vixVal < 25) { vixRegime = 'ELEVATED -- wider stops';   vixCol = '#f97316'; }
+    // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+    // dashboard — never use it as an India VIX fallback here (NSE context).
+    // vixVal === 0 means no India VIX LTP cached yet — must not fall into the LOW bucket,
+    // which would misleadingly imply a real, calm reading instead of missing data.
+    if      (!vixVal)      { vixRegime = 'NO DATA';                  vixCol = '#7d8590'; }
+    else if (vixVal < 13)  { vixRegime = 'LOW -- trend day likely';   vixCol = '#3fb950'; }
+    else if (vixVal < 18)  { vixRegime = 'NORMAL -- balanced';        vixCol = '#fbbf24'; }
+    else if (vixVal < 25)  { vixRegime = 'ELEVATED -- wider stops';   vixCol = '#f97316'; }
     else if (vixVal > 0)  { vixRegime = 'HIGH -- reduce size';       vixCol = '#f85149'; }
 
     return '<div class="bt-ta-rr-grid">'
@@ -909,7 +1013,8 @@ function _btBuildInstrData(name, shortName, opens, ltps) {
 
     d.vixVal = 0;
     try { d.vixVal = parseFloat((ltps['INDIA VIX'] || {}).ltp) || 0; } catch(e) {}
-    if (!d.vixVal) try { d.vixVal = VIX || 0; } catch(e) {}
+    // NOTE: VIX (config.js) is a manually-entered OVX proxy for the crude commodities
+    // dashboard — never use it as an India VIX fallback here (NSE context).
 
     // Direction
     var t = d.cs.total;

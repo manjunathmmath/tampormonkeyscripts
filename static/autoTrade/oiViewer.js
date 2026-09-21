@@ -170,8 +170,14 @@ async function showOiAnalyzer() {
     });
     for (let i = 0; i < instru.length; i++) {
         let name = instru[i];
+        // generateTrends() silently skips any instrument whose LTP/open-price cache isn't
+        // populated yet (e.g. INDIA VIX, which has no ASO/BSO strike levels the same way a
+        // normal stock does, or any stock a scan hasn't reached) — its try/catch just logs
+        // and moves on, leaving no entry in scriptData for that name. This loop iterates
+        // EVERY instrument in INSTRUMENT_TOKENS regardless, so without this guard the first
+        // such gap crashes the whole popup instead of just skipping that one row.
+        if (!scriptData[name]) { continue; }
         let obj = {}
-        console.log(name)
         obj['TRADINGSYMBOL'] = name;
         obj['CLOSE'] = scriptData[name]['prevPrice'];
         obj['PRICE'] = scriptData[name]['price'];

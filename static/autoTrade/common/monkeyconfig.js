@@ -498,7 +498,15 @@ function MonkeyConfig() {
                 style.appendChild(iframe.contentDocument.createTextNode(
                         MonkeyConfig.res.stylesheets.main));
                 head.appendChild(style);
-                
+
+                // NOTE: three attempts at a layout/scrolling CSS override for this dialog
+                // (a grid reflow, a fixed-width+wrap tweak, then a display:block scrollable
+                // table) each produced a different broken rendering, with no way to inspect
+                // this iframe's live DOM from here to see why. Reverted to the library's own
+                // untouched layout — a long single column, but a correctly-laid-out one —
+                // rather than ship another unverified guess. See git history if picking this
+                // back up: needs actual DevTools inspection of the rendered iframe first.
+
                 var body = iframe.contentDocument.querySelector('body');
                 body.className = '__MonkeyConfig_body';
                 

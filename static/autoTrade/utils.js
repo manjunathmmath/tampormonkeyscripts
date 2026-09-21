@@ -133,6 +133,11 @@ function generateTrends() {
         for (let i = 0; i < instru.length; i++) {
             try {
                 let name = instru[i]['TRADINGSYMBOL']
+                // INDIA VIX isn't an F&O underlying — it has no ASO/AST/BSO/BST strike
+                // concept and legitimately has no NSE_STRIKE_DIFF entry, so computing
+                // strike-based trends for it is meaningless (it was only ever reaching
+                // getStrikeDetails() and erroring/being skipped every refresh cycle).
+                if (name === 'INDIA VIX') continue;
                 let ltp = ltpPrices[name]['ltp']           // current live price from Kite DOM
                 let openDetail = openDetails[name]          // open + prevClose stored at market open
 
@@ -388,10 +393,23 @@ function getStrikeDetails(item, instrument) {
 // Returns "strikeOne,strikeTwo" string (e.g. "50,100" for NIFTY 50).
 // Defaults to "100" if not found.
 function getStrikeDiff(instrument) {
-    let strikeDiff = 100;
+    // Must be a "N,N"-shaped string, not a bare number — getStrikeDetails() always calls
+    // .split(",") on the return value. A bare number here throws "strikeDiff.split is not
+    // a function" for any instrument missing from NSE_STRIKE_DIFF (e.g. INDIA VIX, which
+    // has no strikes/ASO-BSO concept and legitimately isn't in that map).
+    let strikeDiff = "100,100";
     if (NSE_STRIKE_DIFF[instrument]) {
         strikeDiff = NSE_STRIKE_DIFF[instrument]
         strikeDiff = strikeDiff.replace(/ /g, '')
+    } else if (typeof MCX_FUTURE_STRIKE_DIFF !== 'undefined' && MCX_FUTURE_STRIKE_DIFF[instrument]) {
+        // MCX commodities (CRUDEOILM etc.) live in a separate constant — showTopChartMCX has
+        // always read MCX_FUTURE_STRIKE_DIFF directly rather than through this function, so
+        // any OTHER caller passing an MCX name here (e.g. a backtest reusing generic NSE-side
+        // helpers like getStrikeDetails/_gtbClassify915/_gtbSimLeg against a commodity) was
+        // silently falling through to the wrong "100,100" default instead of crude's real
+        // 50-point strike step. Checked second so it never overrides an actual NSE_STRIKE_DIFF
+        // entry for the same name.
+        strikeDiff = MCX_FUTURE_STRIKE_DIFF[instrument].replace(/ /g, '')
     }
     return strikeDiff;
 }
@@ -642,7 +660,7 @@ function getQuotesUsingPromise(instruments) {
     return new Promise((resolve, reject) => {
         jQ.ajax({
             url: `https://api.kite.trade/quote?i=${instruments.join('&i=')}`,
-            type: 'GET', async: false, cache: false,
+            type: 'GET', async: true, cache: false,
             success: function (data) { resolve(data); },
             error:   function (request, status, error) { resolve([]); }
         });
@@ -669,14 +687,18 @@ function callSackBarInfo(message) {
 // index: unique popup ID (e.g. "oi-viewer-scanner")
 // html: content HTML, title: title bar text, width/height: initial dimensions
 // Destroys any existing popup with the same index before creating a new one.
-function showPopUpWindow(index, html, title, width, height) {
+// opts (optional) — extra PopupWindow settings merged in, e.g. { left: 16, top: 70 } to
+// override the library's default centered position (settings.left/top default to "auto",
+// which centers — see popupwindow.js). Every existing caller omits this and keeps the
+// unchanged centered default.
+function showPopUpWindow(index, html, title, width, height, opts) {
     var divId = "pop-up-window-" + index;
     if (jQ("#" + divId).PopupWindow("getState")) jQ("#" + divId).PopupWindow("destroy");
     jQ("body").find("#" + divId).remove()
     var popupCustomClass = 'popup-custom-style-' + index;
     var markup = '<div id="' + divId + '">' + html + '</div>'
     jQ("body").append(markup);
-    jQ("#" + divId).PopupWindow({
+    jQ("#" + divId).PopupWindow(Object.assign({
         title: title, modal: false, customClass: popupCustomClass,
         buttons: { close: true, maximize: true, collapse: true, minimize: true },
         buttonsPosition: "right",
@@ -684,7 +706,7 @@ function showPopUpWindow(index, html, title, width, height) {
                         minimize: "Minimize", unminimize: "Show", collapse: "Collapse", uncollapse: "Expand" },
         draggable: true, dragOpacity: 1, statusBar: true,
         width: width, height: height, resizable: true, resizeOpacity: 1, mouseMoveEvents: true
-    });
+    }, opts || {}));
     jQ.PopupWindowMinimizedArea({ position: "bottom right", direction: "vertical" });
     jQ("#" + divId).on("minimize.popupwindow",   function () { jQ("." + popupCustomClass + " .pop-title-extra").hide(); });
     jQ("#" + divId).on("unminimize.popupwindow", function () { jQ("." + popupCustomClass + " .pop-title-extra").show(); });

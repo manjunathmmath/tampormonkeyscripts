@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Groot Bot — Architectural Map</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root{
+  --bg:#0b0f14; --surface:#121821; --surface2:#171f2a; --surface3:#1c2532;
+  --border:#232c3a; --text:#e7edf5; --muted:#8593a6;
+  --accent:#43d9c8; --accent-dim:#2a8c81; --tool:#f2b134; --tool-dim:#8a6519;
+  --green:#35c46a; --red:#ef5b5b; --amber:#f2b134;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+:root[data-theme="light"]{
+  --bg:#f4f7fa; --surface:#ffffff; --surface2:#eef2f6; --surface3:#e4eaf0;
+  --border:#d8e0e8; --text:#141c26; --muted:#5b6b7c;
+  --accent:#0f9c8d; --accent-dim:#0c7a6e; --tool:#a9670a; --tool-dim:#8a5608;
+  --green:#1f9c52; --red:#c93c3c; --amber:#a9670a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f14; --surface:#121821; --surface2:#171f2a; --surface3:#1c2532;
+    --border:#232c3a; --text:#e7edf5; --muted:#8593a6;
+    --accent:#43d9c8; --accent-dim:#2a8c81; --tool:#f2b134; --tool-dim:#8a6519;
+    --green:#35c46a; --red:#ef5b5b; --amber:#f2b134;
+  }
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f4f7fa; --surface:#ffffff; --surface2:#eef2f6; --surface3:#e4eaf0;
+    --border:#d8e0e8; --text:#141c26; --muted:#5b6b7c;
+    --accent:#0f9c8d; --accent-dim:#0c7a6e; --tool:#a9670a; --tool-dim:#8a5608;
+    --green:#1f9c52; --red:#c93c3c; --amber:#a9670a;
+  }
+}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);margin:0;line-height:1.55;}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 22px 90px;}
+.hero{padding:38px 0 26px;border-bottom:1px solid var(--border);margin-bottom:22px;}
+.eyebrow{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+h1{font-size:2.1rem;margin:0 0 10px;text-wrap:balance;letter-spacing:-0.01em;}
+.sub{color:var(--muted);max-width:74ch;font-size:0.98rem;}
+.stats{display:flex;gap:22px;margin-top:20px;flex-wrap:wrap;}
+.stat{font-family:var(--mono);font-size:0.78rem;color:var(--muted);}
+.stat b{color:var(--text);font-size:1.15rem;display:block;font-family:var(--sans);}
+
+nav.toc{position:sticky;top:0;z-index:20;background:color-mix(in srgb, var(--bg) 88%, transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--border);margin:0 0 26px;padding:10px 0;overflow-x:auto;}
+nav.toc .inner{max-width:1180px;margin:0 auto;padding:0 22px;display:flex;gap:6px;flex-wrap:nowrap;}
+nav.toc a{white-space:nowrap;font-family:var(--mono);font-size:0.7rem;color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:5px;border:1px solid transparent;}
+nav.toc a:hover{color:var(--text);border-color:var(--border);background:var(--surface);}
+
+section{margin-bottom:52px;scroll-margin-top:56px;}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;}
+.sec-num{font-family:var(--mono);color:var(--accent);font-size:0.8rem;}
+h2{font-size:1.35rem;margin:0;letter-spacing:-0.01em;}
+.sec-desc{color:var(--muted);max-width:80ch;margin:8px 0 18px;font-size:0.92rem;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 18px 8px;}
+.card.tool{border-left:3px solid var(--tool);}
+.card.data{border-left:3px solid var(--accent);}
+.mermaid{background:transparent;}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 22px;font-size:0.76rem;color:var(--muted);font-family:var(--mono);}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+.toollist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:16px;}
+.tool-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+.tool-card h4{margin:0 0 4px;font-size:0.86rem;}
+.tool-card p{margin:0;font-size:0.76rem;color:var(--muted);}
+.tool-card code{font-family:var(--mono);font-size:0.7rem;color:var(--accent);}
+
+code.fn{font-family:var(--mono);background:var(--surface3);padding:1px 5px;border-radius:4px;font-size:0.82em;color:var(--accent);}
+.filebadge{font-family:var(--mono);font-size:0.68rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;}
+
+table.keys{width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px;}
+table.keys th,table.keys td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top;}
+table.keys th{color:var(--muted);font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;}
+table.keys td code{font-family:var(--mono);font-size:0.76rem;color:var(--accent);}
+
+.theme-toggle{position:fixed;bottom:18px;right:18px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:8px 14px;font-family:var(--mono);font-size:0.7rem;cursor:pointer;z-index:30;}
+footer{color:var(--muted);font-size:0.75rem;font-family:var(--mono);border-top:1px solid var(--border);padding-top:16px;margin-top:40px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">static/autoTrade — Tampermonkey userscript</div>
+    <h1>Groot Bot — Architectural Flow Map</h1>
+    <p class="sub">End-to-end map of every functional module in the Groot Bot Tampermonkey app that runs on kite.zerodha.com: script bootstrap, the live data/refresh pipeline, the composite scoring engine, market-signal &amp; exit logic, the OI/OBV analysis pipeline (and every surface it renders to), the dashboard UI shell, and all 15+ analysis tool popups.</p>
+    <div class="stats">
+      <div class="stat"><b>18</b>app files loaded</div>
+      <div class="stat"><b>~230</b>top-level functions in grootTradeBot.js</div>
+      <div class="stat"><b>7</b>score components summed into composite SCORE</div>
+      <div class="stat"><b>15+</b>analysis tool popups</div>
+      <div class="stat"><b>v26.48</b>current @version</div>
+    </div>
+  </div>
+
+  <nav class="toc"><div class="inner">
+    <a href="#bootstrap">1 · Bootstrap</a>
+    <a href="#pipeline">2 · Data Pipeline</a>
+    <a href="#scoring">3 · Scoring Engine</a>
+    <a href="#signal">4 · Signal &amp; Exit</a>
+    <a href="#oiobv">5 · OI/OBV Pipeline</a>
+    <a href="#ui">6 · Dashboard UI</a>
+    <a href="#tools">7 · Analysis Tools</a>
+    <a href="#infra">8 · Shared Infra</a>
+  </div></nav>
+
+  <section id="bootstrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Bootstrap &amp; Script Loading</h2></div>
+    <p class="sec-desc"><code class="fn">autotrade.user.js</code> is the Tampermonkey entry point — metadata + an ordered chain of <code class="fn">@require</code>/<code class="fn">@resource</code> pulls, all served from the local node static server. Order matters: <code class="fn">constants.js</code> and <code class="fn">utils.js</code> must land before anything that reads instrument maps or calls <code class="fn">generateTrend()</code>.</p>
+    <div class="card data">
+<pre class="mermaid">
+flowchart LR
+  TM["Tampermonkey<br/>@match kite.zerodha.com/*"] --> MAN[autotrade.user.js]
+  MAN --> VEND["Vendor libs<br/>jQuery · Bootstrap · DataTables<br/>ApexCharts · LightweightCharts<br/>FusionCharts · C3 · moment · axios"]
+  MAN --> POPW["popupwindow.js<br/>(draggable window lib)"]
+  VEND --> CONST[constants.js<br/>instrument lists · strike diffs<br/>tokens · weighted maps]
+  CONST --> UTILS[utils.js<br/>generateTrend · getStrikeDetails<br/>getVixRange · order placement]
+  UTILS --> SCRIPT[script.js<br/>refresh loop · OAuth · LTP scan]
+  SCRIPT --> OIAN[oiAnalyzer.js<br/>IV · OBV · prediction]
+  OIAN --> OIV[oiViewer.js]
+  OIV --> SV[stockViewer.js]
+  SV --> MQ[marketQuotes.js]
+  MQ --> HELP[help.js]
+  HELP --> GTB[grootTradeBot.js<br/>MAIN DASHBOARD — ~17k lines]
+  GTB --> BLM["bloombergDashboard.js<br/>bloombergAnalysis.js<br/>bloombergOpportunities.js"]
+  BLM --> GD[grootDashboard.js]
+  CONST -.commodities strikes.-> COMM[commodities.js<br/>MCX: crude / gold / silver]
+  CONST -.legacy chain.-> OPTS["optionStrike.js<br/>(~10k lines, legacy option-chain tool)"]
+  classDef entry fill:#2a8c81,stroke:#43d9c8,color:#fff;
+  class TM,MAN entry
+</pre>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Live Data / Refresh Pipeline</h2></div>
+    <p class="sec-desc">Everything downstream (scores, signals, every popup) is driven off one recurring refresh loop that keeps LTP, candles, and OI snapshots warm in memory/localStorage.</p>
+    <div class="card data">
+<pre class="mermaid">
+flowchart TD
+  START["startRefresh() / autoStartScanLtp()"] --> LOOP["autoRefreshEachTabs()<br/>ticks every N seconds"]
+  LOOP --> LTP["scanLtpPrice()<br/>updateStrorageLtpPrice()"]
+  LOOP --> TRENDS["generateTrends() / generateTrend(name)<br/>→ per-instrument OHLC + change%"]
+  LOOP --> OPEN["loadOpenPrice() / loadPreMarketOpenPrice()<br/>scanPreMarketpPrice()"]
+  TRENDS --> STRIKE["getStrikeDetails() → ASO/AST/BSO/BST<br/>(from 9:15 candle OPEN + NSE_STRIKE_DIFF)"]
+  LOOP --> VIX["getVixRange() / saveVixQuote()<br/>calculateVixRange()"]
+  LOOP --> NINE["scanNineFifteenCandle()<br/>→ VALID_BREAKOUT_NINE_FIFTEEN (localStorage)"]
+  LOOP --> FUT["showFutureDetails() / showFutureDetailsMCX()<br/>→ REMARK (LONG/SHORT/UNWINDING/COVERING)"]
+  LOOP --> OI["showOIOBVBarChart() / showTrendingOI()<br/>→ INSTRUMENT_SCORE_MAP[name].oiData"]
+  OI --> HIST["getHistoricalDataUsingPromise()<br/>_gtbHistAjax() → Kite API<br/>_gtbDropFormingCandle() strips live candle"]
+  STRIKE --> CACHE[("INSTRUMENT_SCORE_MAP<br/>(central in-memory cache)")]
+  FUT --> CACHE
+  OI --> CACHE
+  VIX --> CACHE
+  CACHE --> SCOREENGINE["→ Scoring Engine (§3)"]
+</pre>
+    </div>
+  </section>
+
+  <section id="scoring">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Composite Scoring Engine</h2></div>
+    <p class="sec-desc">The tool's core idea: six independent lenses on the market are each scored, then summed per-instrument (<code class="fn">computeInstrumentScore</code>) and rolled up into weighted component scores for the two indices. There is no single global <code class="fn">SCORE</code> variable outside <code class="fn">setScore()</code> — it's always the sum of the globals below.</p>
+    <div class="card data">
+<pre class="mermaid">
+flowchart TB
+  subgraph S1["9:15 Opening Candle"]
+    A1["ALL_9_15_CLOSE_SCORE<br/>weighted bullish/bearish ratio"]
+    A2["Per-instrument ±2<br/>NIFTY_50 · NIFTY_BANK · GIFT · SENSEX · RELIANCE · HDFCBANK"]
+  end
+  subgraph S2["Advance / Decline"]
+    B1["ALL / NIFTY_50 / NIFTY_BANK<br/>_ADVANCE_DECLINE_SCORE (±1)"]
+  end
+  subgraph S3["Futures Trend"]
+    C1["getFuturesTrendScore(remark)<br/>LONG=+1 SHORT=-1<br/>LONG_UNWINDING=-1 SHORT_COVERING=+1"]
+  end
+  subgraph S4["OI / OBV"]
+    D1["scoreOIStrikeForSignal() per strike<br/>OBV-primary, IV=confidence only"]
+    D2["computeOIScoreFromData()<br/>sum + change-PCR only<br/>(wall bonus + standing PCR removed v26.31)"]
+  end
+  subgraph S5["Max Pain"]
+    E1["_gtbMaxPainScore(name)<br/>+1 pull-up / −1 pull-down / 0 pinned"]
+  end
+  subgraph S6["IV Skew"]
+    F1["_gtbIVSkewScore(name)<br/>put skew>2%→−1 · call skew>2%→+1"]
+  end
+  S1 & S2 & S3 & S4 & S5 & S6 --> COMP["computeInstrumentScore(name)<br/>{nine_fifteen, current_trend, futures_trend,<br/>oi_obv, max_pain, iv_skew, total}"]
+  COMP --> CS["computeComponentScores()<br/>NIFTY_50_COMPONENT_SCORE / NIFTY_BANK_COMPONENT_SCORE<br/>= Σ (constituent total × weight%)"]
+  COMP --> SETSCORE["setScore()<br/>SCORE = Σ all global score vars (local var)"]
+  SETSCORE --> GAUGE["Gauge color thresholds<br/>red&lt;0 · orange 0–4 · yellow 4–8 · green≥8"]
+  SETSCORE --> SIGNAL["→ Market Signal (§4)"]
+</pre>
+    </div>
+  </section>
+
+  <section id="signal">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Market Signal, Trade &amp; Exit Logic</h2></div>
+    <p class="sec-desc">Composite SCORE plus conflict checks (index futures disagreement, 9:15 pattern mismatch, VIX regime) resolve to one plain-English signal, an entry confluence check, SL/target math, and a live exit-condition monitor.</p>
+    <div class="card data">
+<pre class="mermaid">
+flowchart TD
+  SCORE["SCORE + breakOutNineFifteen"] --> GMS["getMarketSignal(SCORE, b915)"]
+  GMS --> THRESH["Thresholds (v26.31, symmetric):<br/>STRONG BUY≥8 · BUY≥4 · WAIT≥1.5<br/>SIDEWAYS≥-1.5 · WAIT≥-4 · SELL≥-8 · STRONG SELL below"]
+  GMS --> OVERRIDE["Conflict overrides →WAIT:<br/>score bullish but both futures bearish (&gt;±4)<br/>signal vs 9:15 pattern mismatch<br/>VIX at VIXU/VIXL → NO TRADE"]
+  OVERRIDE --> CONF["getEntryConfluence(SCORE)"]
+  CONF --> ATR["computeATR(candles)"]
+  ATR --> SLT["computeSLAndTarget(entry, dir, candles)"]
+  SLT --> TRADESIG["getTradeSignal(nifty, sensex, bank)"]
+  SCORE --> EXIT["checkExitSignal(entryDirection)<br/>— polled every tick"]
+  EXIT --> EXITCOND["EXIT LONG: current_trend&lt;0 OR both futures&lt;0<br/>EXIT SHORT: current_trend&gt;0 OR both futures&gt;0"]
+  EXITCOND --> BANNER["renderExitBanner()<br/>#gtb-exit-signal"]
+  GMS --> CHECKLIST["_gtbShowTradeChecklist()<br/>7-step checklist + action table"]
+  GMS --> VERDICT["_cmdBuildVerdict() (commodities)<br/>OVX gate → bias → wall proximity → Max Pain context<br/>→ LONG/SHORT/WAIT/NO-TRADE + Entry/SL/Target"]
+</pre>
+    </div>
+  </section>
+
+  <section id="oiobv">
+    <div class="sec-head"><span class="sec-num">05</span><h2>OI/OBV Analysis Pipeline</h2></div>
+    <p class="sec-desc">The most heavily-iterated subsystem this session: per-strike CE/PE classification, ITM/OTM-aware wall ranking, and one shared visual language (solid=opening flow, faded=closing flow, dimmed=ITM, R1/R2 &amp; S1/S2 = tiered support/resistance) reused across <b>every</b> rendering surface.</p>
+    <div class="legend">
+      <span><span class="dot" style="background:#dc3545"></span>Resistance (R1 solid / R2 dashed)</span>
+      <span><span class="dot" style="background:#28a745"></span>Support (S1 solid / S2 dashed)</span>
+      <span><span class="dot" style="background:#7d8590"></span>ITM = dimmed, lower conviction</span>
+    </div>
+    <div class="card data">
+<pre class="mermaid">
+flowchart TB
+  RAW["oiData.tableData<br/>(per-strike CE/PE OI, ΔOI, OBV series, IV series)"] --> PERSTRIKE["scoreOIStrikeForSignal(item, isATM, priceChange)<br/>OBV decides label (WRITE/BUY/COV/UNWIND)<br/>IV scales confidence ×1 / ×0.5 · price fallback ×0.3"]
+  PERSTRIKE --> SUM["computeOIScoreFromData(oiData)<br/>Σ per-strike + change-PCR only"]
+  PERSTRIKE --> EXTRAS["_gtbComputeOIExtras()<br/>obvFlow · oiWall(context) · oiConflicts · ivSkew"]
+  PERSTRIKE --> WALLS["_gtbFindWalls(tableData, priceChange, spot)<br/>rank OTM full-weight-WRITE strikes by |OBV|<br/>→ {resistance:[primary,secondary], support:[...]}"]
+  WALLS --> WALLCFG["_gtbWallCfg(walls) → chart annotations"]
+  WALLS --> WALLAT["_gtbWallAt(walls, i) → row/cell lookup"]
+  ITM["_gtbIsITM(side, strike, spot)"] --> DIM["_gtbDimForITM(rgba, isITM)"]
+  PERSTRIKE --> BARCOL["_oiBarColor(label, side)<br/>solid=WRITE/BUY · faded=COV/UNWIND · grey=NEUTRAL"]
+  BARCOL --> DIM
+  SUM --> CACHE2[("INSTRUMENT_SCORE_MAP[name]<br/>.oi_obv / .oiData / .oiExtras")]
+  WALLCFG --> R1["Crude popup:<br/>_cmdRenderOI() chart + _gtbOITableHtml() table"]
+  WALLAT --> R2["NSE maximize view:<br/>renderOIOBVMaximized() chart + signal-row cards"]
+  WALLAT --> R3["Dashboard compact rows:<br/>showOIOBVBarChart() → _svgMiniBar() + signal row"]
+  WALLAT --> R4["Signals tab wide table:<br/>showComponentOITable()"]
+  WALLAT --> R5["Signals tab ATM±2 grid:<br/>_gtbRenderOIMatrix() → _gtbOICellCompact()"]
+  WALLAT --> R6["OI Compare Matrix (all instruments):<br/>_gtbOICompareTableHtml() → _gtbOICell() / _gtbOICellCompact()"]
+  classDef surf fill:#1c2532,stroke:#f2b134,color:#fff;
+  class R1,R2,R3,R4,R5,R6 surf
+</pre>
+    </div>
+  </section>
+
+  <section id="ui">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Dashboard UI Shell</h2></div>
+    <p class="sec-desc"><code class="fn">showGrootTradeBot()</code> builds the single popup every tool lives inside. Height chain and theme system are load-bearing — the container is <code class="fn">position:absolute; inset:0</code> so the inner flex/scroll regions bound correctly.</p>
+    <div class="card data">
+<pre class="mermaid">
+flowchart TB
+  ENTRY["showGrootTradeBot()"] --> MARKUP["commonMarkupPlaceHolder()<br/>builds full popup DOM"]
+  MARKUP --> INJECT["showCompoenentPlaceHolders()<br/>injects + applies theme + row height"]
+  INJECT --> TOPBAR["#gtb-topbar<br/>brand · tickers · VIX · master signal<br/>float-bar tool launchers"]
+  INJECT --> MAIN["#gtb-main (flex row)"]
+  MAIN --> LEFT["#gtb-left<br/>score · signal · entry · pillars · history"]
+  MAIN --> RIGHT["#gtb-right"]
+  RIGHT --> OVERVIEW["#gtb-overview<br/>Verdict · Composite Score · Breadth<br/>9:15 counts · Key Stats"]
+  RIGHT --> ROWSHEAD["#gtb-rows-head (column labels)"]
+  RIGHT --> ROWS["#gtb-rows<br/>one row per instrument: identity + chart<br/>+ 9:15 + futures + OI + SL columns"]
+  RIGHT --> DETAILS["#gtb-details-area<br/>collapsed deep-dive panels (42% cap)"]
+  TOPBAR --> TABS["_gtbInitTabs() / _gtbActivateTab()<br/>Metrics · Overview · Signals · Max Pain<br/>Analysis · Opportunities · Trade · Checklist"]
+  TABS --> PANE["_gtbRenderPane(tabId)"]
+  TOPBAR --> FLOATBAR["_gtbCreateFloatingBar()<br/>vertical tool launcher, dataset.toolId"]
+  FLOATBAR --> POPUPS["→ Analysis Tools (§7)"]
+  INJECT --> THEME["_gtbApplyTheme(theme)<br/>dark/light via --gtb-* CSS vars<br/>_gtbRecolorCharts()"]
+  MARKUP --> INFO["_ii(key) → GTB_INFO popovers<br/>(i) icon on every section header"]
+  MARKUP --> POPPAT["showPopUpWindow() (utils.js)<br/>popupWinControls() / hideNativePopupButtons()"]
+</pre>
+    </div>
+  </section>
+
+  <section id="tools">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Analysis Tools &amp; Popups</h2></div>
+    <p class="sec-desc">Launched from the floating toolbar or topbar icons — each opens via <code class="fn">showPopUpWindow()</code> / <code class="fn">showMaximizeOverlay()</code> and is independently refreshable.</p>
+    <div class="toollist">
+      <div class="tool-card"><h4>Chart Grid</h4><p>Multi-instrument LightweightCharts grid.</p><code>_gtbChartGridLoad()</code></div>
+      <div class="tool-card"><h4>9:15 Opening-Trend Backtest</h4><p>~1yr day-wise combo edge table + per-day sim, VIX-split win rates.</p><code>_gtbBuild915Trend() · _render915Trend()</code></div>
+      <div class="tool-card"><h4>OI Compare Matrix</h4><p>All instruments, strikes around ATM, Detailed/Compact heatmap toggle, now wall+ITM aware.</p><code>_gtbOICompareTableHtml()</code></div>
+      <div class="tool-card"><h4>Futures Accuracy</h4><p>Reconstructs futures-remark hit-rate vs realized move.</p><code>_gtbLoadFutAccInPane() · _gtbReconstructFutAccuracy()</code></div>
+      <div class="tool-card"><h4>Futures Signal / Instrument Detail</h4><p>Multi-panel deep-dive: Identity → Price → OI/OBV → 9:15 → Trend Prob → Futures → Weightage → Risk.</p><code>_gtbLoadInstrDetail()</code></div>
+      <div class="tool-card"><h4>Commodities (MCX)</h4><p>GIFT NIFTY + CRUDEOILM panel, combined Verdict card.</p><code>showTopChartMCX() · _cmdBuildVerdict()</code></div>
+      <div class="tool-card"><h4>OI Viewer</h4><p>Standalone OI/OBV trend viewer, older parallel UI.</p><code>showOiViewer() · showTrendingOIViewer()</code></div>
+      <div class="tool-card"><h4>Stock Viewer</h4><p>Segmented stock list with score-confidence chips.</p><code>showStockViewer() · _svRowHtml()</code></div>
+      <div class="tool-card"><h4>Market Quote Analyzer</h4><p>Bulk quote scan → ranked table.</p><code>showMarketQuoteAnalyzer()</code></div>
+      <div class="tool-card"><h4>Max Pain &amp; GEX</h4><p>Per-instrument Max Pain + Gamma Exposure, cards + summary table.</p><code>_gtbComputeMaxPainGEX() · _gtbMaxPainGEXHtml()</code></div>
+      <div class="tool-card"><h4>Add Instrument</h4><p>Custom-instrument add popup, persisted list.</p><code>_gtbAddInstrPopupHtml() · _gtbSaveCustomInstrs()</code></div>
+      <div class="tool-card"><h4>Settings</h4><p>Theme, grid height, columns/instruments config, card width.</p><code>_gtbSettingsHtml()</code></div>
+      <div class="tool-card"><h4>Pre-Trade Checklist</h4><p>7-step market checklist + verdict card + 9-instrument score table.</p><code>_gtbShowTradeChecklist()</code></div>
+      <div class="tool-card"><h4>Help</h4><p>Reference notes, in help.js.</p><code>showNotes()</code></div>
+      <div class="tool-card"><h4>Data Load</h4><p>Manual refresh trigger.</p><code>_gtbRefreshOneInstrument()</code></div>
+      <div class="tool-card"><h4>Historical Replay</h4><p>Step through a past session's cached ticks/scores.</p><code>_gtbShowHistoricalReplay()</code></div>
+      <div class="tool-card"><h4>Strike-Level Probability</h4><p>60-day daily-OHLC continuation/reversal probability at ASO/AST/BSO/BST.</p><code>_gtbStrikeProb()</code></div>
+      <div class="tool-card"><h4>Trend Matrix</h4><p>Cross-instrument trend-state matrix.</p><code>_gtbBuildTrendMatrix() · _gtbShowTrendMatrix()</code></div>
+      <div class="tool-card"><h4>Trade Setup</h4><p>Single-instrument tradeable setup builder.</p><code>_gtbShowTradeSetup()</code></div>
+      <div class="tool-card"><h4>Relative Strength Scanner</h4><p>Universe scan vs benchmark change%, zone-colored.</p><code>_gtbShowRsScanner() · _rsCalcRow()</code></div>
+      <div class="tool-card"><h4>Signal Scanners</h4><p>OBV scanner + absorption-strength scanner.</p><code>_gtbShowSignalScanners() · _ssBuildObvHtml() · _ssBuildAbsorbHtml()</code></div>
+      <div class="tool-card"><h4>Advance/Decline &amp; Futures Trend Scanner</h4><p>Breadth scanner across NIFTY 50 / BANK / all F&amp;O.</p><code>showAdvacenDeclineScanner() · showFuturesTrend()</code></div>
+      <div class="tool-card"><h4>Quick Scanner</h4><p>9:15 opening-burst scanner with live order trigger.</p><code>showQuickScanner() · execute915Alog()</code></div>
+      <div class="tool-card"><h4>Option Strike (legacy)</h4><p>Full option-chain analysis tool, ~10k lines, separate from the Groot score engine.</p><code class="filebadge">optionStrike.js</code></div>
+    </div>
+  </section>
+
+  <section id="infra">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Shared Infrastructure</h2></div>
+    <p class="sec-desc">Cross-cutting state, theming, and the popup pattern every tool above builds on.</p>
+    <div class="card data">
+<pre class="mermaid">
+flowchart LR
+  KITE[("Kite Web (kite.zerodha.com)<br/>DOM + internal APIs")] --> HIST["getHistoricalData()<br/>getQuotesUsingPromise()"]
+  NSE[("nseindia.com<br/>@connect via GM_xmlhttpRequest")] --> FUTREMARK["Futures OI remark scrape"]
+  HIST --> CACHE3[("INSTRUMENT_SCORE_MAP{name}<br/>futures_trend · oi_obv · oiExtras<br/>strikeMap · open · oiData · score{...}")]
+  FUTREMARK --> CACHE3
+  CACHE3 --> LS[("localStorage<br/>VALID_BREAKOUT_NINE_FIFTEEN · GTB_THEME<br/>GTB_COLS_CFG · GTB_INSTRS_CFG · GTB_OIC_MODE<br/>GROOT_915_* snapshot caches")]
+  CONSTMAP["constants.js<br/>NIFTY_50_WEIGHTED_STOCKS · NIFTY_BANK_WEIGHTED_STOCKS<br/>NSE_STRIKE_DIFF · INSTRUMENT_TOKENS"] --> CACHE3
+  THEMEVARS["--gtb-* CSS variables<br/>dark(:root) / light(.gtb-light)"] --> ALLUI["every popup + inline HTML<br/>(never hardcoded hex)"]
+  POPWIN["popupwindow.js library"] --> SHOWPOP["showPopUpWindow(index, html, title, w, h)"]
+  SHOWPOP --> CTRLS["popupWinControls() / hideNativePopupButtons()<br/>custom titlebar pattern"]
+  CTRLS --> MAXOVER["showMaximizeOverlay(title, html)<br/>#groot-maximize-overlay on &lt;body&gt;"]
+</pre>
+    </div>
+    <table class="keys">
+      <tr><th>Key localStorage / cache surfaces</th><th>Purpose</th></tr>
+      <tr><td><code>INSTRUMENT_SCORE_MAP</code></td><td>Central in-memory per-instrument cache — futures trend, OI data/extras, score sub-components.</td></tr>
+      <tr><td><code>VALID_BREAKOUT_NINE_FIFTEEN</code></td><td>Today's 9:15 candle zone classification per instrument (ASO/AST/BSO/BST/B-W).</td></tr>
+      <tr><td><code>GTB_THEME</code></td><td>Dark/light theme persisted across sessions.</td></tr>
+      <tr><td><code>GTB_COLS_CFG / GTB_INSTRS_CFG</code></td><td>User-customized row columns + instrument list/order.</td></tr>
+      <tr><td><code>GTB_OIC_MODE</code></td><td>OI Compare Matrix Detailed/Compact toggle.</td></tr>
+      <tr><td><code>GROOT_915_&lt;date&gt;_250_v2</code></td><td>Cached 9:15 backtest rows per lookback window.</td></tr>
+    </table>
+  </section>
+
+  <footer>Generated from static/autoTrade/*.js — CLAUDE.md is the maintained source of truth for scoring formulas &amp; thresholds; this map is the structural/functional overview.</footer>
+</div>
+
+<button class="theme-toggle" id="theme-toggle-btn">Toggle theme</button>
+
+<script>
+  function _isDark() {
+    var t = document.documentElement.getAttribute('data-theme');
+    if (t) return t === 'dark';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  mermaid.initialize({ startOnLoad: true, theme: _isDark() ? 'dark' : 'default', securityLevel: 'loose' });
+
+  document.getElementById('theme-toggle-btn').addEventListener('click', function () {
+    var r = document.documentElement;
+    var cur = r.getAttribute('data-theme');
+    r.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
+    // Mermaid bakes colors in at render time — re-render every diagram on theme flip.
+    var diagrams = document.querySelectorAll('pre.mermaid, div.mermaid');
+    diagrams.forEach(function (el) {
+      if (!el.dataset.src) el.dataset.src = el.textContent;
+      el.removeAttribute('data-processed');
+      el.innerHTML = el.dataset.src;
+    });
+    mermaid.initialize({ startOnLoad: false, theme: _isDark() ? 'dark' : 'default', securityLevel: 'loose' });
+    mermaid.run({ nodes: diagrams });
+  });
+</script>
+</body>
+</html>
