@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Groot Bot
 // @namespace    Groot Bot
-// @version      29.163
+// @version      29.203
 // @description  Groot Bot
 // @author       Manjunath
 // @match        https://kite.zerodha.com/*
@@ -19,6 +19,7 @@
 // @connect      api.kite.trade
 // @connect      query1.finance.yahoo.com
 // @connect      cdn.cboe.com
+// @connect      cdn-api.cboe.com
 // @resource     BOOTSTRAP_CSS http://localhost:3000/autoTrade/dist/css/bootstrap.css
 // @resource     DATATABLE_CSS http://localhost:3000/autoTrade/global/vendor/datatables/datatables.min.css
 // @resource     BOOTSTRAP_ICON_CSS http://localhost:3000/autoTrade/dist/font/bootstrap-icons.css
@@ -100,6 +101,10 @@
 // @require      http://localhost:3000/autoTrade/positionalScreener.js
 // @require      http://localhost:3000/autoTrade/dataLoad.js
 // @require      http://localhost:3000/autoTrade/grootTradeBot.js
+// @require      http://localhost:3000/autoTrade/macro.js
+// @require      http://localhost:3000/autoTrade/briefingCore.js
+// @require      http://localhost:3000/autoTrade/briefingText.js
+// @require      http://localhost:3000/autoTrade/briefingUi.js
 // @require      http://localhost:3000/autoTrade/bloombergDashboard.js
 // @require      http://localhost:3000/autoTrade/bloombergAnalysis.js
 // @require      http://localhost:3000/autoTrade/bloombergOpportunities.js

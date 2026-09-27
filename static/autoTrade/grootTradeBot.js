@@ -539,6 +539,8 @@ function _gtbRefreshProbCards() {
         if (el) el.innerHTML = _cmdTrendProb(name, null);
         var lvlEl = document.getElementById(tid + '-lvlprob');
         if (lvlEl) { try { lvlEl.innerHTML = _gtbLevelProbHtml(name); } catch(e) {} }
+        var brEl = document.getElementById(tid + '-brief');
+        if (brEl) { try { brEl.innerHTML = _gtbInstrBriefHtml(name); } catch(e) {} }
     });
 }
 
@@ -1131,6 +1133,10 @@ function _buildCardStandalone(item) {
     h += '<div class="gtb-ic-panel" data-col="lvlprob"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-signpost-split-fill"></i> LEVEL PROBABILITY' + _ii('dv-lvlprob') + '</span></div>'
        + '<div class="gtb-ic-panel-body" id="' + tid + '-lvlprob"></div></div>';
 
+    // Panel: plain-English briefing for this instrument (briefingText.js)
+    h += '<div class="gtb-ic-panel" data-col="brief"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-file-text"></i> BRIEFING</span></div>'
+       + '<div class="gtb-ic-panel-body" id="' + tid + '-brief"></div></div>';
+
     // Panel: futures REMARK accuracy — how often THIS instrument's own futures REMARK
     // correctly predicted the next 5-min candle's direction, reconstructed from today's
     // candles (same engine as the Commodities popup's crude-only accuracy panel, generalised
@@ -1140,7 +1146,7 @@ function _buildCardStandalone(item) {
        + '<div class="gtb-ic-panel-body" id="' + tid + '-futacc"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Replaying 5-min candles…</div></div></div>';
 
     // Panel: curve structure (contango/backwardation) — near vs next futures contract.
-    h += '<div class="gtb-ic-panel" data-col="curve"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</span>'
+    h += '<div class="gtb-ic-panel" data-col="curve"><div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</span>'
        + '<span class="gtb-ic-panel-btns"><button class="gtb-sig-hdr-btn dv-curve-reload" data-name="' + name + '"><i class="bi bi-arrow-clockwise"></i></button></span></div>'
        + '<div class="gtb-ic-panel-body" id="' + tid + '-curve"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading contract curve…</div></div></div>';
 
@@ -1267,6 +1273,52 @@ function commonMarkupPlaceHolder() {
     h += '</div>'; // end gtb-topbar-controls
     h += '</div>'; // end topbar
 
+    h += '<div id="gtb-tab-strip">'
+        // ── Tabs — in their own horizontally-scrolling wrapper (#gtb-tab-scroll,
+        // common.css) so 13 tabs + the tool-launcher row below no longer force the whole
+        // popup wider than its window; the tab row itself scrolls/wheel-scrolls instead.
+        + '<div id="gtb-tab-scroll">'
+        + '<button class="gtb-tab active" data-tab="dashboard"><i class="bi bi-columns-gap"></i> Dashboard</button>'
+        + '<button class="gtb-tab" data-tab="main"><i class="bi bi-grid"></i> Overview</button>'
+        + '<button class="gtb-tab" data-tab="metrics"><i class="bi bi-speedometer2"></i> Metrics</button>'
+        + '<button class="gtb-tab" data-tab="signals"><i class="bi bi-layers-fill"></i> Signals</button>'
+        + '<button class="gtb-tab" data-tab="mpgex"><i class="bi bi-bar-chart-steps"></i> Max Pain</button>'
+        + '<button class="gtb-tab" data-tab="analysis"><i class="bi bi-bar-chart-line-fill"></i> Analysis</button>'
+        + '<button class="gtb-tab" data-tab="trade"><i class="bi bi-lightning-fill"></i> Trade</button>'
+        + '<button class="gtb-tab" data-tab="checklist"><i class="bi bi-clipboard-check"></i> Checklist</button>'
+        + '<button class="gtb-tab" data-tab="preflight"><i class="bi bi-compass-fill"></i> Pre-Flight</button>'
+        + '<button class="gtb-tab" data-tab="briefing"><i class="bi bi-file-text"></i> Briefing</button>'
+        + '<button class="gtb-tab" data-tab="macro"><i class="bi bi-globe"></i> Macro</button>'
+        + '<button class="gtb-tab" data-tab="notes"><i class="bi bi-journal-text"></i> Notes</button>'
+        + '<button class="gtb-tab" data-tab="positional"><i class="bi bi-funnel-fill"></i> Positional</button>'
+        + '</div>'
+        // ── Spacer ───────────────────────────────────────────────────────────
+        + '<span class="gtb-tab-sep"></span>'
+        // ── Tool buttons (all 15 — topbar icons + float-menu extras) ─────────
+        // Data Load moved to the front — it was the very last icon in this row (easy to
+        // miss/scroll past) despite being one of the more frequently-needed tools now that
+        // expiry dates/strike diffs/instrument tokens all depend on it being run first.
+        + '<a id="show-market-trend-settings-tab" class="gtb-ctrl-link" title="Market Trend Settings (API keys, expiries)"><i class="bi bi-gear-wide-connected"></i></a>'
+        + '<a id="data-load"                 class="gtb-ctrl-link" title="Data Settings"><i class="bi bi-sliders"></i></a>'
+        + '<a id="show-chartgrid"            class="gtb-ctrl-link" title="Chart Grid"><i class="bi bi-grid-3x3-gap-fill"></i></a>'
+        + '<a id="show-915-backtest"         class="gtb-ctrl-link" title="9:15 Trend backtest"><i class="bi bi-calendar-week"></i></a>'
+        + '<a id="show-all-oi"               class="gtb-ctrl-link" title="OI Scan — all instruments"><i class="bi bi-layers-fill"></i></a>'
+        + '<a id="show-fut-accuracy"         class="gtb-ctrl-link" title="Futures remark accuracy"><i class="bi bi-bullseye"></i></a>'
+        + '<a id="show-futures-signal"       class="gtb-ctrl-link" title="Instrument Detail View"><i class="bi bi-flag-fill"></i></a>'
+        + '<a id="show-commodities"          class="gtb-ctrl-link" title="Commodities — GIFT NIFTY &amp; Crude"><i class="bi bi-droplet-fill"></i></a>'
+        + '<a id="show-mcx-dashboard"        class="gtb-ctrl-link" title="MCX Dashboard — all commodities"><i class="bi bi-collection-fill"></i></a>'
+        + '<a id="show-oi-viewer"            class="gtb-ctrl-link" title="OI Analyzer"><i class="bi bi-eye"></i></a>'
+        + '<a id="show-stock-viewer"         class="gtb-ctrl-link" title="Stock Viewer"><i class="bi bi-list-ul"></i></a>'
+        + '<a id="show-positional-screener"  class="gtb-ctrl-link" title="Positional Screener (Swing)"><i class="bi bi-funnel-fill"></i></a>'
+        + '<a id="show-market-quote-analyzer" class="gtb-ctrl-link" title="Quotes"><i class="bi bi-graph-up"></i></a>'
+        + '<a id="show-maxpain-gex"          class="gtb-ctrl-link" title="Max Pain &amp; GEX"><i class="bi bi-bar-chart-steps"></i></a>'
+        + '<a id="show-trade-checklist"      class="gtb-ctrl-link" title="Pre-Trade Checklist"><i class="bi bi-clipboard-check"></i></a>'
+        + '<a id="show-help"                 class="gtb-ctrl-link" title="Help"><i class="bi bi-question-circle-fill"></i></a>'
+        + '<a id="gtb-add-instr-btn"         class="gtb-ctrl-link" title="Add instrument"><i class="bi bi-plus-circle-fill"></i></a>'
+        + '<a id="gtb-settings-toggle"       class="gtb-ctrl-link" title="Settings"><i class="bi bi-gear-fill"></i></a>'
+        + '<a id="gtb-tools-launcher"        class="gtb-ctrl-link" title="All Tools"><i class="bi bi-grid-3x3-gap-fill"></i></a>'
+        + '</div>';
+
     h += '<div id="gtb-main">';
 
     // ── Instrument icon map ───────────────────────────────────────────────────
@@ -1371,43 +1423,6 @@ function commonMarkupPlaceHolder() {
     // BOTTOM: detail sections — scrollable
     // ════════════════════════════════════════════════════════════════
     h += '<div id="gtb-right">';
-    h += '<div id="gtb-tab-strip">'
-        // ── Tabs ─────────────────────────────────────────────────────────────
-        + '<button class="gtb-tab active" data-tab="dashboard"><i class="bi bi-columns-gap"></i> Dashboard</button>'
-        + '<button class="gtb-tab" data-tab="main"><i class="bi bi-grid"></i> Overview</button>'
-        + '<button class="gtb-tab" data-tab="metrics"><i class="bi bi-speedometer2"></i> Metrics</button>'
-        + '<button class="gtb-tab" data-tab="signals"><i class="bi bi-layers-fill"></i> Signals</button>'
-        + '<button class="gtb-tab" data-tab="mpgex"><i class="bi bi-bar-chart-steps"></i> Max Pain</button>'
-        + '<button class="gtb-tab" data-tab="analysis"><i class="bi bi-bar-chart-line-fill"></i> Analysis</button>'
-        + '<button class="gtb-tab" data-tab="trade"><i class="bi bi-lightning-fill"></i> Trade</button>'
-        + '<button class="gtb-tab" data-tab="checklist"><i class="bi bi-clipboard-check"></i> Checklist</button>'
-        + '<button class="gtb-tab" data-tab="preflight"><i class="bi bi-compass-fill"></i> Pre-Flight</button>'
-        + '<button class="gtb-tab" data-tab="notes"><i class="bi bi-journal-text"></i> Notes</button>'
-        + '<button class="gtb-tab" data-tab="positional"><i class="bi bi-funnel-fill"></i> Positional</button>'
-        // ── Spacer ───────────────────────────────────────────────────────────
-        + '<span class="gtb-tab-sep"></span>'
-        // ── Tool buttons (all 15 — topbar icons + float-menu extras) ─────────
-        // Data Load moved to the front — it was the very last icon in this row (easy to
-        // miss/scroll past) despite being one of the more frequently-needed tools now that
-        // expiry dates/strike diffs/instrument tokens all depend on it being run first.
-        + '<a id="data-load"                 class="gtb-ctrl-link" title="Data Settings"><i class="bi bi-sliders"></i></a>'
-        + '<a id="show-chartgrid"            class="gtb-ctrl-link" title="Chart Grid"><i class="bi bi-grid-3x3-gap-fill"></i></a>'
-        + '<a id="show-915-backtest"         class="gtb-ctrl-link" title="9:15 Trend backtest"><i class="bi bi-calendar-week"></i></a>'
-        + '<a id="show-all-oi"               class="gtb-ctrl-link" title="OI Scan — all instruments"><i class="bi bi-layers-fill"></i></a>'
-        + '<a id="show-fut-accuracy"         class="gtb-ctrl-link" title="Futures remark accuracy"><i class="bi bi-bullseye"></i></a>'
-        + '<a id="show-futures-signal"       class="gtb-ctrl-link" title="Instrument Detail View"><i class="bi bi-flag-fill"></i></a>'
-        + '<a id="show-commodities"          class="gtb-ctrl-link" title="Commodities — GIFT NIFTY &amp; Crude"><i class="bi bi-droplet-fill"></i></a>'
-        + '<a id="show-mcx-dashboard"        class="gtb-ctrl-link" title="MCX Dashboard — all commodities"><i class="bi bi-collection-fill"></i></a>'
-        + '<a id="show-oi-viewer"            class="gtb-ctrl-link" title="OI Analyzer"><i class="bi bi-eye"></i></a>'
-        + '<a id="show-stock-viewer"         class="gtb-ctrl-link" title="Stock Viewer"><i class="bi bi-list-ul"></i></a>'
-        + '<a id="show-market-quote-analyzer" class="gtb-ctrl-link" title="Quotes"><i class="bi bi-graph-up"></i></a>'
-        + '<a id="show-maxpain-gex"          class="gtb-ctrl-link" title="Max Pain &amp; GEX"><i class="bi bi-bar-chart-steps"></i></a>'
-        + '<a id="show-trade-checklist"      class="gtb-ctrl-link" title="Pre-Trade Checklist"><i class="bi bi-clipboard-check"></i></a>'
-        + '<a id="show-help"                 class="gtb-ctrl-link" title="Help"><i class="bi bi-question-circle-fill"></i></a>'
-        + '<a id="gtb-add-instr-btn"         class="gtb-ctrl-link" title="Add instrument"><i class="bi bi-plus-circle-fill"></i></a>'
-        + '<a id="gtb-settings-toggle"       class="gtb-ctrl-link" title="Settings"><i class="bi bi-gear-fill"></i></a>'
-        + '<a id="show-market-trend-settings-tab" class="gtb-ctrl-link" title="Market Trend Settings (API keys, expiries)"><i class="bi bi-gear-wide-connected"></i></a>'
-        + '</div>';
     h += '<div id="gtb-pane-dashboard" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:0;"></div>';
     h += '<div id="gtb-pane-metrics" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:0;"></div>';
     h += '<div id="gtb-pane-main"  class="gtb-tab-pane" style="display:none;">';
@@ -1776,6 +1791,8 @@ function commonMarkupPlaceHolder() {
     h += '<div id="gtb-pane-trade"     class="gtb-tab-pane" style="display:none;overflow:hidden;padding:0;"></div>';
     h += '<div id="gtb-pane-checklist" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:0;"></div>';
     h += '<div id="gtb-pane-preflight" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:14px;"></div>';
+    h += '<div id="gtb-pane-briefing" class="gtb-tab-pane bf-scope" style="display:none;overflow-y:auto;padding:0;"></div>';
+    h += '<div id="gtb-pane-macro" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:0;"></div>';
     h += '<div id="gtb-pane-notes" class="gtb-tab-pane" style="display:none;overflow-y:auto;padding:0;"></div>';
     h += '<div id="gtb-pane-positional" class="gtb-tab-pane" style="display:none;overflow:hidden;padding:0;"></div>';
 
@@ -1811,6 +1828,11 @@ function commonMarkupPlaceHolder() {
        + 'font-size:0.6rem;color:var(--gtb-muted);padding:3px 10px;border-top:1px solid var(--gtb-border);'
        + 'background:var(--gtb-surface2);display:flex;align-items:center;gap:6px;flex-shrink:0;">'
        + '<span id="gtb-statusbar-refresh"><i class="bi bi-hourglass-split" style="margin-right:3px;"></i>Waiting for refresh...</span>'
+       // Settings-configured current_day_date/previous_day_date drive every historical fetch
+       // in the app (NSE + MCX) — shown here ALWAYS (from page build, not only after a refresh
+       // completes) so a stale/wrong snapshot date is obvious at a glance from the moment the
+       // dashboard opens, not just discoverable by opening Settings or waiting for a refresh.
+       + ' &nbsp; * &nbsp; <span id="gtb-statusbar-dates"><i class="bi bi-calendar-week" style="margin-right:3px;"></i>Today: <b>' + (typeof CURRENT_DAY !== 'undefined' ? CURRENT_DAY : '—') + '</b> &nbsp; Prev: <b>' + (typeof PREVIOUS_DAY !== 'undefined' ? PREVIOUS_DAY : '—') + '</b></span>'
        + '<span id="gtb-holiday-badge" style="display:none;font-size:0.6rem;padding:1px 7px;'
        + 'border:1px solid var(--gtb-border2);border-radius:3px;background:var(--gtb-amber-dim);color:var(--gtb-amber);'
        + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px;"></span>'
@@ -1876,6 +1898,15 @@ function _gtbInitTabs() {
     // Tab strip clicks
     jQ(document).off('click.gtbtabs').on('click.gtbtabs', '#gtb-tab-strip .gtb-tab', function() {
         _gtbActivateTab(jQ(this).data('tab'));
+    });
+
+    // A plain vertical mouse wheel over the (horizontally-scrolling) tab row scrolls it
+    // sideways instead of doing nothing — the row has no vertical overflow of its own, and
+    // most mice/trackpads don't have a convenient horizontal-scroll gesture.
+    jQ(document).off('wheel.gtbtabs').on('wheel.gtbtabs', '#gtb-tab-scroll', function (e) {
+        if (this.scrollWidth <= this.clientWidth) return; // nothing to scroll — let the event pass through
+        e.preventDefault();
+        this.scrollLeft += (e.originalEvent.deltaY || e.originalEvent.deltaX || 0);
     });
 
     // Render default tab (Dashboard) on init. Building the pane's content isn't enough —
@@ -1945,6 +1976,9 @@ var _GTB_PANE_GRIDS = {
     preflight: function() { return ''; },
     // Notes tab: rendered by _gtbRenderNotesPane
     notes: function() { return ''; },
+    // Briefing tab: manages its own DOM (briefingUi.js)
+    briefing: function() { return null; },
+    macro: function() { return null; },
     // Positional tab: manages its own DOM (positionalScreener.js) — return null so
     // _gtbRenderPane skips the wipe, same pattern 'trade'/'dashboard' use above; without
     // this, switching away and back would reset the chip selection and any scan in progress.
@@ -1972,6 +2006,8 @@ var _GTB_PANE_RENDERS = {
     checklist: [function(){try{_gtbRenderChecklistPane();}catch(e){}}],
     preflight: [function(){try{_gtbRenderPreflightPane();}catch(e){}}],
     notes:     [function(){try{_gtbRenderNotesPane();}catch(e){}}],
+    briefing:  [function(){try{_gtbRenderBriefingPane();}catch(e){console.error('[Briefing]',e);}}],
+    macro:     [function(){try{_gtbRenderMacroPane();}catch(e){console.error('[Macro]',e);}}],
     positional: [function(){try{_psRenderInPane();}catch(e){}}],
 };
 
@@ -3040,6 +3076,173 @@ function _gtbToast(msg, type) {
     }).showToast();
 }
 
+// ── Central Error/Warning Log ──────────────────────────────────────────────────────────
+// Was: "for any errors I have to check the console." This captures console.error/warn,
+// uncaught exceptions, and unhandled promise rejections app-wide (a huge win in a 20K+ line,
+// heavily async codebase where most existing error handling is a bare `console.log(fnName, e)`
+// inside a try/catch), persists them day-wise in localStorage (GTB_LOG_<YYYY-MM-DD>), and
+// surfaces a bell-badge count + a throttled toast so a new error is actually noticed instead
+// of silently sitting in devtools. Installed near the TOP of grootTradeBot.js so it's live for
+// as much of the app's runtime as possible — it can't catch anything that throws synchronously
+// during the @require chain BEFORE this file loads (constants.js/utils.js/etc.), only errors
+// during actual interactive use (button clicks, refresh cycles, async fetches), which is where
+// essentially all real-world errors in this app actually occur.
+var _GTB_LOG_MAX_PER_DAY = 500;   // cap per day so one runaway error loop can't blow up localStorage
+var _GTB_LOG_KEEP_DAYS = 14;      // older days are pruned automatically on load
+var _GTB_LOG_UNSEEN = 0;
+var _GTB_LOG_LAST_TOAST = 0;
+var _GTB_LOG_TOAST_COOLDOWN_MS = 8000; // a burst of repeated errors gets ONE toast, not a flood
+
+function _gtbLogDateKey(d) { return 'GTB_LOG_' + (d || moment().format('YYYY-MM-DD')); }
+
+function _gtbLogArgsToText(args) {
+    return Array.prototype.map.call(args, function (a) {
+        if (a instanceof Error) return a.message + (a.stack ? ' | ' + a.stack.split('\n').slice(0, 3).join(' <- ') : '');
+        if (a && typeof a === 'object') { try { return JSON.stringify(a); } catch (e) { return String(a); } }
+        return String(a);
+    }).join(' ').slice(0, 2000); // cap length — one huge object dump shouldn't bloat the day's log
+}
+
+function _gtbLogWrite(level, args) {
+    try {
+        var key = _gtbLogDateKey();
+        var arr = JSON.parse(localStorage.getItem(key) || '[]');
+        arr.push({ t: moment().format('HH:mm:ss'), level: level, msg: _gtbLogArgsToText(args) });
+        if (arr.length > _GTB_LOG_MAX_PER_DAY) arr = arr.slice(arr.length - _GTB_LOG_MAX_PER_DAY);
+        localStorage.setItem(key, JSON.stringify(arr));
+    } catch (e) { /* localStorage full/quota — logging must never itself throw, drop silently */ }
+
+    _GTB_LOG_UNSEEN++;
+    try { _gtbUpdateLogBadge(); } catch (e) {}
+    var now = Date.now();
+    if (now - _GTB_LOG_LAST_TOAST > _GTB_LOG_TOAST_COOLDOWN_MS) {
+        _GTB_LOG_LAST_TOAST = now;
+        try { _gtbToast((level === 'ERROR' ? 'Error' : 'Warning') + ' logged — click the bell icon to view', 'error'); } catch (e) {}
+    }
+}
+
+function _gtbLogPruneOld() {
+    try {
+        var cutoff = moment().subtract(_GTB_LOG_KEEP_DAYS, 'days');
+        Object.keys(localStorage).forEach(function (k) {
+            if (k.indexOf('GTB_LOG_') !== 0) return;
+            var d = k.slice(8);
+            if (moment(d, 'YYYY-MM-DD', true).isValid() && moment(d, 'YYYY-MM-DD').isBefore(cutoff)) localStorage.removeItem(k);
+        });
+    } catch (e) {}
+}
+
+(function _gtbInstallLogHooks() {
+    if (window._gtbLogInstalled) return; // guard against double-install if this section ever re-runs
+    window._gtbLogInstalled = true;
+    var origError = console.error.bind(console);
+    var origWarn  = console.warn.bind(console);
+    console.error = function () { origError.apply(console, arguments); _gtbLogWrite('ERROR', arguments); };
+    console.warn  = function () { origWarn.apply(console, arguments); _gtbLogWrite('WARN', arguments); };
+    window.addEventListener('error', function (ev) {
+        _gtbLogWrite('ERROR', ['Uncaught: ' + ev.message + ' @ ' + (ev.filename || '') + ':' + (ev.lineno || '')]);
+    });
+    window.addEventListener('unhandledrejection', function (ev) {
+        var reason = ev.reason;
+        _gtbLogWrite('ERROR', ['Unhandled promise rejection: ' + (reason && reason.message ? reason.message : reason)]);
+    });
+    _gtbLogPruneOld();
+})();
+
+function _gtbUpdateLogBadge() {
+    // Tile badge (inside the All-Tools flyout — .gtb-fb-btn was the old floating-bar button
+    // class, replaced by .gtb-tf-tile when the flyout was redesigned as a topbar launcher).
+    var $btn = jQ('.gtb-tf-tile[data-tool-id="show-log-viewer"]');
+    var $badge = $btn.find('.gtb-fb-badge');
+    if (!_GTB_LOG_UNSEEN) { $badge.remove(); }
+    else {
+        if (!$badge.length && $btn.length) { $badge = jQ('<span class="gtb-fb-badge"></span>'); $btn.append($badge); }
+        $badge.text(_GTB_LOG_UNSEEN > 99 ? '99+' : _GTB_LOG_UNSEEN);
+    }
+    // Also badge the topbar launcher icon itself, since the tile above is only visible once
+    // the flyout is opened — this is the one always-visible entry point now.
+    var $launcher = jQ('#gtb-tools-launcher');
+    var $lbadge = $launcher.find('.gtb-fb-badge');
+    if (!_GTB_LOG_UNSEEN) { $lbadge.remove(); return; }
+    if (!$lbadge.length) { $lbadge = jQ('<span class="gtb-fb-badge"></span>'); $launcher.css('position', 'relative').append($lbadge); }
+    $lbadge.text(_GTB_LOG_UNSEEN > 99 ? '99+' : _GTB_LOG_UNSEEN);
+}
+
+function _gtbLogAvailableDates() {
+    var dates = [];
+    Object.keys(localStorage).forEach(function (k) { if (k.indexOf('GTB_LOG_') === 0) dates.push(k.slice(8)); });
+    var today = moment().format('YYYY-MM-DD');
+    if (dates.indexOf(today) === -1) dates.push(today); // always offer today, even with zero entries so far
+    return dates.sort().reverse();
+}
+
+function _gtbLogRenderTable(date, filter) {
+    var arr = [];
+    try { arr = JSON.parse(localStorage.getItem(_gtbLogDateKey(date)) || '[]'); } catch (e) {}
+    if (filter && filter !== 'all') arr = arr.filter(function (e) { return e.level === filter; });
+    if (!arr.length) return '<div style="padding:16px;color:var(--gtb-muted);">No ' + (filter && filter !== 'all' ? filter.toLowerCase() + ' ' : '') + 'entries for ' + date + '.</div>';
+    var rows = arr.slice().reverse().map(function (e) {
+        var col = e.level === 'ERROR' ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+        return '<tr style="border-bottom:1px solid var(--gtb-border)18;">'
+            + '<td style="padding:4px 8px;white-space:nowrap;color:var(--gtb-muted);vertical-align:top;">' + e.t + '</td>'
+            + '<td style="padding:4px 8px;color:' + col + ';font-weight:800;white-space:nowrap;vertical-align:top;">' + e.level + '</td>'
+            + '<td style="padding:4px 8px;font-family:var(--gtb-mono);word-break:break-word;">' + jQ('<div>').text(e.msg).html() + '</td></tr>';
+    }).join('');
+    return '<table style="width:100%;border-collapse:collapse;font-size:0.62rem;">'
+        + '<thead><tr style="position:sticky;top:0;background:var(--gtb-surface);border-bottom:1px solid var(--gtb-border);">'
+        +   '<th style="text-align:left;padding:4px 8px;">Time</th><th style="text-align:left;padding:4px 8px;">Level</th><th style="text-align:left;padding:4px 8px;">Message</th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function _gtbShowLogViewer() {
+    _GTB_LOG_UNSEEN = 0;
+    _gtbUpdateLogBadge();
+    var dates = _gtbLogAvailableDates();
+    var today = moment().format('YYYY-MM-DD');
+    var html = '<div style="padding:10px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'
+        +   '<select id="gtb-log-date" style="padding:4px 8px;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border);">'
+        +     dates.map(function (d) { return '<option value="' + d + '"' + (d === today ? ' selected' : '') + '>' + d + (d === today ? ' (today)' : '') + '</option>'; }).join('')
+        +   '</select>'
+        +   '<button data-f="all" class="gtb-log-filter-btn gtb-log-filter-active">All</button>'
+        +   '<button data-f="ERROR" class="gtb-log-filter-btn">Errors</button>'
+        +   '<button data-f="WARN" class="gtb-log-filter-btn">Warnings</button>'
+        +   '<button id="gtb-log-clear-day" style="margin-left:auto;">Clear This Day</button>'
+        +   '<button id="gtb-log-clear-all">Clear All</button>'
+        + '</div>'
+        + '<div id="gtb-log-table" style="overflow:auto;max-height:560px;border:1px solid var(--gtb-border);">' + _gtbLogRenderTable(today, 'all') + '</div>'
+        + '</div>';
+    showPopUpWindow('log-viewer', html, 'Error / Warning Log', 900, 650);
+    var _cls = 'popup-custom-style-log-viewer';
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;">ERROR / WARNING LOG</span>'
+        + popupWinControls(_cls)
+        + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    jQ('.' + _cls).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+}
+
+jQ(document).off('change.gtb-log-date').on('change.gtb-log-date', '#gtb-log-date', function () {
+    var filter = jQ('.gtb-log-filter-active').data('f') || 'all';
+    jQ('#gtb-log-table').html(_gtbLogRenderTable(jQ(this).val(), filter));
+});
+jQ(document).off('click.gtb-log-filter').on('click.gtb-log-filter', '.gtb-log-filter-btn', function () {
+    jQ('.gtb-log-filter-btn').removeClass('gtb-log-filter-active');
+    jQ(this).addClass('gtb-log-filter-active');
+    jQ('#gtb-log-table').html(_gtbLogRenderTable(jQ('#gtb-log-date').val(), jQ(this).data('f')));
+});
+jQ(document).off('click.gtb-log-clear-day').on('click.gtb-log-clear-day', '#gtb-log-clear-day', function () {
+    var d = jQ('#gtb-log-date').val();
+    localStorage.removeItem(_gtbLogDateKey(d));
+    jQ('#gtb-log-table').html(_gtbLogRenderTable(d, jQ('.gtb-log-filter-active').data('f') || 'all'));
+});
+jQ(document).off('click.gtb-log-clear-all').on('click.gtb-log-clear-all', '#gtb-log-clear-all', function () {
+    _gtbLogAvailableDates().forEach(function (d) { localStorage.removeItem(_gtbLogDateKey(d)); });
+    jQ('#gtb-log-table').html('<div style="padding:16px;color:var(--gtb-muted);">Cleared.</div>');
+});
+
 async function commonShowPopupWindow() {
     var _refreshStart = Date.now();
     resetCount()
@@ -3186,6 +3389,8 @@ async function commonShowPopupWindow() {
     try { _gtbUpdateTrendZones(); } catch(e) {}
     try { renderComponentPanel(); } catch(e) { console.warn('renderComponentPanel error', e); }
     try { renderScoreHistory(); } catch(e) { console.warn('renderScoreHistory error', e); }
+    try { _gtbMacroOnRefresh(); } catch(e) { console.warn('macro error', e); }
+    try { _gtbBriefingOnRefresh(); } catch(e) { console.warn('briefing error', e); }
     try { _gtbApplyChecklistHighlights(); } catch(e) { console.warn('checklist highlight error', e); }
     // _gtbRenderLevelProbPane() (5-min history matrix) is no longer surfaced anywhere in the
     // UI — the Dashboard tab now shows the simpler live-only list instead (see
@@ -3197,17 +3402,20 @@ async function commonShowPopupWindow() {
 
     var _elapsed = ((Date.now() - _refreshStart) / 1000).toFixed(1);
     var _endTime = moment().format("HH:mm:ss");
-    jQ("#gtb-refresh-statusbar").html(
+    // Update ONLY the refresh-status span, not the whole #gtb-refresh-statusbar container —
+    // that container also holds #gtb-statusbar-dates and #gtb-holiday-badge as SIBLING spans;
+    // a wholesale .html() replace here used to wipe both of those out permanently the moment
+    // the first refresh completed (the holiday badge would vanish, and the dates span this
+    // same commit made "always visible" would revert to whatever this handler last wrote).
+    jQ("#gtb-statusbar-refresh").html(
         '<i class="bi bi-check-circle-fill" style="color:#3fb950;margin-right:4px;"></i>'
       + 'Refresh completed at <b>' + _endTime + '</b>'
       + ' &nbsp; * &nbsp; '
       + '<i class="bi bi-stopwatch" style="margin-right:3px;"></i>Total time: <b>' + _elapsed + 's</b>'
-      + ' &nbsp; * &nbsp; '
-      // Settings-configured current_day_date/previous_day_date drive every historical
-      // fetch in the app (NSE + MCX) — surfaced here so a stale/wrong date after a
-      // config change or an overnight session is obvious at a glance, not just
-      // discoverable by opening Settings.
-      + '<i class="bi bi-calendar-week" style="margin-right:3px;"></i>Today: <b>' + CURRENT_DAY + '</b>'
+    );
+    // Re-sync the dates span too — CURRENT_DAY/PREVIOUS_DAY can change mid-session via Settings.
+    jQ("#gtb-statusbar-dates").html(
+        '<i class="bi bi-calendar-week" style="margin-right:3px;"></i>Today: <b>' + CURRENT_DAY + '</b>'
       + ' &nbsp; Prev: <b>' + PREVIOUS_DAY + '</b>'
     );
 
@@ -6033,18 +6241,32 @@ async function _dvLoadCurveStructure(name, tid, sfx) {
             return;
         }
         var near = curve[0], far = curve[1];
-        var from = moment().subtract(10, 'days').format('YYYY-MM-DD');
-        var to = moment().format('YYYY-MM-DD');
-        var results = await Promise.all([
-            getHistoricalDataUsingPromise(near.token, from, to, 'day'),
-            getHistoricalDataUsingPromise(far.token, from, to, 'day'),
-        ]);
-        var nearCandles = results[0] && results[0].data && results[0].data.candles;
-        var farCandles  = results[1] && results[1].data && results[1].data.candles;
-        if (!nearCandles || !nearCandles.length || !farCandles || !farCandles.length) {
-            el.innerHTML = '<div style="color:var(--gtb-red);">No candle data for one or both contracts.</div>';
+        // Anchored on CURRENT_DAY (the Settings-configured snapshot date), not real
+        // wall-clock moment() — a 'day' interval also can't be truncated to the snapshot end
+        // time picker, so this switched to '5minute' + _gtbTrimCandlesTail, same fix as the
+        // Curve Structure Compare tool (_gtbFetchCurveRow) uses. `from` is PREVIOUS_DAY (the
+        // Settings-configured "yesterday"), matching the PREVIOUS_DAY->CURRENT_DAY window
+        // every OTHER historical fetch in this app already uses — NOT an arbitrary "10 days
+        // back", which silently ignored whatever PREVIOUS_DAY the user actually configured.
+        var from = _gtbPrevDay();
+        var to = _gtbCurrDayTo();
+        // A contract that had not started trading yet on the snapshot day (MCX crude / natural
+        // gas / USDINR list the next months late, unlike gold/silver) returns no candles. Fetch
+        // the first few listed contracts and use the first TWO that actually traded that day.
+        var refDay = _gtbCurrDay();
+        var cands = curve.slice(0, 4);
+        var results = await Promise.all(cands.map(function (c) { return getHistoricalDataUsingPromise(c.token, from, to, '5minute'); }));
+        var traded = [];
+        cands.forEach(function (c, i) {
+            var cc = _gtbTrimCandlesTail(results[i] && results[i].data && results[i].data.candles, refDay);
+            if (cc && cc.length) traded.push({ c: c, candles: cc });
+        });
+        if (traded.length < 2) {
+            el.innerHTML = '<div style="padding:6px;color:var(--gtb-muted);">' + (traded.length ? 'Only 1 listed contract traded on ' : 'No candle data for the listed contracts on ') + refDay + ' — contracts not trading yet.</div>';
             return;
         }
+        near = traded[0].c; far = traded[1].c;
+        var nearCandles = traded[0].candles, farCandles = traded[1].candles;
         var nearLtp = parseFloat(nearCandles[nearCandles.length - 1][4]);
         var farLtp  = parseFloat(farCandles[farCandles.length - 1][4]);
         var diffPct = nearLtp ? ((farLtp - nearLtp) / nearLtp * 100) : 0;
@@ -6114,6 +6336,260 @@ jQ(document).off('click.dv-curve-reload').on('click.dv-curve-reload', '.dv-curve
     var sfx = elId.slice(sfxIdx + '-curve'.length);
     _dvLoadCurveStructure(name, tid, sfx);
 });
+
+// ── Curve Structure Compare — every F&O stock/index + MCX commodity in one table ──────
+// Same near/far contango-vs-backwardation math as the single-instrument panels above
+// (_dvLoadCurveStructure/_cmdLoadCurveStructure), just run across the WHOLE universe at once
+// instead of one instrument at a time. Universe comes from NSE_FUT_CURVE/MCX_FUT_CURVE
+// (dataLoad.js) — these are already built for every underlying with an active futures curve
+// during a Data Load run, so no separate instrument list needs to be maintained here; if a
+// name is missing, run Data Load first (same prerequisite the single-instrument panels have).
+function _gtbCurveCompareUniverse() {
+    var nse = (typeof NSE_FUT_CURVE !== 'undefined') ? Object.keys(NSE_FUT_CURVE) : [];
+    var mcx = (typeof MCX_FUT_CURVE !== 'undefined') ? Object.keys(MCX_FUT_CURVE) : [];
+    var list = [];
+    nse.sort().forEach(function (n) { list.push({ name: n, isMcx: false }); });
+    mcx.sort().forEach(function (n) { list.push({ name: n, isMcx: true }); });
+    return list;
+}
+
+// Fetches one instrument's near/far contract LTPs and derives the same state/lean the
+// single-instrument panels compute — plus an "Est. Move" projection: the curve's own
+// near-far POINTS gap, projected onto the near contract as a rough convergence target. This
+// is NOT an ATR/volatility-based trade target (that's a separate, already-existing concept
+// in Position Size/trade_levels) — it's literally "how far apart the curve already says
+// these two contracts are," read as the size of move implied if/when that gap closes.
+// Framed as informational context, same honesty convention as the single-instrument lean
+// note: a real signal, not a statistically fitted forecast.
+async function _gtbFetchCurveRow(item) {
+    // LTP column = the near-month FUTURE's own last close, AS OF THE CONFIGURED SNAPSHOT DAY
+    // (nearLtp below) — NOT a read from INSTRUMENT_LTP_PRICE/mcxLtp. Those are live, real-time
+    // caches with no concept of the snapshot day at all: replaying an older CURRENT_DAY would
+    // have silently shown today's real live price next to a Near/Far pair computed for a
+    // completely different (historical) day. The near contract's own historical candle is the
+    // only price this app can correctly attribute to an arbitrary past snapshot day.
+    var curveMap = item.isMcx ? (typeof MCX_FUT_CURVE !== 'undefined' ? MCX_FUT_CURVE : {}) : (typeof NSE_FUT_CURVE !== 'undefined' ? NSE_FUT_CURVE : {});
+    var curve = curveMap[item.name] || [];
+    if (curve.length < 2) {
+        return { name: item.name, isMcx: item.isMcx, ok: false, spotLtp: null, reason: 'Only ' + curve.length + ' active contract(s) listed' };
+    }
+    var near = curve[0], far = curve[1];
+    // Kite chart-page link — same URL convention as the Dashboard tab's own kiteLink
+    // (markets/ext/chart/web/tvc/<exchange>/<symbol>/<token>). NSE rows link the underlying's
+    // own SPOT chart (INSTRUMENT_TOKENS); MCX has no separate spot instrument to chart, so it
+    // links the near-month FUTURE contract's own chart instead (its token is already resolved
+    // here from NSE_FUT_CURVE/MCX_FUT_CURVE, no extra lookup needed).
+    // Links the near-month FUTURE's own chart (exchange-FUT/tradingsymbol/token), rebuilt once
+    // the first actually-trading contract is known (see nearChart below).
+    var _futExch = item.isMcx ? 'MCX-FUT' : (/^(SENSEX|BANKEX)/.test(item.name) ? 'BFO-FUT' : 'NFO-FUT');
+    var _mkLink = function (c) { return 'https://kite.zerodha.com/markets/ext/chart/web/tvc/' + _futExch + '/' + c.tradingsymbol + '/' + c.token; };
+    var chartLink = _mkLink(near);
+    // '5minute' (not 'day') + _gtbTrimCandlesTail, same fix scanLtpPrice's own v26.56
+    // snapshot-time bug used: a 'day'-interval candle always reflects the true live
+    // intraday state and can't be truncated to an earlier time-of-day, so it silently
+    // ignored the app-wide snapshot end time picker (#gtb-hist-time) every other historical
+    // fetch in this app honors. _gtbTrimCandlesTail only trims TODAY's tail past the
+    // snapshot time — the rest of the 10-day lookback (needed only so there's always at
+    // least one candle even right at/before market open) is left untouched.
+    var isMcxDay = item.isMcx;
+    var refDay = isMcxDay ? _gtbMcxCurrDay() : _gtbCurrDay();
+    var to = isMcxDay ? _gtbMcxCurrDayTo() : _gtbCurrDayTo();
+    // from = PREVIOUS_DAY/MCX_PREVIOUS_DAY (the Settings-configured "yesterday"), matching
+    // the PREVIOUS_DAY->CURRENT_DAY window every OTHER historical fetch in this app already
+    // uses — NOT real wall-clock moment() (which could invert from>to against an older
+    // configured CURRENT_DAY) and NOT an arbitrary "10 days back" (which silently ignored
+    // whatever PREVIOUS_DAY the user actually configured).
+    var from = isMcxDay ? _gtbMcxPrevDay() : _gtbPrevDay();
+    try {
+        // Contracts not yet trading on the snapshot day (MCX crude / natural gas / USDINR list
+        // next months late) return no candles: use the first TWO listed contracts that traded.
+        var cands = curve.slice(0, 4);
+        var results = await Promise.all(cands.map(function (c) { return getHistoricalDataUsingPromise(c.token, from, to, '5minute'); }));
+        var traded = [];
+        cands.forEach(function (c, i) {
+            var cc = _gtbTrimCandlesTail(results[i] && results[i].data && results[i].data.candles, refDay);
+            if (cc && cc.length) traded.push({ c: c, candles: cc });
+        });
+        if (traded.length < 2) {
+            return { name: item.name, isMcx: item.isMcx, ok: false, spotLtp: null, chartLink: chartLink,
+                     reason: traded.length ? 'Only 1 listed contract traded on ' + refDay : 'No candle data on ' + refDay + ' (contracts not trading yet)' };
+        }
+        near = traded[0].c; far = traded[1].c; chartLink = _mkLink(near);
+        var nearCandles = traded[0].candles, farCandles = traded[1].candles;
+        var nearLtp = parseFloat(nearCandles[nearCandles.length - 1][4]);
+        var farLtp  = parseFloat(farCandles[farCandles.length - 1][4]);
+        var diffPct = nearLtp ? ((farLtp - nearLtp) / nearLtp * 100) : 0;
+        var daysGap = Math.max(1, moment(far.expiry).diff(moment(near.expiry), 'days'));
+        var annualizedPct = diffPct * (365 / daysGap);
+
+        // Same thresholds as the single-instrument panels (NSE vs MCX genuinely differ —
+        // see _dvLoadCurveStructure/_cmdLoadCurveStructure's own comments for why).
+        var bullThresh = item.isMcx ? -3 : -2;
+        var bearThresh = item.isMcx ? 8  : 10;
+        var state = diffPct > 0.05 ? 'CONTANGO' : diffPct < -0.05 ? 'BACKWARDATION' : 'FLAT';
+        var lean = annualizedPct < bullThresh ? 'bull' : annualizedPct > bearThresh ? 'bear' : 'neutral';
+
+        var gapPts = Math.abs(farLtp - nearLtp);
+        return {
+            name: item.name, isMcx: item.isMcx, ok: true, spotLtp: nearLtp, chartLink: chartLink,
+            nearSymbol: near.tradingsymbol, farSymbol: far.tradingsymbol,
+            nearExpiry: near.expiry, farExpiry: far.expiry,
+            nearLtp: nearLtp, farLtp: farLtp, diffPct: diffPct, annualizedPct: annualizedPct,
+            daysGap: daysGap, state: state, lean: lean,
+            gapPts: gapPts, upside: nearLtp + gapPts, downside: nearLtp - gapPts,
+        };
+    } catch (e) {
+        return { name: item.name, isMcx: item.isMcx, ok: false, spotLtp: null, reason: 'Fetch error' };
+    }
+}
+
+var _GTB_CURVE_COMPARE_ROWS = [];
+
+function _gtbCurveCompareNameCell(r) {
+    var label = r.name + (r.isMcx ? ' <span style="color:var(--gtb-muted);font-size:0.9em;">(MCX)</span>' : '');
+    if (!r.chartLink) return '<span style="font-weight:700;">' + label + '</span>';
+    return '<a href="' + r.chartLink + '" target="_blank" rel="noopener" title="Open ' + r.name + (r.isMcx ? ' (near-month future)' : '') + ' on Kite’s chart page" style="font-weight:700;color:var(--gtb-accent);text-decoration:none;">' + label + '</a>';
+}
+
+function _gtbCurveCompareRowHtml(r) {
+    if (!r.ok) {
+        return '<tr><td>' + _gtbCurveCompareNameCell(r) + '</td>'
+            + '<td colspan="8" style="color:var(--gtb-muted);">' + r.reason + '</td></tr>';
+    }
+    var leanCol = r.lean === 'bull' ? 'var(--gtb-green)' : r.lean === 'bear' ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+    var leanLbl = r.lean === 'bull' ? 'BULLISH LEAN' : r.lean === 'bear' ? 'BEARISH / CAUTION' : 'NEUTRAL';
+    var upActive = r.lean === 'bull', dnActive = r.lean === 'bear';
+    return '<tr>'
+        + '<td>' + _gtbCurveCompareNameCell(r) + '</td>'
+        // Expiry shown VISIBLY (not just in a hover title) — per explicit request, so which
+        // two contracts are actually being compared is never a guess/hidden detail, same
+        // convention the single-instrument panels (_dvLoadCurveStructure/_cmdLoadCurveStructure)
+        // already use.
+        + '<td>' + r.nearLtp.toLocaleString('en-IN') + '<div style="font-size:0.86em;color:var(--gtb-muted);white-space:nowrap;">' + r.nearSymbol + '<br>exp ' + r.nearExpiry + '</div></td>'
+        + '<td>' + r.farLtp.toLocaleString('en-IN') + '<div style="font-size:0.86em;color:var(--gtb-muted);white-space:nowrap;">' + r.farSymbol + '<br>exp ' + r.farExpiry + ' (' + r.daysGap + 'd)</div></td>'
+        + '<td>' + r.state + '</td>'
+        + '<td style="font-family:var(--gtb-mono);">' + (r.diffPct >= 0 ? '+' : '') + r.diffPct.toFixed(2) + '%</td>'
+        + '<td style="font-family:var(--gtb-mono);">' + (r.annualizedPct >= 0 ? '+' : '') + r.annualizedPct.toFixed(1) + '%</td>'
+        + '<td style="color:' + leanCol + ';font-weight:800;">' + leanLbl + '</td>'
+        + '<td style="font-family:var(--gtb-mono);' + (upActive ? 'color:var(--gtb-green);font-weight:800;' : 'color:var(--gtb-muted);') + '">' + r.upside.toLocaleString('en-IN', {maximumFractionDigits:1}) + '</td>'
+        + '<td style="font-family:var(--gtb-mono);' + (dnActive ? 'color:var(--gtb-red);font-weight:800;' : 'color:var(--gtb-muted);') + '">' + r.downside.toLocaleString('en-IN', {maximumFractionDigits:1}) + '</td>'
+        + '</tr>';
+}
+
+// Index futures use the SAME display names _DL_INDEX_NAME_TO_DISPLAY (dataLoad.js) maps
+// Kite's option-chain codes to — NIFTY 50/NIFTY BANK/SENSEX/NIFTY FIN SERVICE/NIFTY MID
+// SELECT/BANKEX. Everything else NSE-side is an individual F&O stock; everything from
+// MCX_FUT_CURVE is MCX — mirrors _DL_INDEX_CODES's own set so this can't drift out of sync
+// with what Data Load itself considers an index vs a stock.
+var _GTB_CURVE_INDEX_NAMES = { 'NIFTY 50': 1, 'NIFTY BANK': 1, 'SENSEX': 1, 'NIFTY FIN SERVICE': 1, 'NIFTY MID SELECT': 1, 'BANKEX': 1 };
+function _gtbCurveCategory(item) {
+    if (item.isMcx) return 'MCX';
+    return _GTB_CURVE_INDEX_NAMES[item.name] ? 'Index' : 'Stock';
+}
+
+var _GTB_CURVE_TABLE_HDR =
+    '<thead><tr style="position:sticky;top:0;background:var(--gtb-surface);border-bottom:1px solid var(--gtb-border);">'
+    +   '<th style="text-align:left;padding:5px 8px;">Instrument</th>'
+    +   '<th style="text-align:left;padding:5px 8px;" title="Near-month FUTURE contract’s LTP, as of the configured snapshot day — the only price this app can correctly attribute to an arbitrary historical replay day (unlike a live spot-LTP cache, which has no concept of the snapshot day)">Near (LTP)</th>'
+    +   '<th style="text-align:left;padding:5px 8px;" title="Far-month contract LTP">Far</th>'
+    +   '<th style="text-align:left;padding:5px 8px;">State</th>'
+    +   '<th style="text-align:left;padding:5px 8px;">Gap (Raw)</th>'
+    +   '<th style="text-align:left;padding:5px 8px;">Gap (Ann.)</th>'
+    +   '<th style="text-align:left;padding:5px 8px;">Lean</th>'
+    +   '<th style="text-align:left;padding:5px 8px;" title="Near LTP + |far−near| points — curve-implied convergence target if bullish">Upside Target</th>'
+    +   '<th style="text-align:left;padding:5px 8px;" title="Near LTP − |far−near| points — curve-implied convergence target if bearish">Downside Target</th>'
+    + '</tr></thead>';
+
+function _gtbCurveCompareGroupHtml(label, groupRows) {
+    if (!groupRows.length) return '';
+    var ok = groupRows.filter(function (r) { return r.ok; });
+    var bulls = ok.filter(function (r) { return r.lean === 'bull'; }).length;
+    var bears = ok.filter(function (r) { return r.lean === 'bear'; }).length;
+    var sorted = groupRows.slice().sort(function (a, b) {
+        if (a.ok !== b.ok) return a.ok ? -1 : 1;
+        if (!a.ok) return 0;
+        return Math.abs(b.annualizedPct) - Math.abs(a.annualizedPct);
+    });
+    return '<div style="margin:14px 0 4px;font-size:0.66rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--gtb-text);">' + label + ' <span style="color:var(--gtb-muted);font-weight:600;text-transform:none;">(' + groupRows.length + ')</span></div>'
+        + '<div style="margin-bottom:6px;font-size:0.58rem;color:var(--gtb-muted);">'
+        + ok.length + ' of ' + groupRows.length + ' scanned — <span style="color:var(--gtb-green);font-weight:700;">' + bulls + ' bullish</span>, '
+        + '<span style="color:var(--gtb-red);font-weight:700;">' + bears + ' bearish/caution</span>, ' + (ok.length - bulls - bears) + ' neutral'
+        + '</div>'
+        + '<div style="overflow:auto;max-height:340px;border:1px solid var(--gtb-border);">'
+        + '<table style="width:100%;border-collapse:collapse;font-size:0.64rem;">'
+        + _GTB_CURVE_TABLE_HDR
+        + '<tbody>' + sorted.map(_gtbCurveCompareRowHtml).join('') + '</tbody>'
+        + '</table></div>';
+}
+
+function _gtbCurveCompareTableHtml(rows) {
+    var byGroup = { Index: [], Stock: [], MCX: [] };
+    rows.forEach(function (r) { byGroup[_gtbCurveCategory(r)].push(r); });
+    return _gtbCurveCompareGroupHtml('Index', byGroup.Index)
+        + _gtbCurveCompareGroupHtml('Stocks', byGroup.Stock)
+        + _gtbCurveCompareGroupHtml('MCX', byGroup.MCX)
+        + '<div style="margin-top:10px;font-size:0.56rem;color:var(--gtb-muted);line-height:1.5;">'
+        + 'Upside/Downside Target = the curve\'s own near−far points gap, projected onto the near contract — a rough "if this gap closes" estimate, NOT an ATR/volatility-based trade target (see Position Size for that). Only the target matching the row\'s own lean is highlighted; the other side is shown greyed out for reference. An index/stock future\'s normal baseline is a MILD contango (risk-free rate minus dividend yield) — backwardation or a steep gap here is more informative than for commodities, but is still often a dividend/rollover-flow artifact, not pure conviction — check the underlying\'s ex-dividend calendar before trusting a bullish lean. Each group is independently sorted by strength of lean.'
+        + '</div>';
+}
+
+async function _gtbRunCurveCompareScan() {
+    var universe = _gtbCurveCompareUniverse();
+    var $status = jQ('#gtb-curve-scan-status');
+    var $table = jQ('#gtb-curve-compare-table');
+    if (!universe.length) {
+        $table.html('<div style="color:var(--gtb-red);padding:10px;">No underlyings found in NSE_FUT_CURVE/MCX_FUT_CURVE — run Data Load first (it builds the full multi-expiry curve for every F&amp;O stock/index + MCX commodity).</div>');
+        return;
+    }
+    jQ('#gtb-curve-scan-btn').prop('disabled', true);
+    var done = 0;
+    $status.text('Scanning 0/' + universe.length + '…');
+    // Fires every fetch at once — getHistoricalDataUsingPromise is already funnelled through
+    // the app-wide rate-limited queue (_gtbHistPump, ≤5 concurrent), same as the OI Compare
+    // Matrix / LTP scan, so no separate throttling is needed here.
+    var promises = universe.map(function (item) {
+        return _gtbFetchCurveRow(item).then(function (row) {
+            done++; $status.text('Scanning ' + done + '/' + universe.length + '…');
+            return row;
+        });
+    });
+    _GTB_CURVE_COMPARE_ROWS = await Promise.all(promises);
+    $status.text('Done — ' + universe.length + ' instrument(s), ' + moment().format('HH:mm:ss'));
+    jQ('#gtb-curve-scan-btn').prop('disabled', false);
+    $table.html(_gtbCurveCompareTableHtml(_GTB_CURVE_COMPARE_ROWS));
+}
+
+jQ(document).off('click.gtb-curve-scan').on('click.gtb-curve-scan', '#gtb-curve-scan-btn', function () {
+    _gtbRunCurveCompareScan();
+});
+
+function _gtbShowCurveCompare() {
+    var html = '<div style="padding:10px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+        +   '<button id="gtb-curve-scan-btn" style="padding:5px 14px;font-weight:800;font-size:0.62rem;background:var(--gtb-accent);color:#fff;border:none;cursor:pointer;">SCAN ALL</button>'
+        +   '<span id="gtb-curve-scan-status" style="color:var(--gtb-muted);font-size:0.6rem;"></span>'
+        + '</div>'
+        + '<div id="gtb-curve-compare-table">'
+        +   (_GTB_CURVE_COMPARE_ROWS.length
+                ? _gtbCurveCompareTableHtml(_GTB_CURVE_COMPARE_ROWS)
+                : '<div style="color:var(--gtb-muted);padding:10px;">Click SCAN ALL to fetch near/far contract prices for every F&amp;O stock, index, and MCX commodity (needs Data Load run first, for the futures curve list). This fires one 2-contract fetch per instrument — can take a couple of minutes for the full universe.</div>')
+        + '</div>'
+        + '</div>';
+    showPopUpWindow('curve-compare', html, 'Curve Structure Compare', 1150, 720);
+    var _cls = 'popup-custom-style-curve-compare';
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;">CURVE STRUCTURE COMPARE</span>'
+        + popupWinControls(_cls)
+        + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    // Theme sync — without this the popup always renders dark regardless of the app's own
+    // GTB_THEME setting, since .gtb-light (which the --gtb-* CSS vars resolve against) is
+    // only toggled on #main-trade-bot-container by default, not on newly-created popups.
+    // Same one-line fix already used by quoteWs.js's two popups.
+    jQ('.' + _cls).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+}
 
 // Fetch live data then render trend probability, OI/OBV, futures, OI matrix,
 // weightage bars, and PCR — all in correct dependency order
@@ -6192,6 +6668,7 @@ async function _dvFetchAndRender(name, tid, sfx, isMcx) {
         } catch(e) {}
         try { jQ('#' + tid + '-prob' + sfx).html(_cmdTrendProb(name, null)); } catch(e) {}
         try { jQ('#' + tid + '-lvlprob' + sfx).html(_gtbLevelProbHtml(name)); } catch(e) {}
+        try { jQ('#' + tid + '-brief' + sfx).html(_gtbInstrBriefHtml(name)); } catch(e) {}
         // Prediction panel is built synchronously with the card HTML, before futures/OI/score
         // data for this instrument has finished loading — re-render it now that it has.
         try { _gtbRefreshAllPredictCards(name); } catch(e) {}
@@ -6347,6 +6824,10 @@ async function _gtbLoadInstrDetail(name) {
     h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-signpost-split-fill"></i> LEVEL PROBABILITY' + _ii('dv-lvlprob') + '</span></div>';
     h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-lvlprob' + sfx + '"></div>';
     h += '</div>';
+    h += '<div class="gtb-ic-panel" data-col="brief">';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-file-text"></i> BRIEFING</span></div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-brief' + sfx + '"></div>';
+    h += '</div>';
 
     // ── [5c] Futures REMARK Accuracy — how often THIS instrument's own futures REMARK
     // correctly predicted the next 5-min candle, reconstructed from today's candles. ──
@@ -6358,7 +6839,7 @@ async function _gtbLoadInstrDetail(name) {
 
     // ── [5e] Curve Structure (contango/backwardation) — near vs next futures contract. ──
     h += '<div class="gtb-ic-panel" data-col="curve">';
-    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</span>';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</span>';
     h +=     '<span class="gtb-ic-panel-btns"><button class="gtb-sig-hdr-btn dv-curve-reload" data-name="' + name + '"><i class="bi bi-arrow-clockwise"></i></button></span></div>';
     h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-curve' + sfx + '"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading contract curve…</div></div>';
     h += '</div>';
@@ -6579,6 +7060,10 @@ function _gtbLoadInstrDetailPanel(name) {
     h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-signpost-split-fill"></i> LEVEL PROBABILITY' + _ii('dv-lvlprob') + '</span></div>';
     h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-lvlprob' + sfx + '"></div>';
     h += '</div>';
+    h += '<div class="gtb-ic-panel" data-col="brief">';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-file-text"></i> BRIEFING</span></div>';
+    h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-brief' + sfx + '"></div>';
+    h += '</div>';
 
     // Context / Location / Confirmation verdict (_cmdBuildVerdict) — same engine behind the
     // Commodities popup's VERDICT card and the Trade Ideas scanner, now surfaced per-instrument
@@ -6598,7 +7083,7 @@ function _gtbLoadInstrDetailPanel(name) {
     h += '</div>';
 
     h += '<div class="gtb-ic-panel" data-col="curve">';
-    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</span>';
+    h +=   '<div class="gtb-ic-panel-hdr"><span class="gtb-ic-panel-title"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</span>';
     h +=     '<span class="gtb-ic-panel-btns"><button class="gtb-sig-hdr-btn dv-curve-reload" data-name="' + name + '"><i class="bi bi-arrow-clockwise"></i></button></span></div>';
     h +=   '<div class="gtb-ic-panel-body" id="' + tid + '-curve' + sfx + '"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading contract curve…</div></div>';
     h += '</div>';
@@ -8594,8 +9079,8 @@ function _gtbApplyTheme(theme) {
     var container = jQ('#main-trade-bot-container, #groot-maximize-overlay, [class*="popup-custom-style-"]');
     if (theme === 'light') container.addClass('gtb-light');
     else                    container.removeClass('gtb-light');
-    // Sync floating bar theme
-    jQ('#gtb-float-bar').toggleClass('gtb-light', theme === 'light');
+    // Sync tools flyout theme
+    jQ('#gtb-tools-flyout').toggleClass('gtb-light', theme === 'light');
     localStorage.setItem('GTB_THEME', theme);
     // Reflect active state on the toggle buttons
     jQ('.gtb-theme-btn').each(function() {
@@ -9419,11 +9904,23 @@ var GTB_INFO = {
         body:'Swing-trade screener on <b>daily</b> candles (not the 5-min intraday series every other tool here uses). Scores four independent signals per instrument: <b>Trend</b> (LTP vs SMA20 vs SMA50, &times;2) &middot; <b>20-day Breakout/Breakdown</b> (today\'s close vs the prior 20-day high/low, &times;1.5) &middot; <b>Relative Strength</b> (the stock\'s own 20-day % change minus NIFTY 50\'s, &times;1 — ranks movers against the market, not in absolute terms) &middot; <b>Futures OI buildup</b> (OI + price direction over ~5 trading days on daily FUT candles, &times;1.5).'
             + '<br><br>Composite total &rarr; verdict: <b style="color:var(--gtb-green)">STRONG BUY &ge; 3</b>, <b style="color:var(--gtb-green)">BUY &ge; 1.5</b>, <b style="color:var(--gtb-red)">STRONG SELL &le; &minus;3</b>, <b style="color:var(--gtb-red)">SELL &le; &minus;1.5</b>, otherwise <b>WATCH</b>.'
             + '<br><br>This is a first-pass model with no historical validation behind the weights/thresholds yet — treat the verdict as a starting lean, not a proven edge, and recalibrate once you\'ve watched it run for a while.' },
+    'ps-primary': { icon:'bi-award-fill', title:'Trend Template / Stage / Momentum (groot-research parity — PRIMARY read)',
+        body:'Ported line-for-line from groot-platform/groot-research/swing_scanner/*.py (Minervini\'s Trend Template, Weinstein\'s Stage Analysis, Clenow\'s momentum score) — the TRUSTED base call for &ldquo;is this a genuine, mechanically-defined Stage 2 uptrend / Stage 4 downtrend worth a swing/positional hold.&rdquo; Needs 210+ trading days of daily history; shows INSUFFICIENT HISTORY otherwise (recent listings).'
+            + '<br><b>STAGE 2 CONFIRMED</b> / <b>STAGE 4 CONFIRMED</b> — ALL 8 Trend/Short Template rules pass (price vs 50/150/200-day SMA, SMA order, 200-SMA trending, 52-week high/low position, relative strength vs NIFTY 6-month proxy).'
+            + '<br><b>Stage 1 — Basing</b> / <b>Stage 3 — Topping</b> — 30-week (150-day) MA is flat (|slope| &le; 1% over 5 weeks); disambiguated by where price sits in its own 52-week range.'
+            + '<br><b>Stage 2/4 (unconfirmed)</b> — the 30-week MA has turned but price hasn\'t cleared/broken it yet.'
+            + '<br><b>Momentum</b>: OLS regression of log(close) over the trailing 90 days — score = annualized return &times; R&sup2; (a steep-but-noisy trend is penalized; a smooth-but-shallow one scores lower than smooth+steep). A ⚠gap flag means a >15% single-day move sits in the window and may distort the fit — check the chart.'
+            + '<br><br>This is now the PRIMARY buy/sell call. The Overlay column (this app\'s own trend/breakout/RS/OI/curve composite) is a SAME-DAY confirmation/timing layer on top of it, never the reverse — if the two disagree, the Verdict says so explicitly (e.g. &ldquo;BUY — overlay disagrees (caution)&rdquo;) rather than blending them into one silent number. Entry/Stop/Target also switch to groot-research\'s own ATR(14) 1.5x/2.5x convention whenever this primary read is available, falling back to the old 20-day measured-move plan only when there isn\'t enough history yet.' },
     'ps-signals': { icon:'bi-graph-up', title:'Trend / Breakout / Rel. Strength / Futures OI columns',
         body:'<b>Trend</b>: UPTREND = LTP &gt; SMA20 &gt; SMA50, DOWNTREND = the reverse, else SIDEWAYS.'
             + '<br><b>Breakout</b>: today\'s close at/above the prior 20-day high = breakout; at/below the prior 20-day low = breakdown; otherwise inside range.'
             + '<br><b>Rel. Strength</b>: this stock\'s 20-day % change minus NIFTY 50\'s over the same window — positive means it\'s outperforming the index, not just rising.'
             + '<br><b>Futures OI (5d)</b>: classic price/OI quadrant on daily FUT candles — OI&uarr;+price&uarr; = LONG BUILDUP, OI&uarr;+price&darr; = SHORT BUILDUP, OI&darr;+price&uarr; = SHORT COVERING, OI&darr;+price&darr; = LONG UNWINDING. Suppressed to <b>ROLLOVER (Nd to expiry)</b> inside the last 3 trading days before the near-month contract expires — OI structurally declines into expiry as positions roll to next month regardless of real conviction, which would otherwise make almost every stock read as OI-down (SHORT COVERING/LONG UNWINDING only, never a genuine buildup). Reads NO FUT TOKEN / FETCH EMPTY / TOO FEW CANDLES when the futures data itself couldn\'t be resolved — check the browser console for which, and consider running Data Load\'s Kite Instruments sync if the futures contract list looks stale.' },
+    'ps-curve': { icon:'bi-graph-up', title:'Curve Structure (contango / backwardation)',
+        body:'Same near-vs-far futures contract lean as the Curve Structure Compare popup, reused here on a daily timeframe: compares the near-month and next-month contract\'s own daily closes (needs Data Load\'s Kite Instruments sync run at least once for NSE_FUT_CURVE/MCX_FUT_CURVE to be populated).'
+            + '<br><b>BULL LEAN</b> \u2014 backwardation steeper than -2%/yr (NSE) or -3%/yr (MCX): near contract priced above far, a bullish tell (or, for a stock future, often a dividend/ex-date effect \u2014 check the calendar).'
+            + '<br><b>STEEP CONTANGO</b> \u2014 above +10%/yr (NSE) or +8%/yr (MCX): far month priced well above near, can reflect bullish rollover demand OR a thinly-traded far contract distorting the price \u2014 treat as a mild confirmation only.'
+            + '<br>Otherwise shown as the raw state (CONTANGO/BACKWARDATION/FLAT) with no directional weight \u2014 most NSE stock/index curves sit near fair value (cash-futures arbitrage keeps the gap tight), so a genuine lean here is relatively rare and worth noticing when it appears. Weighted &times;1 in the composite score \u2014 the smallest weight of the four inputs, since it is a slower structural signal, not a fresh trigger.' },
     'ps-tradeplan': { icon:'bi-journal-check', title:'Entry / Target / Stop / R:R',
         body:'Derived from the SAME daily levels the score already computed (SMA20, 20-day high/low) — not a separate data source. <b>Entry</b> = current LTP. <b>Target</b> = LTP &plusmn; 75% of the 20-day high&ndash;low range, in the trade\'s direction (a measured-move projection). <b>Stop</b>: for a BUY, the tighter of SMA20 or the 20-day low; for a SELL, the wider of SMA20 or the 20-day high. <b>R:R</b> = reward divided by risk from those three levels.'
             + '<br><br>The (i) icon per row spells out the exact exit rule (a daily close through SMA20 or the opposite range boundary, whichever comes first). This is a starting structural framework, not a backtested exit system — size and adjust with your own risk rules.' },
@@ -9521,7 +10018,7 @@ var GTB_INFO = {
            + '• <b>Raw OBV flow</b> (25%) — fast, today-only options-tape read<br>'
            + '• <b>OI wall pressure</b> (25%) — a strong R1/S1 wall close to spot dampens the side it sits on<br><br>'
            + 'The outer bands (AST/BST, and especially VIXU/VIXL) require progressively stronger conviction to light up, and VIXU/VIXL are additionally damped by how much of today\'s expected VIX range is already used up. These are <b>reasoned live estimates, not statistically fitted probabilities</b> — use as a likelihood ranking between levels, not a precise %.' },
-    'cmd-curve': { icon:'bi-graph-up-arrow', title:'Curve Structure',
+    'cmd-curve': { icon:'bi-graph-up', title:'Curve Structure',
         body:'Compares the NEAR and next (FAR) MCX futures contract for this commodity. <b>Contango</b> (far priced above near) is the normal state — reflects storage/carry cost, no urgency, neutral-to-bearish backdrop. <b>Backwardation</b> (near priced above far) means the market is paying a premium for immediate supply — physical tightness/urgency, a bullish lean for the near contract you actually trade. The <b>Gap (Annualized)</b> number normalizes the raw % gap by how many days apart the two expiries are, so a small gap between near-dated contracts isn\'t misread the same as the same gap between far-dated ones. Unlike Fair Value Gap or IV Skew (which mostly confirm/veto another signal), this is one of the few inputs that can suggest a direction on its own — but only when the annualized rate is meaningfully outside normal carry-cost range, not on every reading. Kite only lists currently-active contracts, so MCX mini contracts (CRUDEOILM/GOLDM/SILVERM) will often show only one contract with nothing to compare against — expected, not a bug.' },
     'gtb-master-consensus': { icon:'bi-columns-gap', title:'Master Consensus',
         body:'Combines 9 independent engines (9:15 Zone, Composite SCORE, Futures Trend, OI/OBV, Max Pain, IV Skew, Level Probability, Order Flow, Curve Structure) into one weighted GO LONG / GO SHORT / WAIT per instrument. Weights aren\'t assumed — 9:15 Zone is always highest-weighted (the only signal with real historical backtesting); Futures Trend is upgraded to that same weight only when its own today\'s-accuracy-replay row proves out (≥55% win-rate, positive avg pts, ≥8 samples); OI/OBV is deliberately down-weighted since this app\'s own accuracy replay found negative expectancy in every bucket tested. A ⚠thin tag means the outcome is riding on very few actual directional votes even if most other engines have data — treat those as one engine’s call, not a broad agreement. Curve Structure only votes when its own panel has been opened at least once this session (caches its read) and the reading is non-neutral. Click any row for the full engine-by-engine breakdown. Excludes the (currently suspect) Depth Δ and the standalone Range Scoreboard/Predict cards — shown separately to avoid double-counting the same inputs.<br><br>The banner at the TOP combines every instrument’s own outcome into ONE final call — NIFTY 50 and NIFTY BANK (the actual tradeable indices) weighted 3x each, every weighted-constituent stock a 1x breadth vote (same index-vs-breadth distinction the Index Impact Verdict already applies). A ⚠ CAUTION flag means the two core indices disagree with the direction the broader stock breadth is leaning — not a clean agreement, read the breakdown before trusting it.' },
@@ -10756,6 +11253,28 @@ function _gtbShortCoveringSignal(name) {
     return out;
 }
 
+// Where a squeeze is likely to run to: the nearest levels in the direction of the move, from the
+// OI walls (call-writing wall for short covering, put-writing wall for long unwinding) and the
+// ASO/AST/VIXU or BSO/BST/VIXL ladder. A reasoned "next stop", not a fitted forecast.
+function _gtbSqueezeTargets(name, isUp) {
+    try {
+        var I = _bfInstrument(name, JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}'));
+        if (!I || !I.pf || !I.pf.ok) return null;
+        var ltp = I.pf.ltp, c = [];
+        (I.pf.ladder || []).forEach(function (x) { c.push({ label: x.key, val: x.val }); });
+        var w = I.walls || {};
+        (isUp ? (w.resistance || []) : (w.support || [])).forEach(function (x, i) { c.push({ label: (isUp ? 'R' : 'S') + (i + 1) + ' wall', val: x.strike }); });
+        c = c.filter(function (x) { return isUp ? x.val > ltp * 1.0005 : x.val < ltp * 0.9995; })
+             .sort(function (a, b) { return isUp ? a.val - b.val : b.val - a.val; });
+        return { ltp: ltp, list: c.slice(0, 2).map(function (x) { x.pct = (x.val - ltp) / ltp * 100; return x; }) };
+    } catch (e) { return null; }
+}
+function _gtbSqueezeTargetTxt(name, isUp) {
+    var t = _gtbSqueezeTargets(name, isUp);
+    if (!t || !t.list.length) return '<span style="color:var(--gtb-muted);">no level in range</span>';
+    return t.list.map(function (x) { return x.label + ' <b>' + Math.round(x.val).toLocaleString('en-IN') + '</b> (' + (x.pct >= 0 ? '+' : '') + x.pct.toFixed(2) + '%)'; }).join(' &rarr; ');
+}
+
 function _gtbShortCoveringHtml(name) {
     var s = _gtbShortCoveringSignal(name);
     if (!s.ok) return '<span class="gtb-row-na" style="margin:auto">—</span>';
@@ -10769,6 +11288,7 @@ function _gtbShortCoveringHtml(name) {
     if (s.daysToExpiry != null) reasons.push(s.nearExpiry
         ? '<b style="color:var(--gtb-amber);">' + s.daysToExpiry + 'd to expiry — mechanical squeeze window</b>'
         : s.daysToExpiry + 'd to expiry');
+    if (s.active) reasons.push('<b>Likely run to:</b> ' + _gtbSqueezeTargetTxt(name, isBull) + ' - nearest OI wall / level in the direction of the move; the squeeze usually stalls there or when OI stops falling');
     if (s.pcr != null) reasons.push('PCR ' + s.pcr.toFixed(2) + (s.extremePositioning ? ' <b style="color:var(--gtb-amber);">(one-sided positioning)</b>' : ''));
     if (s.acc) {
         reasons.push('Historically ' + s.acc.winRate + '% win-rate for this remark (n=' + s.acc.samples + ')');
@@ -10831,7 +11351,7 @@ function _gtbShortCoveringRowsHtmlFor(names) {
     if (!rows.length) {
         return '<div style="font-size:0.5rem;color:var(--gtb-muted);padding:4px 0;">No active short-covering/long-unwinding signal right now.</div>';
     }
-    return '<div style="font-size:0.52rem;line-height:1.4;color:var(--gtb-muted);padding:0 0 6px;">Only instruments with an ACTIVE remark right now are listed — probability reflects expiry proximity, one-sided positioning, and this instrument\'s own historical reliability for that remark. "Exp. move" is the historical average move from fire-time to day\'s close when this exact remark has fired before, not a guarantee.</div>'
+    return '<div style="font-size:0.52rem;line-height:1.4;color:var(--gtb-muted);padding:0 0 6px;">Only instruments with an ACTIVE remark right now are listed — probability reflects expiry proximity, one-sided positioning, and this instrument\'s own historical reliability for that remark. "Runs to" lists the next OI wall / strike level in the direction of the squeeze (where it is likely to stall); "Exp. move" is the historical average move to the days close when this remark has fired before (blank until the Futures Accuracy replay is built). Neither is a guarantee.</div>'
         + rows.map(function (r) {
             var s = r.s;
             var typeLabel = s.type === 'SHORT_COVERING' ? 'Short Covering' : 'Long Unwinding';
@@ -10843,10 +11363,11 @@ function _gtbShortCoveringRowsHtmlFor(names) {
                 moveTxt = '<span style="color:' + moveCol + ';font-weight:700;">' + (s.acc.avgMove >= 0 ? '+' : '') + s.acc.avgMove.toFixed(1)
                     + (s.acc.avgMovePct != null ? ' (' + (s.acc.avgMovePct >= 0 ? '+' : '') + s.acc.avgMovePct.toFixed(2) + '%)' : '') + '</span>';
             }
-            return '<div style="display:grid;grid-template-columns:90px 100px 1fr 90px 40px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--gtb-border)18;font-size:0.44rem;">'
+            return '<div style="display:grid;grid-template-columns:90px 100px 1fr 230px 90px 40px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--gtb-border)18;font-size:0.44rem;">'
                 + '<span style="color:var(--gtb-text);font-weight:700;">' + r.name + '</span>'
                 + '<span style="color:' + typeCol + ';font-weight:700;">' + typeLabel + '</span>'
                 + '<span style="color:var(--gtb-muted);">' + (s.nearExpiry ? s.daysToExpiry + 'd to expiry' : '') + (s.extremePositioning ? (s.nearExpiry ? ' &middot; ' : '') + 'one-sided PCR ' + s.pcr.toFixed(2) : '') + (s.acc ? (s.nearExpiry || s.extremePositioning ? ' &middot; ' : '') + s.acc.winRate + '% hist. win (n=' + s.acc.samples + ')' : '') + '</span>'
+                + '<span style="color:var(--gtb-text);">' + _gtbSqueezeTargetTxt(r.name, s.type === 'SHORT_COVERING') + '</span>'
                 + '<span style="text-align:right;font-family:var(--gtb-mono);">' + moveTxt + '</span>'
                 + '<span style="font-weight:900;font-family:var(--gtb-mono);color:' + probCol + ';text-align:right;">' + s.probability + '%</span>'
                 + '</div>';
@@ -13439,6 +13960,10 @@ jQ(document).on('click', '#show-commodities', function (e) {
         +         '<div class="cmd-st"><i class="bi bi-signpost-split-fill"></i> LEVEL PROBABILITY (LIVE SIGNALS) ' + _ii('dv-lvlprob') + '</div>'
         +         '<div id="cmd-crude-lvlprob"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading after OI fetch…</div></div>'
         +       '</div>'
+        +       '<div class="cmd-card" style="margin-top:8px;">'
+        +         '<div class="cmd-st"><i class="bi bi-file-text"></i> BRIEFING</div>'
+        +         '<div id="cmd-crude-brief"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading after OI fetch…</div></div>'
+        +       '</div>'
         +     '</div>' // end cmd-panel-overview
 
         // ── OI & Signals: OI/OBV charts, OI table, signal strip, Max Pain & GEX ──────
@@ -13702,32 +14227,44 @@ jQ(document).on('click', '#show-commodities', function (e) {
     // broken, result for those — this feature will mostly be usable on the non-mini
     // contracts (CRUDEOIL/GOLD/SILVER) when Kite is listing more than one expiry.
     async function _cmdLoadCurveStructure() {
-        jQ('#cmd-curve-structure').html('<div class="cmd-st"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading contract curve…</div>');
+        jQ('#cmd-curve-structure').html('<div class="cmd-st"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading contract curve…</div>');
         try {
             var curve = (typeof MCX_FUT_CURVE !== 'undefined' ? MCX_FUT_CURVE[_cmdName] : null) || [];
             if (curve.length < 2) {
                 jQ('#cmd-curve-structure').html(
-                    '<div class="cmd-st"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div>'
+                    '<div class="cmd-st"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div>'
                     + '<div style="padding:6px;color:var(--gtb-muted);font-size:0.46rem;">Kite is only listing ' + curve.length + ' active contract' + (curve.length === 1 ? '' : 's') + ' for ' + _cmdMeta(_cmdName).label + ' right now — no second (far-month) contract to compare against. Kite\'s instrument list only ever carries currently-active contracts, so this is expected for mini contracts most of the time; try the full-size contract or check back closer to expiry rollover.</div>'
                 );
                 return;
             }
             var near = curve[0], far = curve[1];
-            var from = moment().subtract(10, 'days').format('YYYY-MM-DD');
-            var to = moment().format('YYYY-MM-DD');
-            var results = await Promise.all([
-                getHistoricalDataUsingPromise(near.token, from, to, 'day'),
-                getHistoricalDataUsingPromise(far.token, from, to, 'day'),
-            ]);
-            var nearCandles = results[0] && results[0].data && results[0].data.candles;
-            var farCandles  = results[1] && results[1].data && results[1].data.candles;
-            if (!nearCandles || !nearCandles.length || !farCandles || !farCandles.length) {
+            // from = MCX_PREVIOUS_DAY (Settings-configured "yesterday"), matching the
+            // PREVIOUS_DAY->CURRENT_DAY window every OTHER historical fetch in this app
+            // already uses — not real wall-clock moment() (could invert from>to against an
+            // older configured CURRENT_DAY) and not an arbitrary "10 days back" (silently
+            // ignored whatever MCX_PREVIOUS_DAY was actually configured). '5minute'+trim
+            // also respects the snapshot end time picker, which a 'day' interval never could.
+            var from = _gtbMcxPrevDay();
+            var to = _gtbMcxCurrDayTo();
+            // Use the first TWO listed contracts that actually traded on the snapshot day
+            // (crude / natural gas list next months late, so the far one can have no candles).
+            var refDay = _gtbMcxCurrDay();
+            var cands = curve.slice(0, 4);
+            var results = await Promise.all(cands.map(function (c) { return getHistoricalDataUsingPromise(c.token, from, to, '5minute'); }));
+            var traded = [];
+            cands.forEach(function (c, i) {
+                var cc = _gtbTrimCandlesTail(results[i] && results[i].data && results[i].data.candles, refDay);
+                if (cc && cc.length) traded.push({ c: c, candles: cc });
+            });
+            if (traded.length < 2) {
                 jQ('#cmd-curve-structure').html(
-                    '<div class="cmd-st"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div>'
-                    + '<div style="padding:6px;color:var(--gtb-red);font-size:0.46rem;">No candle data for one or both contracts.</div>'
+                    '<div class="cmd-st"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div>'
+                    + '<div style="padding:6px;color:var(--gtb-red);font-size:0.46rem;">' + (traded.length ? 'Only 1 listed contract traded on ' : 'No candle data for the listed contracts on ') + refDay + ' — contracts not trading yet.</div>'
                 );
                 return;
             }
+            near = traded[0].c; far = traded[1].c;
+            var nearCandles = traded[0].candles, farCandles = traded[1].candles;
             var nearLtp = parseFloat(nearCandles[nearCandles.length - 1][4]);
             var farLtp  = parseFloat(farCandles[farCandles.length - 1][4]);
             var diffPct = nearLtp ? ((farLtp - nearLtp) / nearLtp * 100) : 0;
@@ -13766,7 +14303,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
             INSTRUMENT_SCORE_MAP[_cmdName].curveState = { state: state, diffPct: diffPct, annualizedPct: annualizedPct, lean: lean, dir: curveDir, ts: Date.now() };
 
             jQ('#cmd-curve-structure').html(
-                '<div class="cmd-st"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div>'
+                '<div class="cmd-st"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div>'
                 + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:0.46rem;">'
                 +   '<div><div style="color:var(--gtb-muted);">NEAR — ' + near.tradingsymbol + ' (exp ' + near.expiry + ')</div><div style="font-family:var(--gtb-mono);font-weight:800;font-size:0.62rem;">' + nearLtp.toLocaleString('en-IN') + '</div></div>'
                 +   '<div><div style="color:var(--gtb-muted);">FAR — ' + far.tradingsymbol + ' (exp ' + far.expiry + ')</div><div style="font-family:var(--gtb-mono);font-weight:800;font-size:0.62rem;">' + farLtp.toLocaleString('en-IN') + '</div></div>'
@@ -13791,7 +14328,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
                 + '</div>'
             );
         } catch (e) {
-            jQ('#cmd-curve-structure').html('<div class="cmd-st"><i class="bi bi-graph-up-arrow"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div><div style="padding:6px;color:var(--gtb-red);font-size:0.46rem;">Error loading curve structure.</div>');
+            jQ('#cmd-curve-structure').html('<div class="cmd-st"><i class="bi bi-graph-up"></i> CURVE STRUCTURE' + _ii('cmd-curve') + '</div><div style="padding:6px;color:var(--gtb-red);font-size:0.46rem;">Error loading curve structure.</div>');
             console.log('_cmdLoadCurveStructure', e);
         }
     }
@@ -14124,12 +14661,14 @@ jQ(document).on('click', '#show-commodities', function (e) {
                 }
             } catch(e7) { jQ('#cmd-crude-mpgex').html('<div class="cmd-load" style="color:var(--gtb-red);">Max Pain error.</div>'); }
             try { _cmdRenderVerdict('cmd-crude-verdict', _cmdName, oiData, pc, _mpd); } catch(e8) { jQ('#cmd-crude-verdict').html('<div class="cmd-load" style="color:var(--gtb-red);">Verdict error.</div>'); }
+            try { jQ('#cmd-crude-brief').html(_gtbInstrBriefHtml(_cmdName)); } catch(e9b) {}
             try { jQ('#cmd-crude-lvlprob').html(_gtbLevelProbHtml(_cmdName)); } catch(e9) { jQ('#cmd-crude-lvlprob').html('<div class="cmd-load" style="color:var(--gtb-red);">Level probability error.</div>'); }
         } else {
             jQ('#cmd-crude-oi-table').html('<div class="cmd-load" style="color:var(--gtb-red);">' + _cmdName + ' OI unavailable.</div>');
             jQ('#cmd-crude-mpgex').html('<div class="cmd-load" style="color:var(--gtb-muted);">OI unavailable — Max Pain requires OI data.</div>');
             jQ('#cmd-crude-verdict').html('<div class="cmd-load" style="color:var(--gtb-muted);">OI unavailable — verdict requires OI data.</div>');
             jQ('#cmd-crude-lvlprob').html('<div class="cmd-load" style="color:var(--gtb-muted);">OI unavailable — level probability requires OI data.</div>');
+            try { jQ('#cmd-crude-brief').html(_gtbInstrBriefHtml(_cmdName)); } catch(e9c) {}
         }
         try { _cmdRenderCrudeScoreGauge(); } catch(e10) {}
         try { _gtbRefreshAllPredictCards(_cmdName); } catch(e11) { jQ('#cmd-crude-predict').html('<div class="cmd-load" style="color:var(--gtb-red);">Prediction error.</div>'); }
@@ -14235,7 +14774,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
         // added for the auto-refresh interval/manual Refresh button.
         var $select = jQ(this).prop('disabled', true);
         jQ('#cmd-instr-loading').show();
-        ['#cmd-crude-predict','#cmd-crude-verdict','#cmd-crude-lvlprob','#cmd-crude-sig-strip','#cmd-crude-mpgex','#cmd-crude-trade']
+        ['#cmd-crude-predict','#cmd-crude-verdict','#cmd-crude-lvlprob','#cmd-crude-brief','#cmd-crude-sig-strip','#cmd-crude-mpgex','#cmd-crude-trade']
             .forEach(function(id) { jQ(id).html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading…</div>'); });
         ['#cmd-crude-oi','#cmd-crude-obv'].forEach(function(id) { jQ(id).html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading…</div>'); });
         jQ('#cmd-crude-oi-table').html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading OI…</div>');
@@ -20685,15 +21224,29 @@ function _gtbRenderDashboardPane() {
         +      '</div>';
         h += '</div>'; // end .gtb-dash-2col
 
-        // Master Consensus — every tracked instrument, all 9 engines combined into one
-        // GO LONG / GO SHORT / WAIT outcome each, no dropdown. Full-width since the row
-        // list (indices + both indices' weighted constituents) is longer than a half-width
-        // column comfortably fits. See _gtbMasterConsensus's own comment for the full
-        // weighting rationale.
-        h += '<div class="gtb-card gtb-widget" style="margin:0 8px 8px;">'
-        +      '<div class="gtb-card-header"><span class="gtb-card-title">' + _gtbDashNum(8) + '<i class="bi bi-columns-gap"></i> MASTER CONSENSUS (ALL INSTRUMENTS)' + _ii('gtb-master-consensus') + '</span></div>'
-        +      '<div class="gtb-card-body" id="gtb-dash-consensus" style="padding:6px 8px;overflow:auto;max-height:420px;"></div>'
-        +    '</div>';
+        // Market Fear & Greed / Master Consensus / Trend Probability — three market-wide
+        // context cards, grouped into one 3-column row per explicit request. Fear & Greed
+        // and Trend Probability were previously separate full-width cards (Fear & Greed at
+        // the very bottom of the tab); Master Consensus (ALL INSTRUMENTS) keeps its own
+        // scroll since its row list (indices + both indices' weighted constituents) is
+        // longer than a third-width column comfortably shows without one. Trend Probability
+        // here is the GAUGE-ONLY view (_btTrendProbLeftHtml, bloombergAnalysis.js) — the full
+        // per-signal breakdown table stays Analysis-tab-only via _btRenderPrediction, so this
+        // card doesn't duplicate that table at 1/3 the width.
+        h += '<div class="gtb-dash-3col" style="padding:0 8px 8px;">';
+        h +=   '<div class="gtb-card gtb-widget" style="margin:0;">'
+        +        '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-thermometer-half"></i> MARKET FEAR &amp; GREED INDEX</span></div>'
+        +        '<div class="gtb-card-body" id="gtb-dash-feargreed" style="padding:8px;overflow:auto;max-height:420px;">' + _gtbFearGreedHtml() + '</div>'
+        +      '</div>';
+        h +=   '<div class="gtb-card gtb-widget" style="margin:0;">'
+        +        '<div class="gtb-card-header"><span class="gtb-card-title">' + _gtbDashNum(8) + '<i class="bi bi-columns-gap"></i> MASTER CONSENSUS (ALL INSTRUMENTS)' + _ii('gtb-master-consensus') + '</span></div>'
+        +        '<div class="gtb-card-body" id="gtb-dash-consensus" style="padding:6px 8px;overflow:auto;max-height:420px;"></div>'
+        +      '</div>';
+        h +=   '<div class="gtb-card gtb-widget" style="margin:0;">'
+        +        '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-speedometer2"></i> TREND PROBABILITY' + _ii('dv-prob') + '</span></div>'
+        +        '<div class="gtb-card-body" id="gtb-dash-trendprob" style="padding:8px;overflow:auto;max-height:420px;display:flex;justify-content:center;"></div>'
+        +      '</div>';
+        h += '</div>'; // end .gtb-dash-3col
 
         // Short Covering / Long Unwinding — see _gtbShortCoveringSignal's own comment for the
         // mechanics (margin/MTM pressure, gamma hedging, Max Pain, all sharpest into expiry).
@@ -20720,15 +21273,8 @@ function _gtbRenderDashboardPane() {
         +      '</div>';
         h += '</div>'; // end .gtb-dash-2col
 
-        // Market Fear & Greed — a contrarian sentiment context card, deliberately placed
-        // at the BOTTOM of the tab rather than inside the numbered 1-16 checklist: it's
-        // context for how much to trust/size whatever call the checklist above already
-        // produced, not itself one of the sequential checks (see the function's own
-        // comment for the full rationale).
-        h += '<div class="gtb-card gtb-widget" style="margin:0 8px 8px;">'
-        +      '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-thermometer-half"></i> MARKET FEAR &amp; GREED INDEX</span></div>'
-        +      '<div class="gtb-card-body" id="gtb-dash-feargreed" style="padding:8px;">' + _gtbFearGreedHtml() + '</div>'
-        +    '</div>';
+        // Market Fear & Greed now lives in the 3-column row above (with Master Consensus and
+        // Trend Probability) instead of its own full-width card at the bottom of the tab.
 
         h += '</div>';
         $pane.html(h);
@@ -20798,6 +21344,10 @@ function _gtbRenderDashboardPane() {
 
     try { jQ('#gtb-dash-lvlprob').html(_gtbLevelProbLiveRowsHtml()); } catch (e) {}
     try { jQ('#gtb-dash-consensus').html(_gtbMasterConsensusAllRowsHtml()); } catch (e) {}
+    // Trend Probability — gauge-only view of the SAME engine the Analysis tab's full panel
+    // uses (_btComputeTrendProb/_btTrendProbLeftHtml, bloombergAnalysis.js), so this card can
+    // never disagree with that tab's own verdict.
+    try { jQ('#gtb-dash-trendprob').html(_btTrendProbLeftHtml(_btComputeTrendProb())); } catch (e) {}
     try { jQ('#gtb-dash-shortcov').html(_gtbShortCoveringLiveRowsHtml()); } catch (e) {}
     try { jQ('#gtb-dash-wtc-n50').html(_gtbWeightedTrendConfirmationHtml('NIFTY 50')); } catch (e) {}
     try { jQ('#gtb-dash-wtc-bn').html(_gtbWeightedTrendConfirmationHtml('NIFTY BANK')); } catch (e) {}
@@ -22305,7 +22855,7 @@ function _gtbMasterConsensusHtml(name) {
        + '</div>';
 
     h += '<div style="margin-top:14px;border-top:1px solid var(--gtb-border);padding-top:10px;">'
-       + '<div style="font-weight:800;font-size:0.68rem;margin-bottom:6px;"><i class="bi bi-graph-up-arrow"></i> SIGNAL QUALITY — Information Coefficient (Grinold &amp; Kahn)</div>'
+       + '<div style="font-weight:800;font-size:0.68rem;margin-bottom:6px;"><i class="bi bi-graph-up"></i> SIGNAL QUALITY — Information Coefficient (Grinold &amp; Kahn)</div>'
        + '<div id="gtb-mc-ic">' + _gtbEngineICHtml(name) + '</div>'
        + '</div>';
     h += '</div>';
@@ -26894,81 +27444,103 @@ function _gtbShowMasterCompare() {
 }
 
 // ── Floating quick-access toolbar ───────────────────────────────────────────
+// ── All-Tools launcher — one topbar icon (#gtb-tools-launcher) opens a grid flyout of
+// every tool, redesigned from the old bottom-right floating vertical strip (a cramped
+// 2-column column of icon-only 24px buttons that scrolled to ~700px tall with 35+ tools,
+// requiring users to scan a long unlabeled list to find anything). Grid tiles show icon +
+// label together (same idea as a Windows Start-menu pinned-apps grid), and a search box
+// filters by title so a forgotten tool can be found by typing a keyword instead of scanning.
 function _gtbCreateFloatingBar() {
-    if (document.getElementById('gtb-float-bar')) return;
+    if (document.getElementById('gtb-tools-flyout')) return;
 
     var _tools = [
         // Data Load moved to the very front of the flyout — it was duplicated further
         // down (both 'show-data-load-popup' and 'data-load' opened the same popup via
         // different trigger paths); kept the one with the fuller title, dropped the
         // redundant 'data-load' entry below.
-        { id: 'show-data-load-popup',        icon: 'bi-hdd-fill',             title: 'Data Load (Kite Instruments + Strike Intervals)' },
+        { id: 'show-data-load-popup',        icon: 'bi-hdd-fill',             title: 'Data Load' },
         { id: 'show-premarket-brief',        icon: 'bi-sunrise-fill',         title: 'Pre-Market Brief' },
-        { id: 'show-quick-oi-obv',           icon: 'bi-speedometer2',         title: 'Quick OI/OBV (NIFTY 50 + BANK, no full sweep)' },
-        { id: 'show-level-fade-scanner',     icon: 'bi-signpost-split-fill',  title: 'Level Fade Scanner (EOD wall scan + pre-market check)' },
-        { id: 'show-crude-opentrend',        icon: 'bi-droplet-half',         title: 'CRUDEOILM Opening-Trend Backtest' },
-        { id: 'show-master-scanner',         icon: 'bi-binoculars-fill',      title: 'Master Scanner (Carry + Profile + SL-Hunt)' },
-        { id: 'show-trade-ideas',            icon: 'bi-compass-fill',         title: 'Trade Ideas (Context / Location / Confirmation)' },
+        { id: 'show-quick-oi-obv',           icon: 'bi-speedometer2',         title: 'Quick OI/OBV' },
+        { id: 'show-level-fade-scanner',     icon: 'bi-signpost-split-fill',  title: 'Level Fade Scanner' },
+        { id: 'show-crude-opentrend',        icon: 'bi-droplet-half',         title: 'Crude Opening-Trend Backtest' },
+        { id: 'show-master-scanner',         icon: 'bi-binoculars-fill',      title: 'Master Scanner' },
+        { id: 'show-trade-ideas',            icon: 'bi-compass-fill',         title: 'Trade Ideas' },
         { id: 'show-opportunities',          icon: 'bi-lightning-charge-fill', title: 'Opportunities' },
         { id: 'show-chartgrid',              icon: 'bi-grid-3x3-gap-fill',    title: 'Chart Grid' },
         { id: 'show-915-backtest',           icon: 'bi-calendar-week',        title: '9:15 Backtest' },
         { id: 'show-all-oi',                 icon: 'bi-layers-fill',          title: 'OI Scan' },
         { id: 'show-fut-accuracy',           icon: 'bi-bullseye',             title: 'Futures Accuracy' },
-        { id: 'show-futures-signal',         icon: 'bi-flag-fill',            title: 'Instrument Detail View' },
+        { id: 'show-futures-signal',         icon: 'bi-flag-fill',            title: 'Instrument Detail' },
         { id: 'show-commodities',            icon: 'bi-droplet-fill',         title: 'Commodities' },
-        { id: 'show-mcx-dashboard',          icon: 'bi-collection-fill',      title: 'MCX Dashboard — all commodities' },
+        { id: 'show-mcx-dashboard',          icon: 'bi-collection-fill',      title: 'MCX Dashboard' },
         { id: 'show-oi-viewer',              icon: 'bi-eye',                  title: 'OI Viewer' },
         { id: 'show-stock-viewer',           icon: 'bi-list-ul',              title: 'Stock Viewer' },
         { id: 'show-market-quote-analyzer',  icon: 'bi-graph-up',             title: 'Market Quotes' },
         { id: 'show-maxpain-gex',            icon: 'bi-bar-chart-steps',      title: 'Max Pain / GEX' },
-        { id: 'gtb-add-instr-btn',           icon: 'bi-plus-circle-fill',     title: 'Add Instrument' },
-        { id: 'gtb-settings-toggle',         icon: 'bi-gear-fill',            title: 'Settings' },
-        { id: 'show-market-trend-settings',  icon: 'bi-sliders',              title: 'Market Trend Settings (API keys, expiries)' },
+        { id: 'show-market-trend-settings',  icon: 'bi-sliders',              title: 'Market Trend Settings' },
         { id: 'show-snap-replay',            icon: 'bi-collection-play-fill', title: 'Historical Day Replay' },
         { id: 'show-trade-setup',            icon: 'bi-lightning-fill',       title: 'Trade Recommender' },
         { id: 'show-trade-checklist',        icon: 'bi-clipboard-check',      title: 'Pre-Trade Checklist' },
-        { id: 'show-master-consensus',       icon: 'bi-columns-gap',          title: 'Master Consensus (all engines, one outcome)' },
+        { id: 'show-master-consensus',       icon: 'bi-columns-gap',          title: 'Master Consensus' },
         { id: 'show-rs-scanner',             icon: 'bi-bar-chart-fill',       title: 'Relative Strength' },
-        { id: 'show-signal-scanners',        icon: 'bi-toggles',              title: 'OBV Divergence + Strike Absorption' },
-        { id: 'show-carry-scanner',          icon: 'bi-moon-stars-fill',      title: 'Overnight Carry Scanner' },
+        { id: 'show-signal-scanners',        icon: 'bi-toggles',              title: 'OBV Div. + Absorption' },
+        { id: 'show-carry-scanner',          icon: 'bi-moon-stars-fill',      title: 'Overnight Carry' },
         { id: 'show-vol-profile',            icon: 'bi-align-start',          title: 'Volume Profile / POC' },
-        { id: 'show-liq-scanner',            icon: 'bi-water',          title: 'Liquidity / SL-Hunt Scanner' },
+        { id: 'show-liq-scanner',            icon: 'bi-water',                title: 'Liquidity / SL-Hunt' },
         { id: 'show-quote-fetch',            icon: 'bi-search',               title: 'Quote Fetch' },
         { id: 'show-ws-subscribe',           icon: 'bi-broadcast',            title: 'WebSocket Subscribe' },
         { id: 'show-backtest-popup',         icon: 'bi-clock-history',        title: 'F&O Backtest' },
         { id: 'show-option-strike-search',   icon: 'bi-upc-scan',             title: 'Option Strike Search' },
-        { id: 'show-positional-screener',    icon: 'bi-funnel-fill',          title: 'Positional Screener (Swing)' },
+        { id: 'show-positional-screener',    icon: 'bi-funnel-fill',          title: 'Positional Screener' },
+        { id: 'show-curve-compare',          icon: 'bi-graph-up',             title: 'Curve Structure Compare' },
+        { id: 'show-log-viewer',             icon: 'bi-bell-fill',            title: 'Error / Warning Log' },
+        { id: 'gtb-toggle-groot',            icon: 'bi-toggles',              title: 'Toggle Dashboard' },
         { id: 'show-help',                   icon: 'bi-question-circle-fill', title: 'Help' },
     ];
 
-    var bar = document.createElement('div');
-    bar.id = 'gtb-float-bar';
+    var flyout = document.createElement('div');
+    flyout.id = 'gtb-tools-flyout';
 
-    // ── Flyout panel (hidden until trigger clicked) ────────────────────────
-    var panel = document.createElement('div');
-    panel.id = 'gtb-float-panel';
+    var searchWrap = document.createElement('div');
+    searchWrap.className = 'gtb-tf-search';
+    searchWrap.innerHTML = '<i class="bi bi-search"></i><input type="text" id="gtb-tf-search-input" placeholder="Search tools…" autocomplete="off">';
+    flyout.appendChild(searchWrap);
 
-    // Drag handle inside panel
-    var _handle = document.createElement('span');
-    _handle.className = 'gtb-fb-handle';
-    _handle.title = 'Drag';
-    _handle.innerHTML = '&#8942;';
-    panel.appendChild(_handle);
+    var grid = document.createElement('div');
+    grid.className = 'gtb-tf-grid';
+    flyout.appendChild(grid);
 
-    // Tool buttons
-    _tools.forEach(function(t) {
-        var btn = document.createElement('button');
-        btn.className = 'gtb-fb-btn';
-        btn.title = t.title;
-        btn.dataset.toolId = t.id;
-        btn.innerHTML = '<i class="bi ' + t.icon + '"></i>';
-        btn.addEventListener('click', function(e) {
+    var emptyMsg = document.createElement('div');
+    emptyMsg.className = 'gtb-tf-empty';
+    emptyMsg.textContent = 'No matching tool.';
+    emptyMsg.style.display = 'none';
+    flyout.appendChild(emptyMsg);
+
+    function closeFlyout() {
+        flyout.classList.remove('gtb-tf-open');
+        jQ('#gtb-tools-launcher').removeClass('gtb-ctrl-link-active');
+    }
+
+    _tools.forEach(function (t) {
+        var tile = document.createElement('button');
+        tile.className = 'gtb-tf-tile';
+        tile.dataset.toolId = t.id;
+        tile.dataset.searchText = t.title.toLowerCase();
+        tile.innerHTML = '<i class="bi ' + t.icon + '"></i><span>' + t.title + '</span>';
+        tile.addEventListener('click', function (e) {
             e.stopPropagation();
-            bar.classList.remove('gtb-fb-open');
+            closeFlyout();
             var id = this.dataset.toolId;
+            if (id === 'gtb-toggle-groot') {
+                var $win = jQ('#gtb-popup-win');
+                if ($win.length) { $win.toggle(); } else { showGrootTradeBot(); }
+                return;
+            }
             if (id === 'show-snap-replay')     { _gtbShowHistoricalReplay(); return; }
             if (id === 'show-trade-setup')     { _gtbShowTradeSetup(); return; }
             if (id === 'show-trade-checklist')  { _gtbShowTradeChecklist(); return; }
+            if (id === 'show-curve-compare')     { _gtbShowCurveCompare(); return; }
+            if (id === 'show-log-viewer')        { _gtbShowLogViewer(); return; }
             if (id === 'show-rs-scanner')        { _gtbShowRsScanner(); return; }
             if (id === 'show-signal-scanners')   { _gtbShowSignalScanners(); return; }
             if (id === 'show-carry-scanner')     { _gtbShowCarryScanner(); return; }
@@ -26996,80 +27568,73 @@ function _gtbCreateFloatingBar() {
                 // Dashboard not open — open it, click the tool, then hide the dashboard
                 // so only the tool popup is visible (not Groot alongside it).
                 showGrootTradeBot();
-                setTimeout(function() {
+                setTimeout(function () {
                     var $x = jQ('#' + id);
                     if ($x.length) $x[0].click();
                     jQ('#gtb-popup-win').hide();
                 }, 400);
             }
         });
-        panel.appendChild(btn);
+        grid.appendChild(tile);
     });
 
-    // Groot bot toggle (inside panel, above trigger)
-    var gBtn = document.createElement('button');
-    gBtn.className = 'gtb-fb-btn gtb-fb-groot';
-    gBtn.title = 'Toggle Groot Bot';
-    gBtn.innerHTML = '<i class="bi bi-toggles"></i>';
-    gBtn.addEventListener('click', function(e) {
+    document.body.appendChild(flyout);
+
+    // Search filter — matches by title substring; hides non-matching tiles rather than
+    // rebuilding the grid, so the click handlers/state above never need to be re-wired.
+    searchWrap.querySelector('#gtb-tf-search-input').addEventListener('input', function (e) {
+        var q = e.target.value.trim().toLowerCase();
+        var shown = 0;
+        grid.querySelectorAll('.gtb-tf-tile').forEach(function (tile) {
+            var match = !q || tile.dataset.searchText.indexOf(q) !== -1;
+            tile.style.display = match ? '' : 'none';
+            if (match) shown++;
+        });
+        emptyMsg.style.display = shown ? 'none' : 'block';
+    });
+    // Esc clears/closes; Enter clicks the first visible tile (fast keyboard launch).
+    searchWrap.querySelector('#gtb-tf-search-input').addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeFlyout(); return; }
+        if (e.key !== 'Enter') return;
+        var first = grid.querySelector('.gtb-tf-tile:not([style*="display: none"])');
+        if (first) first.click();
+    });
+
+    // Trigger: the topbar icon added alongside the other gtb-ctrl-link icons.
+    jQ(document).on('click', '#gtb-tools-launcher', function (e) {
         e.stopPropagation();
-        bar.classList.remove('gtb-fb-open');
-        var $win = jQ('#gtb-popup-win');
-        if ($win.length) { $win.toggle(); } else { showGrootTradeBot(); }
-    });
-    panel.appendChild(gBtn);
-
-    bar.appendChild(panel);
-
-    // ── Trigger button — always visible at bottom ──────────────────────────
-    var trigger = document.createElement('button');
-    trigger.id = 'gtb-float-trigger';
-    trigger.title = 'Tools';
-    trigger.innerHTML = '<i class="bi bi-grid-3x3-gap-fill"></i>';
-    trigger.addEventListener('click', function(e) {
-        e.stopPropagation();
-        bar.classList.toggle('gtb-fb-open');
-        trigger.innerHTML = bar.classList.contains('gtb-fb-open')
-            ? '<i class="bi bi-x-lg"></i>'
-            : '<i class="bi bi-grid-3x3-gap-fill"></i>';
-    });
-    bar.appendChild(trigger);
-
-    document.body.appendChild(bar);
-
-    // Close panel when clicking outside the bar
-    document.addEventListener('click', function(e) {
-        if (!bar.contains(e.target) && bar.classList.contains('gtb-fb-open')) {
-            bar.classList.remove('gtb-fb-open');
-            trigger.innerHTML = '<i class="bi bi-grid-3x3-gap-fill"></i>';
-        }
+        var open = flyout.classList.contains('gtb-tf-open');
+        if (open) { closeFlyout(); return; }
+        var rect = this.getBoundingClientRect();
+        flyout.style.top = (rect.bottom + 6) + 'px';
+        // Right-align the panel under the icon, but keep it fully on-screen if the icon
+        // sits near the left edge (a launcher opening off the viewport is useless).
+        var left = Math.max(8, Math.min(rect.right - 300, window.innerWidth - 308));
+        flyout.style.left = left + 'px';
+        flyout.classList.add('gtb-tf-open');
+        jQ(this).addClass('gtb-ctrl-link-active');
+        setTimeout(function () { searchWrap.querySelector('#gtb-tf-search-input').focus(); }, 30);
     });
 
-    // Apply current theme immediately
-    if ((localStorage.getItem('GTB_THEME') || 'dark') === 'light') bar.classList.add('gtb-light');
-
-    // Drag support — drag the whole bar via the handle
-    var _dragging = false, _dragMoved = false, _startY = 0, _startTop = 0;
-    _handle.addEventListener('mousedown', function(e) {
-        _dragging = true; _dragMoved = false;
-        _startY   = e.clientY;
-        _startTop = parseInt(bar.style.bottom) || 40;
-        e.preventDefault();
+    // Close on outside click, or on Escape anywhere while open.
+    document.addEventListener('click', function (e) {
+        if (!flyout.classList.contains('gtb-tf-open')) return;
+        if (flyout.contains(e.target)) return;
+        // Clicking the <i> icon glyph inside the <a> launcher makes e.target the icon, not
+        // the launcher itself — an exact e.target.id check missed that (only an id-less
+        // sliver of the <a> not covered by the icon counted as "the launcher"), so this
+        // listener closed the flyout in the SAME click that had just opened it via the
+        // delegated handler below, every time the click actually landed on the icon glyph.
+        if (e.target.closest && e.target.closest('#gtb-tools-launcher')) return;
+        closeFlyout();
     });
-    document.addEventListener('mousemove', function(e) {
-        if (!_dragging) return;
-        _dragMoved = true;
-        // bar is anchored bottom-right; drag inverts Y
-        var delta = _startY - e.clientY;
-        var b = Math.max(4, Math.min(window.innerHeight - bar.offsetHeight - 4, _startTop + delta));
-        bar.style.bottom = b + 'px';
-        localStorage.setItem('GTB_FLOAT_BOTTOM', b);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && flyout.classList.contains('gtb-tf-open')) closeFlyout();
     });
-    document.addEventListener('mouseup', function() { _dragging = false; });
 
-    // Restore saved position
-    var _saved = localStorage.getItem('GTB_FLOAT_BOTTOM');
-    bar.style.bottom = (_saved ? _saved + 'px' : '40px');
+    // Apply current theme immediately, and keep it in sync (see _gtbApplyTheme).
+    if ((localStorage.getItem('GTB_THEME') || 'dark') === 'light') flyout.classList.add('gtb-light');
 }
 
 setTimeout(_gtbCreateFloatingBar, 1500);
+

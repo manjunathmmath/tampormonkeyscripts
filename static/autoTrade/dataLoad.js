@@ -271,6 +271,7 @@ function _dlShowPopup() {
         +   '<button class="dl-tab" data-dltab="fostrikediff"><i class="bi bi-arrows-vertical"></i> F&amp;O + Strike Diff</button>'
         +   '<button class="dl-tab" data-dltab="constlists"><i class="bi bi-bookmarks-fill"></i> Constant Lists</button>'
         +   '<button class="dl-tab" data-dltab="rawglobals"><i class="bi bi-braces"></i> Raw Globals</button>'
+        +   '<button class="dl-tab" data-dltab="macrodata"><i class="bi bi-globe"></i> Macro Data</button>'
         +   '<button id="dl-clear-cache" class="dl-clear-btn" type="button" title="Wipe IndexedDB/localStorage cache and reset FO_LIST/NSE_STRIKE_DIFF/INSTRUMENT_TOKENS/FUTURE_INTRUMENT_LIST back to empty"><i class="bi bi-trash-fill"></i> Clear Cache</button>'
         + '</div>'
         + '<div id="dl-panel-instr" class="dl-panel dl-panel-active">'
@@ -311,6 +312,7 @@ function _dlShowPopup() {
         +   '<div id="dl-constlists-table"></div>'
         + '</div>'
         + '<div id="dl-panel-rawglobals" class="dl-panel"></div>'
+        + '<div id="dl-panel-macrodata" class="dl-panel"></div>'
         + '</div>';
 
     showPopUpWindow('data-load-popup', html, 'Data Load', 820, 660);
@@ -337,7 +339,35 @@ var _DL_DERIVED_RENDERERS = {
     fostrikediff: function () { _dlRenderFoStrikeDiffTable(); },
     constlists: function () { _dlRenderConstListsTable(); },
     rawglobals: function () { _dlRenderRawGlobalsTab(); },
+    macrodata: function () { _dlRenderMacroDataTab(); },
 };
+
+// ── Macro Data tab: paste the India 10Y bond-yield history (Investing.com "historical data" table) ──
+function _dlRenderMacroDataTab() {
+    var rows = (typeof _mcManualLoad === 'function') ? _mcManualLoad() : [];
+    var last = rows.length ? rows[rows.length - 1] : null;
+    var h = '<div class="dl-derived-hint">India 10-year G-Sec yield history for the Macro tab. Copy the table from Investing.com (India 10-Year Bond Yield → Historical Data) and paste it below — columns: Date, Price, Open, High, Low, Change %. Dates are DD-MM-YYYY. Pasting again merges by date, so you can add just the newest rows.</div>'
+        + '<textarea id="dl-macro-text" class="dl-search" style="width:100%;height:220px;font-family:var(--gtb-mono);font-size:0.62rem;white-space:pre;" placeholder="25-09-2026 7.120 7.141 7.141 7.100 +0.13%"></textarea>'
+        + '<div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">'
+        +   '<button class="dl-tab" id="dl-macro-save">Save / merge</button>'
+        +   '<button class="dl-tab" id="dl-macro-replace">Replace all</button>'
+        +   '<button class="dl-tab" id="dl-macro-clear">Clear stored</button>'
+        +   '<span id="dl-macro-msg" style="font-size:0.6rem;color:var(--gtb-muted);"></span></div>'
+        + '<div style="font-size:0.62rem;color:var(--gtb-muted);">Stored: <b>' + rows.length + '</b> day(s)' + (last ? ' · latest ' + last.d + ' = ' + last.c.toFixed(3) + '%' : '') + '</div>';
+    jQ('#dl-panel-macrodata').html(h);
+}
+jQ(document).on('click', '#dl-macro-save, #dl-macro-replace', function () {
+    var replace = this.id === 'dl-macro-replace';
+    var r = _mcParseYieldText(jQ('#dl-macro-text').val());
+    if (!r.rows.length) { jQ('#dl-macro-msg').css('color', 'var(--gtb-red)').text('No valid rows found — expected lines starting with DD-MM-YYYY then the price.'); return; }
+    var all = _mcManualSave(r.rows, replace);
+    _dlRenderMacroDataTab();
+    jQ('#dl-macro-msg').css('color', 'var(--gtb-green)').text('Saved ' + r.rows.length + ' row(s)' + (r.bad ? ' (' + r.bad + ' skipped)' : '') + ' — ' + all.length + ' day(s) stored.');
+});
+jQ(document).on('click', '#dl-macro-clear', function () {
+    try { localStorage.removeItem(_MC_MANUAL_KEY); } catch (e) {}
+    _GTB_MACRO = null; _dlRenderMacroDataTab();
+});
 jQ(document).on('click', '.dl-tab', function () {
     var tab = jQ(this).attr('data-dltab');
     jQ('.dl-tab').removeClass('dl-tab-active');

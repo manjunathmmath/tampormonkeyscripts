@@ -1,16 +1,254 @@
 // ─── positionalScreener.js ──────────────────────────────────────────────────
 // Swing/positional screener — scans all F&O stocks on DAILY candles (not the
-// 5-min intraday series every other tool in this app uses) for multi-day setups:
-// trend structure (price vs SMA20/50), 20-day breakout/breakdown, relative
-// strength vs NIFTY 50, and multi-day futures OI buildup (rising OI + rising
-// price = long buildup, rising OI + falling price = short buildup, etc.).
+// 5-min intraday series every other tool in this app uses).
+//
+// TWO LAYERS, deliberately not blended into one silent number:
+//   1. PRIMARY — a line-for-line port of groot-platform/groot-research's Python
+//      swing_scanner (Minervini's Trend Template, Weinstein's Stage Analysis,
+//      Clenow's momentum score — see the "groot-research parity" block below).
+//      This is the TRUSTED base call for "is this a genuine, mechanically-
+//      defined Stage 2 uptrend / Stage 4 downtrend worth a swing/positional
+//      hold." Named, published, book-sourced rules — the same reasoning that
+//      made groot-research the more trustworthy of the two scanners.
+//   2. OVERLAY — this app's own SAME-DAY composite (trend vs SMA20/50, 20-day
+//      breakout/breakdown, relative strength vs NIFTY 50, multi-day futures OI
+//      buildup/unwinding, and futures Curve Structure/contango-backwardation).
+//      Purely a confirmation/timing layer on top of the primary read — it can
+//      raise or lower CONVICTION but never flips the direction the primary
+//      read established. If the two disagree, the verdict says so explicitly
+//      (e.g. "BUY — overlay disagrees (caution)") rather than hiding it inside
+//      a single blended score.
 //
 // ISOLATION: standalone file, only reads existing globals (FO_LIST,
-// INSTRUMENT_TOKENS, FUTURE_INTRUMENT_LIST, getHistoricalDataUsingPromise) —
-// never writes INSTRUMENT_SCORE_MAP or any other live-shared cache, and never
-// calls any of the existing intraday scoring functions. Nothing in the rest of
-// the app is touched or behaves any differently with this file absent.
+// INSTRUMENT_TOKENS, FUTURE_INTRUMENT_LIST, NSE_FUT_CURVE/MCX_FUT_CURVE,
+// getHistoricalDataUsingPromise) — never writes INSTRUMENT_SCORE_MAP or any
+// other live-shared cache, and never calls any of the existing intraday
+// scoring functions. Nothing in the rest of the app is touched or behaves any
+// differently with this file absent.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════════════
+// Groot-research parity layer — Minervini Trend Template + Weinstein Stage Analysis +
+// Clenow momentum, ported from groot-platform/groot-research/swing_scanner/*.py line-for-
+// line (same rules, same thresholds, same ATR(14) 1.5x/2.5x entry/stop/target convention).
+// This is now the PRIMARY classification ("is this a genuine, mechanically-defined Stage 2
+// uptrend / Stage 4 downtrend, worth a swing/positional hold") — see trade-signal priority
+// discussion: the Python side's named, published rules (Minervini/Weinstein/Clenow) are the
+// trusted base; this app's OWN trend/breakout/OI/curve composite (below, unchanged) is kept
+// as a same-day OVERLAY on top of it — confirmation/timing, not the primary call.
+//
+// Needs 210+ trading days of daily candles (Trend Template's own minimum) — ~260 for a
+// fully-formed Weinstein Stage read and Clenow momentum's 90-day window with margin, so the
+// scan now pulls a much longer daily history per stock than before (see the 400-day fetch
+// in the scan loop). Stocks with less history (recent listings) get an honest
+// "INSUFFICIENT HISTORY" primary read and fall back to the old measured-move trade plan.
+// ══════════════════════════════════════════════════════════════════════════════════════
+
+// Rolling SMA as a full array (index i = SMA ending at closes[i]; null before window-1).
+function _psSmaArr(closes, window) {
+    var out = new Array(closes.length).fill(null), sum = 0;
+    for (var i = 0; i < closes.length; i++) {
+        sum += closes[i];
+        if (i >= window) sum -= closes[i - window];
+        if (i >= window - 1) out[i] = sum / window;
+    }
+    return out;
+}
+
+// ATR(14) on daily OHLC — same True Range formula/window as trade_levels.compute_atr and
+// the same 14-day window this app's own ATR-based Position Size calculator already uses.
+function _psAtr14(candles, window) {
+    window = window || 14;
+    if (!candles || candles.length < window + 1) return null;
+    var trs = [];
+    for (var i = 1; i < candles.length; i++) {
+        var h = parseFloat(candles[i][2]), l = parseFloat(candles[i][3]), pc = parseFloat(candles[i - 1][4]);
+        trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+    }
+    var tail = trs.slice(-window);
+    return tail.reduce(function (a, b) { return a + b; }, 0) / tail.length;
+}
+
+// Minervini's Trend Template — 8 mechanical rules for a genuine Stage 2 uptrend
+// (trend_template.py). Rule 8 (relative strength) is the same "outperformed NIFTY 50 over
+// the trailing 6 months (127 sessions)" proxy the Python side uses, flagged there as a proxy
+// for Minervini's real universe-wide percentile RS Rating (this app has no such ranking).
+function _psTrendTemplate(candles, niftyCloses) {
+    if (!candles || candles.length < 210) return { ok: false, reason: 'Need 210+ trading days, got ' + (candles ? candles.length : 0) };
+    var c = candles.map(function (x) { return parseFloat(x[4]); });
+    var price = c[c.length - 1];
+    var sma50 = _psSmaArr(c, 50), sma150 = _psSmaArr(c, 150), sma200 = _psSmaArr(c, 200);
+    var n = c.length;
+    var rules = {};
+    rules.r1 = price > sma150[n - 1] && price > sma200[n - 1];
+    rules.r2 = sma150[n - 1] > sma200[n - 1];
+    rules.r3 = n - 1 - 21 >= 0 && sma200[n - 1 - 21] != null && sma200[n - 1] > sma200[n - 1 - 21];
+    rules.r4 = sma50[n - 1] > sma150[n - 1] && sma50[n - 1] > sma200[n - 1];
+    rules.r5 = price > sma50[n - 1];
+    var win52 = c.slice(Math.max(0, n - 252));
+    var low52 = Math.min.apply(null, win52), high52 = Math.max.apply(null, win52);
+    rules.r6 = price >= low52 * 1.30;
+    rules.r7 = price >= high52 * 0.75;
+    var rsPct = null;
+    if (niftyCloses && niftyCloses.length >= 127 && n >= 127) {
+        var stockRet = (c[n - 1] / c[n - 127]) - 1;
+        var nn = niftyCloses.length;
+        var niftyRet = (niftyCloses[nn - 1] / niftyCloses[nn - 127]) - 1;
+        rsPct = (stockRet - niftyRet) * 100;
+        rules.r8 = rsPct > 0;
+    }
+    var vals = Object.keys(rules).map(function (k) { return rules[k]; });
+    var passed = vals.filter(Boolean).length;
+    return {
+        ok: true, price: price, sma50: sma50[n - 1], sma150: sma150[n - 1], sma200: sma200[n - 1],
+        low52: low52, high52: high52, pctOffHigh52: (price / high52 - 1) * 100, rsPct: rsPct,
+        rulesPassed: passed, rulesTotal: vals.length, passes: vals.every(Boolean),
+    };
+}
+
+// Mirror image for a confirmed Weinstein Stage 4 downtrend (short_template.py).
+function _psShortTemplate(candles, niftyCloses) {
+    if (!candles || candles.length < 210) return { ok: false, reason: 'Need 210+ trading days, got ' + (candles ? candles.length : 0) };
+    var c = candles.map(function (x) { return parseFloat(x[4]); });
+    var price = c[c.length - 1];
+    var sma50 = _psSmaArr(c, 50), sma150 = _psSmaArr(c, 150), sma200 = _psSmaArr(c, 200);
+    var n = c.length;
+    var rules = {};
+    rules.r1 = price < sma150[n - 1] && price < sma200[n - 1];
+    rules.r2 = sma150[n - 1] < sma200[n - 1];
+    rules.r3 = n - 1 - 21 >= 0 && sma200[n - 1 - 21] != null && sma200[n - 1] < sma200[n - 1 - 21];
+    rules.r4 = sma50[n - 1] < sma150[n - 1] && sma50[n - 1] < sma200[n - 1];
+    rules.r5 = price < sma50[n - 1];
+    var win52 = c.slice(Math.max(0, n - 252));
+    var low52 = Math.min.apply(null, win52), high52 = Math.max.apply(null, win52);
+    rules.r6 = price <= high52 * 0.70;
+    rules.r7 = price <= low52 * 1.25;
+    var rsPct = null;
+    if (niftyCloses && niftyCloses.length >= 127 && n >= 127) {
+        var stockRet = (c[n - 1] / c[n - 127]) - 1;
+        var nn = niftyCloses.length;
+        var niftyRet = (niftyCloses[nn - 1] / niftyCloses[nn - 127]) - 1;
+        rsPct = (stockRet - niftyRet) * 100;
+        rules.r8 = rsPct < 0;
+    }
+    var vals = Object.keys(rules).map(function (k) { return rules[k]; });
+    var passed = vals.filter(Boolean).length;
+    return {
+        ok: true, price: price, sma50: sma50[n - 1], sma150: sma150[n - 1], sma200: sma200[n - 1],
+        low52: low52, high52: high52, pctOffLow52: (price / low52 - 1) * 100, rsPct: rsPct,
+        rulesPassed: passed, rulesTotal: vals.length, passes: vals.every(Boolean),
+    };
+}
+
+// Weinstein Stage Analysis proxy (stage_analysis.py) — 150-day SMA (~30 weeks) + a slope
+// measured over the trailing 25 trading days (~5 weeks). Flat MA (|slope|<=1%) is Stage
+// 1 (basing, lower half of 52wk range) or Stage 3 (topping, upper half); rising MA is
+// Stage 2 (confirmed if price is above it, else an early/unconfirmed breakout); falling
+// MA is Stage 4 (confirmed if price is below it, else an unconfirmed bounce).
+var _PS_STAGE_LABELS = { 1: 'Stage 1 — Basing', 2: 'Stage 2 — Advancing', 3: 'Stage 3 — Topping', 4: 'Stage 4 — Declining' };
+function _psStage(candles) {
+    var SMA_W = 150, SLOPE_W = 25, FLAT = 1.0;
+    if (!candles || candles.length < SMA_W + SLOPE_W) return { ok: false, reason: 'Need ' + (SMA_W + SLOPE_W) + '+ trading days, got ' + (candles ? candles.length : 0) };
+    var c = candles.map(function (x) { return parseFloat(x[4]); });
+    var n = c.length, price = c[n - 1];
+    var sma = _psSmaArr(c, SMA_W);
+    var maNow = sma[n - 1], maPast = sma[n - 1 - SLOPE_W];
+    var slopePct = maPast ? (maNow - maPast) / maPast * 100 : 0;
+    var above = price > maNow;
+    var win52 = c.slice(Math.max(0, n - 252));
+    var low52 = Math.min.apply(null, win52), high52 = Math.max.apply(null, win52);
+    var rangePct = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5;
+    var stage, confirmed = true;
+    if (Math.abs(slopePct) <= FLAT) stage = rangePct < 0.5 ? 1 : 3;
+    else if (slopePct > FLAT) { stage = 2; confirmed = above; }
+    else { stage = 4; confirmed = !above; }
+    return { ok: true, stage: stage, label: _PS_STAGE_LABELS[stage] + (confirmed ? '' : ' (unconfirmed)'), confirmed: confirmed, ma: maNow, slopePct: slopePct, rangePct: rangePct * 100 };
+}
+
+// Clenow's momentum score (momentum.py): OLS regression of log(close) over the trailing 90
+// trading days; annualized_return = (e^(slope*252) - 1) * 100; momentum_score =
+// annualized_return * R^2 (a steep-but-noisy trend is penalized; smooth-but-shallow scores
+// lower than smooth AND steep). Flags (doesn't drop) a >15% single-day move in the window —
+// usually an earnings/corporate-action gap distorting the fit's smoothness reading.
+function _psMomentum(candles, lookback, gapPct) {
+    lookback = lookback || 90; gapPct = gapPct || 15.0;
+    if (!candles || candles.length < lookback) return { ok: false, reason: 'Need ' + lookback + '+ trading days, got ' + (candles ? candles.length : 0) };
+    var win = candles.slice(-lookback).map(function (x) { return parseFloat(x[4]); });
+    if (win.some(function (v) { return !(v > 0); })) return { ok: false, reason: 'Non-positive close in window' };
+    var logp = win.map(Math.log);
+    var nL = logp.length, sx = 0, sy = 0, sxy = 0, sxx = 0;
+    for (var i = 0; i < nL; i++) { sx += i; sy += logp[i]; sxy += i * logp[i]; sxx += i * i; }
+    var slope = (nL * sxy - sx * sy) / (nL * sxx - sx * sx);
+    var intercept = (sy - slope * sx) / nL;
+    var meanY = sy / nL, ssRes = 0, ssTot = 0;
+    for (i = 0; i < nL; i++) { var fit = slope * i + intercept; ssRes += Math.pow(logp[i] - fit, 2); ssTot += Math.pow(logp[i] - meanY, 2); }
+    var r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+    var annualizedPct = (Math.exp(slope * 252) - 1) * 100;
+    var score = annualizedPct * r2;
+    var maxGap = 0;
+    for (i = 1; i < win.length; i++) maxGap = Math.max(maxGap, Math.abs((win[i] - win[i - 1]) / win[i - 1] * 100));
+    return { ok: true, annualizedPct: annualizedPct, r2: r2, score: score, maxGapPct: maxGap, gapFlagged: maxGap > gapPct };
+}
+
+var _PS_ATR_STOP_MULT = 1.5, _PS_ATR_TARGET_MULT = 2.5;   // matches trade_levels.py exactly
+var _PS_EXTENDED_PCT = 25.0, _PS_MILD_EXT_PCT = 10.0;
+
+// Long-side extension check + ATR entry/stop/target (trade_levels.py). Minervini/O'Neil
+// "don't chase": single digits above a rising 50-day SMA is a reasonable buy zone; beyond
+// 25% above it is extended, and the textbook response is a pullback entry toward the
+// 50-day line rather than chasing the current price.
+function _psLongLevels(candles, price, sma50) {
+    var pctAbove = sma50 ? (price / sma50 - 1) * 100 : null;
+    var note, entry;
+    if (pctAbove == null) { note = 'no 50-day SMA'; entry = price; }
+    else if (pctAbove <= _PS_MILD_EXT_PCT) { note = 'in buy zone (not extended)'; entry = price; }
+    else if (pctAbove <= _PS_EXTENDED_PCT) { note = 'mildly extended — a shallow pullback toward the 50-day SMA is lower-risk than chasing here'; entry = sma50 * 1.03; }
+    else { note = 'EXTENDED (>25% above 50-day SMA) — textbook move is to wait for a pullback to the 50-day line'; entry = sma50; }
+    var atr = _psAtr14(candles);
+    if (atr == null || !entry) return { pctAbove: pctAbove, note: note, atr: atr, entry: entry, stop: null, target: null, rr: null };
+    var stop = entry - _PS_ATR_STOP_MULT * atr, target = entry + _PS_ATR_TARGET_MULT * atr;
+    var risk = entry - stop, reward = target - entry;
+    return { pctAbove: pctAbove, note: note, atr: atr, entry: entry, stop: stop, target: target, rr: risk > 0 ? reward / risk : null };
+}
+
+// Short-side mirror (short_levels.py) — entry on a bounce UP toward a falling 50-day SMA if
+// already extended down, stop ABOVE entry, target BELOW entry.
+function _psShortLevels(candles, price, sma50) {
+    var pctBelow = price ? (sma50 / price - 1) * 100 : null;
+    var note, entry;
+    if (pctBelow == null) { note = 'no 50-day SMA'; entry = price; }
+    else if (pctBelow <= _PS_MILD_EXT_PCT) { note = 'in sell zone (not extended)'; entry = price; }
+    else if (pctBelow <= _PS_EXTENDED_PCT) { note = 'mildly extended down — a shallow bounce toward the 50-day SMA is lower-risk than chasing the decline'; entry = sma50 * 0.97; }
+    else { note = 'EXTENDED DOWN (>25% below 50-day SMA) — textbook move is to wait for a bounce to the 50-day line'; entry = sma50; }
+    var atr = _psAtr14(candles);
+    if (atr == null || !entry) return { pctBelow: pctBelow, note: note, atr: atr, entry: entry, stop: null, target: null, rr: null };
+    var stop = entry + _PS_ATR_STOP_MULT * atr, target = entry - _PS_ATR_TARGET_MULT * atr;
+    var risk = stop - entry, reward = entry - target;
+    return { pctBelow: pctBelow, note: note, atr: atr, entry: entry, stop: stop, target: target, rr: risk > 0 ? reward / risk : null };
+}
+
+// ── Primary classification: Trend Template / Short Template / Stage, combined ──────────
+// This is now the TRUSTED base call ("is this a genuine, mechanically-defined Stage 2
+// uptrend / Stage 4 downtrend worth a swing/positional hold") — see the file-header note.
+// dir: +1 confirmed long (Trend Template PASS), +0.5 Stage 2 forming/unconfirmed,
+//       0 Stage 1 basing, -0.3 Stage 3 topping, -0.5 Stage 4 forming, -1 confirmed short
+//       (Short Template PASS), null = insufficient history.
+function _psPrimaryRead(candles, niftyCloses) {
+    var tt = _psTrendTemplate(candles, niftyCloses);
+    var st = _psShortTemplate(candles, niftyCloses);
+    var stage = _psStage(candles);
+    var mom = _psMomentum(candles);
+    if (!tt.ok && !st.ok && !stage.ok) return { ok: false, tt: tt, st: st, stage: stage, mom: mom, dir: null, label: 'INSUFFICIENT HISTORY' };
+    var dir, label;
+    if (tt.ok && tt.passes) { dir = 1; label = 'STAGE 2 CONFIRMED (Trend Template ' + tt.rulesPassed + '/' + tt.rulesTotal + ')'; }
+    else if (st.ok && st.passes) { dir = -1; label = 'STAGE 4 CONFIRMED (Short Template ' + st.rulesPassed + '/' + st.rulesTotal + ')'; }
+    else if (stage.ok && stage.stage === 2) { dir = 0.5; label = stage.label + (tt.ok ? ' (' + tt.rulesPassed + '/' + tt.rulesTotal + ' Trend Template rules)' : ''); }
+    else if (stage.ok && stage.stage === 1) { dir = 0; label = stage.label; }
+    else if (stage.ok && stage.stage === 3) { dir = -0.3; label = stage.label; } // no trade plan — see _psAttachTradePlan's isWatch
+    else if (stage.ok && stage.stage === 4) { dir = -0.5; label = stage.label + (st.ok ? ' (' + st.rulesPassed + '/' + st.rulesTotal + ' rules)' : ''); }
+    else { dir = null; label = 'INSUFFICIENT HISTORY'; }
+    return { ok: true, tt: tt, st: st, stage: stage, mom: mom, dir: dir, label: label };
+}
 
 var _PS_CACHE = {}; // _PS_CACHE[name] = { candles, futCandles, ...computed fields }
 
@@ -76,6 +314,7 @@ function _psContentHtml() {
         +   '</select>'
         +   '<input type="text" id="ps-search" class="dl-search" style="width:140px;margin:0;" placeholder="Search results…">'
         + '</div>'
+        + '<div id="ps-breadth"></div>'
         + '<div id="ps-table-wrap" class="ps-table-wrap">'
         +   '<div class="sv-empty-state"><i class="bi bi-funnel-fill"></i><span>Choose a filter above, or add symbols by search, then click SCAN</span></div>'
         + '</div>'
@@ -170,7 +409,12 @@ jQ(document).on('click', '.ps-seg-btn', function () {
     jQ(this).addClass('sv-seg-active');
     _psShowChipPanel(_psBuildList(jQ(this).attr('data-psfilter')));
 });
-jQ(document).on('click', '#ps-chip-panel .sv-chip', function () { jQ(this).toggleClass('sv-chip-selected'); _psUpdateScanCount(); });
+// NOTE: stockViewer.js already binds a document-level '.sv-chip' click handler that
+// toggles 'sv-chip-selected' for ANY chip with that class, anywhere in the app (it fires
+// first since that file loads before this one). Adding our own toggleClass here double-
+// toggles (net no-op on every click) -- same collision grootTradeBot.js's Instrument
+// Detail View chip panel already documents and works around. Only update the count here.
+jQ(document).on('click', '#ps-chip-panel .sv-chip', function () { _psUpdateScanCount(); });
 jQ(document).on('click', '#ps-chip-select-all', function () { jQ('#ps-chip-panel .sv-chip').addClass('sv-chip-selected'); _psUpdateScanCount(); });
 jQ(document).on('click', '#ps-chip-select-none', function () { jQ('#ps-chip-panel .sv-chip').removeClass('sv-chip-selected'); _psUpdateScanCount(); });
 
@@ -252,11 +496,21 @@ async function _psFetchDaily(token, days) {
 // Indices/MCX use different naming + token sources than F&O stocks — same mapping
 // convention as backtest.js/optionStrikeSearch.js (display name -> exchange-native name).
 var _PS_INDEX_NAMES = { 'NIFTY 50': 'NIFTY', 'NIFTY BANK': 'BANKNIFTY' };
-var _PS_MCX_NAMES = ['CRUDEOILM'];
+// Same MCX universe config.js already tracks (_CFG_MCX_COMMODITIES) — was CRUDEOILM-only
+// here; every other MCX name works identically (all resolve via COMMODITIES_FUTURE_INSTRUMENT_LIST
+// / MCX_FUT_CURVE, both already name-keyed and generic, not crude-specific). ZINC/COPPER etc.
+// have no commodity-specific vol index for their VIX-range read elsewhere in the app (falls
+// back to India VIX or the manual VIX config) — that's an existing, documented limitation of
+// those commodities generally, not something this scanner introduces.
+var _PS_MCX_NAMES = ['CRUDEOIL', 'CRUDEOILM', 'GOLD', 'GOLDM', 'SILVER', 'SILVERM', 'NATURALGAS', 'NATGASMINI', 'ZINC', 'COPPER', 'USDINR'];
 // Scanned alongside FO_LIST — indices/MCX have no daily "trend" of their own the way a
 // stock does in the strictest sense, but the same SMA/breakout/RS/OI math applies fine to
 // their own price series.
-var _PS_EXTRA_INSTRUMENTS = ['NIFTY 50', 'NIFTY BANK', 'CRUDEOILM'];
+var _PS_EXTRA_INSTRUMENTS = ['NIFTY 50', 'NIFTY BANK'].concat(_PS_MCX_NAMES);
+// groot-research's own LOOKBACK_DAYS_NEEDED (260 trading days) * 1.6 calendar-day buffer,
+// ported as-is from scanner.py's fetch_daily — enough for the 200-day SMA + Rule 3's 21-day
+// slope check + the 252-day 52-week window, with margin.
+var _PS_LOOKBACK_DAYS = 420;
 
 // Spot/price token for the daily candle fetch. Stocks (INSTRUMENT_TOKENS) unchanged;
 // NIFTY 50/NIFTY BANK also come from INSTRUMENT_TOKENS (already carries indices); MCX
@@ -302,6 +556,104 @@ function _psDaysToExpiry(expiryStr) {
 }
 
 // Kite chart link needs the right exchange segment + token per instrument class.
+// -- Full plain-English trade recommendation, per stock -----------------------------------
+// Assembles everything the scanner knows about one name into one readable verdict: what the
+// primary (groot-research) read says, what today's overlay adds or subtracts, whether they
+// agree, the concrete plan if one exists, and the caveats that apply. Shown in a popup via
+// the "Explain" icon per row -- the tooltip icon only has room for the short exit rule.
+function _psExplainVerdict(r) {
+    var p = r.primary, L = [];
+    var dirWord = function (d) { return d > 0 ? 'bullish' : d < 0 ? 'bearish' : 'neutral'; };
+
+    L.push('<h3 style="margin:0 0 8px;">' + r.name + ' -- <span style="color:' + r.verdictColor + ';">' + r.verdict + '</span></h3>');
+    L.push('<p style="color:var(--gtb-muted);margin:0 0 12px;">LTP ' + r.ltp.toFixed(2) + '</p>');
+
+    // 1. Primary read
+    L.push('<div style="font-weight:800;margin-bottom:4px;">1. Primary read (groot-research -- Minervini/Weinstein/Clenow)</div>');
+    if (!p || !p.ok) {
+        L.push('<p>Not enough trading-day history yet for a trend-template or stage read. This scanner needs 175+ days for a Stage read and 210+ for the full 8-rule Trend/Short Template -- likely a recently-listed stock. The verdict below is based ONLY on today\'s overlay, which is far less reliable on its own.</p>');
+    } else {
+        L.push('<p><b>' + p.label + '</b> -- ' + dirWord(p.dir) + ' bias' + (p.dir === 0 || p.dir === -0.3 ? ' (no trade direction by design -- see below)' : '') + '.</p>');
+        if (p.tt && p.tt.ok) {
+            L.push('<p>Trend Template (long-side, 8 rules): <b>' + p.tt.rulesPassed + '/' + p.tt.rulesTotal + '</b> passed' + (p.tt.rsPct != null ? ', 6-month relative strength vs NIFTY ' + (p.tt.rsPct >= 0 ? '+' : '') + p.tt.rsPct.toFixed(1) + '%' : '') + '. ' + (p.tt.passes ? 'ALL 8 pass -- this is a mechanically genuine Stage 2 uptrend by Minervini\'s own definition.' : 'Not all 8 pass, so this is not a fully confirmed Stage 2 uptrend yet.') + '</p>');
+        }
+        if (p.st && p.st.ok) {
+            L.push('<p>Short Template (8 mirrored rules): <b>' + p.st.rulesPassed + '/' + p.st.rulesTotal + '</b> passed' + (p.st.rsPct != null ? ', 6-month relative weakness vs NIFTY ' + (p.st.rsPct >= 0 ? '+' : '') + p.st.rsPct.toFixed(1) + '%' : '') + '. ' + (p.st.passes ? 'ALL 8 pass -- a mechanically genuine Stage 4 downtrend.' : '') + '</p>');
+        }
+        if (p.stage && p.stage.ok) {
+            L.push('<p>Weinstein Stage: <b>' + p.stage.label + '</b> (30-week MA slope ' + (p.stage.slopePct >= 0 ? '+' : '') + p.stage.slopePct.toFixed(1) + '% over 5 weeks, price at ' + p.stage.rangePct.toFixed(0) + '% of its 52-week range).</p>');
+        }
+        if (p.mom && p.mom.ok) {
+            L.push('<p>Momentum (Clenow, 90-day): score <b>' + p.mom.score.toFixed(0) + '</b> = annualized trend ' + p.mom.annualizedPct.toFixed(0) + '% &times; smoothness R&sup2; ' + p.mom.r2.toFixed(2) + '.' + (p.mom.gapFlagged ? ' &#9888; A single-day move over 15% sits in this window and may be distorting the fit -- check the chart before trusting this number.' : '') + '</p>');
+        } else if (p.mom && !p.mom.ok) {
+            L.push('<p style="color:var(--gtb-muted);">Momentum: ' + p.mom.reason + '.</p>');
+        }
+    }
+
+    // 2. Overlay
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">2. Today\'s overlay (same-day confirmation only -- never the primary call)</div>');
+    L.push('<p>Daily trend ' + r.trendLabel + ', breakout ' + r.breakoutLabel + ', relative strength ' + (r.relStrength >= 0 ? '+' : '') + r.relStrength.toFixed(1) + '% vs NIFTY (20d), futures OI ' + r.oiLabel + ', futures curve ' + (r.curveLabel || 'no data') + '. Combined overlay score: <b style="color:' + r.overlayColor + ';">' + (r.overlayTotal >= 0 ? '+' : '') + r.overlayTotal.toFixed(1) + '</b> (' + r.overlayVerdict + ').</p>');
+
+    // 3. Agreement
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">3. Do they agree?</div>');
+    if (p && p.ok && p.dir != null) {
+        if (r.agree) L.push('<p style="color:var(--gtb-green);">Yes -- the primary trend read and today\'s overlay point the same way. This is the higher-conviction case.</p>');
+        else if (r.disagree) L.push('<p style="color:var(--gtb-amber);">No -- they actively disagree. The primary read (' + p.label + ') is kept as the direction (it is the trusted, mechanically-defined signal), but today\'s tape is working against it. Treat this as lower conviction and expect chop or a possible near-term pullback/bounce against the primary trend before it reasserts, if it does.</p>');
+        else L.push('<p style="color:var(--gtb-amber);">Partially -- the primary trend is intact but today\'s overlay is not yet adding confirmation (score near zero). Reasonable to wait for the overlay to turn clearly positive/negative in the same direction before sizing up.</p>');
+    } else {
+        L.push('<p>No primary read to compare against -- this verdict rests on the overlay alone, which this app has always flagged as the less reliable of the two (its own weights were never back-tested).</p>');
+    }
+
+    // 4. Trade plan
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">4. Trade plan</div>');
+    if (r.entry != null) {
+        L.push('<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">'
+            + '<tr><td style="padding:2px 8px 2px 0;color:var(--gtb-muted);">Entry</td><td>' + r.entry.toFixed(2) + '</td></tr>'
+            + '<tr><td style="padding:2px 8px 2px 0;color:var(--gtb-muted);">Target</td><td style="color:var(--gtb-green);">' + r.target.toFixed(2) + '</td></tr>'
+            + '<tr><td style="padding:2px 8px 2px 0;color:var(--gtb-muted);">Stop</td><td style="color:var(--gtb-red);">' + r.stop.toFixed(2) + '</td></tr>'
+            + '<tr><td style="padding:2px 8px 2px 0;color:var(--gtb-muted);">Risk:Reward</td><td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td></tr>'
+            + '</table>');
+        L.push('<p>' + r.exitCriteria + '</p>');
+        if (r.extensionNote) L.push('<p style="color:var(--gtb-muted);">Extension check: ' + r.extensionNote + '.</p>');
+        L.push('<p style="color:var(--gtb-muted);font-size:0.6rem;">Levels source: ' + (r.levelsSource || '—') + '.</p>');
+    } else {
+        L.push('<p>' + r.exitCriteria + '</p>');
+    }
+
+    // 5. Bottom line
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">5. Bottom line</div>');
+    var bottom;
+    if (r.verdict.indexOf('STRONG BUY') !== -1) bottom = 'Both layers agree on a genuine, mechanically-confirmed uptrend with today\'s tape supporting it. This is the highest-conviction long setup this scanner produces. Still size and manage risk per the entry/stop/target above -- "STRONG" describes agreement between two rule-based readings, not a guarantee.';
+    else if (r.verdict.indexOf('STRONG SELL') !== -1) bottom = 'Both layers agree on a genuine, mechanically-confirmed downtrend with today\'s tape supporting it. Highest-conviction short setup this scanner produces, with the same caveat -- rules agreeing is not a guarantee, and shorting carries margin/borrow/unlimited-loss risk this scanner does not model.';
+    else if (r.verdict.indexOf('awaiting overlay confirmation') !== -1) bottom = 'The underlying trend is real and confirmed, but nothing about TODAY specifically supports acting yet. Reasonable to wait for the overlay to turn clearly in the same direction (a new breakout, fresh OI buildup, or a favorable curve read) before entering, or enter now with reduced size and tighter management.';
+    else if (r.verdict.indexOf('disagrees') !== -1) bottom = 'The confirmed trend and today\'s tape are pulling in opposite directions. This is a genuine conflict, not noise -- the safer read is to wait for one side to resolve (either the overlay turns to confirm the trend, or the trend itself breaks down on a later scan) rather than trade into the disagreement.';
+    else if (r.verdict.indexOf('forming') !== -1) bottom = 'A trend may be starting but is not yet mechanically confirmed (not all 8 rules pass). Treat any entry here as early and higher-risk than a confirmed setup -- smaller size, and re-scan to see if it graduates to CONFIRMED before adding.';
+    else if (r.verdict.indexOf('basing') !== -1) bottom = 'No established direction. The textbook move is to do nothing and watch for a Stage 2 breakout -- do not buy a Stage 1 base hoping it becomes Stage 2; wait for it to actually happen.';
+    else if (r.verdict.indexOf('topping') !== -1) bottom = 'If you are already long, this is a signal to trim or tighten stops, not a signal to add. It is explicitly NOT a short setup in Weinstein\'s own framework -- that only applies once Stage 4 is confirmed.';
+    else bottom = 'No clear, actionable edge from either layer right now.';
+    L.push('<p><b>' + bottom + '</b></p>');
+
+    L.push('<p style="color:var(--gtb-muted);font-size:0.58rem;margin-top:14px;">None of this has been back-tested against real forward returns -- the Trend Template/Stage/Momentum math is a faithful port of named published rules (Minervini, Weinstein, Clenow), which is why it is treated as primary; the overlay\'s weights and thresholds are this app\'s own and were never fitted or validated. Treat both as a structured starting point, not a proven edge.</p>');
+
+    return L.join('');
+}
+
+jQ(document).on('click', '.ps-explain-btn', function () {
+    var name = jQ(this).data('name');
+    var r = _PS_CACHE[name];
+    if (!r) return;
+    var html = '<div style="padding:14px 16px;overflow-y:auto;height:100%;font-size:0.68rem;line-height:1.5;">' + _psExplainVerdict(r) + '</div>';
+    showPopUpWindow('ps-explain-' + name, html, name + ' -- Trade Recommendation', 480, 560);
+    var _cls = 'popup-custom-style-ps-explain-' + name;
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;">' + name + ' — TRADE RECOMMENDATION</span>'
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    jQ('.' + _cls).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+});
+
 function _psChartLink(name, token) {
     var exch = _PS_MCX_NAMES.indexOf(name) !== -1 ? 'MCX'
         : (name === 'NIFTY 50' || name === 'NIFTY BANK') ? 'NSE' : 'NSE';
@@ -309,13 +661,45 @@ function _psChartLink(name, token) {
 }
 
 // ── Pure scoring math (daily candles in, verdict out — no live-cache reads) ────
+// Curve Structure (contango/backwardation) lean, same near-vs-far-contract logic as the
+// Curve Structure Compare popup (_gtbFetchCurveRow, grootTradeBot.js), reused here as one
+// more input into the swing/positional composite. Uses the app's already-loaded
+// NSE_FUT_CURVE/MCX_FUT_CURVE (dataLoad.js, run Data Load first) for the near/far contract
+// pair, and the SAME snapshot-aware daily fetch (_psFetchDaily) this scanner already uses
+// for everything else, so it needs no separate live/5-minute fetch and stays consistent
+// with a daily-swing timeframe. Thresholds mirror the Curve Structure Compare popup exactly:
+// NSE bullish (backwardation) below -2%/yr, bearish (steep contango) above +10%/yr; MCX
+// -3%/+8% (commodities carry real storage cost, so a wider "normal" contango band).
+async function _psCurveLean(name, isMcx) {
+    var curveMap = isMcx ? (typeof MCX_FUT_CURVE !== 'undefined' ? MCX_FUT_CURVE : {}) : (typeof NSE_FUT_CURVE !== 'undefined' ? NSE_FUT_CURVE : {});
+    var exchName = _PS_INDEX_NAMES[name] || name;
+    var curve = curveMap[exchName] || curveMap[name] || [];
+    if (curve.length < 2) return { ok: false, reason: curve.length ? 'Only 1 contract listed' : 'No contracts listed (run Data Load)' };
+    var near = curve[0], far = curve[1];
+    try {
+        var nearCandles = await _psFetchDaily(near.token, 5);
+        var farCandles = await _psFetchDaily(far.token, 5);
+        if (!nearCandles.length || !farCandles.length) return { ok: false, reason: 'No candle data' };
+        var nearLtp = parseFloat(nearCandles[nearCandles.length - 1][4]);
+        var farLtp = parseFloat(farCandles[farCandles.length - 1][4]);
+        var diffPct = nearLtp ? ((farLtp - nearLtp) / nearLtp * 100) : 0;
+        var daysGap = Math.max(1, moment(far.expiry).diff(moment(near.expiry), 'days'));
+        var annualizedPct = diffPct * (365 / daysGap);
+        var bullThresh = isMcx ? -3 : -2, bearThresh = isMcx ? 8 : 10;
+        var state = diffPct > 0.05 ? 'CONTANGO' : diffPct < -0.05 ? 'BACKWARDATION' : 'FLAT';
+        var dir = annualizedPct < bullThresh ? 1 : annualizedPct > bearThresh ? -1 : 0;
+        return { ok: true, state: state, diffPct: diffPct, annualizedPct: annualizedPct, dir: dir,
+                 label: dir > 0 ? 'BULL LEAN' : dir < 0 ? 'STEEP CONTANGO' : state };
+    } catch (e) { return { ok: false, reason: 'Fetch error' }; }
+}
+
 function _psSma(closes, period) {
     if (closes.length < period) return null;
     var slice = closes.slice(closes.length - period);
     return slice.reduce(function (a, b) { return a + b; }, 0) / period;
 }
 
-function _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry) {
+function _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry, curveInfo, primary) {
     if (!candles || candles.length < 25) return null;
     var closes = candles.map(function (c) { return parseFloat(c[4]); });
     var ltp = closes[closes.length - 1];
@@ -378,21 +762,76 @@ function _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExp
     }
 
     // ── Composite ─────────────────────────────────────────────────────────────
-    var total = trendScore * 2 + breakoutScore * 1.5 + rsScore * 1 + oiScore * 1.5;
-    var verdict = 'WATCH', verdictColor = 'var(--gtb-amber)';
-    if (total >= 3) { verdict = 'STRONG BUY'; verdictColor = 'var(--gtb-green)'; }
-    else if (total >= 1.5) { verdict = 'BUY'; verdictColor = 'var(--gtb-green)'; }
-    else if (total <= -3) { verdict = 'STRONG SELL'; verdictColor = 'var(--gtb-red)'; }
-    else if (total <= -1.5) { verdict = 'SELL'; verdictColor = 'var(--gtb-red)'; }
+    var curveScore = 0, curveLabel = 'NO DATA';
+    if (curveInfo) {
+        if (!curveInfo.ok) curveLabel = curveInfo.reason;
+        else { curveScore = curveInfo.dir; curveLabel = curveInfo.state + ' (' + (curveInfo.annualizedPct >= 0 ? '+' : '') + curveInfo.annualizedPct.toFixed(1) + '%/yr)'; }
+    }
+
+    // Overlay total — this app's OWN same-day composite (trend/breakout/RS/OI/curve). Kept
+    // exactly as before, but demoted: it is no longer the primary buy/sell call (see the
+    // groot-research-parity block above and its file-header note) — it's a same-day
+    // confirmation/timing check layered ON TOP of the Trend-Template/Stage read.
+    var overlayTotal = trendScore * 2 + breakoutScore * 1.5 + rsScore * 1 + oiScore * 1.5 + curveScore * 1;
+    var overlayVerdict = 'NEUTRAL', overlayColor = 'var(--gtb-muted)';
+    if (overlayTotal >= 3) { overlayVerdict = 'STRONGLY BULLISH'; overlayColor = 'var(--gtb-green)'; }
+    else if (overlayTotal >= 1.5) { overlayVerdict = 'BULLISH'; overlayColor = 'var(--gtb-green)'; }
+    else if (overlayTotal <= -3) { overlayVerdict = 'STRONGLY BEARISH'; overlayColor = 'var(--gtb-red)'; }
+    else if (overlayTotal <= -1.5) { overlayVerdict = 'BEARISH'; overlayColor = 'var(--gtb-red)'; }
+
+    // ── Combined verdict — groot-research's Trend Template/Stage read is PRIMARY (trusted,
+    // mechanically-defined, named-book rules); the overlay above only adjusts CONVICTION and
+    // is never allowed to flip the direction groot-research established. If the two disagree
+    // (e.g. Trend Template confirms Stage 2 but today's overlay leans bearish), the verdict
+    // says so explicitly instead of quietly blending them into one number — per the stated
+    // rule: "if the two disagree, trust groot-research's trend read over the TM composite."
+    var verdict, verdictColor, dir = primary && primary.ok ? primary.dir : null;
+    // Agreement requires the overlay to clear the SAME +/-1.5 bar its own old BUY/SELL
+    // thresholds always used - a barely-positive overlay (e.g. +0.3, mostly one weak
+    // signal outweighing a bearish OI/trend read) is NOT real same-day confirmation and
+    // must not be enough to print STRONG BUY/SELL on its own.
+    var agree = dir != null && ((dir > 0 && overlayTotal >= 1.5) || (dir < 0 && overlayTotal <= -1.5));
+    var disagree = dir != null && ((dir >= 0.5 && overlayTotal <= -1.5) || (dir <= -0.5 && overlayTotal >= 1.5));
+    if (dir == null) {
+        // No groot-research read available (insufficient history) — fall back to the pure
+        // overlay call, same thresholds this app has always used, clearly flagged as such.
+        verdict = overlayTotal >= 3 ? 'BUY (overlay only — no trend history)' : overlayTotal >= 1.5 ? 'WATCH (overlay only)'
+            : overlayTotal <= -3 ? 'SELL (overlay only — no trend history)' : overlayTotal <= -1.5 ? 'WATCH (overlay only)' : 'WATCH (overlay only)';
+        verdictColor = overlayTotal >= 1.5 ? 'var(--gtb-green)' : overlayTotal <= -1.5 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+    } else if (dir >= 1) {
+        verdict = agree ? 'STRONG BUY' : disagree ? 'BUY — overlay disagrees (caution)' : 'BUY (awaiting overlay confirmation)';
+        verdictColor = agree ? 'var(--gtb-green)' : 'var(--gtb-amber)';
+    } else if (dir <= -1) {
+        verdict = agree ? 'STRONG SELL' : disagree ? 'SELL — overlay disagrees (caution)' : 'SELL (awaiting overlay confirmation)';
+        verdictColor = agree ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+    } else if (dir === 0.5) {
+        // "forming" states MUST still say LONG/SHORT explicitly — a reader shouldn't have to
+        // infer direction from "Stage 2" naming, a color, or the entry/stop/target ordering.
+        verdict = disagree ? 'WATCH — LONG forming, overlay bearish (caution)' : 'WATCH — LONG forming (Stage 2)';
+        verdictColor = 'var(--gtb-amber)';
+    } else if (dir === 0) {
+        verdict = 'WATCH — NO TRADE, basing (Stage 1)';
+        verdictColor = 'var(--gtb-amber)';
+    } else if (dir === -0.3) {
+        verdict = 'CAUTION — NO SHORT, trim longs (Stage 3 topping)';
+        verdictColor = 'var(--gtb-amber)';
+    } else { // -0.5
+        verdict = disagree ? 'WATCH — SHORT forming, overlay bullish (caution)' : 'WATCH — SHORT forming (Stage 4)';
+        verdictColor = 'var(--gtb-amber)';
+    }
 
     var setup = {
         ltp: ltp, pctChg20: pctChg20, sma20: sma20, sma50: sma50, high20: high20, low20: low20,
         trendScore: trendScore, trendLabel: trendLabel,
         breakoutScore: breakoutScore, breakoutLabel: breakoutLabel,
         relStrength: relStrength, oiScore: oiScore, oiLabel: oiLabel,
-        total: total, verdict: verdict, verdictColor: verdictColor,
+        curveScore: curveScore, curveLabel: curveLabel,
+        overlayTotal: overlayTotal, overlayVerdict: overlayVerdict, overlayColor: overlayColor,
+        total: overlayTotal, // kept for the Pre-Market Brief's OI-carryover-only use, which never sets `primary`
+        primary: primary || null, agree: agree, disagree: disagree,
+        verdict: verdict, verdictColor: verdictColor,
     };
-    _psAttachTradePlan(setup);
+    _psAttachTradePlan(setup, candles);
     return setup;
 }
 
@@ -402,39 +841,79 @@ function _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExp
 // stop at SMA20/the opposite side of that range), not a guarantee — same caveat as the
 // score itself: it's a lean, not a certainty, and should be sized/adjusted with your own
 // risk rules.
-function _psAttachTradePlan(setup) {
+function _psAttachTradePlan(setup, candles) {
     var range20 = setup.high20 - setup.low20;
-    var isBuy = setup.verdict === 'BUY' || setup.verdict === 'STRONG BUY';
-    var isSell = setup.verdict === 'SELL' || setup.verdict === 'STRONG SELL';
+    var dir = setup.primary && setup.primary.ok ? setup.primary.dir : null;
+    var noPlan = { entry: null, target: null, stop: null, riskReward: null };
 
-    if (isBuy) {
-        setup.entry = setup.ltp;
-        setup.target = setup.ltp + range20 * 0.75; // 75% of the 20d range projected forward
-        // "Whichever is hit first" as price falls means the CLOSER level to entry, i.e. the
-        // HIGHER of the two (Math.max) — using Math.min here would pick the further/wider
-        // level, contradicting both this comment and the exit-criteria text below.
-        setup.stop = Math.max(setup.sma20 != null ? setup.sma20 : setup.low20, setup.low20);
-        setup.exitCriteria = 'Exit on a daily close below SMA20 (' + (setup.sma20 != null ? setup.sma20.toFixed(1) : '—')
-            + ') or below the 20d low (' + setup.low20.toFixed(1) + ') — whichever is hit first. '
-            + 'Also exit if the futures OI reading flips to LONG UNWINDING/SHORT BUILDUP on a later scan.';
-    } else if (isSell) {
-        setup.entry = setup.ltp;
-        setup.target = setup.ltp - range20 * 0.75;
-        // Same fix mirrored for shorts: the closer level as price rises is the LOWER of the
-        // two (Math.min), not the further one.
-        setup.stop = Math.min(setup.sma20 != null ? setup.sma20 : setup.high20, setup.high20);
-        setup.exitCriteria = 'Exit on a daily close above SMA20 (' + (setup.sma20 != null ? setup.sma20.toFixed(1) : '—')
-            + ') or above the 20d high (' + setup.high20.toFixed(1) + ') — whichever is hit first. '
-            + 'Also exit if the futures OI reading flips to SHORT COVERING/LONG BUILDUP on a later scan.';
-    } else {
-        setup.entry = null; setup.target = null; setup.stop = null;
-        setup.exitCriteria = 'No trade — WATCH means trend/breakout/OI aren\'t aligned yet. Wait for the verdict to move to BUY/SELL before entering.';
+    // Case 1 — no primary read at all (fewer than ~175 trading days of history, e.g. a
+    // recent listing). Falls back to the OLD measured-move plan (20-day SMA/range) so a
+    // stock with real data is never left with no plan whatsoever — clearly labeled as a
+    // fallback, distinct from a genuine "no direction" call below.
+    if (dir == null) {
+        var isBuyFallback = setup.overlayTotal >= 1.5, isSellFallback = setup.overlayTotal <= -1.5;
+        setup.levelsSource = 'fallback (20-day range) — not enough trading days yet for the trend-template read';
+        if (isBuyFallback) {
+            setup.entry = setup.ltp;
+            setup.target = setup.ltp + range20 * 0.75;
+            setup.stop = Math.max(setup.sma20 != null ? setup.sma20 : setup.low20, setup.low20);
+            setup.exitCriteria = 'Exit on a daily close below SMA20 (' + (setup.sma20 != null ? setup.sma20.toFixed(1) : '—')
+                + ') or below the 20d low (' + setup.low20.toFixed(1) + ') — whichever is hit first.';
+        } else if (isSellFallback) {
+            setup.entry = setup.ltp;
+            setup.target = setup.ltp - range20 * 0.75;
+            setup.stop = Math.min(setup.sma20 != null ? setup.sma20 : setup.high20, setup.high20);
+            setup.exitCriteria = 'Exit on a daily close above SMA20 (' + (setup.sma20 != null ? setup.sma20.toFixed(1) : '—')
+                + ') or above the 20d high (' + setup.high20.toFixed(1) + ') — whichever is hit first.';
+        } else {
+            Object.assign(setup, noPlan);
+            setup.exitCriteria = 'No trade — not enough history for a trend read, and today\'s overlay is not decisive either.';
+            return;
+        }
+        setup.riskReward = (setup.entry != null && setup.stop != null)
+            ? Math.abs(setup.target - setup.entry) / Math.max(0.01, Math.abs(setup.entry - setup.stop)) : null;
+        return;
     }
 
-    if (setup.entry != null && setup.stop != null) {
-        setup.riskReward = Math.abs(setup.target - setup.entry) / Math.max(0.01, Math.abs(setup.entry - setup.stop));
-    } else {
-        setup.riskReward = null;
+    // Case 2 — Stage 1 (basing) or Stage 3 (topping): genuinely no directional trade here.
+    // Weinstein's own framework treats Stage 3 as "trim/exit existing longs", NOT a short
+    // candidate (that is Stage 4's role only) — so this must never fall into the isSell
+    // branch below, even though dir is a small negative number for ranking purposes.
+    if (dir === 0 || dir === -0.3) {
+        Object.assign(setup, noPlan);
+        setup.levelsSource = 'no plan by design — ' + setup.primary.label;
+        setup.exitCriteria = dir === 0
+            ? 'No trade — Stage 1 basing has no established direction yet. Watch for a Stage 2 breakout (price reclaiming the 30-week MA with the MA itself turning up).'
+            : 'No trade — Stage 3 topping calls for trimming/exiting existing longs, not a new short (that only applies once Stage 4 is confirmed). ';
+        return;
+    }
+
+    // Case 3 — a real direction (confirmed Stage 2/4, or Stage 2/4 forming). Uses
+    // groot-research's ATR(14) 1.5x/2.5x entry/stop/target (trade_levels.py / short_levels.py).
+    // Prefers the Trend/Short Template's own price+SMA50 when available (210+ days); when the
+    // direction comes ONLY from the Stage read (175-209 days — enough for Stage, not yet for
+    // the full 8-rule template) falls back to this stock's own already-computed SMA50
+    // (setup.sma50) rather than wrongly reporting "primary and overlay disagree".
+    var isBuy = dir > 0, isSell = dir < 0;
+    var tt = setup.primary.tt, st = setup.primary.st;
+    if (isBuy) {
+        var price = (tt && tt.ok) ? tt.price : setup.ltp;
+        var sma50 = (tt && tt.ok) ? tt.sma50 : setup.sma50;
+        var L = _psLongLevels(candles, price, sma50);
+        setup.entry = L.entry; setup.target = L.target; setup.stop = L.stop; setup.riskReward = L.rr;
+        setup.levelsSource = 'ATR(14) 1.5x/2.5x — groot-research convention' + ((tt && tt.ok) ? '' : ' (SMA50 only — Trend Template needs 210+ days, have ' + candles.length + ')');
+        setup.extensionNote = L.note; setup.pctAboveSma50 = L.pctAbove;
+        setup.exitCriteria = 'Structural stop at ' + (L.stop != null ? L.stop.toFixed(1) : '—') + ' (entry &minus; 1.5&times;ATR14). '
+            + (L.note || '') + '. Also downgrade/exit if the overlay flips to LONG UNWINDING/SHORT BUILDUP or the next scan drops the Stage 2 read.';
+    } else if (isSell) {
+        var priceS = (st && st.ok) ? st.price : setup.ltp;
+        var sma50S = (st && st.ok) ? st.sma50 : setup.sma50;
+        var S = _psShortLevels(candles, priceS, sma50S);
+        setup.entry = S.entry; setup.target = S.target; setup.stop = S.stop; setup.riskReward = S.rr;
+        setup.levelsSource = 'ATR(14) 1.5x/2.5x — groot-research convention' + ((st && st.ok) ? '' : ' (SMA50 only — Short Template needs 210+ days, have ' + candles.length + ')');
+        setup.extensionNote = S.note; setup.pctBelowSma50 = S.pctBelow;
+        setup.exitCriteria = 'Structural stop at ' + (S.stop != null ? S.stop.toFixed(1) : '—') + ' (entry + 1.5&times;ATR14). '
+            + (S.note || '') + '. Also downgrade/exit if the overlay flips to SHORT COVERING/LONG BUILDUP or the next scan drops the Stage 4 read.';
     }
 }
 
@@ -451,15 +930,17 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
         var universe = jQ('#ps-chip-panel .sv-chip.sv-chip-selected').map(function () { return jQ(this).attr('data-name'); }).get();
         if (!universe.length) { _gtbToast('Pick a filter above (or add symbols by search) before scanning.', 'error'); return; }
 
-        // NIFTY 50's own 20-day % change, fetched once, shared as the relative-strength baseline.
+        // NIFTY 50's own daily history — needs the SAME long lookback as each stock (see
+        // below) so it can serve BOTH the old 20-day RS baseline and groot-research's Trend
+        // Template Rule 8 / short_template's mirror (127-session, ~6-month RS proxy vs NIFTY).
         var niftyToken = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS['NIFTY 50'] : null;
-        var niftyPctChg20 = 0;
+        var niftyPctChg20 = 0, niftyCloses = null;
         if (niftyToken) {
             try {
-                var niftyCandles = await _psFetchDaily(niftyToken, 70);
+                var niftyCandles = await _psFetchDaily(niftyToken, _PS_LOOKBACK_DAYS);
                 if (niftyCandles.length > 20) {
-                    var nc = niftyCandles.map(function (c) { return parseFloat(c[4]); });
-                    niftyPctChg20 = ((nc[nc.length - 1] - nc[nc.length - 21]) / nc[nc.length - 21]) * 100;
+                    niftyCloses = niftyCandles.map(function (c) { return parseFloat(c[4]); });
+                    niftyPctChg20 = ((niftyCloses[niftyCloses.length - 1] - niftyCloses[niftyCloses.length - 21]) / niftyCloses[niftyCloses.length - 21]) * 100;
                 }
             } catch (e) {}
         }
@@ -471,7 +952,11 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
             try {
                 var token = _psPriceTokenFor(name);
                 if (!token) continue;
-                var candles = await _psFetchDaily(token, 70);
+                // Long daily lookback — groot-research's Trend Template needs 210+ trading
+                // days (200-day SMA + a buffer) and Weinstein Stage needs 150+25; the OLD
+                // shorter-window signals (SMA20, 20-day breakout, OI buildup) still just read
+                // the tail of this same series, so nothing else needed to change to get them.
+                var candles = await _psFetchDaily(token, _PS_LOOKBACK_DAYS);
                 var futEntry = _psFutEntryFor(name);
                 var futToken = futEntry ? futEntry.instrument_token : null;
                 var daysToExpiry = futEntry ? _psDaysToExpiry(futEntry.expiry) : null;
@@ -479,7 +964,13 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
                 if (!futToken) console.log('[positional-screener]', name, 'no futures token resolved (check FUTURE_INTRUMENT_LIST/COMMODITIES_FUTURE_INSTRUMENT_LIST)');
                 else if (daysToExpiry != null && daysToExpiry <= 3) console.log('[positional-screener]', name, 'in rollover window —', daysToExpiry, 'days to expiry, OI buildup read suppressed');
                 else if (!futCandles || futCandles.length < 6) console.log('[positional-screener]', name, 'futures token', futToken, 'returned', (futCandles || []).length, 'candles');
-                var setup = _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry);
+                var curveInfo = await _psCurveLean(name, _PS_MCX_NAMES.indexOf(name) !== -1);
+                // Primary read — groot-research parity (Trend Template / Short Template /
+                // Stage / Clenow momentum), computed from the SAME long daily series, no extra
+                // fetch. This is the TRUSTED base call; the overlay (trend/breakout/OI/curve
+                // above) only confirms/times it — see _psComputeSetup's own comment.
+                var primary = _psPrimaryRead(candles, niftyCloses);
+                var setup = _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry, curveInfo, primary);
                 if (setup) { setup.name = name; _PS_CACHE[name] = setup; done++; }
             } catch (e) { console.log('[positional-screener]', name, e); }
             if (i % 10 === 0) _psRenderTable(); // incremental render so results appear while scanning
@@ -500,16 +991,17 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
 function _psTopPicksHtml() {
     var all = Object.values(_PS_CACHE);
     if (!all.length) return '';
+    function _psPickRank(r) { var d = r.primary && r.primary.ok && r.primary.dir != null ? r.primary.dir : 0; return d * 100 + r.overlayTotal; }
     var buys = all.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; })
-        .sort(function (a, b) { return b.total - a.total; }).slice(0, 5);
+        .sort(function (a, b) { return _psPickRank(b) - _psPickRank(a); }).slice(0, 5);
     var sells = all.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; })
-        .sort(function (a, b) { return a.total - b.total; }).slice(0, 5);
+        .sort(function (a, b) { return _psPickRank(a) - _psPickRank(b); }).slice(0, 5);
     if (!buys.length && !sells.length) return '';
 
     function _chip(r) {
         var kiteLink = _psChartLink(r.name, _psPriceTokenFor(r.name));
-        return '<a href="' + kiteLink + '" target="_blank" rel="noopener" class="ps-pick-chip" style="border-color:' + r.verdictColor + ';color:' + r.verdictColor + ';" title="' + r.verdict + ' — score ' + r.total.toFixed(1) + '">'
-            + r.name + ' <span class="ps-pick-score">' + (r.total >= 0 ? '+' : '') + r.total.toFixed(1) + '</span></a>';
+        return '<a href="' + kiteLink + '" target="_blank" rel="noopener" class="ps-pick-chip" style="border-color:' + r.verdictColor + ';color:' + r.verdictColor + ';" title="' + r.verdict + ' — overlay ' + r.overlayTotal.toFixed(1) + '">'
+            + r.name + ' <span class="ps-pick-score">' + (r.overlayTotal >= 0 ? '+' : '') + r.overlayTotal.toFixed(1) + '</span></a>';
     }
 
     var html = '<div class="ps-top-picks">';
@@ -525,8 +1017,12 @@ function _psTopPicksHtml() {
 function _psRenderSummary() {
     var all = Object.values(_PS_CACHE);
     if (!all.length) { jQ('#ps-summary').empty(); return; }
-    var buy = all.filter(function (r) { return r.verdict === 'BUY' || r.verdict === 'STRONG BUY'; }).length;
-    var sell = all.filter(function (r) { return r.verdict === 'SELL' || r.verdict === 'STRONG SELL'; }).length;
+    // Match by substring, same convention the filter dropdown already uses -- an exact-string
+    // match against just 'BUY'/'STRONG BUY' stopped counting "BUY (awaiting overlay
+    // confirmation)"/"BUY -- overlay disagrees" as BUY here, silently diverging from what the
+    // BUY filter itself considers a match.
+    var buy = all.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; }).length;
+    var sell = all.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; }).length;
     var watch = all.length - buy - sell;
     jQ('#ps-summary').html(
         '<span class="ps-summary-buy">' + buy + ' BUY</span>'
@@ -536,22 +1032,106 @@ function _psRenderSummary() {
     );
 }
 
+// -- Market Breadth -- uses the scanner's own groot-research primary read (Trend Template /
+// Stage) across the FULL scanned universe as a market-breadth gauge, the same idea as a
+// classic "% of stocks above their 200-day average" indicator, just built from a stricter,
+// mechanically-defined trend test instead of a single moving average. This is a SLOW, weeks-
+// to-months signal (150-200 day SMAs) -- a market-regime lean, not a same-day call; the
+// intraday composite score / Master Consensus elsewhere in this app answer that faster
+// question. Always reads the FULL scanned universe (_PS_CACHE), independent of the table's
+// current filter/sort/search, same convention _psRenderSummary/_psTopPicksHtml already use.
+function _psRenderBreadth() {
+    var all = Object.values(_PS_CACHE);
+    var $b = jQ('#ps-breadth');
+    if (!all.length) { $b.empty(); return; }
+
+    var buckets = { confLong: 0, formLong: 0, basing: 0, topping: 0, formShort: 0, confShort: 0, noData: 0 };
+    var dirSum = 0, dirCount = 0;
+    all.forEach(function (r) {
+        var dir = r.primary && r.primary.ok ? r.primary.dir : null;
+        if (dir == null) { buckets.noData++; return; }
+        dirSum += dir; dirCount++;
+        if (dir === 1) buckets.confLong++;
+        else if (dir === 0.5) buckets.formLong++;
+        else if (dir === 0) buckets.basing++;
+        else if (dir === -0.3) buckets.topping++;
+        else if (dir === -0.5) buckets.formShort++;
+        else if (dir === -1) buckets.confShort++;
+    });
+    var total = all.length;
+    var bullPct = Math.round((buckets.confLong + buckets.formLong) / total * 100);
+    var bearPct = Math.round((buckets.confShort + buckets.formShort) / total * 100);
+    var netScore = dirCount ? Math.round(dirSum / dirCount * 100) : 0; // -100..+100
+    var netLabel, netColor;
+    if (netScore >= 25) { netLabel = 'BULLISH BREADTH'; netColor = 'var(--gtb-green)'; }
+    else if (netScore >= 8) { netLabel = 'MILD BULLISH BREADTH'; netColor = 'var(--gtb-green)'; }
+    else if (netScore <= -25) { netLabel = 'BEARISH BREADTH'; netColor = 'var(--gtb-red)'; }
+    else if (netScore <= -8) { netLabel = 'MILD BEARISH BREADTH'; netColor = 'var(--gtb-red)'; }
+    else { netLabel = 'MIXED / NEUTRAL BREADTH'; netColor = 'var(--gtb-amber)'; }
+
+    // Divergence check -- only meaningful if NIFTY 50 / NIFTY BANK were included in this scan
+    // (they're in _PS_EXTRA_INSTRUMENTS, picked up via the INDEX+MCX filter chip, not ALL).
+    var idxNotes = [], idxFound = false;
+    ['NIFTY 50', 'NIFTY BANK'].forEach(function (name) {
+        var r = _PS_CACHE[name];
+        if (!r || !r.primary || !r.primary.ok || r.primary.dir == null) return;
+        idxFound = true;
+        var idxDir = r.primary.dir;
+        var breadthSign = netScore > 8 ? 1 : netScore < -8 ? -1 : 0;
+        var idxSign = idxDir > 0 ? 1 : idxDir < 0 ? -1 : 0;
+        if (idxSign !== 0 && breadthSign !== 0 && idxSign !== breadthSign) {
+            idxNotes.push('<span style="color:var(--gtb-amber);">&#9888; ' + name + ' itself reads ' + r.primary.label.split(' (')[0] + ' while the broader breadth of scanned stocks leans the OPPOSITE way -- a divergence worth noting, not a same-day signal to act on.</span>');
+        } else if (idxSign !== 0 && idxSign === breadthSign) {
+            idxNotes.push('<span style="color:var(--gtb-muted);">' + name + ' (' + r.primary.label.split(' (')[0] + ') agrees with the broader breadth.</span>');
+        } else {
+            idxNotes.push('<span style="color:var(--gtb-muted);">' + name + ' (' + r.primary.label.split(' (')[0] + ') -- overall breadth is too mixed/neutral to call agreement or divergence either way.</span>');
+        }
+    });
+
+    var html = '<div class="ps-breadth-card">'
+        + '<div class="ps-breadth-head"><span class="ps-breadth-title"><i class="bi bi-bar-chart-steps"></i> MARKET BREADTH (this scan\'s universe, ' + total + ' names)</span>'
+        + '<span class="ps-breadth-verdict" style="color:' + netColor + ';border-color:' + netColor + ';">' + netLabel + ' (' + (netScore >= 0 ? '+' : '') + netScore + ')</span></div>'
+        + '<div class="ps-breadth-bar"><div class="ps-breadth-bar-bull" style="width:' + bullPct + '%;"></div><div class="ps-breadth-bar-bear" style="width:' + bearPct + '%;"></div></div>'
+        + '<div class="ps-breadth-counts">'
+        +   '<span class="ps-bc-bull">' + buckets.confLong + ' confirmed long</span>'
+        +   '<span class="ps-bc-bull-mild">' + buckets.formLong + ' forming long</span>'
+        +   '<span class="ps-bc-neutral">' + buckets.basing + ' basing</span>'
+        +   '<span class="ps-bc-neutral">' + buckets.topping + ' topping</span>'
+        +   '<span class="ps-bc-bear-mild">' + buckets.formShort + ' forming short</span>'
+        +   '<span class="ps-bc-bear">' + buckets.confShort + ' confirmed short</span>'
+        +   (buckets.noData ? '<span class="ps-bc-nodata">' + buckets.noData + ' insufficient history</span>' : '')
+        + '</div>'
+        + (idxFound ? '<div class="ps-breadth-idx">' + idxNotes.join(' ') + '</div>' : '<div class="ps-breadth-idx" style="color:var(--gtb-muted);">Add NIFTY 50 / NIFTY BANK (INDEX + MCX filter) to this scan to compare the index\'s own Stage against this breadth read.</div>')
+        + '<div class="ps-breadth-note">Net score = average primary direction across all scanned names (+100 = every name confirmed long, -100 = every name confirmed short). This is a SLOW, multi-week regime read (150-200 day SMAs) -- not a same-day trade signal, and not back-tested against forward index returns.</div>'
+        + '</div>';
+    $b.html(html);
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function _psRenderTable() {
     _psRenderSummary();
+    _psRenderBreadth();
     var rows = Object.values(_PS_CACHE);
     var filter = jQ('#ps-filter').val() || 'all';
     var sort = jQ('#ps-sort').val() || 'score';
     var q = (jQ('#ps-search').val() || '').trim().toUpperCase();
 
-    if (filter === 'buy') rows = rows.filter(function (r) { return r.verdict === 'BUY' || r.verdict === 'STRONG BUY'; });
-    else if (filter === 'sell') rows = rows.filter(function (r) { return r.verdict === 'SELL' || r.verdict === 'STRONG SELL'; });
-    else if (filter === 'watch') rows = rows.filter(function (r) { return r.verdict === 'WATCH'; });
+    // Verdict strings now carry qualifiers ("BUY (awaiting overlay confirmation)", "SELL —
+    // overlay disagrees (caution)", etc.) instead of the old fixed 4 values — match by
+    // substring so the filter buttons still group them sensibly.
+    if (filter === 'buy') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; });
+    else if (filter === 'sell') rows = rows.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; });
+    else if (filter === 'watch') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') === -1 && r.verdict.indexOf('SELL') === -1; });
     if (q) rows = rows.filter(function (r) { return r.name.indexOf(q) !== -1; });
 
+    // 'score' sort ranks by groot-research's primary direction FIRST (confirmed Stage 2 > Stage
+    // 2 forming > basing > topping > Stage 4 forming > confirmed Stage 4), overlay total as the
+    // tiebreaker within each — never lets a purely same-day overlay number outrank a genuine
+    // Trend-Template-confirmed setup, matching the "groot-research is primary" rule.
+    function _psRank(r) { var d = r.primary && r.primary.ok && r.primary.dir != null ? r.primary.dir : 0; return d * 100 + r.overlayTotal; }
     if (sort === 'name') rows.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
     else if (sort === 'rs') rows.sort(function (a, b) { return b.relStrength - a.relStrength; });
-    else rows.sort(function (a, b) { return b.total - a.total; });
+    else rows.sort(function (a, b) { return _psRank(b) - _psRank(a); });
 
     if (!rows.length) {
         jQ('#ps-table-wrap').html('<div class="sv-empty-state"><i class="bi bi-search"></i><span>No results' + (q ? ' for "' + q + '"' : '') + '.</span></div>');
@@ -561,9 +1141,11 @@ function _psRenderTable() {
     var _iiSafe = typeof _ii === 'function' ? _ii : function () { return ''; };
     var html = _psTopPicksHtml() + '<table class="ps-table">'
         + '<thead><tr>'
-        + '<th>Symbol</th><th>LTP</th><th>20d Chg%</th><th>Trend</th><th>Breakout</th>'
-        + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Score</th><th>Verdict</th>'
-        + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th><th></th><th></th>'
+        + '<th>Symbol</th><th>LTP</th>'
+        + '<th>Trend Template / Stage' + _iiSafe('ps-primary') + '</th><th>Momentum' + _iiSafe('ps-primary') + '</th>'
+        + '<th>20d Chg%</th><th>Trend</th><th>Breakout</th>'
+        + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th><th>Verdict</th>'
+        + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th><th></th><th></th><th></th>'
         + '</tr></thead><tbody>'
         + rows.map(function (r) {
             var kiteLink = _psChartLink(r.name, _psPriceTokenFor(r.name));
@@ -572,24 +1154,43 @@ function _psRenderTable() {
             var breakoutColor = r.breakoutScore > 0 ? 'var(--gtb-green)' : r.breakoutScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
             var rsColor = r.relStrength > 0 ? 'var(--gtb-green)' : r.relStrength < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
             var oiColor = r.oiScore > 0 ? 'var(--gtb-green)' : r.oiScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+            var curveColor = r.curveScore > 0 ? 'var(--gtb-green)' : r.curveScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
             var rowTint = r.verdict.indexOf('BUY') !== -1 ? 'rgba(63,185,80,0.06)' : r.verdict.indexOf('SELL') !== -1 ? 'rgba(248,81,73,0.06)' : 'transparent';
             var hasPlan = r.entry != null;
+            var p = r.primary;
+            var primDir = p && p.ok ? p.dir : null;
+            var primColor = primDir == null ? 'var(--gtb-muted)' : primDir >= 1 ? 'var(--gtb-green)' : primDir <= -1 ? 'var(--gtb-red)' : primDir > 0 ? 'var(--gtb-green)' : primDir < 0 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+            var primText = p && p.ok ? p.label : 'INSUFFICIENT HISTORY';
+            var primTip = '';
+            if (p && p.ok) {
+                if (p.tt && p.tt.ok) primTip += 'Trend Template (long): ' + p.tt.rulesPassed + '/' + p.tt.rulesTotal + ' rules' + (p.tt.rsPct != null ? ', RS vs NIFTY 6mo ' + (p.tt.rsPct >= 0 ? '+' : '') + p.tt.rsPct.toFixed(1) + '%' : '') + '. ';
+                if (p.st && p.st.ok) primTip += 'Short Template: ' + p.st.rulesPassed + '/' + p.st.rulesTotal + ' rules. ';
+                if (p.stage && p.stage.ok) primTip += p.stage.label + ', 30wk-MA slope ' + (p.stage.slopePct >= 0 ? '+' : '') + p.stage.slopePct.toFixed(1) + '%. ';
+            }
+            var momColor = p && p.mom && p.mom.ok ? (p.mom.score > 0 ? 'var(--gtb-green)' : p.mom.score < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)') : 'var(--gtb-muted)';
+            var momText = p && p.mom && p.mom.ok ? p.mom.score.toFixed(0) + (p.mom.gapFlagged ? ' ⚠gap' : '') : '—';
+            var momTip = p && p.mom && p.mom.ok ? 'Clenow momentum score = annualized return (' + p.mom.annualizedPct.toFixed(0) + '%) × R² (' + p.mom.r2.toFixed(2) + '). ' + (p.mom.gapFlagged ? 'A >15% single-day move sits in the 90-day window — may distort this reading.' : '') : (p && p.mom ? p.mom.reason : '');
+            var extTip = r.extensionNote ? r.extensionNote.replace(/"/g, '&quot;') : '';
             return '<tr style="background:' + rowTint + ';">'
                 + '<td class="ps-cell-strong">' + r.name + '</td>'
                 + '<td>' + r.ltp.toFixed(1) + '</td>'
+                + '<td style="color:' + primColor + ';font-size:0.55rem;" title="' + primTip.replace(/"/g, '&quot;') + '">' + primText + '</td>'
+                + '<td style="color:' + momColor + ';" title="' + momTip.replace(/"/g, '&quot;') + '">' + momText + '</td>'
                 + '<td style="color:' + chgColor + ';">' + (r.pctChg20 >= 0 ? '+' : '') + r.pctChg20.toFixed(1) + '%</td>'
                 + '<td style="color:' + trendColor + ';">' + r.trendLabel + '</td>'
                 + '<td style="color:' + breakoutColor + ';">' + r.breakoutLabel + '</td>'
                 + '<td style="color:' + rsColor + ';">' + (r.relStrength >= 0 ? '+' : '') + r.relStrength.toFixed(1) + '%</td>'
                 + '<td style="color:' + oiColor + ';">' + r.oiLabel + '</td>'
-                + '<td class="ps-cell-strong">' + r.total.toFixed(1) + '</td>'
-                + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';">' + r.verdict + '</span></td>'
+                + '<td style="color:' + curveColor + ';font-size:0.55rem;">' + (r.curveLabel || 'NO DATA') + '</td>'
+                + '<td class="ps-cell-strong" style="color:' + r.overlayColor + ';" title="Same-day overlay total (trend/breakout/RS/OI/curve) — confirmation only, not the primary call.">' + r.overlayTotal.toFixed(1) + '</td>'
+                + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
                 + '<td>' + (hasPlan ? r.entry.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-green);">' + (hasPlan ? r.target.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
                 + '<td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td>'
-                + '<td><i class="bi bi-info-circle ps-exit-icon" title="' + r.exitCriteria.replace(/"/g, '&quot;') + '"></i></td>'
+                + '<td><i class="bi bi-info-circle ps-exit-icon" title="' + (r.exitCriteria + (extTip ? ' (' + extTip + ')' : '') + ' [' + (r.levelsSource || '') + ']').replace(/"/g, '&quot;') + '"></i></td>'
                 + '<td><a href="' + kiteLink + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open chart"><i class="bi bi-graph-up"></i></a></td>'
+                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button></td>'
                 + '</tr>';
         }).join('')
         + '</tbody></table>';

@@ -33,10 +33,138 @@ function showHelpPopup() {
         jQ(this).addClass('hlp-tab-active');
         jQ('#help-panel-' + target).addClass('hlp-panel-active');
     });
+
+    _hlpBuildIndex();
+    _hlpWireSearch();
+}
+
+// -- Search index --------------------------------------------------------------------------
+// Built once per popup-open (content is static HTML, never changes while open) by walking
+// every panel's headings/paragraphs/list items/table rows/callouts IN DOCUMENT ORDER, tracking
+// the nearest preceding <h4> as that entry's "section" so a hit can be labeled and jumped to
+// precisely -- not just "somewhere in the Score tab".
+var _HLP_INDEX = [];
+function _hlpBuildIndex() {
+    _HLP_INDEX = [];
+    jQ('.hlp-panel').each(function () {
+        var panelId = this.id.replace('help-panel-', '');
+        var tabLabel = jQ('#help-tab-' + panelId).text().trim();
+        var currentHeading = jQ(this).find('.hlp-title').first().text().trim();
+        var nodes = this.querySelectorAll('h4.hlp-h4, p, li, tr, .hlp-formula-line, .hlp-callout');
+        for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.tagName === 'TR' && el.closest('thead')) continue; // header rows are noise, not content
+            if (el.tagName === 'H4') { currentHeading = el.textContent.trim(); }
+            var text = el.textContent.replace(/\s+/g, ' ').trim();
+            if (!text || text.length < 4) continue;
+            _HLP_INDEX.push({ panelId: panelId, tabLabel: tabLabel, heading: currentHeading, text: text, el: el });
+        }
+    });
+}
+
+function _hlpEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+// Wraps every case-insensitive occurrence of `q` in <mark>, on already-escaped text.
+function _hlpMark(text, q) {
+    var esc = _hlpEsc(text);
+    if (!q) return esc;
+    var escQ = q.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&');
+    return esc.replace(new RegExp('(' + escQ + ')', 'ig'), '<mark>$1</mark>');
+}
+// A short window of text centered on the match, so a hit inside a long paragraph still shows
+// the relevant part instead of always starting from character 0.
+function _hlpSnippet(text, q, width) {
+    width = width || 140;
+    var low = text.toLowerCase(), i = low.indexOf(q.toLowerCase());
+    if (i === -1) return text.slice(0, width) + (text.length > width ? '\u2026' : '');
+    var start = Math.max(0, i - Math.floor(width / 3));
+    var end = Math.min(text.length, start + width);
+    return (start > 0 ? '\u2026' : '') + text.slice(start, end) + (end < text.length ? '\u2026' : '');
+}
+
+function _hlpRenderResults(q) {
+    var $wrap = jQ('#hlp-search-wrap'), $res = jQ('#hlp-search-results');
+    if (!q) { $wrap.removeClass('hlp-has-query hlp-search-open'); $res.empty(); return; }
+    $wrap.addClass('hlp-has-query hlp-search-open');
+    var qLower = q.toLowerCase();
+    var hits = [];
+    for (var i = 0; i < _HLP_INDEX.length && hits.length < 40; i++) {
+        var e = _HLP_INDEX[i];
+        if (e.text.toLowerCase().indexOf(qLower) !== -1 || e.tabLabel.toLowerCase().indexOf(qLower) !== -1) hits.push(e);
+    }
+    if (!hits.length) { $res.html('<div class="hlp-search-empty">No matches for "' + _hlpEsc(q) + '".</div>'); return; }
+    var html = hits.map(function (e, i) {
+        return '<button class="hlp-search-hit' + (i === 0 ? ' hlp-search-hit-active' : '') + '" data-idx="' + i + '">'
+            + '<div class="hlp-search-hit-tab">' + _hlpMark(e.tabLabel, q) + '</div>'
+            + '<div class="hlp-search-hit-heading">' + _hlpMark(e.heading, q) + '</div>'
+            + '<div class="hlp-search-hit-snippet">' + _hlpMark(_hlpSnippet(e.text, q), q) + '</div>'
+            + '</button>';
+    }).join('');
+    $res.html(html);
+    $res.data('hits', hits);
+}
+
+function _hlpJumpTo(entry) {
+    jQ('.hlp-tab').removeClass('hlp-tab-active');
+    jQ('.hlp-panel').removeClass('hlp-panel-active');
+    jQ('#help-tab-' + entry.panelId).addClass('hlp-tab-active');
+    jQ('#help-panel-' + entry.panelId).addClass('hlp-panel-active');
+    var $el = jQ(entry.el);
+    // scrollIntoView needs a frame after the panel becomes visible (display:none elements
+    // report a zero-height scroll container, so an immediate call would no-op).
+    setTimeout(function () {
+        entry.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        $el.addClass('hlp-jump-highlight');
+        setTimeout(function () { $el.removeClass('hlp-jump-highlight'); }, 1700);
+    }, 30);
+    jQ('#hlp-search-wrap').removeClass('hlp-search-open');
+}
+
+function _hlpWireSearch() {
+    jQ(document).off('.hlpsearch');
+    jQ(document).on('input.hlpsearch', '#hlp-search-input', function () { _hlpRenderResults(jQ(this).val().trim()); });
+    jQ(document).on('focus.hlpsearch', '#hlp-search-input', function () { if (jQ(this).val().trim()) jQ('#hlp-search-wrap').addClass('hlp-search-open'); });
+    jQ(document).on('click.hlpsearch', '#hlp-search-clear', function () {
+        jQ('#hlp-search-input').val('').focus();
+        jQ('#hlp-search-wrap').removeClass('hlp-has-query hlp-search-open');
+        jQ('#hlp-search-results').empty();
+    });
+    jQ(document).on('click.hlpsearch', '.hlp-search-hit', function () {
+        var hits = jQ('#hlp-search-results').data('hits') || [];
+        var e = hits[+jQ(this).data('idx')];
+        if (e) _hlpJumpTo(e);
+    });
+    // Keyboard nav: arrows move the active hit, Enter jumps to it, Escape closes.
+    jQ(document).on('keydown.hlpsearch', '#hlp-search-input', function (ev) {
+        var $hits = jQ('.hlp-search-hit'), $active = jQ('.hlp-search-hit-active');
+        var idx = $hits.index($active);
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+            ev.preventDefault();
+            var next = ev.key === 'ArrowDown' ? Math.min(idx + 1, $hits.length - 1) : Math.max(idx - 1, 0);
+            $hits.removeClass('hlp-search-hit-active').eq(next).addClass('hlp-search-hit-active')[0].scrollIntoView({ block: 'nearest' });
+        } else if (ev.key === 'Enter') {
+            ev.preventDefault();
+            jQ('.hlp-search-hit-active').trigger('click');
+        } else if (ev.key === 'Escape') {
+            jQ('#hlp-search-wrap').removeClass('hlp-search-open');
+        }
+    });
+    // Click outside the search box closes the results dropdown (but keeps the typed query).
+    jQ(document).on('click.hlpsearch', function (ev) {
+        if (!jQ(ev.target).closest('#hlp-search-wrap').length) jQ('#hlp-search-wrap').removeClass('hlp-search-open');
+    });
 }
 
 function buildHelpHTML() {
     let h = '<div class="hlp-root">';
+
+    // Live full-text search across every tab's content -- typed keywords match against
+    // every heading/paragraph/table-row/callout in the popup, not just the visible tab, since
+    // with this many tools it's easy to forget which tab a given feature's docs live under.
+    h += '<div class="hlp-search-wrap" id="hlp-search-wrap">'
+       + '<input type="text" id="hlp-search-input" placeholder="Search everything… (e.g. curve, short covering, macro, momentum)" autocomplete="off">'
+       + '<button id="hlp-search-clear" title="Clear"><i class="bi bi-x-lg"></i></button>'
+       + '<div id="hlp-search-results"></div>'
+       + '</div>';
 
     // ── Tab Nav ────────────────────────────────────────────────────────────────
     h += '<div class="hlp-tabs">';

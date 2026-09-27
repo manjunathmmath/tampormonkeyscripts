@@ -799,6 +799,43 @@ span.bullsVersesBears {
 }
 
 /* ── Tab Bar ─────────────────────────────────────────────────────────────── */
+/* -- Search -------------------------------------------------------------- */
+.hlp-search-wrap { position: relative; padding: 8px 8px 0; background: #161b22; flex-shrink: 0; }
+#hlp-search-input {
+  width: 100%; box-sizing: border-box; background: #0d1117; color: #c9d1d9;
+  border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px 7px 30px;
+  font-size: 0.72rem; outline: none;
+}
+#hlp-search-input:focus { border-color: #58a6ff; }
+.hlp-search-wrap::before {
+  content: '\f52a'; font-family: 'bootstrap-icons'; position: absolute;
+  left: 18px; top: 16px; color: #7d8590; font-size: 0.7rem; pointer-events: none;
+}
+#hlp-search-clear {
+  display: none; position: absolute; right: 16px; top: 15px; background: none; border: none;
+  color: #7d8590; cursor: pointer; font-size: 0.8rem; padding: 2px;
+}
+.hlp-search-wrap.hlp-has-query #hlp-search-clear { display: block; }
+#hlp-search-results {
+  display: none; position: absolute; left: 8px; right: 8px; top: 100%;
+  background: #161b22; border: 1px solid #30363d; border-top: none; border-radius: 0 0 8px 8px;
+  max-height: 340px; overflow-y: auto; z-index: 50; box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+}
+.hlp-search-wrap.hlp-search-open #hlp-search-results { display: block; }
+.hlp-search-hit {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  border-bottom: 1px solid #21262d; color: #c9d1d9; padding: 8px 12px; cursor: pointer; font-size: 0.68rem;
+}
+.hlp-search-hit:last-child { border-bottom: none; }
+.hlp-search-hit:hover, .hlp-search-hit.hlp-search-hit-active { background: #1f2937; }
+.hlp-search-hit-tab { color: #58a6ff; font-weight: 800; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.hlp-search-hit-heading { color: #e6edf3; font-weight: 700; margin: 1px 0 2px; }
+.hlp-search-hit-snippet { color: #8b949e; font-size: 0.64rem; line-height: 1.4; }
+.hlp-search-hit mark, .hlp-search-hit-heading mark, .hlp-search-hit-tab mark { background: #f0a000; color: #0d1117; border-radius: 2px; padding: 0 1px; }
+.hlp-search-empty { padding: 14px 12px; color: #7d8590; font-size: 0.68rem; text-align: center; }
+@keyframes hlp-jump-flash { 0%, 100% { background: transparent; } 30% { background: rgba(88,166,255,0.28); } }
+.hlp-jump-highlight { animation: hlp-jump-flash 1.6s ease-out; border-radius: 4px; }
+
 .hlp-tabs {
   display: flex;
   flex-wrap: nowrap;
@@ -4037,7 +4074,7 @@ td.details-control {
   padding: 4px 8px;
   flex-shrink: 0;
   display: flex; align-items: center; gap: 6px;
-}
+ flex-shrink: 0;}
 .sv-seg-group {
   display: flex; gap: 2px; align-items: center;
   background: var(--gtb-bg); border: 1px solid var(--gtb-border2);
@@ -4069,7 +4106,7 @@ td.details-control {
   background: var(--gtb-surface);
   border-bottom: 1px solid var(--gtb-border);
   padding: 3px 8px 4px;
-}
+ flex-shrink: 0;}
 #sv-chip-controls, #dv-chip-controls, #ps-chip-controls {
   display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap;
 }
@@ -5245,9 +5282,24 @@ td.details-control {
     display: flex; align-items: center; gap: 2px;
     padding: 3px 6px; background: var(--gtb-surface);
     border-bottom: 1px solid var(--gtb-border2); flex-shrink: 0;
-    overflow-x: auto; white-space: nowrap;
-    overflow: visible; /* allow settings dropdown to show below */
+    white-space: nowrap;
+    /* NOTE: do not set overflow-x here — the previous "overflow-x: auto; ... overflow: visible"
+       pair was a no-op bug (the later `overflow: visible` shorthand silently resets overflow-x
+       too, since a shorthand always overwrites BOTH axes even when only meant as a "let the
+       settings dropdown show below" note) — so tabs never scrolled and instead kept growing the
+       strip's real width until it overflowed the popup. The tab BUTTONS now scroll in their own
+       inner wrapper (#gtb-tab-scroll, overflow-x:auto) while this outer strip stays
+       overflow:visible so the settings dropdown (which is positioned relative to a control after
+       the tabs, not the tabs themselves) still isn't clipped. */
+    overflow: visible;
 }
+#gtb-tab-scroll {
+    display: flex; align-items: center; gap: 2px;
+    overflow-x: auto; overflow-y: hidden; white-space: nowrap;
+    scrollbar-width: thin; min-width: 0;
+}
+#gtb-tab-scroll::-webkit-scrollbar { height: 4px; }
+#gtb-tab-scroll::-webkit-scrollbar-thumb { background: var(--gtb-border2); }
 /* Spacer that pushes controls to the right */
 .gtb-tab-sep { flex: 1; min-width: 8px; }
 .gtb-tab {
@@ -5336,6 +5388,14 @@ td.details-control {
 }
 @media (max-width: 900px) {
   .gtb-dash-2col { grid-template-columns: 1fr; }
+}
+.gtb-dash-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 1200px) {
+  .gtb-dash-3col { grid-template-columns: 1fr; }
 }
 .gtb-dash-matrix-head {
   position: sticky; top: 0; z-index: 6;
@@ -5588,13 +5648,41 @@ td.details-control {
 .ps-summary-sell { color: var(--gtb-red); }
 .ps-summary-watch { color: var(--gtb-amber); }
 .ps-summary-total { color: var(--gtb-muted); font-weight: 500; }
+#ps-breadth { flex-shrink: 0; }
+.ps-breadth-card { margin: 0 8px 8px; padding: 8px 10px; border: 1px solid var(--gtb-border); background: var(--gtb-surface); }
+.ps-breadth-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.ps-breadth-title { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.04em; color: var(--gtb-muted); text-transform: uppercase; }
+.ps-breadth-verdict { font-size: 0.52rem; font-weight: 800; padding: 2px 8px; border: 1px solid; border-radius: 3px; }
+.ps-breadth-bar { display: flex; height: 6px; width: 100%; background: var(--gtb-border2); margin-bottom: 6px; overflow: hidden; }
+.ps-breadth-bar-bull { background: var(--gtb-green); height: 100%; }
+.ps-breadth-bar-bear { background: var(--gtb-red); height: 100%; margin-left: auto; }
+.ps-breadth-counts { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.46rem; font-weight: 700; margin-bottom: 6px; }
+.ps-bc-bull { color: var(--gtb-green); }
+.ps-bc-bull-mild { color: var(--gtb-green); opacity: 0.7; }
+.ps-bc-neutral { color: var(--gtb-amber); }
+.ps-bc-bear-mild { color: var(--gtb-red); opacity: 0.7; }
+.ps-bc-bear { color: var(--gtb-red); }
+.ps-bc-nodata { color: var(--gtb-muted); }
+.ps-breadth-idx { font-size: 0.48rem; margin-bottom: 4px; line-height: 1.5; }
+.ps-breadth-note { font-size: 0.44rem; color: var(--gtb-muted); line-height: 1.4; }
 .ps-table-wrap {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: auto; padding: 8px;
-  /* Hard viewport-relative ceiling as a safety net — a screener can render ~200 rows, so
+  /* Hard viewport-relative ceiling as a safety net -- a screener can render ~200 rows, so
      this must never rely purely on the flex chain resolving correctly to get a scrollbar;
-     this guarantees overflow-y kicks in even if some ancestor's height comes out "auto". */
-  max-height: calc(90vh - 140px);
+     this guarantees overflow-y kicks in even if some ancestor's height comes out "auto".
+     Recalibrated after the Market Breadth card (#ps-breadth) was added above the table --
+     that card adds ~90-140px depending on how many divergence/index lines it prints, which
+     the original 140px budget (sized for just the filter + controls rows) didn't account for. */
+  max-height: calc(90vh - 280px);
+  scrollbar-width: auto;
 }
+/* Explicit, visible scrollbar -- the default OS scrollbar (esp. Windows' auto-hide/overlay
+   style) can be easy to miss against this panel's dark background, making a genuinely
+   scrollable table look like it has "no scroll" until the cursor happens to hover it. */
+.ps-table-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+.ps-table-wrap::-webkit-scrollbar-track { background: var(--gtb-surface); }
+.ps-table-wrap::-webkit-scrollbar-thumb { background: var(--gtb-border2); border-radius: 5px; border: 2px solid var(--gtb-surface); }
+.ps-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--gtb-muted); }
 .ps-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.6rem; }
 .ps-table th {
   text-align: left; padding: 6px 8px; font-size: 0.44rem; font-weight: 800; letter-spacing: 0.06em;
@@ -5688,6 +5776,23 @@ td.details-control {
 /* Topbar shows move cursor when windowed so user knows it's draggable */
 #gtb-popup-win:not(.gtb-fullscreen) #gtb-topbar {
     cursor: move;
+}
+
+/* ── Minimized popup width fix ────────────────────────────────────────── */
+/* The PopupWindow library's own bundled CSS (popupwindow.css) hardcodes minimized-state
+   width to 200px. This app's custom titlebar (icon + title text + our own minimize/
+   maximize/close buttons, injected via popupWinControls()) needs more room than that —
+   at 200px the three buttons get pushed out of the visible strip entirely, leaving a
+   minimized popup with no visible way to restore or close it. Widen it, and let the
+   title text truncate (rather than push the buttons out) if a title is still too long
+   even at this width — targets the inline-styled title <span> every popupWinControls()
+   call site already uses (font-weight:800 or 700), not the button row itself. */
+.popupwindow_minimized { width: 340px !important; }
+.popupwindow_minimized .popupwindow_titlebar_text { overflow: hidden !important; }
+.popupwindow_minimized .popupwindow_titlebar_text > div { min-width: 0 !important; }
+.popupwindow_minimized .popupwindow_titlebar_text span[style*="font-weight"] {
+    overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
+    min-width: 0 !important; flex-shrink: 1 !important;
 }
 
 /* ── Z-index layering: groot popup < other popups < maximize overlay ───── */
@@ -6222,148 +6327,111 @@ td.details-control {
     background: transparent !important;
 }
 
-/* ── Floating quick-access toolbar (flyout) ─────────────────────────── */
-#gtb-float-bar {
+/* -- All-Tools launcher flyout (topbar icon -> grid of icon+label tiles) --------------
+   Replaces the old bottom-right floating vertical strip (a cramped 2-column column of
+   icon-only 24px buttons, ~700px tall with 35+ tools, unlabeled so finding one meant
+   scanning by icon shape alone). One topbar icon (#gtb-tools-launcher, alongside the other
+   gtb-ctrl-link icons) opens this as a positioned dropdown -- same "position:fixed,
+   computed from the trigger's own getBoundingClientRect on open" convention this app's
+   other dropdowns (autocomplete lists, the settings gear) already use. */
+#gtb-tools-flyout {
     position: fixed !important;
-    right: 0 !important;
-    bottom: 40px !important;
-    z-index: 8500 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-end !important;
-    gap: 0 !important;
-    user-select: none !important;
-    font-family: inherit !important;
-    box-sizing: border-box !important;
-}
-/* Flyout panel — slides up from trigger. 2-column grid (was a single vertical column) —
-   with 30 tools that stacked to ~700px tall, running off-screen on shorter viewports with
-   no way to reach the bottom entries. Grid roughly halves the height; the max-height +
-   overflow-y:auto is a hard safety-net ceiling on top of that, same pattern as the Data
-   Load popup's own tab panels (a tool count that keeps growing shouldn't rely purely on
-   the grid math fitting the viewport). */
-#gtb-float-panel {
-    display: grid !important;
-    grid-template-columns: repeat(2, 24px) !important;
-    gap: 1px !important;
-    background: #0b1220 !important;
-    border: 1px solid #1e2f46 !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    border-radius: 6px 0 0 0 !important;
-    padding: 0 2px !important;
-    box-shadow: -2px -4px 14px rgba(0,0,0,0.65) !important;
-    box-sizing: border-box !important;
-    width: 54px !important;
-    overflow: hidden !important;
+    /* Must beat .popupwindow_container's z-index:9500 (common.css) -- that wrapper holds
+       the ENTIRE Groot dashboard popup, so anything appended to <body> (this flyout included)
+       needs to clear that whole container's stacking level, not just the popup's own
+       z-index:5000. Matches this app's existing "float above everything" convention
+       (#gtb-winctrl:99000, #groot-maximize-overlay:99999) rather than reusing a mid-range
+       value that quietly loses to the popup container again. */
+    z-index: 99200 !important;
+    width: 300px !important;
     max-height: 0 !important;
-    transition: max-height 0.22s ease, padding 0.22s ease !important;
-}
-#gtb-float-bar.gtb-fb-open #gtb-float-panel {
-    max-height: min(75vh, 480px) !important;
-    overflow-y: auto !important;
-    padding: 3px 2px !important;
-}
-#gtb-float-bar.gtb-light #gtb-float-panel {
-    background: #f0f2f5 !important;
-    border-color: #c8cdd6 !important;
-    box-shadow: -2px -4px 14px rgba(0,0,0,0.18) !important;
-}
-/* Trigger — always visible tab at the bottom */
-#gtb-float-trigger {
+    overflow: hidden !important;
     background: #0b1220 !important;
     border: 1px solid #1e2f46 !important;
-    border-right: none !important;
-    border-radius: 0 0 0 6px !important;
-    color: #4e6a8a !important;
-    font-size: 12px !important;
-    width: 28px !important;
-    height: 28px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    box-shadow: -2px 2px 10px rgba(0,0,0,0.55) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.55) !important;
     box-sizing: border-box !important;
-    outline: none !important;
-    transition: color 0.12s, background 0.12s !important;
-    flex-shrink: 0 !important;
+    transition: max-height 0.18s ease, padding 0.18s ease !important;
+    padding: 0 !important;
+    font-family: inherit !important;
 }
-#gtb-float-bar.gtb-fb-open #gtb-float-trigger {
-    border-top: 1px solid #1e2f46 !important;
-    border-radius: 0 !important;
-    color: #4cc9e0 !important;
+#gtb-tools-flyout.gtb-tf-open {
+    max-height: min(70vh, 520px) !important;
+    overflow-y: auto !important;
+    padding: 8px !important;
 }
-#gtb-float-trigger:hover { color: #4cc9e0 !important; background: rgba(76,201,224,0.10) !important; }
-#gtb-float-bar.gtb-light #gtb-float-trigger {
-    background: #f0f2f5 !important;
+#gtb-tools-flyout.gtb-light {
+    background: #f7f9fc !important;
     border-color: #c8cdd6 !important;
-    color: #5a7399 !important;
-    box-shadow: -2px 2px 10px rgba(0,0,0,0.18) !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18) !important;
 }
-#gtb-float-bar.gtb-light #gtb-float-trigger:hover { color: #1a6fa8 !important; background: rgba(26,111,168,0.10) !important; }
-#gtb-float-bar.gtb-light.gtb-fb-open #gtb-float-trigger { color: #1a6fa8 !important; border-top-color: #c8cdd6 !important; }
-/* Handle (drag) inside panel */
-.gtb-fb-handle {
-    grid-column: 1 / -1 !important;
-    color: #2d4160 !important;
-    font-size: 10px !important;
-    cursor: move !important;
-    padding: 1px 0 3px !important;
-    line-height: 1 !important;
-    letter-spacing: -1px !important;
-    text-align: center !important;
-    width: 100% !important;
-    display: block !important;
-    box-sizing: border-box !important;
+.gtb-tf-search {
+    position: relative !important;
+    margin-bottom: 8px !important;
 }
-#gtb-float-bar.gtb-light .gtb-fb-handle { color: #aab0bc !important; }
-/* Tool buttons inside panel */
-.gtb-fb-btn {
-    background: transparent !important;
-    border: none !important;
-    color: #4e6a8a !important;
-    font-size: 11px !important;
-    width: 24px !important;
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 3px !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    margin: 1px 0 !important;
-    line-height: 1 !important;
-    flex-shrink: 0 !important;
-    transition: color 0.12s, background 0.12s !important;
-    box-sizing: border-box !important;
-    outline: none !important;
+.gtb-tf-search i {
+    position: absolute !important; left: 8px !important; top: 50% !important;
+    transform: translateY(-50%) !important; color: #4e6a8a !important; font-size: 11px !important;
+    pointer-events: none !important;
 }
-#gtb-float-bar.gtb-light .gtb-fb-btn { color: #5a7399 !important; }
-.gtb-fb-btn:hover {
-    color: #4cc9e0 !important;
-    background: rgba(76,201,224,0.13) !important;
+#gtb-tf-search-input {
+    width: 100% !important; box-sizing: border-box !important;
+    background: #131c2e !important; color: #c9d1d9 !important;
+    border: 1px solid #1e2f46 !important; border-radius: 5px !important;
+    padding: 6px 8px 6px 26px !important; font-size: 11px !important; outline: none !important;
 }
-#gtb-float-bar.gtb-light .gtb-fb-btn:hover {
-    color: #1a6fa8 !important;
-    background: rgba(26,111,168,0.12) !important;
+#gtb-tf-search-input:focus { border-color: #4cc9e0 !important; }
+#gtb-tools-flyout.gtb-light #gtb-tf-search-input { background: #ffffff !important; color: #1c2733 !important; border-color: #c8cdd6 !important; }
+#gtb-tools-flyout.gtb-light .gtb-tf-search i { color: #5a7399 !important; }
+.gtb-tf-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 4px !important;
 }
-.gtb-fb-btn:active { background: rgba(76,201,224,0.22) !important; }
-.gtb-fb-groot {
-    margin-top: 3px !important;
-    border-top: 1px solid #1e2f46 !important;
-    padding-top: 3px !important;
-    color: #3a7fd5 !important;
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
+.gtb-tf-tile {
+    position: relative !important;
+    display: flex !important; flex-direction: column !important; align-items: center !important;
+    justify-content: center !important; gap: 4px !important;
+    background: transparent !important; border: 1px solid transparent !important; border-radius: 6px !important;
+    color: #aab8ce !important; cursor: pointer !important; padding: 8px 2px !important;
+    box-sizing: border-box !important; text-align: center !important; outline: none !important;
+    transition: color 0.12s, background 0.12s, border-color 0.12s !important;
 }
-#gtb-float-bar.gtb-light .gtb-fb-groot { border-top-color: #c8cdd6 !important; color: #1a6fa8 !important; }
-.gtb-fb-groot:hover { color: #6cb4ff !important; background: rgba(108,180,255,0.13) !important; }
-#gtb-float-bar.gtb-light .gtb-fb-groot:hover { color: #0d5c94 !important; background: rgba(26,111,168,0.12) !important; }
+.gtb-tf-tile i { font-size: 17px !important; line-height: 1 !important; }
+.gtb-tf-tile span {
+    font-size: 8.5px !important; font-weight: 600 !important; line-height: 1.15 !important;
+    white-space: normal !important; word-break: break-word !important;
+}
+.gtb-tf-tile:hover {
+    color: #4cc9e0 !important; background: rgba(76,201,224,0.10) !important; border-color: rgba(76,201,224,0.35) !important;
+}
+#gtb-tools-flyout.gtb-light .gtb-tf-tile { color: #46536b !important; }
+#gtb-tools-flyout.gtb-light .gtb-tf-tile:hover { color: #1a6fa8 !important; background: rgba(26,111,168,0.10) !important; border-color: rgba(26,111,168,0.3) !important; }
+.gtb-tf-empty { text-align: center; color: #4e6a8a; font-size: 11px; padding: 12px 4px; }
+#gtb-tools-launcher.gtb-ctrl-link-active { color: #4cc9e0 !important; }
+
+/* Unseen error/warning count badge on the floating toolbar's log-viewer button */
+.gtb-fb-badge {
+    position: absolute !important; top: -3px !important; right: -3px !important;
+    background: var(--gtb-red, #f85149) !important; color: #fff !important;
+    font-size: 8px !important; font-weight: 800 !important; line-height: 1 !important;
+    min-width: 13px !important; height: 13px !important; border-radius: 7px !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    padding: 0 3px !important; pointer-events: none !important;
+    box-shadow: 0 0 0 1px #0d1117 !important;
+}
+
+/* Error/Warning Log popup — date/filter row */
+.gtb-log-filter-btn {
+    padding: 4px 10px; font-size: 0.6rem; font-weight: 700; cursor: pointer;
+    background: var(--gtb-surface2); color: var(--gtb-muted); border: 1px solid var(--gtb-border);
+}
+.gtb-log-filter-btn.gtb-log-filter-active { background: var(--gtb-accent); color: #fff; border-color: var(--gtb-accent); }
+#gtb-log-clear-day, #gtb-log-clear-all {
+    padding: 4px 10px; font-size: 0.6rem; font-weight: 700; cursor: pointer;
+    background: var(--gtb-surface2); color: var(--gtb-text); border: 1px solid var(--gtb-border);
+}
+#gtb-log-clear-all { color: var(--gtb-red); }
 
 /* ── Commodities popup v2 ──────────────────────────────────────────── */
 .cmd-wrap { display: flex; flex-direction: column; height: 100%; gap: 0; }

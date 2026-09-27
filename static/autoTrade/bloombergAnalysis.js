@@ -1,5 +1,11 @@
 // ── Trend Probability Engine ──────────────────────────────────────────────────
-function _btRenderPrediction() {
+// Split into _btComputeTrendProb() (all signal math + verdict/gauge/confidence — the actual
+// engine) and two renderers: _btTrendProbLeftHtml() (gauge+verdict+pcts+confidence+VIX line
+// ONLY, no per-signal table — what the Dashboard tab's own "TREND PROBABILITY" card uses,
+// added per explicit request alongside Fear & Greed / Master Consensus) and
+// _btRenderPrediction() (the full Analysis-tab panel: left gauge + right per-signal table).
+// Kept as one computation so the two renderings can never silently disagree on the verdict.
+function _btComputeTrendProb() {
     var opens = _btOpens(), ltps = _btLtps();
     var signals = [];
 
@@ -169,10 +175,42 @@ function _btRenderPrediction() {
         + '<text x="' + cx + '" y="' + (cy + 2) + '" text-anchor="middle" font-size="11" font-weight="bold" fill="' + vCol + '" font-family="monospace">' + (bullPct*100).toFixed(0) + '%</text>'
         + '</svg>';
 
+    return {
+        signals: signals, bullPct: bullPct, bearPct: bearPct, confidence: confidence,
+        vixMod: vixMod, verdict: verdict, vCol: vCol, vIcon: vIcon, gaugeHtml: gaugeHtml,
+    };
+}
+
+// Gauge + verdict + pcts + confidence + VIX-modifier line ONLY — no per-signal table. This is
+// what the Dashboard tab's "TREND PROBABILITY" card uses (added per explicit request,
+// alongside Fear & Greed / Master Consensus in a 3-column row) — the full breakdown table
+// stays Analysis-tab-only via _btRenderPrediction below.
+function _btTrendProbLeftHtml(data) {
+    return '<div class="bt-pred-left" style="margin:0;">'
+        +   data.gaugeHtml
+        +   '<div class="bt-pred-verdict" style="color:' + data.vCol + '"><i class="bi ' + data.vIcon + '"></i> ' + data.verdict + '</div>'
+        +   '<div class="bt-pred-probs">'
+        +     '<b style="color:#3fb950;">' + (data.bullPct*100).toFixed(0) + '%</b><span style="color:var(--gtb-muted)"> bull</span>'
+        +     '<span class="bt-pred-sep">&middot;</span>'
+        +     '<b style="color:#f85149;">' + (data.bearPct*100).toFixed(0) + '%</b><span style="color:var(--gtb-muted)"> bear</span>'
+        +   '</div>'
+        +   '<div class="bt-pred-conf">'
+        +     '<div class="bt-pred-conf-row"><span style="color:var(--gtb-muted);font-size:0.52rem;">CONFIDENCE</span><span style="font-size:0.6rem;">' + data.confidence + '/100</span></div>'
+        +     '<div class="bt-pred-conf-track"><div class="bt-pred-conf-bar" style="width:' + data.confidence + '%;background:' + data.vCol + ';"></div></div>'
+        +   '</div>'
+        +   '<div style="color:var(--gtb-muted);font-size:0.5rem;margin-top:5px;line-height:1.5;">'
+        +     'VIX modifier: <b>x' + data.vixMod.toFixed(2) + '</b>'
+        +     (data.vixMod < 1 ? ' -- reducing conviction' : data.vixMod > 1 ? ' -- amplifying trend' : '')
+        +   '</div>'
+        + '</div>';
+}
+
+function _btRenderPrediction() {
+    var data = _btComputeTrendProb();
     var dCol = { bull:'#3fb950', bear:'#f85149', neutral:'#7d8590' };
     var dLbl = { bull:'&#9650; BULL', bear:'&#9660; BEAR', neutral:'&#9679; NEUTRAL' };
     var sigRows = '';
-    signals.forEach(function(sig) {
+    data.signals.forEach(function(sig) {
         var dc = dCol[sig.dir];
         var barW = sig.dir !== 'neutral' ? Math.round(sig.strength * 100) : 0;
         sigRows += '<div class="bt-pred-sig-row">'
@@ -186,23 +224,7 @@ function _btRenderPrediction() {
     });
 
     var h = '<div class="bt-pred-wrap">'
-        + '<div class="bt-pred-left">'
-        +   gaugeHtml
-        +   '<div class="bt-pred-verdict" style="color:' + vCol + '"><i class="bi ' + vIcon + '"></i> ' + verdict + '</div>'
-        +   '<div class="bt-pred-probs">'
-        +     '<b style="color:#3fb950;">' + (bullPct*100).toFixed(0) + '%</b><span style="color:var(--gtb-muted)"> bull</span>'
-        +     '<span class="bt-pred-sep">&middot;</span>'
-        +     '<b style="color:#f85149;">' + (bearPct*100).toFixed(0) + '%</b><span style="color:var(--gtb-muted)"> bear</span>'
-        +   '</div>'
-        +   '<div class="bt-pred-conf">'
-        +     '<div class="bt-pred-conf-row"><span style="color:var(--gtb-muted);font-size:0.52rem;">CONFIDENCE</span><span style="font-size:0.6rem;">' + confidence + '/100</span></div>'
-        +     '<div class="bt-pred-conf-track"><div class="bt-pred-conf-bar" style="width:' + confidence + '%;background:' + vCol + ';"></div></div>'
-        +   '</div>'
-        +   '<div style="color:var(--gtb-muted);font-size:0.5rem;margin-top:5px;line-height:1.5;">'
-        +     'VIX modifier: <b>x' + vixMod.toFixed(2) + '</b>'
-        +     (vixMod < 1 ? ' -- reducing conviction' : vixMod > 1 ? ' -- amplifying trend' : '')
-        +   '</div>'
-        + '</div>'
+        + _btTrendProbLeftHtml(data)
         + '<div class="bt-pred-right">'
         +   '<div class="bt-pred-sig-hdr"><span>Signal</span><span>Direction</span><span>Strength</span><span>Value</span><span>Detail</span></div>'
         +   sigRows
