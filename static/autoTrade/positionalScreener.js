@@ -620,8 +620,17 @@ function _psExplainVerdict(r) {
         L.push('<p>' + r.exitCriteria + '</p>');
     }
 
-    // 5. Bottom line
-    L.push('<div style="font-weight:800;margin:14px 0 4px;">5. Bottom line</div>');
+    // 5. Conviction
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">5. Conviction</div>');
+    if (r.convictionPct != null) {
+        var cc = r.convictionPct >= 60 ? 'var(--gtb-green)' : r.convictionPct >= 40 ? 'var(--gtb-amber)' : 'var(--gtb-red)';
+        L.push('<p><b style="color:' + cc + ';font-size:1.1em;">' + r.convictionPct + '%</b> -- a rule-based confidence score (rules passed, confirmed-vs-forming, overlay agreement, momentum, extension), NOT a back-tested win-rate. Use it as a threshold the way you would a real probability (e.g. only act above 60%), but read it as "how many of this scanner\'s own checks agree", not market-calibrated odds.</p>');
+    } else {
+        L.push('<p>No conviction score -- there is no direction here to be confident in (insufficient history, Stage 1 basing, or Stage 3 topping).</p>');
+    }
+
+    // 6. Bottom line
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">6. Bottom line</div>');
     var bottom;
     if (r.verdict.indexOf('STRONG BUY') !== -1) bottom = 'Both layers agree on a genuine, mechanically-confirmed uptrend with today\'s tape supporting it. This is the highest-conviction long setup this scanner produces. Still size and manage risk per the entry/stop/target above -- "STRONG" describes agreement between two rule-based readings, not a guarantee.';
     else if (r.verdict.indexOf('STRONG SELL') !== -1) bottom = 'Both layers agree on a genuine, mechanically-confirmed downtrend with today\'s tape supporting it. Highest-conviction short setup this scanner produces, with the same caveat -- rules agreeing is not a guarantee, and shorting carries margin/borrow/unlimited-loss risk this scanner does not model.';
@@ -841,6 +850,46 @@ function _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExp
 // stop at SMA20/the opposite side of that range), not a guarantee — same caveat as the
 // score itself: it's a lean, not a certainty, and should be sized/adjusted with your own
 // risk rules.
+// Conviction % (0-100) -- a transparent, rule-based confidence score built from the SAME
+// inputs already shown on screen (rules passed, confirmed-vs-forming, overlay agreement,
+// momentum quality, extension), NOT a statistically fitted probability -- nothing in this
+// scanner has been back-tested against forward returns, so no number here can honestly claim
+// "this setup works X% of the time". Meant to be usable exactly the way a real probability
+// would be (e.g. "only act above 60%"), just labeled for what it actually is: how many of
+// this scanner's own independent checks currently line up.
+//   Rules passed (Trend/Short Template, X/8): up to 40 pts, scaled -- the single biggest input.
+//   Confirmed vs forming: +25 if all 8 rules passed (dir +-1), +12.5 if only Stage-level
+//     confirmation exists (dir +-0.5).
+//   Overlay agreement: +20 if the overlay clears the same +-1.5 bar the verdict itself uses,
+//     -20 if it actively disagrees, +0 if neutral/awaiting.
+//   Momentum quality: up to +-10, scaled by R-squared (smoothness).
+//   Extension: +5 if not chasing, -5 if already extended (>25% from the 50-day SMA).
+// Returns null when there's no direction to have a conviction number about (no primary read,
+// Stage 1 basing, or Stage 3 topping) -- shown as "--" rather than a misleading 0%.
+function _psComputeConviction(setup) {
+    var p = setup.primary;
+    if (!p || !p.ok || p.dir == null || p.dir === 0 || p.dir === -0.3) return null;
+    var dir = p.dir, isLong = dir > 0;
+    var rulesObj = isLong ? p.tt : p.st;
+    var pts = 0;
+    if (rulesObj && rulesObj.ok) pts += (rulesObj.rulesPassed / rulesObj.rulesTotal) * 40;
+    else pts += 20;
+    pts += (Math.abs(dir) === 1) ? 25 : 12.5;
+    if (setup.agree) pts += 20;
+    else if (setup.disagree) pts -= 20;
+    var mom = p.mom;
+    if (mom && mom.ok) {
+        var momDir = mom.score > 0 ? 1 : mom.score < 0 ? -1 : 0;
+        var expectedDir = isLong ? 1 : -1;
+        if (momDir === expectedDir) pts += (mom.gapFlagged ? 5 : 10) * mom.r2;
+        else if (momDir === -expectedDir) pts -= 5;
+    }
+    var ext = setup.extensionNote || '';
+    if (ext.indexOf('EXTENDED') !== -1) pts -= 5;
+    else if (ext && (ext.indexOf('not extended') !== -1 || ext.indexOf('buy zone') !== -1 || ext.indexOf('sell zone') !== -1)) pts += 5;
+    return Math.max(0, Math.min(100, Math.round(pts)));
+}
+
 function _psAttachTradePlan(setup, candles) {
     var range20 = setup.high20 - setup.low20;
     var dir = setup.primary && setup.primary.ok ? setup.primary.dir : null;
@@ -867,11 +916,13 @@ function _psAttachTradePlan(setup, candles) {
                 + ') or above the 20d high (' + setup.high20.toFixed(1) + ') — whichever is hit first.';
         } else {
             Object.assign(setup, noPlan);
+            setup.convictionPct = null;
             setup.exitCriteria = 'No trade — not enough history for a trend read, and today\'s overlay is not decisive either.';
             return;
         }
         setup.riskReward = (setup.entry != null && setup.stop != null)
             ? Math.abs(setup.target - setup.entry) / Math.max(0.01, Math.abs(setup.entry - setup.stop)) : null;
+        setup.convictionPct = null;
         return;
     }
 
@@ -881,6 +932,7 @@ function _psAttachTradePlan(setup, candles) {
     // branch below, even though dir is a small negative number for ranking purposes.
     if (dir === 0 || dir === -0.3) {
         Object.assign(setup, noPlan);
+        setup.convictionPct = null;
         setup.levelsSource = 'no plan by design — ' + setup.primary.label;
         setup.exitCriteria = dir === 0
             ? 'No trade — Stage 1 basing has no established direction yet. Watch for a Stage 2 breakout (price reclaiming the 30-week MA with the MA itself turning up).'
@@ -915,6 +967,7 @@ function _psAttachTradePlan(setup, candles) {
         setup.exitCriteria = 'Structural stop at ' + (S.stop != null ? S.stop.toFixed(1) : '—') + ' (entry + 1.5&times;ATR14). '
             + (S.note || '') + '. Also downgrade/exit if the overlay flips to SHORT COVERING/LONG BUILDUP or the next scan drops the Stage 4 read.';
     }
+    setup.convictionPct = _psComputeConviction(setup);
 }
 
 // ── Scan orchestration ───────────────────────────────────────────────────────
@@ -1144,7 +1197,7 @@ function _psRenderTable() {
         + '<th>Symbol</th><th>LTP</th>'
         + '<th>Trend Template / Stage' + _iiSafe('ps-primary') + '</th><th>Momentum' + _iiSafe('ps-primary') + '</th>'
         + '<th>20d Chg%</th><th>Trend</th><th>Breakout</th>'
-        + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th><th>Verdict</th>'
+        + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th><th>Verdict</th><th>Conviction%' + _iiSafe('ps-conviction') + '</th>'
         + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th><th></th><th></th><th></th>'
         + '</tr></thead><tbody>'
         + rows.map(function (r) {
@@ -1171,6 +1224,11 @@ function _psRenderTable() {
             var momText = p && p.mom && p.mom.ok ? p.mom.score.toFixed(0) + (p.mom.gapFlagged ? ' ⚠gap' : '') : '—';
             var momTip = p && p.mom && p.mom.ok ? 'Clenow momentum score = annualized return (' + p.mom.annualizedPct.toFixed(0) + '%) × R² (' + p.mom.r2.toFixed(2) + '). ' + (p.mom.gapFlagged ? 'A >15% single-day move sits in the 90-day window — may distort this reading.' : '') : (p && p.mom ? p.mom.reason : '');
             var extTip = r.extensionNote ? r.extensionNote.replace(/"/g, '&quot;') : '';
+            var conv = r.convictionPct;
+            var convColor = conv == null ? 'var(--gtb-muted)' : conv >= 60 ? 'var(--gtb-green)' : conv >= 40 ? 'var(--gtb-amber)' : 'var(--gtb-red)';
+            var convText = conv == null ? '—' : conv + '%';
+            var convTip = conv == null ? 'No direction to have a conviction score about (insufficient history, basing, or topping).'
+                : 'Rule-based confidence, NOT a back-tested probability -- built from rules passed, confirmed-vs-forming, overlay agreement, momentum quality and extension. Higher = more of this scanner\'s own checks agree with each other, not a statistical win-rate.';
             return '<tr style="background:' + rowTint + ';">'
                 + '<td class="ps-cell-strong">' + r.name + '</td>'
                 + '<td>' + r.ltp.toFixed(1) + '</td>'
@@ -1184,6 +1242,7 @@ function _psRenderTable() {
                 + '<td style="color:' + curveColor + ';font-size:0.55rem;">' + (r.curveLabel || 'NO DATA') + '</td>'
                 + '<td class="ps-cell-strong" style="color:' + r.overlayColor + ';" title="Same-day overlay total (trend/breakout/RS/OI/curve) — confirmation only, not the primary call.">' + r.overlayTotal.toFixed(1) + '</td>'
                 + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
+                + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
                 + '<td>' + (hasPlan ? r.entry.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-green);">' + (hasPlan ? r.target.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
