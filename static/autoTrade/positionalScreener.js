@@ -251,6 +251,8 @@ function _psPrimaryRead(candles, niftyCloses) {
 }
 
 var _PS_CACHE = {}; // _PS_CACHE[name] = { candles, futCandles, ...computed fields }
+var _PS_LAST_FILTERED_ROWS = []; // whatever's currently on screen after filter/search/sort — see _psRenderTable
+var _PS_BASKET_SELECTED = {}; // name -> true, checked via the "Add to Basket" checkbox column — see _psRenderTable
 
 jQ(document).on('click', '#show-positional-screener', function (e) {
     e.preventDefault();
@@ -301,18 +303,32 @@ function _psContentHtml() {
         + '<div class="ps-controls">'
         +   '<span id="ps-progress" class="ps-progress"></span>'
         +   '<span id="ps-summary" class="ps-summary"></span>'
+        +   '<button id="ps-tradeable-btn" class="sv-pill-btn" type="button" title="One-click shortlist: STRONG BUY / STRONG SELL / LONG forming / SHORT forming at Conviction 60 or more, plus BUY / SELL (awaiting overlay) at 65 or more. Excludes anything flagged caution (overlay disagreeing). Combines with the other filters."><i class="bi bi-check2-circle"></i> Tradeable</button>'
         +   '<select id="ps-filter" class="sv-pill-btn">'
         +     '<option value="all">All</option>'
-        +     '<option value="buy">BUY / STRONG BUY</option>'
-        +     '<option value="sell">SELL / STRONG SELL</option>'
-        +     '<option value="watch">WATCH</option>'
+        +     '<option value="strongbuy">STRONG BUY</option>'
+        +     '<option value="buy">BUY (any)</option>'
+        +     '<option value="strongsell">STRONG SELL</option>'
+        +     '<option value="sell">SELL (any)</option>'
+        +     '<option value="longforming">LONG forming (Stage 2)</option>'
+        +     '<option value="shortforming">SHORT forming (Stage 4)</option>'
+        +     '<option value="basing">Basing (Stage 1)</option>'
+        +     '<option value="topping">Topping (Stage 3)</option>'
+        +     '<option value="watch">WATCH (all forming/no-plan)</option>'
         +   '</select>'
         +   '<select id="ps-sort" class="sv-pill-btn">'
         +     '<option value="score">Sort: Score</option>'
         +     '<option value="name">Sort: Name</option>'
         +     '<option value="rs">Sort: Rel Strength</option>'
+        +     '<option value="conv">Sort: Conviction%</option>'
         +   '</select>'
+        +   '<label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--gtb-muted);" title="Only show rows with Conviction% at or above this value. Rows with no conviction score (no direction) are hidden whenever this is set above 0.">'
+        +     'Min Conv%'
+        +     '<input type="number" id="ps-min-conv" class="dl-search" min="0" max="100" step="5" value="60" style="width:56px;margin:0;" placeholder="0">'
+        +   '</label>'
         +   '<input type="text" id="ps-search" class="dl-search" style="width:140px;margin:0;" placeholder="Search results…">'
+        +   '<button id="ps-telegram-btn" class="sv-pill-btn" type="button" title="Send the currently filtered rows to Telegram"><i class="bi bi-send"></i> Telegram</button>'
+        +   '<button id="ps-basket-btn" class="sv-pill-btn" type="button" title="Add the checked stocks to a Kite basket for bulk execution"><i class="bi bi-cart-plus"></i> Add to Basket (<span id="ps-basket-count">0</span>)</button>'
         + '</div>'
         + '<div id="ps-breadth"></div>'
         + '<div id="ps-table-wrap" class="ps-table-wrap">'
@@ -652,8 +668,15 @@ jQ(document).on('click', '.ps-explain-btn', function () {
     var r = _PS_CACHE[name];
     if (!r) return;
     var html = '<div style="padding:14px 16px;overflow-y:auto;height:100%;font-size:0.68rem;line-height:1.5;">' + _psExplainVerdict(r) + '</div>';
-    showPopUpWindow('ps-explain-' + name, html, name + ' -- Trade Recommendation', 480, 560);
-    var _cls = 'popup-custom-style-ps-explain-' + name;
+    // Slugify for the popup id/class -- multi-word names (NIFTY 50, NIFTY BANK) contain a
+    // space, which is invalid inside a CSS class name; the raw name here produced a class
+    // like "popup-custom-style-ps-explain-NIFTY 50", which jQ('.' + _cls) parses as TWO
+    // selectors ("...NIFTY" descendant "50"), silently matching nothing -- the titlebar/theme
+    // styling below never applied and the popup looked like it never opened. Single-word
+    // names (TCS, RELIANCE) never hit this, which is why it looked instrument-specific.
+    var slug = name.replace(/[^A-Za-z0-9]+/g, '-');
+    showPopUpWindow('ps-explain-' + slug, html, name + ' -- Trade Recommendation', 480, 560);
+    var _cls = 'popup-custom-style-ps-explain-' + slug;
     var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
         + '<span style="font-weight:800;font-size:0.7rem;">' + name + ' — TRADE RECOMMENDATION</span>'
         + popupWinControls(_cls) + '</div>';
@@ -682,13 +705,23 @@ function _psChartLink(name, token) {
 async function _psCurveLean(name, isMcx) {
     var curveMap = isMcx ? (typeof MCX_FUT_CURVE !== 'undefined' ? MCX_FUT_CURVE : {}) : (typeof NSE_FUT_CURVE !== 'undefined' ? NSE_FUT_CURVE : {});
     var exchName = _PS_INDEX_NAMES[name] || name;
-    var curve = curveMap[exchName] || curveMap[name] || [];
+    var refDay = isMcx ? (typeof MCX_CURRENT_DAY !== 'undefined' ? MCX_CURRENT_DAY : null) : (typeof CURRENT_DAY !== 'undefined' ? CURRENT_DAY : null);
+    var rawCurve = curveMap[exchName] || curveMap[name] || [];
+    // Drops any contract whose expiry is already before the snapshot day -- NSE_FUT_CURVE/
+    // MCX_FUT_CURVE only update when Data Load's Kite Instruments sync is re-run, so on/after
+    // an expiry day (e.g. NIFTY26SEPFUT expiring 2026-09-29) a curve cached from before that
+    // sync would still list the now-expired contract as curve[0] and try to fetch candles for
+    // a token that no longer trades -- which is exactly what produced "No candle data" here.
+    // Same fix as _gtbFilterLiveCurve (grootTradeBot.js); reimplemented inline in case this
+    // file's scan runs before that one has finished loading.
+    var curve = (typeof _gtbFilterLiveCurve === 'function') ? _gtbFilterLiveCurve(rawCurve, refDay)
+        : (refDay ? rawCurve.filter(function (c) { return !c.expiry || c.expiry >= refDay; }) : rawCurve);
     if (curve.length < 2) return { ok: false, reason: curve.length ? 'Only 1 contract listed' : 'No contracts listed (run Data Load)' };
     var near = curve[0], far = curve[1];
     try {
         var nearCandles = await _psFetchDaily(near.token, 5);
         var farCandles = await _psFetchDaily(far.token, 5);
-        if (!nearCandles.length || !farCandles.length) return { ok: false, reason: 'No candle data' };
+        if (!nearCandles.length || !farCandles.length) return { ok: false, reason: 'No candle data (' + near.tradingsymbol + '/' + far.tradingsymbol + ' — try re-running Data Load if this contract just rolled over)' };
         var nearLtp = parseFloat(nearCandles[nearCandles.length - 1][4]);
         var farLtp = parseFloat(farCandles[farCandles.length - 1][4]);
         var diffPct = nearLtp ? ((farLtp - nearLtp) / nearLtp * 100) : 0;
@@ -973,6 +1006,59 @@ function _psAttachTradePlan(setup, candles) {
 // ── Scan orchestration ───────────────────────────────────────────────────────
 var _PS_SCANNING = false;
 
+// Core scan loop, factored out of the button handler so the Dashboard auto-scan (below) can
+// run the exact same per-stock pipeline (Trend Template/Stage/Momentum primary + overlay) for
+// a smaller, fixed instrument list without duplicating it. Upserts into _PS_CACHE — does NOT
+// clear it first — so callers decide whether this is a fresh full scan or a background topping-
+// up of a few names on top of whatever's already cached.
+async function _psRunScan(universe, opts) {
+    opts = opts || {};
+    var progress = opts.progressEl; // jQuery selector string, or falsy to skip progress text
+    var niftyToken = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS['NIFTY 50'] : null;
+    var niftyPctChg20 = 0, niftyCloses = null;
+    if (niftyToken) {
+        try {
+            var niftyCandles = await _psFetchDaily(niftyToken, _PS_LOOKBACK_DAYS);
+            if (niftyCandles.length > 20) {
+                niftyCloses = niftyCandles.map(function (c) { return parseFloat(c[4]); });
+                niftyPctChg20 = ((niftyCloses[niftyCloses.length - 1] - niftyCloses[niftyCloses.length - 21]) / niftyCloses[niftyCloses.length - 21]) * 100;
+            }
+        } catch (e) {}
+    }
+
+    var done = 0;
+    for (var i = 0; i < universe.length; i++) {
+        var name = universe[i];
+        if (progress) jQ(progress).text('Scanning ' + (i + 1) + ' / ' + universe.length + ' — ' + name);
+        try {
+            var token = _psPriceTokenFor(name);
+            if (!token) continue;
+            // Long daily lookback — groot-research's Trend Template needs 210+ trading
+            // days (200-day SMA + a buffer) and Weinstein Stage needs 150+25; the OLD
+            // shorter-window signals (SMA20, 20-day breakout, OI buildup) still just read
+            // the tail of this same series, so nothing else needed to change to get them.
+            var candles = await _psFetchDaily(token, _PS_LOOKBACK_DAYS);
+            var futEntry = _psFutEntryFor(name);
+            var futToken = futEntry ? futEntry.instrument_token : null;
+            var daysToExpiry = futEntry ? _psDaysToExpiry(futEntry.expiry) : null;
+            var futCandles = futToken ? await _psFetchDaily(futToken, 15) : null;
+            if (!futToken) console.log('[positional-screener]', name, 'no futures token resolved (check FUTURE_INTRUMENT_LIST/COMMODITIES_FUTURE_INSTRUMENT_LIST)');
+            else if (daysToExpiry != null && daysToExpiry <= 3) console.log('[positional-screener]', name, 'in rollover window —', daysToExpiry, 'days to expiry, OI buildup read suppressed');
+            else if (!futCandles || futCandles.length < 6) console.log('[positional-screener]', name, 'futures token', futToken, 'returned', (futCandles || []).length, 'candles');
+            var curveInfo = await _psCurveLean(name, _PS_MCX_NAMES.indexOf(name) !== -1);
+            // Primary read — groot-research parity (Trend Template / Short Template /
+            // Stage / Clenow momentum), computed from the SAME long daily series, no extra
+            // fetch. This is the TRUSTED base call; the overlay (trend/breakout/OI/curve
+            // above) only confirms/times it — see _psComputeSetup's own comment.
+            var primary = _psPrimaryRead(candles, niftyCloses);
+            var setup = _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry, curveInfo, primary);
+            if (setup) { setup.name = name; _PS_CACHE[name] = setup; done++; }
+        } catch (e) { console.log('[positional-screener]', name, e); }
+        if (opts.renderDuring && i % 10 === 0) _psRenderTable(); // incremental render so results appear while scanning
+    }
+    return done;
+}
+
 jQ(document).on('click', '#ps-scan-btn', async function () {
     if (_PS_SCANNING) return;
     _PS_SCANNING = true;
@@ -982,52 +1068,7 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
     try {
         var universe = jQ('#ps-chip-panel .sv-chip.sv-chip-selected').map(function () { return jQ(this).attr('data-name'); }).get();
         if (!universe.length) { _gtbToast('Pick a filter above (or add symbols by search) before scanning.', 'error'); return; }
-
-        // NIFTY 50's own daily history — needs the SAME long lookback as each stock (see
-        // below) so it can serve BOTH the old 20-day RS baseline and groot-research's Trend
-        // Template Rule 8 / short_template's mirror (127-session, ~6-month RS proxy vs NIFTY).
-        var niftyToken = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS['NIFTY 50'] : null;
-        var niftyPctChg20 = 0, niftyCloses = null;
-        if (niftyToken) {
-            try {
-                var niftyCandles = await _psFetchDaily(niftyToken, _PS_LOOKBACK_DAYS);
-                if (niftyCandles.length > 20) {
-                    niftyCloses = niftyCandles.map(function (c) { return parseFloat(c[4]); });
-                    niftyPctChg20 = ((niftyCloses[niftyCloses.length - 1] - niftyCloses[niftyCloses.length - 21]) / niftyCloses[niftyCloses.length - 21]) * 100;
-                }
-            } catch (e) {}
-        }
-
-        var done = 0;
-        for (var i = 0; i < universe.length; i++) {
-            var name = universe[i];
-            jQ('#ps-progress').text('Scanning ' + (i + 1) + ' / ' + universe.length + ' — ' + name);
-            try {
-                var token = _psPriceTokenFor(name);
-                if (!token) continue;
-                // Long daily lookback — groot-research's Trend Template needs 210+ trading
-                // days (200-day SMA + a buffer) and Weinstein Stage needs 150+25; the OLD
-                // shorter-window signals (SMA20, 20-day breakout, OI buildup) still just read
-                // the tail of this same series, so nothing else needed to change to get them.
-                var candles = await _psFetchDaily(token, _PS_LOOKBACK_DAYS);
-                var futEntry = _psFutEntryFor(name);
-                var futToken = futEntry ? futEntry.instrument_token : null;
-                var daysToExpiry = futEntry ? _psDaysToExpiry(futEntry.expiry) : null;
-                var futCandles = futToken ? await _psFetchDaily(futToken, 15) : null;
-                if (!futToken) console.log('[positional-screener]', name, 'no futures token resolved (check FUTURE_INTRUMENT_LIST/COMMODITIES_FUTURE_INSTRUMENT_LIST)');
-                else if (daysToExpiry != null && daysToExpiry <= 3) console.log('[positional-screener]', name, 'in rollover window —', daysToExpiry, 'days to expiry, OI buildup read suppressed');
-                else if (!futCandles || futCandles.length < 6) console.log('[positional-screener]', name, 'futures token', futToken, 'returned', (futCandles || []).length, 'candles');
-                var curveInfo = await _psCurveLean(name, _PS_MCX_NAMES.indexOf(name) !== -1);
-                // Primary read — groot-research parity (Trend Template / Short Template /
-                // Stage / Clenow momentum), computed from the SAME long daily series, no extra
-                // fetch. This is the TRUSTED base call; the overlay (trend/breakout/OI/curve
-                // above) only confirms/times it — see _psComputeSetup's own comment.
-                var primary = _psPrimaryRead(candles, niftyCloses);
-                var setup = _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry, curveInfo, primary);
-                if (setup) { setup.name = name; _PS_CACHE[name] = setup; done++; }
-            } catch (e) { console.log('[positional-screener]', name, e); }
-            if (i % 10 === 0) _psRenderTable(); // incremental render so results appear while scanning
-        }
+        var done = await _psRunScan(universe, { progressEl: '#ps-progress', renderDuring: true });
         _psRenderTable();
         jQ('#ps-progress').text('Done — ' + done + ' / ' + universe.length + ' scanned');
         _gtbToast('Positional scan complete (' + done + ' stocks)', 'success');
@@ -1037,6 +1078,169 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
         _psUpdateScanCount();
     }
 });
+
+// ── Dashboard auto-scan — keeps the "POSITIONAL SCREENER VERDICT" dashboard card populated
+// without requiring a manual full scan first. Deliberately restricted to Level Probability's
+// own instrument universe (NIFTY 50/BANK + both indices' top-10 weighted constituents, ~16-18
+// unique names after dedupe) rather than the full ~200-stock F&O list a manual scan can cover —
+// each name needs a 210+ day daily-candle fetch (+futures +curve), so running the FULL universe
+// on every 5-min dashboard refresh would be far too heavy. Shares _PS_CACHE with manual scans
+// (upserts into it, never clears it), so running this never wipes out a larger manual scan the
+// user already ran — it only ever fills in/refreshes this smaller subset.
+// Throttled to once per ~4 minutes so an auto-refresh that fires faster than a scan completes
+// (or two refresh triggers close together) can't pile up overlapping scans; also skipped
+// outright while a manual scan (_PS_SCANNING) is already running, which already covers this
+// universe (likely a superset) anyway.
+var _PS_AUTO_SCAN_RUNNING = false;
+var _PS_AUTO_SCAN_LAST_TS = 0;
+var _PS_AUTO_SCAN_MIN_GAP_MS = 4 * 60 * 1000;
+async function _psAutoScanDashboardInstruments() {
+    if (_PS_SCANNING || _PS_AUTO_SCAN_RUNNING) return;
+    if (Date.now() - _PS_AUTO_SCAN_LAST_TS < _PS_AUTO_SCAN_MIN_GAP_MS) return;
+    var names = (typeof _gtbLvlProbInstrumentNames === 'function') ? _gtbLvlProbInstrumentNames() : [];
+    if (!names.length) return;
+    var seen = {}, universe = names.map(function (n) { return n.toUpperCase(); }).filter(function (n) { return seen[n] ? false : (seen[n] = true); });
+    _PS_AUTO_SCAN_RUNNING = true;
+    try {
+        await _psRunScan(universe, {});
+        _PS_AUTO_SCAN_LAST_TS = Date.now();
+        try { jQ('#gtb-dash-ps-verdict').html(_psVerdictDashRowsHtml()); } catch (e) {}
+        // Keep the Positional Screener's own pane in sync too, if it's currently built/visible —
+        // same "don't wipe, just stay current" convention as the tab-activation restore above.
+        if (jQ('#ps-table-wrap').length) { try { _psRenderTable(); } catch (e) {} }
+    } catch (e) {
+        console.log('[positional-screener] dashboard auto-scan failed', e);
+    } finally {
+        _PS_AUTO_SCAN_RUNNING = false;
+    }
+}
+
+// ── Instrument Detail View panel — verdict + trade plan for ONE instrument, read from
+// _PS_CACHE (the Positional Screener's own scan). Never scans on render; a Scan/Re-scan button
+// runs _psRunScan for just this one name (one 400-day daily fetch, bounded) and repaints every
+// open detail panel for it. Indices/commodities without a daily price token show "not available".
+function _psInstrDetailVerdictHtml(name) {
+    var key = String(name).toUpperCase();
+    var r = _PS_CACHE[key] || _PS_CACHE[name];
+    var canScan = !!_psPriceTokenFor(key);
+    var btn = canScan
+        ? '<button class="sv-pill-btn ps-detail-scan-btn" data-name="' + key + '" type="button" style="margin-top:6px;"><i class="bi bi-arrow-repeat"></i> ' + (r ? 'Re-scan' : 'Scan now') + '</button>'
+        : '';
+    if (!r) {
+        return '<div style="font-size:0.56rem;color:var(--gtb-muted);">'
+            + (canScan ? 'Not scanned yet — run the Positional Screener, or scan just this instrument.' : 'Positional verdict not available for this instrument (no daily price token).')
+            + '</div>' + btn;
+    }
+    var p = r.primary;
+    var primText = p && p.ok ? p.label : 'INSUFFICIENT HISTORY';
+    var conv = r.convictionPct;
+    var convColor = conv == null ? 'var(--gtb-muted)' : conv >= 60 ? 'var(--gtb-green)' : conv >= 40 ? 'var(--gtb-amber)' : 'var(--gtb-red)';
+    var hasPlan = r.entry != null;
+    return '<div style="font-size:0.58rem;line-height:1.5;">'
+        + '<div><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.52rem;">' + r.verdict + '</span>'
+        + ' <b style="color:' + convColor + ';margin-left:6px;">' + (conv == null ? '—' : conv + '%') + '</b> <span style="color:var(--gtb-muted);">conviction</span></div>'
+        + '<div style="color:var(--gtb-muted);margin-top:3px;">Primary: <span style="color:var(--gtb-text);">' + primText + '</span> · Overlay: <b style="color:' + r.overlayColor + ';">' + r.overlayTotal.toFixed(1) + '</b></div>'
+        + (hasPlan
+            ? '<div style="margin-top:3px;font-variant-numeric:tabular-nums;">Entry <b>' + r.entry.toFixed(1) + '</b> · <span style="color:var(--gtb-green);">Target ' + r.target.toFixed(1) + '</span> · <span style="color:var(--gtb-red);">Stop ' + r.stop.toFixed(1) + '</span>' + (r.riskReward != null ? ' · R:R 1:' + r.riskReward.toFixed(1) : '') + '</div>'
+            : '<div style="margin-top:3px;color:var(--gtb-muted);">No trade plan (no actionable direction).</div>')
+        + '</div>' + btn;
+}
+jQ(document).on('click', '.ps-detail-scan-btn', async function () {
+    var name = jQ(this).attr('data-name');
+    if (_PS_SCANNING || _PS_AUTO_SCAN_RUNNING) { _gtbToast('A positional scan is already running — try again in a moment.', 'error'); return; }
+    jQ('.ps-detail-scan-btn[data-name="' + name + '"]').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Scanning…');
+    try { await _psRunScan([name], {}); } catch (e) { console.log('[positional-screener] detail scan failed', e); }
+    jQ('.ps-detail-verdict').each(function () {
+        var n = jQ(this).attr('data-name');
+        if (String(n).toUpperCase() === name) jQ(this).html(_psInstrDetailVerdictHtml(n));
+    });
+    try { jQ('#gtb-dash-ps-verdict').html(_psVerdictDashRowsHtml()); } catch (e) {}
+});
+
+// ── MCX Dashboard card — single-commodity Positional Screener verdict, one call per card
+// (_psMcxDashVerdictHtml) plus a scan restricted to just the MCX Dashboard's own instrument
+// list (_psAutoScanMcxDashInstruments), same "never scan more than this card actually needs"
+// convention as the NSE Dashboard's _psAutoScanDashboardInstruments above. Triggered from
+// _gtbMcxDashRefreshAll (grootTradeBot.js) on Refresh click — that popup deliberately fetches
+// nothing on open, so this follows the same "only on Refresh" rule rather than auto-scanning
+// on a timer the way the NSE Dashboard's 5-min refresh cycle does.
+function _psMcxDashVerdictHtml(name) {
+    var r = _PS_CACHE[name.toUpperCase()] || _PS_CACHE[name];
+    if (!r) return '<span class="gtb-row-na" style="margin:auto">Not scanned</span>';
+    return '<div style="width:100%;font-size:0.48rem;">'
+        + '<div style="font-weight:800;color:var(--gtb-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Positional Verdict</div>'
+        + '<div style="color:' + r.verdictColor + ';font-weight:700;">' + r.verdict + '</div>'
+        + (r.convictionPct != null ? '<div style="color:var(--gtb-muted);margin-top:2px;">Conviction ' + r.convictionPct + '%</div>' : '')
+        + '</div>';
+}
+var _PS_MCX_DASH_AUTO_SCAN_RUNNING = false;
+var _PS_MCX_DASH_AUTO_SCAN_LAST_TS = 0;
+var _PS_MCX_DASH_AUTO_SCAN_MIN_GAP_MS = 60 * 1000; // lighter throttle than the NSE dashboard's 4min — this only ever runs on an explicit user Refresh click, not a 5-min timer
+async function _psAutoScanMcxDashInstruments(names) {
+    if (_PS_SCANNING || _PS_MCX_DASH_AUTO_SCAN_RUNNING) return;
+    if (Date.now() - _PS_MCX_DASH_AUTO_SCAN_LAST_TS < _PS_MCX_DASH_AUTO_SCAN_MIN_GAP_MS) return;
+    if (!names || !names.length) return;
+    _PS_MCX_DASH_AUTO_SCAN_RUNNING = true;
+    try {
+        await _psRunScan(names, {});
+        _PS_MCX_DASH_AUTO_SCAN_LAST_TS = Date.now();
+        names.forEach(function (n) {
+            var tid = n.replace(/ /g, '-').replace(/&/g, '-');
+            try { jQ('#' + tid + '-ps-verdict-dash').html(_psMcxDashVerdictHtml(n)); } catch (e) {}
+        });
+    } catch (e) {
+        console.log('[positional-screener] MCX dashboard auto-scan failed', e);
+    } finally {
+        _PS_MCX_DASH_AUTO_SCAN_RUNNING = false;
+    }
+}
+
+// ── Dashboard card — Positional Screener verdict for Level Probability's instrument universe
+// (NIFTY 50 + NIFTY BANK + both indices' top-10 weighted constituents, _gtbLvlProbInstrumentNames
+// in grootTradeBot.js, shared so this can't drift onto a different instrument set than the
+// Level Probability / Futures Accuracy cards it sits next to). Pure read of _PS_CACHE — the
+// Positional Screener's own last scan — never triggers a scan itself: a scan fetches 210+ days
+// of daily candles per stock (see file header), far too heavy to run on every 5-min dashboard
+// refresh the way Futures Accuracy's 5-min intraday replay or Level Probability's cached-signal
+// read can. A stock simply shows "not scanned" until the user runs (or re-runs) the screener.
+function _psVerdictDashRowsHtml() {
+    var names = (typeof _gtbLvlProbInstrumentNames === 'function') ? _gtbLvlProbInstrumentNames() : [];
+    if (!names.length) return '<div style="font-size:0.5rem;color:var(--gtb-muted);padding:4px 0;">No instrument list available.</div>';
+    if (!Object.keys(_PS_CACHE).length) {
+        return '<div style="font-size:0.5rem;color:var(--gtb-muted);padding:4px 0;">Run a Positional Screener scan to see verdicts here.</div>';
+    }
+    // Bulls/Bears/Watch breakdown + net trend lean — scoped to just THIS card's instrument
+    // set (not the full _PS_CACHE universe, which _psRenderSummary/_psRenderBreadth already
+    // cover elsewhere) so the count here always matches what's actually listed below it.
+    // Same substring-match convention as _psRenderSummary's BUY/SELL count (verdict strings
+    // carry qualifiers like "BUY — overlay disagrees (caution)", not a fixed enum) — LONG/SHORT
+    // forming are counted on their respective side since they're a directional lean, just not
+    // yet mechanically confirmed.
+    var scanned = names.map(function (name) { return _PS_CACHE[name.toUpperCase()] || _PS_CACHE[name]; }).filter(Boolean);
+    var bulls = scanned.filter(function (r) { return r.verdict.indexOf('BUY') !== -1 || r.verdict.indexOf('LONG forming') !== -1; }).length;
+    var bears = scanned.filter(function (r) { return r.verdict.indexOf('SELL') !== -1 || r.verdict.indexOf('SHORT forming') !== -1; }).length;
+    var watch = scanned.length - bulls - bears;
+    var trend = bulls > bears ? 'BULLISH' : bears > bulls ? 'BEARISH' : 'MIXED';
+    var trendColor = bulls > bears ? 'var(--gtb-green)' : bears > bulls ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+    var summary = '<div style="display:flex;align-items:center;gap:8px;padding:0 0 6px;flex-wrap:wrap;font-size:0.56rem;border-bottom:1px solid var(--gtb-border);margin-bottom:4px;">'
+        + '<span style="font-weight:800;letter-spacing:0.04em;color:' + trendColor + ';">' + trend + '</span>'
+        + '<span style="color:var(--gtb-green);font-weight:700;"><i class="bi bi-arrow-up-short"></i> ' + bulls + ' Bulls</span>'
+        + '<span style="color:var(--gtb-red);font-weight:700;"><i class="bi bi-arrow-down-short"></i> ' + bears + ' Bears</span>'
+        + '<span style="color:var(--gtb-amber);font-weight:700;">' + watch + ' Watch</span>'
+        + '<span style="color:var(--gtb-muted);">(' + scanned.length + '/' + names.length + ' scanned)</span>'
+        + '</div>';
+    var rows = names.map(function (name) {
+        var r = _PS_CACHE[name.toUpperCase()] || _PS_CACHE[name];
+        return '<div style="display:grid;grid-template-columns:80px 1fr 44px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--gtb-border)18;font-size:0.58rem;">'
+            + '<span style="color:var(--gtb-text);font-weight:700;">' + name + '</span>'
+            + (r
+                ? '<span style="color:' + r.verdictColor + ';">' + r.verdict + '</span>'
+                + '<span style="text-align:right;color:var(--gtb-muted);font-variant-numeric:tabular-nums;">' + (r.convictionPct != null ? r.convictionPct + '%' : '—') + '</span>'
+                : '<span style="color:var(--gtb-muted);">not scanned</span><span></span>')
+            + '</div>';
+    }).join('');
+    return summary + rows;
+}
 
 // ── Top Picks strip — always ranks the FULL scanned universe (_PS_CACHE), independent
 // of whatever filter/sort/search is currently applied to the table below, so it stays a
@@ -1168,14 +1372,27 @@ function _psRenderTable() {
     var filter = jQ('#ps-filter').val() || 'all';
     var sort = jQ('#ps-sort').val() || 'score';
     var q = (jQ('#ps-search').val() || '').trim().toUpperCase();
+    var minConv = parseFloat(jQ('#ps-min-conv').val());
 
     // Verdict strings now carry qualifiers ("BUY (awaiting overlay confirmation)", "SELL —
     // overlay disagrees (caution)", etc.) instead of the old fixed 4 values — match by
     // substring so the filter buttons still group them sensibly.
-    if (filter === 'buy') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; });
+    if (filter === 'strongbuy') rows = rows.filter(function (r) { return r.verdict.indexOf('STRONG BUY') !== -1; });
+    else if (filter === 'buy') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; });
+    else if (filter === 'strongsell') rows = rows.filter(function (r) { return r.verdict.indexOf('STRONG SELL') !== -1; });
     else if (filter === 'sell') rows = rows.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; });
+    else if (filter === 'longforming') rows = rows.filter(function (r) { return r.verdict.indexOf('LONG forming') !== -1; });
+    else if (filter === 'shortforming') rows = rows.filter(function (r) { return r.verdict.indexOf('SHORT forming') !== -1; });
+    else if (filter === 'basing') rows = rows.filter(function (r) { return r.verdict.indexOf('basing') !== -1; });
+    else if (filter === 'topping') rows = rows.filter(function (r) { return r.verdict.indexOf('topping') !== -1; });
     else if (filter === 'watch') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') === -1 && r.verdict.indexOf('SELL') === -1; });
     if (q) rows = rows.filter(function (r) { return r.name.indexOf(q) !== -1; });
+    if (jQ('#ps-tradeable-btn').hasClass('ps-on')) rows = rows.filter(_psIsTradeable);
+    // Conviction% floor -- rows with NO conviction score (basing/topping/insufficient history,
+    // convictionPct === null) have nothing to compare against a numeric threshold, so they're
+    // excluded whenever a floor > 0 is actually set, same as how the 'watch' verdict filter
+    // already treats "no real signal" rows as not matching a directional ask.
+    if (isFinite(minConv) && minConv > 0) rows = rows.filter(function (r) { return r.convictionPct != null && r.convictionPct >= minConv; });
 
     // 'score' sort ranks by groot-research's primary direction FIRST (confirmed Stage 2 > Stage
     // 2 forming > basing > topping > Stage 4 forming > confirmed Stage 4), overlay total as the
@@ -1184,7 +1401,13 @@ function _psRenderTable() {
     function _psRank(r) { var d = r.primary && r.primary.ok && r.primary.dir != null ? r.primary.dir : 0; return d * 100 + r.overlayTotal; }
     if (sort === 'name') rows.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
     else if (sort === 'rs') rows.sort(function (a, b) { return b.relStrength - a.relStrength; });
+    else if (sort === 'conv') rows.sort(function (a, b) { return (b.convictionPct == null ? -1 : b.convictionPct) - (a.convictionPct == null ? -1 : a.convictionPct); });
     else rows.sort(function (a, b) { return _psRank(b) - _psRank(a); });
+
+    // Stashed for the "Send to Telegram" button — the exact rows currently on screen (after
+    // filter/search/sort), not the full unfiltered scan, so what gets sent matches what's
+    // actually visible when the button is clicked.
+    _PS_LAST_FILTERED_ROWS = rows;
 
     if (!rows.length) {
         jQ('#ps-table-wrap').html('<div class="sv-empty-state"><i class="bi bi-search"></i><span>No results' + (q ? ' for "' + q + '"' : '') + '.</span></div>');
@@ -1194,10 +1417,11 @@ function _psRenderTable() {
     var _iiSafe = typeof _ii === 'function' ? _ii : function () { return ''; };
     var html = _psTopPicksHtml() + '<table class="ps-table">'
         + '<thead><tr>'
-        + '<th>Symbol</th><th>LTP</th>'
+        + '<th><input type="checkbox" id="ps-select-all-basket" title="Select all eligible rows currently shown"></th>'
+        + '<th>Symbol</th><th>Verdict</th><th>Conviction%' + _iiSafe('ps-conviction') + '</th><th>LTP</th>'
         + '<th>Trend Template / Stage' + _iiSafe('ps-primary') + '</th><th>Momentum' + _iiSafe('ps-primary') + '</th>'
         + '<th>20d Chg%</th><th>Trend</th><th>Breakout</th>'
-        + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th><th>Verdict</th><th>Conviction%' + _iiSafe('ps-conviction') + '</th>'
+        + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th>'
         + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th><th></th><th></th><th></th>'
         + '</tr></thead><tbody>'
         + rows.map(function (r) {
@@ -1229,8 +1453,18 @@ function _psRenderTable() {
             var convText = conv == null ? '—' : conv + '%';
             var convTip = conv == null ? 'No direction to have a conviction score about (insufficient history, basing, or topping).'
                 : 'Rule-based confidence, NOT a back-tested probability -- built from rules passed, confirmed-vs-forming, overlay agreement, momentum quality and extension. Higher = more of this scanner\'s own checks agree with each other, not a statistical win-rate.';
+            // Basket-eligible = a real NSE cash-equity tradingsymbol with an actual trade plan —
+            // excludes indices/MCX (_PS_EXTRA_INSTRUMENTS, not tradable as a cash-equity basket
+            // item) and rows with no directional plan (basing/topping/insufficient history).
+            var basketEligible = hasPlan && _PS_EXTRA_INSTRUMENTS.indexOf(r.name) === -1;
+            var checkboxCell = basketEligible
+                ? '<td><input type="checkbox" class="ps-basket-chk" data-name="' + r.name + '"' + (_PS_BASKET_SELECTED[r.name] ? ' checked' : '') + '></td>'
+                : '<td></td>';
             return '<tr style="background:' + rowTint + ';">'
+                + checkboxCell
                 + '<td class="ps-cell-strong">' + r.name + '</td>'
+                + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
+                + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
                 + '<td>' + r.ltp.toFixed(1) + '</td>'
                 + '<td style="color:' + primColor + ';font-size:0.55rem;" title="' + primTip.replace(/"/g, '&quot;') + '">' + primText + '</td>'
                 + '<td style="color:' + momColor + ';" title="' + momTip.replace(/"/g, '&quot;') + '">' + momText + '</td>'
@@ -1241,8 +1475,6 @@ function _psRenderTable() {
                 + '<td style="color:' + oiColor + ';">' + r.oiLabel + '</td>'
                 + '<td style="color:' + curveColor + ';font-size:0.55rem;">' + (r.curveLabel || 'NO DATA') + '</td>'
                 + '<td class="ps-cell-strong" style="color:' + r.overlayColor + ';" title="Same-day overlay total (trend/breakout/RS/OI/curve) — confirmation only, not the primary call.">' + r.overlayTotal.toFixed(1) + '</td>'
-                + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
-                + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
                 + '<td>' + (hasPlan ? r.entry.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-green);">' + (hasPlan ? r.target.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
@@ -1256,6 +1488,29 @@ function _psRenderTable() {
     jQ('#ps-table-wrap').html(html);
 }
 jQ(document).on('change', '#ps-filter, #ps-sort', _psRenderTable);
+jQ(document).on('input', '#ps-min-conv', _psRenderTable);
+
+// "Tradeable" shortlist, excluding any verdict flagged "caution" (overlay disagreeing with the
+// primary read). Heuristic, not backtested:
+//   - STRONG BUY/SELL (both layers agree) and LONG/SHORT forming (early setup): Conviction >= 60
+//   - BUY/SELL (awaiting overlay confirmation) -- trend is mechanically confirmed but today's
+//     overlay is neutral: Conviction >= 65 (a higher bar since nothing today backs it yet)
+var _PS_TRADEABLE_MIN_CONV = 60;
+var _PS_TRADEABLE_AWAITING_MIN_CONV = 65;
+function _psIsTradeable(r) {
+    if (r.convictionPct == null) return false;
+    var v = r.verdict;
+    if (v.indexOf('caution') !== -1) return false;
+    if (v.indexOf('awaiting overlay') !== -1) return r.convictionPct >= _PS_TRADEABLE_AWAITING_MIN_CONV;
+    if (r.convictionPct < _PS_TRADEABLE_MIN_CONV) return false;
+    return v.indexOf('STRONG BUY') !== -1 || v.indexOf('STRONG SELL') !== -1
+        || v.indexOf('LONG forming') !== -1 || v.indexOf('SHORT forming') !== -1;
+}
+jQ(document).on('click', '#ps-tradeable-btn', function () {
+    var on = !jQ(this).hasClass('ps-on');
+    jQ(this).toggleClass('ps-on', on).css({ 'border-color': on ? 'var(--gtb-accent)' : '', color: on ? 'var(--gtb-accent)' : '', 'font-weight': on ? '800' : '' });
+    _psRenderTable();
+});
 
 // ─── Pre-Market Brief ───────────────────────────────────────────────────────
 // Live-fetches everything on one button click — no reliance on whatever happens to
@@ -1863,4 +2118,309 @@ jQ(document).on('click', '#lvs-pm-btn', async function () {
         return;
     }
     _lvsRenderPmResults(out);
+});
+
+// ── Send to Telegram — same idea as groot-research's Telegram feature (a UI-button trigger,
+// tap-to-copy symbol names via Telegram's monospace formatting), reimplemented here since this
+// is a separate codebase (Tampermonkey userscript vs groot-research's Python/Flask backend) —
+// GM_xmlhttpRequest calls the Telegram Bot API directly, bypassing CORS the same way every
+// other external API call in this app does (Yahoo, CBOE). Sends whatever is CURRENTLY VISIBLE
+// in the table (after filter/search/sort), not the full scan, so what you get in Telegram
+// matches what you were just looking at.
+function _psTelegramEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function _psBuildTelegramMessage(rows) {
+    if (!rows.length) return null;
+    var longs = rows.filter(function (r) { return r.verdict.indexOf('BUY') !== -1 || r.verdict.indexOf('LONG forming') !== -1; });
+    var shorts = rows.filter(function (r) { return r.verdict.indexOf('SELL') !== -1 || r.verdict.indexOf('SHORT forming') !== -1; });
+    var other = rows.filter(function (r) { return longs.indexOf(r) === -1 && shorts.indexOf(r) === -1; });
+
+    function fmtRow(r) {
+        // <code>SYMBOL</code> renders as monospace in Telegram, which is what makes it
+        // tap-to-copy in the mobile app — same trick groot-research's own Telegram feature
+        // used, just Telegram's native formatting instead of a custom copy button.
+        var line = '<code>' + _psTelegramEsc(r.name) + '</code> — ' + _psTelegramEsc(r.verdict);
+        if (r.entry != null) line += '\n  Entry ' + r.entry.toFixed(1) + ' · Target ' + r.target.toFixed(1) + ' · Stop ' + r.stop.toFixed(1)
+            + (r.riskReward != null ? ' · R:R 1:' + r.riskReward.toFixed(1) : '');
+        if (r.convictionPct != null) line += ' · Conviction ' + r.convictionPct + '%';
+        return line;
+    }
+
+    var parts = ['<b>Positional Screener — ' + moment().format('DD-MMM HH:mm') + '</b>', '(' + rows.length + ' shown, as currently filtered)'];
+    if (longs.length) parts.push('\n<b>LONG (' + longs.length + ')</b>\n' + longs.map(fmtRow).join('\n'));
+    if (shorts.length) parts.push('\n<b>SHORT (' + shorts.length + ')</b>\n' + shorts.map(fmtRow).join('\n'));
+    if (other.length) parts.push('\n<b>OTHER / WATCH (' + other.length + ')</b>\n' + other.map(fmtRow).join('\n'));
+    parts.push('\n<i>Rule-based, not a validated probability. Groot Bot Positional Screener.</i>');
+    return parts.join('\n');
+}
+
+// Telegram's own hard limit is 4096 chars/message — split on section boundaries (blank-line-
+// preceded blocks) first, but a single section (e.g. a big OTHER/WATCH list, all joined by
+// single '\n' with no blank lines inside it) can itself exceed maxLen — that block was
+// previously treated as atomic and passed through oversized, which is exactly what caused
+// Telegram's "message is too long" rejection on a large scan. Any block still over maxLen
+// after the section split is now further packed line-by-line (never mid-line, so a symbol
+// name + its entry/target/stop line always stay together as one unbreakable unit).
+function _psChunkTelegramMessage(text, maxLen) {
+    maxLen = maxLen || 3800;
+    if (text.length <= maxLen) return [text];
+    var blocks = text.split('\n\n'), chunks = [], cur = '';
+    function flush() { if (cur) { chunks.push(cur); cur = ''; } }
+    blocks.forEach(function (b) {
+        if (b.length > maxLen) {
+            flush();
+            var lines = b.split('\n'), lcur = '';
+            lines.forEach(function (ln) {
+                if ((lcur + '\n' + ln).length > maxLen && lcur) { chunks.push(lcur); lcur = ln; }
+                else lcur = lcur ? lcur + '\n' + ln : ln;
+            });
+            if (lcur) chunks.push(lcur);
+        } else if ((cur + '\n\n' + b).length > maxLen && cur) {
+            chunks.push(cur); cur = b;
+        } else {
+            cur = cur ? cur + '\n\n' + b : b;
+        }
+    });
+    flush();
+    return chunks;
+}
+
+function _psTelegramSendOne(token, chatId, text) {
+    return new Promise(function (resolve, reject) {
+        if (typeof GM_xmlhttpRequest === 'undefined') { reject('GM_xmlhttpRequest unavailable'); return; }
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: 'https://api.telegram.org/bot' + token + '/sendMessage',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: 'chat_id=' + encodeURIComponent(chatId) + '&parse_mode=HTML&disable_web_page_preview=true&text=' + encodeURIComponent(text),
+            onload: function (res) {
+                try {
+                    var j = JSON.parse(res.responseText);
+                    if (j.ok) resolve(); else reject(j.description || ('HTTP ' + res.status));
+                } catch (e) { reject('Bad response from Telegram (HTTP ' + res.status + ')'); }
+            },
+            onerror: function () { reject('Network error contacting Telegram'); },
+        });
+    });
+}
+
+jQ(document).on('click', '#ps-telegram-btn', async function () {
+    var $btn = jQ(this);
+    var token = (typeof g_config !== 'undefined' ? g_config.get('telegram_bot_token') : '') || '';
+    var chatId = (typeof g_config !== 'undefined' ? g_config.get('telegram_chat_id') : '') || '';
+    if (!token || !chatId) { _gtbToast('Set Telegram Bot Token + Chat ID in Settings → API & Authentication first', 'error'); return; }
+    var rows = _PS_LAST_FILTERED_ROWS;
+    if (!rows || !rows.length) { _gtbToast('Nothing to send — run a scan first', 'error'); return; }
+    var msg = _psBuildTelegramMessage(rows);
+    if (!msg) { _gtbToast('Nothing to send', 'error'); return; }
+    var chunks = _psChunkTelegramMessage(msg);
+    $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Sending…');
+    try {
+        for (var i = 0; i < chunks.length; i++) await _psTelegramSendOne(token, chatId, chunks[i]);
+        _gtbToast('Sent ' + rows.length + ' row(s) to Telegram' + (chunks.length > 1 ? ' (' + chunks.length + ' messages)' : ''), 'success');
+    } catch (e) {
+        _gtbToast('Telegram send failed: ' + e, 'error');
+    } finally {
+        $btn.prop('disabled', false).html('<i class="bi bi-send"></i> Telegram');
+    }
+});
+
+// ── Add to Basket — bulk-stage selected stocks into a Kite basket for one-click execution ──
+// Kite's own basket feature ("/api/baskets*" endpoints). A captured real-browser request's
+// Request Headers showed NO 'Authorization' header and NO 'x-csrftoken' header at all — it
+// authenticates purely off cookies sent automatically with the same-origin request (kf_session/
+// enctoken/public_token all travel as plain Cookie values, never read into a header). Using
+// jQ.ajax here was the actual bug, regardless of which headers this file passed it: this app's
+// OTHER code (placeOrder, getHistoricalData, etc.) calls jQ.ajaxSetup({headers:{Authorization:
+// ...}}) for the "/oms/*" API, and jQuery's ajaxSetup mutates its GLOBAL defaults for the rest
+// of the page session — every later jQ.ajax call silently inherits that stale Authorization
+// header with no way to un-set it via the per-call `headers` option, which is exactly why
+// basket calls kept failing with "Invalid authorization header" even before this file ever
+// added one itself. Fixed by using native fetch() with credentials:'same-origin' instead of
+// jQ.ajax — bypasses jQuery's polluted global defaults entirely and matches the real request
+// exactly (cookies only, no custom auth header).
+//   GET  /api/baskets             -> { status:'success', data:[{id,name,type,items,...}, ...] }
+//   POST /api/baskets             -> body: name=<basket name>   (creates a new empty basket)
+//   POST /api/baskets/:id/items   -> body: tradingsymbol, exchange, weight,
+//                                    params=JSON.stringify({transaction_type, product,
+//                                    order_type, validity, validity_ttl, variety, quantity,
+//                                    price, trigger_price, disclosed_quantity, tags})
+function _psBasketFormBody(fields) {
+    var p = [];
+    Object.keys(fields).forEach(function (k) { p.push(encodeURIComponent(k) + '=' + encodeURIComponent(fields[k])); });
+    return p.join('&');
+}
+function _psBasketFetch(url, method, fields) {
+    // The dropped Authorization header was the real fix (see the block comment above), but
+    // state-changing requests (POST) also need Kite's CSRF header — a browser doesn't attach
+    // this automatically the way it does cookies; Kite's own frontend JS reads it off the
+    // 'public_token' cookie and sets it explicitly, same convention addToWatchList's
+    // '/api/marketwatch/:id/items' call already uses ('x-csrftoken' header = public_token
+    // cookie value). Switching to fetch() dropped this too — confirmed by the next error,
+    // {"status":"error","message":"Invalid CSRF token.","error_type":"TokenException"}, once
+    // the Authorization issue above was fixed.
+    var opts = { method: method, credentials: 'same-origin', headers: { 'Accept': 'application/json, text/plain, */*', 'x-csrftoken': getCookie('public_token') } };
+    if (fields) {
+        opts.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        opts.body = _psBasketFormBody(fields);
+    }
+    return fetch(url, opts).then(function (res) {
+        return res.json().catch(function () { throw 'HTTP ' + res.status + ' (non-JSON response)'; }).then(function (json) {
+            if (!res.ok || (json && json.status === 'error')) throw (json && json.message) || ('HTTP ' + res.status);
+            return json;
+        });
+    });
+}
+function _psFetchBaskets() {
+    return _psBasketFetch(BASE_URL + '/api/baskets', 'GET').then(function (res) { return (res && res.data) || []; });
+}
+function _psCreateBasket(name) {
+    return _psBasketFetch(BASE_URL + '/api/baskets', 'POST', { name: name }).then(function () {
+        // The create response shape isn't relied on directly -- re-fetch the list right
+        // after, which is confirmed (captured from the real app) to include the new
+        // basket with its id, rather than assuming what POST itself returns.
+        return _psFetchBaskets().then(function (baskets) {
+            var created = baskets.filter(function (b) { return b.name === name; }).pop();
+            if (!created) throw 'Basket created but could not be found in the list afterward.';
+            return created;
+        });
+    });
+}
+// Position size for a basket item -- sized to actually USE the Account Capital setting
+// (MARGIN, config.js) as a per-trade buying-power budget, leveraged for MIS, rather than the
+// Turtle-style risk-fraction sizing used elsewhere in this app (_gtbPositionSizeCalc,
+// grootTradeBot.js's own Position Size calculator, which deliberately risks only a small %
+// of capital per trade and was producing a much smaller qty than the stated ₹10,000 margin
+// would actually buy -- reported directly: "the margin is 10000 but the qty is less"). Here,
+// qty = floor((capital × leverage) / entry price) -- how many shares the stated capital
+// (×5 for MIS, Zerodha's intraday margin) can actually buy at this row's own ATR-based entry
+// price. Each selected stock is sized independently against the FULL capital figure (this is
+// a per-trade buying-power budget, not a total-portfolio allocation split across however many
+// stocks are checked at once) -- if adding several stocks together, total margin used across
+// all of them will exceed the capital figure for any one of them.
+//
+// MIS (intraday) margin multiplier -- Zerodha only requires ~1/5th the cash upfront for an
+// intraday (MIS) equity position vs a full-price CNC delivery buy, i.e. the SAME capital
+// funds 5x the quantity intraday that it would for a delivery hold. Flat 5x per explicit
+// request (Zerodha's real per-stock MIS leverage varies 1x-20x by margin category -- this
+// app has no per-stock margin-category data cached anywhere to do better than the flat
+// figure the user gave, and fetching it would need a new, unrelated API call).
+var GTB_MIS_MARGIN_MULTIPLIER = 5;
+function _psQtyFor(r, isIntraday) {
+    var capital = (typeof MARGIN !== 'undefined' ? parseFloat(MARGIN) : NaN) || 0;
+    if (!capital || !r.entry) return 1;
+    var buyingPower = isIntraday ? capital * GTB_MIS_MARGIN_MULTIPLIER : capital;
+    return Math.max(1, Math.floor(buyingPower / r.entry));
+}
+function _psAddRowToBasket(basketId, r, product) {
+    product = product === 'MIS' ? 'MIS' : 'CNC';
+    var side = (r.verdict.indexOf('SELL') !== -1 || r.verdict.indexOf('SHORT forming') !== -1) ? 'SELL' : 'BUY';
+    var qty = _psQtyFor(r, product === 'MIS');
+    // MARKET order -- price is always 0 for a market order (Kite ignores/ rejects a non-zero
+    // price on this order_type); r.entry is still used for the qty/buying-power calc above,
+    // just no longer sent as a limit price here.
+    var params = {
+        transaction_type: side, product: product, order_type: 'MARKET', validity: 'DAY',
+        validity_ttl: 1, variety: 'regular', quantity: qty, price: 0,
+        trigger_price: 0, disclosed_quantity: 0, tags: []
+    };
+    return _psBasketFetch(BASE_URL + '/api/baskets/' + basketId + '/items', 'POST',
+        { tradingsymbol: r.name, exchange: 'NSE', weight: 0, params: JSON.stringify(params) }
+    ).then(function () {
+        return { name: r.name, side: side, qty: qty };
+    }, function (err) {
+        throw r.name + ': ' + err;
+    });
+}
+
+function _psBasketSelectedNames() { return Object.keys(_PS_BASKET_SELECTED).filter(function (n) { return _PS_BASKET_SELECTED[n]; }); }
+function _psUpdateBasketCount() { jQ('#ps-basket-count').text(_psBasketSelectedNames().length); }
+
+jQ(document).on('change', '.ps-basket-chk', function () {
+    var name = jQ(this).attr('data-name');
+    if (this.checked) _PS_BASKET_SELECTED[name] = true; else delete _PS_BASKET_SELECTED[name];
+    _psUpdateBasketCount();
+});
+jQ(document).on('change', '#ps-select-all-basket', function () {
+    var checked = this.checked;
+    jQ('.ps-basket-chk').prop('checked', checked).each(function () {
+        var name = jQ(this).attr('data-name');
+        if (checked) _PS_BASKET_SELECTED[name] = true; else delete _PS_BASKET_SELECTED[name];
+    });
+    _psUpdateBasketCount();
+});
+
+function _psBasketPickerHtml() {
+    return '<div id="ps-basket-wrap" style="padding:12px;font-size:0.68rem;color:var(--gtb-text);">'
+        + '<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;">'
+        +   '<label for="ps-basket-product" style="color:var(--gtb-muted);">Product:</label>'
+        +   '<select id="ps-basket-product" style="padding:4px 6px;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border);">'
+        +     '<option value="CNC">CNC (Delivery — this screener\'s own multi-day hold)</option>'
+        +     '<option value="MIS" selected>MIS (Intraday — qty scaled ' + GTB_MIS_MARGIN_MULTIPLIER + 'x for Zerodha\'s margin)</option>'
+        +   '</select>'
+        + '</div>'
+        + '<div id="ps-basket-list"><i class="bi bi-hourglass-split"></i> Loading baskets…</div>'
+        + '<div style="margin-top:10px;display:flex;gap:6px;">'
+        +   '<input type="text" id="ps-basket-new-name" placeholder="New basket name…" style="flex:1;padding:5px 8px;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border);">'
+        +   '<button id="ps-basket-new-btn" class="sv-pill-btn" type="button"><i class="bi bi-plus-circle"></i> Create &amp; Add</button>'
+        + '</div>'
+        + '<div id="ps-basket-status" style="margin-top:8px;color:var(--gtb-muted);"></div>'
+        + '</div>';
+}
+function _psRenderBasketList(baskets) {
+    if (!baskets.length) { jQ('#ps-basket-list').html('<span style="color:var(--gtb-muted);">No baskets yet — create one below.</span>'); return; }
+    var html = baskets.map(function (b) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--gtb-border2);">'
+            + '<span>' + b.name + ' <span style="color:var(--gtb-muted);">(' + (b.items ? b.items.length : 0) + ' items)</span></span>'
+            + '<button class="sv-pill-btn ps-basket-pick" data-id="' + b.id + '" data-name="' + b.name.replace(/"/g, '&quot;') + '" type="button">Add Here</button>'
+            + '</div>';
+    }).join('');
+    jQ('#ps-basket-list').html(html);
+}
+async function _psRunBasketAdd(basketId, basketName, names) {
+    var $status = jQ('#ps-basket-status');
+    var product = (jQ('#ps-basket-product').val() === 'MIS') ? 'MIS' : 'CNC';
+    var ok = 0, failed = [];
+    for (var i = 0; i < names.length; i++) {
+        var r = _PS_CACHE[names[i].toUpperCase()] || _PS_CACHE[names[i]];
+        if (!r) { failed.push(names[i] + ': not in current scan'); continue; }
+        $status.html('<i class="bi bi-hourglass-split"></i> Adding ' + (i + 1) + ' / ' + names.length + ' — ' + r.name + '…');
+        try { await _psAddRowToBasket(basketId, r, product); ok++; } catch (e) { failed.push(e); }
+        await new Promise(function (res) { setTimeout(res, 350); }); // same spirit as callAddToWatchList's rate-limit delay
+    }
+    if (ok) { _PS_BASKET_SELECTED = {}; _psUpdateBasketCount(); try { _psRenderTable(); } catch (e) {} }
+    $status.html('<b style="color:' + (failed.length ? 'var(--gtb-amber)' : 'var(--gtb-green)') + ';">Added ' + ok + ' / ' + names.length + ' to "' + basketName + '"</b>'
+        + (failed.length ? '<br><span style="color:var(--gtb-red);">' + failed.join('<br>') + '</span>' : ''));
+    _gtbToast(ok + ' stock(s) added to basket "' + basketName + '"' + (failed.length ? ' (' + failed.length + ' failed)' : ''), failed.length ? 'error' : 'success');
+}
+
+jQ(document).on('click', '#ps-basket-btn', function () {
+    var names = _psBasketSelectedNames();
+    if (!names.length) { _gtbToast('Check at least one stock first (checkbox column, left of Symbol).', 'error'); return; }
+    showPopUpWindow('ps-basket-picker', _psBasketPickerHtml(), 'Add ' + names.length + ' Stock(s) to Basket', 420, 380);
+    var _cls = 'popup-custom-style-ps-basket-picker';
+    // Standard titlebar replacement + theme sync, same convention as every other popup in this
+    // app (e.g. .ps-explain-btn's handler just above) -- was missing here, so this popup never
+    // picked up the light/dark theme and always showed the library's default dark chrome.
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;">ADD ' + names.length + ' STOCK(S) TO BASKET</span>'
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    jQ('.' + _cls).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+    _psFetchBaskets().then(_psRenderBasketList, function (err) { jQ('#ps-basket-list').html('<span style="color:var(--gtb-red);">' + err + '</span>'); });
+});
+jQ(document).on('click', '.ps-basket-pick', function () {
+    var id = jQ(this).attr('data-id'), name = jQ(this).attr('data-name');
+    _psRunBasketAdd(id, name, _psBasketSelectedNames());
+});
+jQ(document).on('click', '#ps-basket-new-btn', function () {
+    var name = (jQ('#ps-basket-new-name').val() || '').trim();
+    if (!name) { _gtbToast('Enter a basket name first', 'error'); return; }
+    var $status = jQ('#ps-basket-status');
+    $status.html('<i class="bi bi-hourglass-split"></i> Creating basket…');
+    _psCreateBasket(name).then(function (basket) {
+        _psRunBasketAdd(basket.id, basket.name, _psBasketSelectedNames());
+    }, function (err) { $status.html('<span style="color:var(--gtb-red);">' + err + '</span>'); });
 });

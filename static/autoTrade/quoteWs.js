@@ -284,6 +284,13 @@ function _qwTokenToName(token) {
 // isn't subscribed), nothing here runs and every reader keeps showing whatever the normal
 // refresh cycle already populated, so this is a pure freshness upgrade, never a new source of
 // truth that could go stale/wrong on its own.
+// Throttles the DOM-touching part of _qwApplyLiveLtp per instrument — the cache writes below
+// (INSTRUMENT_LTP_PRICE) stay unthrottled since they're cheap and other code only reads them
+// on demand, but a liquid index/future can tick several times a SECOND, and writing straight
+// into a visible price badge on every one of those (Chart Grid cards, dashboard rows, the
+// topbar strip) is what was making them visibly flicker rather than just "update live".
+var _QW_LAST_DOM_UPDATE = {};
+var _QW_DOM_THROTTLE_MS = 1000;
 function _qwApplyLiveLtp(t) {
     var name = _qwTokenToName(t.token);
     if (!name || !t.ltp) return;
@@ -303,6 +310,19 @@ function _qwApplyLiveLtp(t) {
                 if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
                 INSTRUMENT_SCORE_MAP[name].mcxLtp = t.ltp;
             }
+        }
+    } catch (e) {}
+
+    // Everything below this point touches the VISIBLE page (redraws a badge/chip) rather than
+    // just updating cached data — throttled per instrument so a fast-ticking index/future
+    // updates its on-screen price at most once a second instead of on every tick (which was
+    // the actual cause of the flicker: several redraws per second, not the live feed itself).
+    var now = Date.now();
+    if (_QW_LAST_DOM_UPDATE[name] && now - _QW_LAST_DOM_UPDATE[name] < _QW_DOM_THROTTLE_MS) return;
+    _QW_LAST_DOM_UPDATE[name] = now;
+
+    try {
+        if (typeof _CFG_MCX_COMMODITIES !== 'undefined' && _CFG_MCX_COMMODITIES.indexOf(name) !== -1) {
             // The Commodities popup's own LTP chip (_cmdRenderCrudeMeta, grootTradeBot.js) is
             // static HTML re-rendered only on its own refresh interval/instrument switch — it
             // doesn't re-read INSTRUMENT_SCORE_MAP on its own, so writing mcxLtp above is not
@@ -317,6 +337,14 @@ function _qwApplyLiveLtp(t) {
         var $ltp = jQ('#' + tid + '-ltp');
         if ($ltp.length) $ltp.html(parseFloat(t.ltp).toLocaleString('en-IN', { maximumFractionDigits: 2 }));
     } catch (e) {}
+    // Restored — removing this stopped the topbar (NIFTY 50/BANK NIFTY/SENSEX/GIFT NIFTY/VIX)
+    // from updating live at all, which wasn't the actual complaint. The real cause of the
+    // visible "flicker" was the ticker card's WIDTH changing as the price/%-change text's
+    // digit count changed (e.g. "22,891.5" vs "22,891.45"), shifting neighboring cards in the
+    // topbar row — fixed at the CSS level instead (.gtb-ticker given a fixed width + the %
+    // change span tabular-nums, see common.css), so the text can keep updating live here
+    // without the layout jumping around it. Still throttled to once/second per instrument via
+    // the gate above, so a fast-ticking index doesn't call this needlessly often either.
     try { if (typeof updateTopBarTickers === 'function') updateTopBarTickers(); } catch (e) {}
 }
 
@@ -365,7 +393,17 @@ function _qwWsDisconnect() {
 // convention: getVixRange(prevClose, prevVix)). Returns null fields rather than throwing when
 // any input is missing (e.g. before the day's first refresh, or for an instrument with no
 // strike-diff entry at all, like INDIA VIX itself).
-function _qwStrikeLevels(name) {
+//
+// `t` (the instrument's own last live tick, if any) is an ADDITIONAL fallback, used ONLY in
+// this popup: VALID_BREAKOUT_NINE_FIFTEEN / INSTRUMENT_SCORE_MAP.strikeMap / INSTRUMENT_LIST_
+// GLOBAL all depend on a historical 'day'-interval fetch (the 9:15 scan, or the "Load Price"
+// button) that Kite doesn't return anything useful for until ~9:20 — the day candle doesn't
+// exist yet before then. A live 'full'-mode tick, by contrast, already carries today's OPEN
+// (and yesterday's CLOSE) from the very first tick at 9:15:00, since the exchange stamps the
+// session's opening trade immediately. This popup is a pure tick-driven live view with no
+// scan of its own, so it can use that directly instead of waiting on the shared pipeline every
+// other zone display in the app still goes through.
+function _qwStrikeLevels(name, t) {
     var out = { aso: null, ast: null, bso: null, bst: null, vixu: null, vixl: null };
     try {
         var b915 = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
@@ -381,6 +419,16 @@ function _qwStrikeLevels(name) {
             out.vixu = parseFloat(sm.vixDDUpper); out.vixl = parseFloat(sm.vixDDLower);
         }
     } catch (e) {}
+    // Live-tick-open fallback for ASO/AST/BSO/BST — same getStrikeDetails() math every other
+    // zone in this app uses, just fed today's OPEN straight from the tick instead of a
+    // historical day-candle fetch.
+    if (out.aso === null && t && t.open) {
+        try {
+            var sd = getStrikeDetails({ price: t.open }, name);
+            out.aso = parseFloat(sd.ustrikeOne); out.ast = parseFloat(sd.ustrikeTwo);
+            out.bso = parseFloat(sd.bstrikeOne); out.bst = parseFloat(sd.bstrikeTwo);
+        } catch (e) {}
+    }
     if (out.vixu === null) {
         try {
             var opens = JSON.parse(localStorage.getItem('INSTRUMENT_LIST_GLOBAL') || '{}');
@@ -392,6 +440,21 @@ function _qwStrikeLevels(name) {
                 var vr = getVixRange(prevClose, prevVix);
                 out.vixu = parseFloat(vr.vixDDUpper);
                 out.vixl = parseFloat(vr.vixDDLower);
+            }
+        } catch (e) {}
+    }
+    // Live-tick fallback for VIXU/VIXL too — t.close on a 'full' tick is YESTERDAY's close
+    // (Kite's own tick schema, not a stale field), paired with India VIX's own live tick if
+    // it's subscribed. Same getVixRange() math as above, just sourced from ticks instead of
+    // the historical Load Price flow.
+    if (out.vixu === null && t && t.close) {
+        try {
+            var vixTok = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS['INDIA VIX'] : null;
+            var vixTick = vixTok ? _QW_LAST_TICK[vixTok] : null;
+            if (vixTick && vixTick.ltp) {
+                var vr2 = getVixRange(t.close, vixTick.ltp);
+                out.vixu = parseFloat(vr2.vixDDUpper);
+                out.vixl = parseFloat(vr2.vixDDLower);
             }
         } catch (e) {}
     }
@@ -447,7 +510,7 @@ function _qwRenderWsTable() {
     var rows = Object.keys(_QW_SUBSCRIBED).map(function (tok) {
         var name = _QW_SUBSCRIBED[tok];
         var t = _QW_LAST_TICK[tok];
-        var lv = _qwStrikeLevels(name);
+        var lv = _qwStrikeLevels(name, t);
         var lvlCols = lvlCell(lv.vixl, false, false) + lvlCell(lv.bst, false, false) + lvlCell(lv.bso, false, false)
             + lvlCell(lv.aso, false, true) + lvlCell(lv.ast, false, true) + lvlCell(lv.vixu, false, true);
         if (!t) return '<tr><td style="padding:3px 6px;">' + name + '</td><td colspan="7" style="padding:3px 6px;color:var(--gtb-muted,#7d8590);">waiting for tick…</td>' + lvlCols + '<td style="padding:3px 6px;">—</td><td style="padding:3px 6px;">—</td></tr>';
@@ -619,3 +682,56 @@ function showWebSocketPopup() {
 
     _qwRenderWsTable();
 }
+
+// ── Topbar WebSocket connect/disconnect toggle (#gtb-ws-toggle) ────────────────────────────
+// Lets the live tick feed be started/stopped without opening the WebSocket Subscribe popup at
+// all — reuses that popup's own _qwWsConnect/_qwWsDisconnect/_qwDefaultSubscribeList, so ticks
+// land on the exact same INSTRUMENT_LTP_PRICE-driven spots regardless of which entry point
+// started the connection. If the popup is open when toggled here, its own status line and
+// table (window._qwOnTick) keep working unchanged — this is just a second way to reach the
+// same connection, not a separate one.
+function _gtbWsToggleUpdateIcon(state, detail) {
+    var $btn = jQ('#gtb-ws-toggle');
+    if (!$btn.length) return;
+    if (state === 'connected') {
+        $btn.attr('title', 'WebSocket: connected — click to disconnect').css('color', 'var(--gtb-green, #3fb950)');
+    } else if (state === 'connecting') {
+        $btn.attr('title', 'WebSocket: connecting…').css('color', 'var(--gtb-amber, #f0a000)');
+    } else if (state === 'error') {
+        $btn.attr('title', 'WebSocket: ' + (detail || 'error') + ' — click to retry').css('color', 'var(--gtb-red, #f85149)');
+    } else {
+        $btn.attr('title', 'WebSocket: click to connect').css('color', '');
+    }
+}
+jQ(document).on('click', '#gtb-ws-toggle', function (e) {
+    e.preventDefault();
+    var connected = typeof _QW_WS !== 'undefined' && _QW_WS && _QW_WS.readyState === WebSocket.OPEN;
+    if (connected) {
+        _qwWsDisconnect();
+        _gtbWsToggleUpdateIcon('idle');
+        try { _gtbToast('WebSocket disconnected', 'info'); } catch (e2) {}
+        return;
+    }
+    if (typeof _QW_SUBSCRIBED !== 'undefined' && !Object.keys(_QW_SUBSCRIBED).length) _qwDefaultSubscribeList();
+    window._qwOnTick = window._qwOnTick || function () {}; // no-op if the popup table isn't open
+    _gtbWsToggleUpdateIcon('connecting');
+    _qwWsConnect(function (status, detail) {
+        _gtbWsToggleUpdateIcon(status === 'connected' ? 'connected' : status === 'closed' ? 'idle' : 'error', detail);
+        if (status === 'connected') { try { _gtbToast('WebSocket connected — ' + Object.keys(_QW_SUBSCRIBED).length + ' instrument(s) subscribed', 'success'); } catch (e3) {} }
+        else if (status === 'error') { try { _gtbToast('WebSocket error: ' + detail, 'error'); } catch (e4) {} }
+        // Keep the popup's own status line in sync too, if it happens to be open.
+        try {
+            if (status === 'connected') jQ('#qw-ws-status').css('color', 'var(--gtb-green,#3fb950)').text('Connected');
+            else if (status === 'closed') jQ('#qw-ws-status').css('color', 'var(--gtb-muted,#7d8590)').text('Closed (' + detail + ')');
+            else jQ('#qw-ws-status').css('color', 'var(--gtb-red,#f85149)').text('Error: ' + detail);
+        } catch (e5) {}
+    });
+});
+// Reflect an already-open connection (e.g. started from the popup) onto the topbar icon the
+// next time the dashboard's own markup rebuilds on refresh — the icon itself is rebuilt from
+// scratch each cycle, so its color would otherwise reset to "idle" even mid-connection.
+setInterval(function () {
+    try {
+        if (typeof _QW_WS !== 'undefined' && _QW_WS && _QW_WS.readyState === WebSocket.OPEN) _gtbWsToggleUpdateIcon('connected');
+    } catch (e) {}
+}, 4000);

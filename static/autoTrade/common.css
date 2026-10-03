@@ -232,7 +232,7 @@
 .gtb-t915-table { width: 100%; border-collapse: collapse; }
 .gtb-t915-table th {
   text-align: left; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.05em;
-  color: var(--gtb-muted); text-transform: uppercase;
+  color: var(--gtb-muted); text-transform: uppercase; white-space: nowrap;
   padding: 6px 8px; border-bottom: 1px solid var(--gtb-border);
   position: sticky; top: 0; background: var(--gtb-surface2);
 }
@@ -1411,15 +1411,12 @@ code {
 }
 
 /* WebKit (Chrome, Edge) */
-/* ── Thin 2px overlay scrollbars across the whole dashboard ─────────── */
-/* Thin scrollbar everywhere */
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--gtb-border2, #30363d); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gtb-muted, #7d8590); }
-/* Firefox */
-* { scrollbar-width: thin; scrollbar-color: var(--gtb-border2, #30363d) transparent; }
-
+/* ── Thin 2px overlay scrollbars, scoped to this app's own surfaces only ──
+   Previously had an UNSCOPED `*`/`::-webkit-scrollbar` block here that applied this app's
+   thin-scrollbar styling to every scrollable element on the whole kite.zerodha.com page —
+   a real, confirmed leak into Zerodha's own UI. Removed: the explicitly-scoped block right
+   below (targeting .popupwindow_container/#main-trade-bot-container/etc.) already covers
+   every surface this app actually renders scrollbars in, so nothing was lost. */
 .popupwindow_container ::-webkit-scrollbar,
 .popupwindow_content::-webkit-scrollbar,
 #main-trade-bot-container ::-webkit-scrollbar,
@@ -1786,7 +1783,15 @@ td.details-control {
 
 /* ── CSS variables ─────────────────────────────────────────── */
 /* ── Institutional dark (Bloomberg-style navy) ──────────────── */
-:root {
+/* Was literal :root (i.e. kite.zerodha.com's own <html>) — defined 20+ custom properties
+   globally on Zerodha's own page root instead of scoping them to this app's own containers.
+   Retargeted to every top-level surface this app actually renders into (the main dashboard,
+   every showPopUpWindow-created popup via .popupwindow_container, and the handful of
+   standalone body-appended overlays) — same list used for the runtime CSS-scoping of the
+   third-party libraries in monkeyStyle.js, kept in sync manually since this file has no
+   preprocessor. */
+#gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, #gtb-chartgrid-overlay,
+#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout {
   /* Surfaces */
   --gtb-bg:        #060a12;
   --gtb-surface:   #0b1220;
@@ -2043,7 +2048,14 @@ td.details-control {
   display: flex; flex-direction: column; align-items: flex-start;
   justify-content: center;
   padding: 3px 9px; border-radius: 6px; background: var(--gtb-bg);
-  border: 1px solid var(--gtb-border2); min-width: 90px;
+  border: 1px solid var(--gtb-border2);
+  /* min-width (not a hard fixed width) — an earlier attempt used width:108px + flex-shrink:0,
+     which pushed the topbar's total content past its available space and forced later items
+     (the Funds/P&L badge) to wrap onto a second line entirely. tabular-nums on .tk-ltp/.tk-chg
+     below is what actually stops the digit-jitter; this min-width is only a mild floor so an
+     ordinary price update doesn't shrink the card below a sane size, while still letting the
+     row compress normally (as it always could) when the window is narrow. */
+  min-width: 96px;
   transition: border-color 0.2s;
 }
 .gtb-ticker:hover { border-color: var(--gtb-border); }
@@ -2054,10 +2066,11 @@ td.details-control {
 .gtb-ticker .tk-ltp {
   font-size: 0.8rem; color: var(--gtb-text); font-weight: 800;
   font-family: var(--gtb-mono); font-variant-numeric: tabular-nums; line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.02em; white-space: nowrap;
 }
 .gtb-ticker .tk-chg {
   font-size: 0.58rem; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .gtb-ticker .tk-chg.up   { color: var(--gtb-green); }
 .gtb-ticker .tk-chg.down { color: var(--gtb-red); }
@@ -2071,7 +2084,7 @@ td.details-control {
   border: 1px solid #4c1d95; min-width: 54px;
 }
 .gtb-vix-badge .vix-label { font-size: 0.45rem; color: #a78bfa; font-weight: 700; letter-spacing: 0.8px; }
-.gtb-vix-badge .vix-val   { font-size: 0.82rem; color: #c4b5fd; font-weight: 800; line-height: 1.3; }
+.gtb-vix-badge .vix-val   { font-size: 0.82rem; color: #c4b5fd; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .gtb-vix-badge .vix-chg   { font-size: 0.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
 .gtb-vix-badge .vix-chg.up   { color: var(--gtb-green); }
 .gtb-vix-badge .vix-chg.down { color: var(--gtb-red); }
@@ -2877,7 +2890,8 @@ td.details-control {
    #main-trade-bot-container; both header and row use the same template so
    they stay pixel-aligned automatically.
    INSTRUMENT(sticky) | CHART | 9:15 | FUTURES | OI MATRIX | OI/OBV | WEIGHTAGE | DETAILS */
-:root {
+#gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, #gtb-chartgrid-overlay,
+#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout {
   --gtb-col-instr:   140px;
   --gtb-col-chart:   260px;
   --gtb-col-915:      56px;
@@ -3013,6 +3027,13 @@ td.details-control {
 .gtb-row-ltp {
   font-family: var(--gtb-mono); font-size: 0.78rem; font-weight: 700;
   color: var(--gtb-text); letter-spacing: -0.02em; line-height: 1.1;
+  /* tabular-nums + nowrap: without these, live-tick price updates (_qwApplyLiveLtp) change
+     this element's own width as its digits change, which visibly shifts whatever sits next
+     to it in the same row (e.g. Chart Grid's zone badge — BST/ASO/etc.) left and right on
+     every update. Reused across too many different layouts (dashboard rows, instrument
+     panels, Chart Grid headers) to give it one fixed width like the topbar tickers got, but
+     tabular-nums alone removes most of the jitter (same digit count, fixed glyph width). */
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .gtb-trend-zone { min-height: 14px; }
 .gtb-tz-badge {
@@ -4285,7 +4306,8 @@ td.details-control {
 .sv-col-oi      .sv-col-icon { color: var(--gtb-blue); }
 
 /* ── Card header token ─────────────────────────────────────── */
-:root {
+#gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, #gtb-chartgrid-overlay,
+#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout {
   --hdr-height: 28px;
   --badge-h:    20px;
   --btn-sz:     22px;
@@ -6347,18 +6369,29 @@ td.details-control {
     max-height: 0 !important;
     overflow: hidden !important;
     background: #0b1220 !important;
-    border: 1px solid #1e2f46 !important;
+    border: 0 solid #1e2f46 !important;
     border-radius: 8px !important;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.55) !important;
+    box-shadow: none !important;
     box-sizing: border-box !important;
     transition: max-height 0.18s ease, padding 0.18s ease !important;
     padding: 0 !important;
     font-family: inherit !important;
+    /* Closed state must be FULLY invisible, not just collapsed -- at z-index:99200 (needed to
+       beat every popup's own stacking level, see above) even a 1px border with max-height:0
+       still painted a persistent hairline on top of whatever popup happened to be open
+       afterward, at wherever the launcher last positioned it. visibility:hidden removes it
+       from the page entirely until .gtb-tf-open explicitly turns it back on below. */
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 #gtb-tools-flyout.gtb-tf-open {
     max-height: min(70vh, 520px) !important;
     overflow-y: auto !important;
     padding: 8px !important;
+    border-width: 1px !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.55) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 #gtb-tools-flyout.gtb-light {
     background: #f7f9fc !important;
@@ -6881,7 +6914,11 @@ td.details-control {
     font-weight: 800;
     color: var(--gtb-text);
 }
-.gtb-ic-panel-identity .gtb-row-ltp { font-size: 0.65rem; }
+/* min-width reserves consistent space for the price text so the badges after it (zone/9:15/
+   premium/futures-remark/GEX/AVWAP — this header is already tight with all of them) don't
+   shift left/right as live ticks change its digit count; global tabular-nums (.gtb-row-ltp)
+   only fixes same-digit-count jitter, not the row-reflow this crowded a header still shows. */
+.gtb-ic-panel-identity .gtb-row-ltp { font-size: 0.65rem; display: inline-block; min-width: 62px; }
 .gtb-ic-panel-identity .gtb-trend-zone { font-size: 0.5rem; }
 .gtb-ic-panel-identity .gtb-cell-fut-remark { font-size: 0.5rem; }
 

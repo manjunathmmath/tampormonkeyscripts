@@ -346,7 +346,8 @@ var _DL_DERIVED_RENDERERS = {
 function _dlRenderMacroDataTab() {
     var rows = (typeof _mcManualLoad === 'function') ? _mcManualLoad() : [];
     var last = rows.length ? rows[rows.length - 1] : null;
-    var h = '<div class="dl-derived-hint">India 10-year G-Sec yield history for the Macro tab. Copy the table from Investing.com (India 10-Year Bond Yield → Historical Data) and paste it below — columns: Date, Price, Open, High, Low, Change %. Dates are DD-MM-YYYY. Pasting again merges by date, so you can add just the newest rows.</div>'
+    var h = '<div class="dl-derived-hint">India 10-year G-Sec yield history for the Macro tab. Copy the table from Investing.com (India 10-Year Bond Yield → Historical Data) and paste it below — columns: Date, Price, Open, High, Low, Change %. Dates are DD-MM-YYYY. Pasting again merges by date, so you can add just the newest rows.'
+        + '<br><a href="https://in.investing.com/rates-bonds/india-10-year-bond-yield-historical-data" target="_blank" rel="noopener" style="color:var(--gtb-accent,#58a6ff);"><i class="bi bi-box-arrow-up-right"></i> Open India 10-Year Bond Yield — Historical Data</a></div>'
         + '<textarea id="dl-macro-text" class="dl-search" style="width:100%;height:220px;font-family:var(--gtb-mono);font-size:0.62rem;white-space:pre;" placeholder="25-09-2026 7.120 7.141 7.141 7.100 +0.13%"></textarea>'
         + '<div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">'
         +   '<button class="dl-tab" id="dl-macro-save">Save / merge</button>'

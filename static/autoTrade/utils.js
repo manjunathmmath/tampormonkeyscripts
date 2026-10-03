@@ -52,14 +52,51 @@ jQ(document).ready(function () {
     }, 2000)
 });
 
-// Injects the "Groot" trigger button into the Kite top nav bar.
-// Clicking this opens the grootTradeBot dashboard popup.
+// Injects the "Groot" trigger button into the Kite top nav bar (.app-nav, right side, next to
+// Dashboard/Orders/Holdings/etc.), and the "All Tools" icon as a sibling of the Kite logo
+// itself (a.logo, far left) -- per explicit request to move the icon to the OTHER side of the
+// logo from where it started (it was originally appended next to "Groot" on the right).
+// "Groot" still opens the full grootTradeBot dashboard popup. The icon opens the SAME tools
+// flyout (#gtb-tools-flyout, _gtbCreateFloatingBar in grootTradeBot.js) the in-app topbar icon
+// already uses -- that flyout already builds the dashboard lazily and hides it again if a
+// chosen tool has no popup of its own (see its tile click handler's fallback branch), so this
+// nav icon needs no extra wiring beyond being a second trigger id the flyout's existing
+// delegated click handler already listens for.
 function makeUIChanges() {
-    html = '';
-    html += '<a href="#" id="show-groot-trade-bot" style="padding:10px;">'
-    html += 'Groot'
-    html += '</a>'
-    jQ('body').first().find(".app-nav").append(html);
+    jQ('body').first().find(".app-nav").append(
+        '<a href="#" id="show-groot-trade-bot" style="padding:10px;">Groot</a>'
+    );
+    // Inserting the icon as a normal sibling of a.logo (tried .after(), then .before()) added
+    // extra width to that flex row -- Kite's own header apparently has no slack for a 4th
+    // item there, so the row wrapped onto a second line. Fixed by taking the icon COMPLETELY
+    // out of that flex layout: position:fixed + computed coordinates from a.logo's own
+    // bounding rect, appended to <body> rather than as a DOM sibling at all. This can never
+    // affect the nav row's width/wrapping since it no longer participates in that flex
+    // container's layout math -- it's just visually overlaid in the same spot.
+    _gtbPositionNavToolsIcon();
+}
+
+function _gtbPositionNavToolsIcon() {
+    var $logo = jQ('body').first().find('a.logo').first();
+    if (!$logo.length) return;
+    var $icon = jQ('#gtb-nav-tools-launcher');
+    if (!$icon.length) {
+        $icon = jQ(
+            '<a href="#" id="gtb-nav-tools-launcher" title="Groot — All Tools" '
+            + 'style="position:fixed;z-index:10000;display:inline-flex;align-items:center;'
+            + 'justify-content:center;line-height:1;width:28px;height:28px;">'
+            + '<i class="bi bi-grid-3x3-gap-fill" style="font-size:15px;"></i></a>'
+        );
+        jQ('body').append($icon);
+        // Keep it aligned with the logo if the window is resized (fixed positioning doesn't
+        // reflow on its own the way an in-flow element would).
+        jQ(window).on('resize', _gtbPositionNavToolsIcon);
+    }
+    var rect = $logo[0].getBoundingClientRect();
+    // Clamped to a minimum of 2px from the viewport edge -- if the logo itself sits right at
+    // x≈0 (no room to its left at all), this keeps the icon visible (slightly overlapping the
+    // logo in that worst case) instead of computing a negative left and rendering off-screen.
+    $icon.css({ top: (rect.top + (rect.height - 28) / 2) + 'px', left: Math.max(2, rect.left - 34) + 'px' });
 }
 
 // Confirm dialog before adding all FO_LIST instruments to watchlist.

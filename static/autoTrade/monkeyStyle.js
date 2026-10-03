@@ -8,15 +8,115 @@ const bootstrap_icon_css = GM_getResourceText("BOOTSTRAP_ICON_CSS");
 const fixed_column_css = GM_getResourceText("FIXED_COLUMN_CSS");
 const c3_css = GM_getResourceText("C3_CSS");
 
+// ── Scope third-party library CSS to this app's own containers only ──────────────────
+// GM_addStyle injects these stylesheets directly into kite.zerodha.com's page <head> with
+// NO isolation (no shadow DOM, no iframe) — Bootstrap's own unscoped resets in particular
+// (`*`, `h1`-`h6`, `p`, `table`, `button`, `input`, `select`, `textarea`, `img`, `label`,
+// etc.) were overriding Zerodha's OWN native page styling site-wide, not just inside this
+// app's own UI. _gtbScopeCss rewrites every selector to be prefixed with a descendant
+// combinator off this app's own top-level containers (GTB_CSS_SCOPE_ROOTS, kept in sync by
+// hand with the equivalent list in common.css's own former-:root blocks — see that file),
+// so e.g. Bootstrap's `table { ... }` becomes `<app roots> table { ... }` and only ever
+// applies to elements this app itself renders.
+// Deliberately NOT applied to popup_window_css (its selectors are already `popupwindow_*`-
+// prefixed by the library itself, and several of its own top-level selectors — e.g.
+// `.popupwindow_container` — are THEMSELVES one of our scope roots; prefixing would turn
+// `.popupwindow_container { ... }` into a self-referential descendant selector
+// `.popupwindow_container .popupwindow_container { ... }` that no longer matches the single
+// element it's meant to style) or to toastify/sackbar/bootstrap-icon CSS (already narrowly
+// class-prefixed by their own libraries, negligible collision risk against Kite's own
+// class names).
+// Wrapped in :where(...) so the whole multi-root list acts as ONE compound selector when
+// glued onto another selector with a descendant combinator below -- without this, gluing a
+// comma-containing string directly onto "sel" and then comma-splitting the result would
+// produce separate top-level selectors like "#gtb-popup-win" (matching that element BARE,
+// not just its descendants) instead of one scoped "<root> sel" per original comma branch.
+// :where() (not :is()) so this never adds specificity beyond what each rule already had.
+var GTB_CSS_SCOPE_ROOTS = ':where(#gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, '
+    + '#gtb-chartgrid-overlay, #gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout)';
+
+// Splits a comma-separated selector list at TOP-LEVEL commas only (not inside parens, e.g.
+// `:not(a, b)` or `:is(.x, .y)` must stay intact as one selector), prefixes each with the
+// scope + a descendant combinator, and rejoins. `:root` is special-cased to become the scope
+// itself (no extra descendant space) -- we want the app's OWN containers to carry any
+// custom-property definitions, not some descendant of them (which may not exist).
+function _gtbPrefixSelectorList(selectorList, scope) {
+    var parts = [], depth = 0, cur = '';
+    for (var i = 0; i < selectorList.length; i++) {
+        var ch = selectorList[i];
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; }
+        else cur += ch;
+    }
+    parts.push(cur);
+    return parts.map(function (sel) {
+        sel = sel.trim();
+        if (!sel) return '';
+        if (sel === ':root') return scope;
+        return scope + ' ' + sel;
+    }).filter(function (s) { return s; }).join(', ');
+}
+
+// Walks the CSS text at the top level, isolating one rule (selector-list + { body }) at a
+// time via paren-aware/brace-depth-aware scanning (no full CSS parser needed -- these library
+// stylesheets are well-formed). @font-face/@keyframes/@page/@charset/@import/@viewport are
+// copied through completely untouched (not element selectors -- prefixing them would break or
+// no-op them); @media/@supports/@document keep their condition as-is and recurse into their
+// body so nested rules still get scoped; everything else gets its selector list prefixed.
+function _gtbScopeCss(css, scopeSelector) {
+    css = css.replace(/\/\*[\s\S]*?\*\//g, ''); // strip comments first so braces/parens inside them can't confuse the walker
+    var out = '', i = 0, n = css.length;
+    while (i < n) {
+        var start = i, depth = 0, j = i;
+        while (j < n && !(css[j] === '{' && depth === 0)) {
+            if (css[j] === '(') depth++;
+            else if (css[j] === ')') depth--;
+            j++;
+        }
+        if (j >= n) { out += css.slice(start); break; } // trailing whitespace after the last rule
+        var prelude = css.slice(start, j);
+        var trimmedPrelude = prelude.trim();
+
+        var braceDepth = 1, k = j + 1; // find this block's matching '}', honoring nested braces
+        while (k < n && braceDepth > 0) {
+            if (css[k] === '{') braceDepth++;
+            else if (css[k] === '}') braceDepth--;
+            k++;
+        }
+        var body = css.slice(j + 1, k - 1);
+
+        if (/^@(font-face|keyframes|-webkit-keyframes|-moz-keyframes|-o-keyframes|page|charset|import|viewport|-ms-viewport)\b/i.test(trimmedPrelude)) {
+            out += prelude + '{' + body + '}';
+        } else if (/^@(media|supports|document|-moz-document)\b/i.test(trimmedPrelude)) {
+            out += prelude + '{' + _gtbScopeCss(body, scopeSelector) + '}';
+        } else if (!trimmedPrelude) {
+            out += '{' + body + '}'; // defensive -- shouldn't occur in well-formed CSS
+        } else {
+            out += _gtbPrefixSelectorList(trimmedPrelude, scopeSelector) + '{' + body + '}';
+        }
+        i = k;
+    }
+    return out;
+}
+
+// Wrapped in try/catch with a fallback to the ORIGINAL unscoped CSS -- a scoping bug should
+// never be able to break this app's own styling entirely; worst case it silently reverts to
+// the pre-scoping behavior for that one stylesheet.
+function _gtbScopeCssSafe(css, label) {
+    try { return _gtbScopeCss(css, GTB_CSS_SCOPE_ROOTS); }
+    catch (e) { console.warn('[Groot Bot] CSS scoping failed for', label, '-- using unscoped fallback', e); return css; }
+}
+
 GM_addStyle(my_css);
 GM_addStyle(sackbar_css);
-GM_addStyle(boot_css);
-GM_addStyle(datatable_css);
+GM_addStyle(_gtbScopeCssSafe(boot_css, 'bootstrap.css'));
+GM_addStyle(_gtbScopeCssSafe(datatable_css, 'datatables.css'));
 GM_addStyle(common_css);
 GM_addStyle(popup_window_css);
 GM_addStyle(bootstrap_icon_css);
-GM_addStyle(fixed_column_css);
-GM_addStyle(c3_css);
+GM_addStyle(_gtbScopeCssSafe(fixed_column_css, 'fixedColumns.css'));
+GM_addStyle(_gtbScopeCssSafe(c3_css, 'c3.css'));
 
 // ── Compact the MonkeyConfig Settings dialog ────────────────────────────────────
 // Grown to 35+ fields (per-commodity MCX expiry dropdowns, NIFTY/SENSEX overrides, hedge

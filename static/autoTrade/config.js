@@ -154,6 +154,16 @@ const g_config = new MonkeyConfig({
             'type': 'text',
             'default': '',
         },
+        telegram_bot_token: {
+            'label': 'Telegram Bot Token (Positional Screener → Send to Telegram)',
+            'type': 'text',
+            'default': '',
+        },
+        telegram_chat_id: {
+            'label': 'Telegram Chat ID',
+            'type': 'text',
+            'default': '',
+        },
 
         // ── NSE / Index (NIFTY, BANK NIFTY, SENSEX, stocks) ─────────────────────
         hdr_nse: { 'label': '— NSE / INDEX —', 'type': 'custom', 'html': '', 'get': function () { return ''; }, 'set': function () {} },
