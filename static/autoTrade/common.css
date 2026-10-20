@@ -51,6 +51,19 @@
 }
 .gtb-cfg-fetch-btn:hover { border-color: var(--gtb-accent); }
 .gtb-cfg-fetch-btn:disabled { opacity: 0.5; cursor: default; }
+/* Calendar button for the YYYY-MM-DD day fields: a transparent native <input type="date">
+   sits over the icon, so a click opens the browser's own picker while the visible text field
+   keeps the ISO format (a native date input can't be forced out of the locale's order). */
+.gtb-cfg-datepick {
+  position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 28px; background: var(--gtb-surface); color: var(--gtb-accent);
+  border: 1px solid var(--gtb-border); font-size: 0.7rem; cursor: pointer;
+}
+.gtb-cfg-datepick:hover { border-color: var(--gtb-accent); }
+.gtb-cfg-datepick input[type="date"] {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+  border: 0; padding: 0; margin: 0;
+}
 .gtb-cfg-field-checkbox {
   flex-direction: row; align-items: center; gap: 5px; font-size: 0.58rem; color: var(--gtb-text);
   grid-column: span 3;
@@ -1825,6 +1838,34 @@ td.details-control {
 
 /* ── Light theme — applied via .gtb-light on #main-trade-bot-container ── */
 .gtb-light {
+  --gtb-bg:        #ffffff;
+  --gtb-surface:   #f3f6fa;
+  --gtb-surface2:  #e7edf4;
+  --gtb-border:    #c5d0de;
+  --gtb-border2:   #dde4ee;
+  --gtb-text:      #16202e;
+  --gtb-muted:     #5a6678;
+  --gtb-green:     #0a8f5f;
+  --gtb-green-dim: #d8f6ea;
+  --gtb-red:       #d61f44;
+  --gtb-red-dim:   #ffe1e8;
+  --gtb-amber:     #a9760a;
+  --gtb-amber-dim: #fbeecb;
+  --gtb-blue:      #1f6fd6;
+  --gtb-blue-dim:  #dcebff;
+  --gtb-gold:      #b07d00;
+  --gtb-gold-dim:  #f6ecc9;
+  --gtb-accent:    #0a8aa8;
+  --gtb-accent-dim:#d6eff6;
+}
+
+/* The dark var block above is keyed by ID (specificity 1,0,0) on the body-appended
+   containers, so a bare `.gtb-light` (0,1,0) set on that same element lost and the overlay
+   stayed dark in Light theme (e.g. maximized price-action chart). Re-state the light palette
+   with matching ID specificity. Keep this list in sync with the dark one. */
+#gtb-popup-win.gtb-light, .popupwindow_container.gtb-light, #groot-maximize-overlay.gtb-light,
+#gtb-chartgrid-overlay.gtb-light, #gtb-info-pop.gtb-light, #gtb-daychart-overlay.gtb-light,
+#gtb-combochart-overlay.gtb-light, #gtb-tools-flyout.gtb-light {
   --gtb-bg:        #ffffff;
   --gtb-surface:   #f3f6fa;
   --gtb-surface2:  #e7edf4;
@@ -5574,6 +5615,17 @@ td.details-control {
 .oss-symbol { font-family: var(--gtb-mono); color: var(--gtb-accent); }
 .oss-token { font-family: var(--gtb-mono); color: var(--gtb-muted); font-size: 0.52rem; }
 .oss-na { color: var(--gtb-muted); font-style: italic; }
+.oss-select { background: var(--gtb-surface2); color: var(--gtb-text); border: 1px solid var(--gtb-border); font-size: 0.55rem; padding: 3px 4px; max-width: 210px; }
+.oss-side { display: inline-block; font-size: 0.5rem; font-weight: 800; border: 1px solid; padding: 1px 6px; letter-spacing: .04em; }
+.oss-strat { padding: 6px 10px; border-bottom: 1px solid var(--gtb-border); font-size: 0.55rem; color: var(--gtb-text); display: flex; flex-direction: column; gap: 3px; }
+.oss-view { color: var(--gtb-accent); font-weight: 700; margin-left: 6px; }
+.oss-used { color: var(--gtb-muted); margin-left: 6px; }
+.oss-desc { color: var(--gtb-muted); line-height: 1.35; }
+.oss-suggest { color: var(--gtb-amber); font-weight: 600; }
+.oss-riskbox { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 10px; background: var(--gtb-surface2); border: 1px solid var(--gtb-border); font-size: 0.6rem; font-variant-numeric: tabular-nums; }
+.oss-agree { font-size: 0.55rem; padding: 4px 0; }
+.oss-stale { color: var(--gtb-amber); font-weight: 800; margin-left: 2px; cursor: help; }
+.oss-prem { font-weight: 700; font-variant-numeric: tabular-nums; }
 .oss-chart-link { color: var(--gtb-blue); font-size: 0.7rem; }
 .oss-chart-link:hover { opacity: 0.7; }
 
@@ -7268,3 +7320,74 @@ td.details-control {
 .gtb-panel-na {
     flex: 1;
 }
+
+/* ── Dashboard review strip (sticky chips, one per Dashboard section) ───────────────────── */
+#gtb-dash-review-strip {
+  position: sticky; top: 0; z-index: 6;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; margin: 0 0 6px;
+  background: var(--gtb-bg); border-bottom: 1px solid var(--gtb-border);
+}
+#gtb-dash-review-strip .gtb-rv-label {
+  font-size: 0.52rem; font-weight: 800; letter-spacing: 0.06em; color: var(--gtb-muted); margin-right: 4px;
+}
+#gtb-dash-review-strip .gtb-rv-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; font-size: 0.54rem; font-weight: 700; line-height: 1.5;
+  color: var(--gtb-text); background: var(--gtb-surface); border: 1px solid var(--gtb-border);
+  cursor: pointer; white-space: nowrap;
+}
+#gtb-dash-review-strip .gtb-rv-chip:hover { border-color: var(--gtb-accent); }
+#gtb-dash-review-strip .gtb-rv-chip.gtb-rv-done { opacity: 0.5; }
+#gtb-dash-review-strip .gtb-rv-chips { display: grid; gap: 5px; overflow-x: auto; flex: 1 1 auto; min-width: 0; }
+#gtb-dash-review-strip .gtb-rv-chip.gtb-rv-reset { color: var(--gtb-muted); font-weight: 600; margin-left: auto; flex-shrink: 0; }
+#gtb-dash-review-strip .gtb-rv-label { flex-shrink: 0; }
+#gtb-dash-review-strip .gtb-rv-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+#gtb-dash-review-strip .gtb-rv-chip .bi-check2 { color: var(--gtb-green); }
+@keyframes gtb-rv-flash-kf { 0% { box-shadow: 0 0 0 2px var(--gtb-accent); } 100% { box-shadow: 0 0 0 2px transparent; } }
+.gtb-rv-flash { animation: gtb-rv-flash-kf 1.6s ease-out; }
+
+.gtb-fut-why { font-size: 0.42rem; color: var(--gtb-muted); line-height: 1.35; padding: 3px 4px 0; font-variant-numeric: tabular-nums; }
+
+/* Price Action grid: strike values under each minimal chart (two columns, highest price first, read down then across) */
+.gtb-pa-lvls { display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr; column-gap: 10px; row-gap: 1px; padding: 3px 6px 4px; font-size: 0.62rem; line-height: 1.45; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.gtb-pa-lv { display: flex; justify-content: space-between; gap: 6px; white-space: nowrap; }
+.gtb-pa-lv b { font-weight: 800; letter-spacing: .02em; }
+.gtb-pa-lv i { font-style: normal; font-weight: 600; }
+.gtb-pa-lv-ltp { font-weight: 800; border-top: 1px solid var(--gtb-border); border-bottom: 1px solid var(--gtb-border); }
+
+/* Option Strike Search: quick-pick lists */
+.oss-picks { display: flex; flex-direction: column; gap: 3px; padding: 4px 8px; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; max-height: 96px; overflow-y: auto; }
+.oss-pick-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.oss-pick-lbl { font-size: 0.44rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gtb-muted); min-width: 58px; }
+.oss-pick { font-size: 0.5rem; font-weight: 700; padding: 1px 7px; border: 1px solid var(--gtb-border); background: var(--gtb-surface2); color: var(--gtb-text); cursor: pointer; white-space: nowrap; }
+.oss-pick:hover { border-color: var(--gtb-accent); color: var(--gtb-accent); }
+.oss-pick-on { background: var(--gtb-accent); color: #fff; border-color: var(--gtb-accent); }
+.oss-pick-on:hover { color: #fff; }
+
+/* Option Strike Scan (ranked table of every index / F&O stock) */
+.oss-scan-bar { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 10px; font-size: 0.55rem; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; }
+.oss-scan-mkt { color: var(--gtb-amber); font-weight: 600; }
+.oss-scan-note { padding: 3px 10px; font-size: 0.48rem; color: var(--gtb-muted); border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; }
+.oss-scan-table td { padding: 3px 8px; font-size: 0.58rem; vertical-align: middle; }
+.oss-scan-table th { position: sticky; top: 0; background: var(--gtb-surface); z-index: 1; }
+.oss-th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.oss-th-sort:hover { color: var(--gtb-accent); }
+.oss-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.oss-scan-cand { background: rgba(46, 168, 67, 0.10); box-shadow: inset 3px 0 0 var(--gtb-green); }
+.oss-cand-tag { font-size: 0.4rem; font-weight: 800; letter-spacing: .05em; padding: 0 4px; color: var(--gtb-green); border: 1px solid var(--gtb-green); }
+.oss-scan-open { color: var(--gtb-accent); font-weight: 700; }
+.oss-z { font-size: 0.5rem; font-weight: 800; padding: 0 5px; border: 1px solid var(--gtb-border); }
+.oss-z-AST, .oss-z-ASO { color: var(--gtb-green); border-color: var(--gtb-green); }
+.oss-z-BST, .oss-z-BSO { color: var(--gtb-red); border-color: var(--gtb-red); }
+
+.oss-scan-guard { color: #fff; background: #b3261e; padding: 3px 8px; font-weight: 700; }
+.oss-scan-blocked { background: rgba(255, 170, 0, 0.08); box-shadow: inset 3px 0 0 var(--gtb-amber); }
+.oss-blocked-tag { color: var(--gtb-amber) !important; border-color: var(--gtb-amber) !important; }
+
+.oss-scan-grp td { background: var(--gtb-surface2); font-size: 0.6rem; padding: 4px 8px; letter-spacing: .02em; }
+
+.oss-scan-sum { padding: 4px 10px; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; }
+.oss-scan-sum:empty { display: none; }
+.oss-sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.55rem; line-height: 1.4; }
+.oss-sum-chip { border: 1px solid; padding: 0 7px; font-size: 0.56rem; }

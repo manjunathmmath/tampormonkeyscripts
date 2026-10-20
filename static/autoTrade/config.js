@@ -127,6 +127,11 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: 1
         },
+        level_room_mult: {
+            'label': 'Level Confirmation room-to-target multiple (× stop distance)',
+            type: 'text',
+            default: 1.5
+        },
         refresh_time: {
             type: 'text',
             default: 60
@@ -136,6 +141,19 @@ const g_config = new MonkeyConfig({
             default: '3minute'
         },
         use_ltp_for_strike: {
+            type: 'checkbox',
+            default: true
+        },
+        // 5-minute futures auto-scan that alerts on short covering / long unwinding for NIFTY 50,
+        // NIFTY BANK, RELIANCE, HDFCBANK and ICICIBANK (see _gtbSqueezeScanTick). Default ON.
+        squeeze_auto_scan: {
+            'label': '5-min squeeze alert scan (short covering / long unwinding)',
+            type: 'checkbox',
+            default: true
+        },
+        // Same scan for MCX SILVERM + GOLDM (own session window, runs into the evening). Default ON.
+        squeeze_auto_scan_mcx: {
+            'label': '5-min squeeze alert scan — MCX (SILVERM, GOLDM)',
             type: 'checkbox',
             default: true
         },
@@ -263,6 +281,7 @@ const CURRENT_DATE_TO_DATE = CURRENT_DAY + " 11:05:00";
 let date = new Date().toJSON().slice(0, 10);
 const MARGIN = g_config.get('margin');
 const RISK_PCT_PER_TRADE = parseFloat(g_config.get('risk_pct_per_trade')) || 1;
+const LEVEL_ROOM_MULT = parseFloat(g_config.get('level_room_mult')) || 1.5;
 let weightIndex = []
 const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
 const REFRESH_TIME = g_config.get('refresh_time');

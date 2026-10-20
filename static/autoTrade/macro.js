@@ -98,11 +98,12 @@ function _mcFetch(def, rangeOverride) {
                     var pts = [];
                     for (var i = 0; i < ts.length; i++) if (cl[i] !== null && cl[i] !== undefined && isFinite(cl[i])) pts.push({ d: moment.unix(ts[i]).format('YYYY-MM-DD'), c: +cl[i] });
                     if (def.accumulate) pts = _mcAccumulate(def.key, pts, parseFloat(r.meta.regularMarketPrice));
-                    if (pts.length < (def.accumulate ? 1 : 3)) { reject('Too few data points for ' + sym); return; }
+                    if (pts.length < (def.accumulate ? 1 : 3)) { reject(_gtbApiFail('yahoo-' + sym, 'Macro: ' + (def.label || sym), 'too few data points', 'That driver is left out of the Macro verdict.')); return; }
+                    _gtbApiOk('yahoo-' + sym);
                     resolve({ pts: pts, live: parseFloat(r.meta.regularMarketPrice) });
-                } catch (e) { reject('Could not parse Yahoo response for ' + sym + ': ' + e.message); }
+                } catch (e) { reject(_gtbApiFail('yahoo-' + sym, 'Macro: ' + (def.label || sym), 'could not read the Yahoo response (' + e.message + ')', 'That driver is left out of the Macro verdict.')); }
             },
-            onerror: function () { reject('Network error fetching ' + sym); }
+            onerror: function () { reject(_gtbApiFail('yahoo-' + sym, 'Macro: ' + (def.label || sym), 'network error', 'That driver is left out of the Macro verdict.')); }
         });
     });
 }

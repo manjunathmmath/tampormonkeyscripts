@@ -180,6 +180,9 @@ function buildHelpHTML() {
         { id: 'futures',   icon: 'bi-graph-up',  label: 'Futures'      },
         { id: 'vix',       icon: 'bi-thermometer-half',     label: 'VIX Range'    },
         { id: 'tradeplan', icon: 'bi-journal-check',         label: 'Trade Plan'   },
+        { id: 'positional', icon: 'bi-funnel-fill',          label: 'Positional'   },
+        { id: 'macro',      icon: 'bi-globe',                label: 'Macro'        },
+        { id: 'dashboard',  icon: 'bi-columns-gap',          label: 'Dashboard'    },
         { id: 'tools',     icon: 'bi-tools',                 label: 'Tools'        },
         { id: 'exit',      icon: 'bi-door-open-fill',        label: 'Exit Signal'  },
     ];
@@ -241,6 +244,10 @@ function buildHelpHTML() {
           <tr><td><i class="bi bi-upc-scan"></i></td><td>Option Strike Search</td><td>Search any F&amp;O underlying → ATM CE/PE strike plus the configured hedge-leg CE/PE strikes (ATM ± the points set in Settings, per NIFTY/BANK NIFTY/stock), with trading symbol, token, and a chart link per leg</td></tr>
           <tr><td><i class="bi bi-hdd-fill"></i></td><td>Data Load</td><td>Fetches the full Kite instrument master into browser IndexedDB, and NSE's strike-interval CSV into localStorage — both shown in searchable tables, and both merge-refresh the hand-maintained FO_LIST/NSE_STRIKE_DIFF/NSE_FUTURE_STRIKE_DIFF/INSTRUMENT_TOKENS/FUTURE_INTRUMENT_LIST constants in place instead of leaving them to go stale at each monthly rollover. Also has F&amp;O+Tokens/F&amp;O Futures/F&amp;O+Strike Diff/Constant Lists tabs (derived, read-only views) and a <strong>Raw Globals</strong> tab — click-to-inspect any of the core global arrays/objects one at a time (capped/searchable, so a 10K-row list doesn't hang the tab)</td></tr>
           <tr><td><i class="bi bi-funnel-fill"></i></td><td>Positional Screener</td><td>Swing-trade screener on <strong>daily</strong> candles (not the 5-min intraday series every other tool uses) — same filter/chip-select/autocomplete UI as Stock Viewer, scores trend (SMA20/50), 20-day breakout, relative strength vs NIFTY 50, and multi-day futures OI buildup into a BUY↔SELL verdict with a structural entry/target/stop/exit plan. See the Tools tab's own section below for the full methodology</td></tr>
+          <tr><td><i class="bi bi-grid-3x3-gap-fill"></i></td><td>All Tools launcher</td><td>Grid icon in the dashboard top bar and in Kite's own nav bar (left of the Kite logo) — opens the searchable tool flyout from anywhere; see the Dashboard tab</td></tr>
+          <tr><td><i class="bi bi-collection-fill"></i></td><td>MCX Dashboard</td><td>GOLDM + SILVERM cards: OI/OBV, Predict, Futures Accuracy, Level Probability and Positional Verdict (loads on Refresh)</td></tr>
+          <tr><td><i class="bi bi-globe"></i></td><td>Macro</td><td>Global backdrop score (oil, yields, dollar, rupee) with change alerts and a 1M/2M/6M backtest; see the Macro tab</td></tr>
+          <tr><td><i class="bi bi-graph-up"></i></td><td>Curve Structure Compare</td><td>Near vs far futures contract: contango / backwardation lean per instrument (needs Data Load sync)</td></tr>
         </tbody>
       </table>
     `);
@@ -814,6 +821,156 @@ function buildHelpHTML() {
     `);
 
     // ── TOOLS ────────────────────────────────────────────────────────────────────
+    // ── POSITIONAL SCREENER ───────────────────────────────────────────────────
+    h += hlpPanel('positional', '<i class="bi bi-funnel-fill"></i> Positional Screener', `
+      <p class="hlp-intro">A <strong>swing / positional</strong> screener on <strong>daily</strong> candles (about 400 days of
+      history per stock) — a different time frame from every intraday tool in this app. Open it from <em>All Tools &rarr;
+      Positional Screener</em>, or from the <em>Positional</em> tab in the dashboard.</p>
+
+      <h4 class="hlp-h4">Two layers — primary read + same-day overlay</h4>
+      <table class="hlp-table">
+        <thead><tr><th>Layer</th><th>What it is</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Primary</strong></td><td>Minervini Trend Template (8 rules, with a mirrored Short Template), Weinstein Stage (1&ndash;4, from the 150-day average and its slope) and Clenow momentum (annualised return &times; R&sup2; over 90 days). Ported from groot-research.</td><td>The trusted base call: is this a genuine Stage 2 uptrend or Stage 4 downtrend?</td></tr>
+          <tr><td><strong>Overlay</strong></td><td>Today's trend vs SMA20/50 (&times;2), 20-day breakout (&times;1.5), futures OI buildup over 5 days (&times;1.5), relative strength vs NIFTY 50 (&times;1), futures curve (&times;1).</td><td>Same-day confirmation or timing. It raises or lowers conviction but never flips the primary direction.</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="hlp-h4">Verdicts</h4>
+      <table class="hlp-table">
+        <thead><tr><th>Verdict</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>STRONG BUY / STRONG SELL</td><td>Confirmed trend <em>and</em> the overlay agrees (overlay +1.5 or more for a long, &minus;1.5 or less for a short).</td></tr>
+          <tr><td>BUY / SELL (awaiting overlay confirmation)</td><td>Trend is confirmed but today's overlay is neutral (between &minus;1.5 and +1.5) — nothing today backs it yet, nothing contradicts it either. Wait for the overlay, or enter smaller.</td></tr>
+          <tr><td>BUY / SELL &mdash; overlay disagrees (caution)</td><td>Confirmed trend, but today's tape pulls the other way. Wait for one side to resolve.</td></tr>
+          <tr><td>WATCH &mdash; LONG / SHORT forming</td><td>Early setup: the Trend Template is not fully passed yet. Higher risk than a confirmed setup.</td></tr>
+          <tr><td>Basing (Stage 1) / Topping (Stage 3)</td><td>No actionable direction, so no trade plan. Topping means trim longs — it is <em>not</em> a short setup.</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="hlp-h4">Conviction % (0&ndash;100)</h4>
+      <p>Rules passed (up to 40) + confirmed (+25) vs forming (+12.5) + overlay agrees (+20) or disagrees (&minus;20) + momentum quality (up to +10) + extension (&plusmn;5).
+      It is a <strong>rule-based score, not a back-tested probability</strong>. A forming setup can still reach 60&ndash;75, so read it together with the verdict.</p>
+
+      <h4 class="hlp-h4">Trade plan</h4>
+      <p>Entry = current price, stop = 1.5&times; ATR(14), target = 2.5&times; ATR(14), with R:R and an exit note. The (i) icon shows the exit criteria; the document icon opens the full plain-English Explain popup.</p>
+
+      <h4 class="hlp-h4">Filters and sorting</h4>
+      <table class="hlp-table">
+        <thead><tr><th>Control</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>Verdict dropdown</td><td>STRONG BUY / BUY / STRONG SELL / SELL / LONG forming / SHORT forming / Basing / Topping / WATCH.</td></tr>
+          <tr><td>Min Conv%</td><td>Hides rows below the number. Defaults to <strong>60</strong>. Rows with no conviction score (basing, topping, no history) are hidden whenever it is above 0.</td></tr>
+          <tr><td>Tradeable</td><td>One-click shortlist: STRONG BUY / STRONG SELL / LONG forming / SHORT forming at 60% or more, plus BUY / SELL (awaiting overlay) at 65% or more. Anything flagged caution is excluded. A heuristic, not back-tested.</td></tr>
+          <tr><td>Sort</td><td>Score, Name, Rel. Strength or Conviction%.</td></tr>
+          <tr><td>Search</td><td>Filters by symbol.</td></tr>
+        </tbody>
+      </table>
+      <p>The <strong>Market Breadth</strong> card above the table averages the primary read across the whole scanned set into a net score from &minus;100 to +100. It is a slow, multi-week regime read, not a same-day signal.</p>
+
+      <h4 class="hlp-h4">Telegram</h4>
+      <p>The Telegram button sends the rows currently shown (after all filters) to your chat. Set the Telegram Bot Token and Chat ID under Settings. Symbols are sent as tap-to-copy text, and long scans are split into several messages.</p>
+
+      <h4 class="hlp-h4">Add to Basket (Kite baskets)</h4>
+      <p>Tick the checkbox on rows with a trade plan (NSE stocks only — indices and MCX are not basket-able), then click <em>Add to Basket</em>. Pick an existing basket or create a new one.</p>
+      <table class="hlp-table">
+        <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td>Side</td><td>BUY for BUY-type / LONG-forming rows, SELL for SELL-type / SHORT-forming rows.</td></tr>
+          <tr><td>Product</td><td>Dropdown, defaults to <strong>MIS</strong> (intraday). CNC is delivery.</td></tr>
+          <tr><td>Order type</td><td>MARKET, price 0.</td></tr>
+          <tr><td>Quantity</td><td>floor(Account Capital &times; leverage &divide; entry price), where leverage is 5 for MIS and 1 for CNC. Account Capital is the <em>Margin</em> setting. Each stock is sized on its own against the full capital, so a multi-stock basket can use more margin in total than the capital figure.</td></tr>
+        </tbody>
+      </table>
+      <div class="hlp-callout hlp-callout-amber">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>These are multi-day swing signals. MIS squares off the same day, so the multi-day target will not play out. Shorts cannot be held overnight in cash equity — only intraday (MIS) or through futures. The flat 5&times; is an approximation; Zerodha's real MIS leverage varies by stock.</span>
+      </div>
+
+      <h4 class="hlp-h4">Where else the verdict appears</h4>
+      <p>Dashboard tab (Positional Screener Verdict card, with bulls / bears / watch counts and a net trend), MCX Dashboard cards, and a Positional Verdict panel in the Instrument Detail View (with a Scan now / Re-scan button for that one instrument).
+      The dashboard card is refreshed by a small auto-scan of NIFTY 50, NIFTY BANK and their top-10 constituents on each refresh (at most every 4 minutes) — it never scans the full universe.</p>
+
+      <h4 class="hlp-h4">When to run it</h4>
+      <p>Best <strong>after the close (about 3:45 pm onward)</strong> or <strong>pre-market</strong>, when the daily candle is complete. Intraday it works, but today's forming candle can flip the breakout and OI flags — avoid the first 30&ndash;45 minutes.
+      In the last 3 days before monthly expiry the futures OI read is suppressed (rollover), so lean on the primary read. After a rollover, run Data Load &rarr; Kite Instruments sync first so the futures curve is current.</p>
+    `);
+
+    // ── MACRO ─────────────────────────────────────────────────────────────────
+    h += hlpPanel('macro', '<i class="bi bi-globe"></i> Macro', `
+      <p class="hlp-intro">The <strong>Macro</strong> tab scores the global backdrop for Indian equities from seven drivers, refreshed with every dashboard refresh (5-minute cache). It is context for your intraday signals, not a signal by itself.</p>
+
+      <h4 class="hlp-h4">Drivers</h4>
+      <table class="hlp-table">
+        <thead><tr><th>Driver</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td>Brent and WTI crude</td><td>Yahoo Finance (counted once in the total, since they move together). MCX crude settles against WTI.</td></tr>
+          <tr><td>US 10-year yield</td><td>Yahoo (^TNX)</td></tr>
+          <tr><td>Fed-rate proxy</td><td>Yahoo (^IRX, the 13-week T-bill)</td></tr>
+          <tr><td>USD / INR</td><td>Yahoo</td></tr>
+          <tr><td>Dollar Index</td><td>Yahoo (DX-Y.NYB)</td></tr>
+          <tr><td>India 10-year yield</td><td>Pasted by you into Data Load &rarr; Macro Data (from investing.com), because no free live feed was reliable.</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="hlp-h4">Score and verdict</h4>
+      <p>Each driver scores &minus;1 to +1 from its 5-day trend (70%) and 1-day move (30%) and they are summed. TAILWIND is +1.5 or more, MILD TAILWIND +0.5, NEUTRAL in between, MILD HEADWIND &minus;0.5, HEADWIND &minus;1.5 or less. Falling oil, yields, the dollar and USD/INR are tailwinds for India; rising ones are headwinds.</p>
+
+      <h4 class="hlp-h4">Where you see it</h4>
+      <p>The Macro tab (full per-driver cards with sparklines), a one-line Macro strip on the Dashboard tab (click it to open the Macro tab), and the Macro chip in the Dashboard review strip.</p>
+
+      <h4 class="hlp-h4">Alerts</h4>
+      <p>A toast appears on refresh when the macro label <strong>changes</strong> (for example NEUTRAL &rarr; HEADWIND), or when the score moves <strong>1.0 or more</strong> since the last alert even inside the same label (for example +0.7 &rarr; +1.7). The first refresh after a page load only sets the baseline, and a failed fetch ("NO DATA") never fires an alert.</p>
+
+      <h4 class="hlp-h4">Backtest (1M / 2M / 6M)</h4>
+      <p>The backtest buttons replay the same scoring over past days and compare each day's macro label with NIFTY 50's move that day and the next day. It shows hit-rates and a per-driver average, so you can spot a driver that is stuck at one end. It is a sanity check only: a few months is one continuous stretch of market, not a validated edge.</p>
+    `);
+
+    // ── DASHBOARD ─────────────────────────────────────────────────────────────
+    h += hlpPanel('dashboard', '<i class="bi bi-columns-gap"></i> Dashboard &amp; Navigation', `
+      <p class="hlp-intro">How the Dashboard tab and the new navigation shortcuts work.</p>
+
+      <h4 class="hlp-h4">Review strip</h4>
+      <p>A sticky two-line strip at the top of the Dashboard tab with one chip per section (17 in all), so no section gets forgotten.</p>
+      <table class="hlp-table">
+        <thead><tr><th>Part</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Dot colour</td><td>Green / amber / red from that section's main number (for example NIFTY 50's trend, the Macro tone, the Level Probability lean). <strong>Grey</strong> means the section has no single number (Predict, Level Confirm, Futures Accuracy) — read it directly. Hover a chip for the reason.</td></tr>
+          <tr><td>Click a chip</td><td>Scrolls to the section, flashes it, and ticks the chip as reviewed.</td></tr>
+          <tr><td>REVIEW n/17</td><td>How many sections you have looked at since the last refresh. Ticks clear on every real refresh (not when you switch tabs); Reset clears them by hand.</td></tr>
+        </tbody>
+      </table>
+      <div class="hlp-callout hlp-callout-blue">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>The dot thresholds are simple heuristics, not back-tested. They mean "worth a look", not "act on this".</span>
+      </div>
+
+      <h4 class="hlp-h4">All Tools launcher</h4>
+      <p>A grid icon inside the dashboard top bar <em>and</em> a second grid icon in Kite's own navigation bar (to the left of the Kite logo) open the same All Tools flyout: icon + name tiles with a search box (Enter launches the first match, Esc closes). Using it from Kite's nav bar works even before you have opened the Groot dashboard — it builds the dashboard in the background if a tool needs it.</p>
+
+      <h4 class="hlp-h4">Dashboard cards added recently</h4>
+      <table class="hlp-table">
+        <thead><tr><th>Card</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td>Futures Accuracy / Level Probability / Positional Screener Verdict</td><td>A 3-column row. The verdict card lists each instrument's Positional verdict and conviction, with a bulls / bears / watch summary on top.</td></tr>
+          <tr><td>Macro strip</td><td>One-line global backdrop right under Predict.</td></tr>
+          <tr><td>9:15 Breakout counts</td><td>Click N50 / Bank / All to see which stocks are ASO and which are BSO.</td></tr>
+          <tr><td>Short Covering / Long Unwinding</td><td>Active remarks with "Runs to" price targets, plus a <strong>Pre-Squeeze Watch</strong> early-warning list (streak-based setup score from 5 to 95 — a heuristic, not a probability).</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="hlp-h4">MCX Dashboard and Commodities</h4>
+      <p>The MCX Dashboard shows <strong>GOLDM and SILVERM</strong> only. Each card has OI/OBV, Predict, Futures Accuracy, Level Probability and a Positional Verdict section; nothing loads until you click Refresh. The Commodities popup opens on <strong>SILVERM</strong> by default (the dropdown still lists every commodity).</p>
+
+      <h4 class="hlp-h4">Other tools added</h4>
+      <ul>
+        <li><strong>Curve Structure Compare</strong> — near vs far futures contract (contango / backwardation). Needs Data Load &rarr; Kite Instruments sync; expired contracts are skipped automatically.</li>
+        <li><strong>Briefing tab</strong> — a plain-English narrative built from every cached metric; Quick view (short) and Full view.</li>
+        <li><strong>5-min squeeze alert scan</strong> — at every 5-minute mark after 9:15 (9:20, 9:25 … 15:30, weekdays, skipping NSE holidays) it re-reads the futures remark for NIFTY 50, NIFTY BANK, RELIANCE, HDFCBANK and ICICIBANK and shows a toast and beep when one newly turns <em>Short Covering</em> (price up, OI down) or <em>Long Unwinding</em> (price down, OI down). It alerts once when the state begins and again only if it ends and restarts. It runs from page load, with or without the dashboard open. A separate <strong>MCX scan</strong> does the same for SILVERM and GOLDM from 9:05 until the evening close (23:55 covers both the 23:30 and 23:55 session ends), weekdays; the NSE scan stops at 15:30 regardless. Each has its own switch in Settings &rarr; General (<em>5-min squeeze alert scan</em> and <em>&hellip; &mdash; MCX</em>), both on by default. A hidden browser tab can delay a scan by up to about a minute.</li>
+        <li><strong>WebSocket connect / disconnect</strong> — an icon in the top bar toggles the live ticker; the top-bar prices update from it.</li>
+      </ul>
+    `);
+
     h += hlpPanel('tools', '<i class="bi bi-tools"></i> Tools Reference', `
 
       <h4 class="hlp-h4"><i class="bi bi-clipboard-check"></i> Pre-Trade Checklist</h4>

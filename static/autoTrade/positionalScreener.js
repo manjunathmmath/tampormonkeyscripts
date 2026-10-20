@@ -304,6 +304,7 @@ function _psContentHtml() {
         +   '<span id="ps-progress" class="ps-progress"></span>'
         +   '<span id="ps-summary" class="ps-summary"></span>'
         +   '<button id="ps-tradeable-btn" class="sv-pill-btn" type="button" title="One-click shortlist: STRONG BUY / STRONG SELL / LONG forming / SHORT forming at Conviction 60 or more, plus BUY / SELL (awaiting overlay) at 65 or more. Excludes anything flagged caution (overlay disagreeing). Combines with the other filters."><i class="bi bi-check2-circle"></i> Tradeable</button>'
+        +   '<button id="ps-ideas-btn" class="sv-pill-btn" type="button" title="Readable trade ideas from the scan: side, entry / stop / target, why, and a position size from your Account Capital and risk %."><i class="bi bi-lightbulb"></i> Ideas</button>'
         +   '<select id="ps-filter" class="sv-pill-btn">'
         +     '<option value="all">All</option>'
         +     '<option value="strongbuy">STRONG BUY</option>'
@@ -526,7 +527,12 @@ var _PS_EXTRA_INSTRUMENTS = ['NIFTY 50', 'NIFTY BANK'].concat(_PS_MCX_NAMES);
 // groot-research's own LOOKBACK_DAYS_NEEDED (260 trading days) * 1.6 calendar-day buffer,
 // ported as-is from scanner.py's fetch_daily — enough for the 200-day SMA + Rule 3's 21-day
 // slope check + the 252-day 52-week window, with margin.
-var _PS_LOOKBACK_DAYS = 420;
+// Raised from 420 to ~1000 calendar days (~690 sessions): the "how long do these views last"
+// estimate (_psViewEstimates) needs several past runs of the same view to learn from, and 420
+// days (~290 sessions) leaves only ~115 sessions after the 175-session minimum for a Stage
+// read. Every other read here uses the tail of the series, so a longer series changes nothing
+// for them; it only costs a bigger daily-candle response (same number of requests).
+var _PS_LOOKBACK_DAYS = 1000;
 
 // Spot/price token for the daily candle fetch. Stocks (INSTRUMENT_TOKENS) unchanged;
 // NIFTY 50/NIFTY BANK also come from INSTRUMENT_TOKENS (already carries indices); MCX
@@ -658,6 +664,23 @@ function _psExplainVerdict(r) {
     else bottom = 'No clear, actionable edge from either layer right now.';
     L.push('<p><b>' + bottom + '</b></p>');
 
+    // 7. Timing + rhythm
+    L.push('<div style="font-weight:800;margin:14px 0 4px;">7. Is it a good time? (how far it has already moved)</div>');
+    if (r.since) {
+        var sc = _psSinceColor(r.since.label);
+        L.push('<p>This view has been on ' + (r.since.atLeast ? 'for <b>at least</b> ' : 'since ') + '<b>' + r.since.startDate + '</b> (' + r.since.days + ' sessions)'
+            + (r.since.confDays ? '; fully confirmed since <b>' + r.since.confDate + '</b>' : '') + '. Price has moved <b>' + (r.since.favPct >= 0 ? '+' : '') + r.since.favPct.toFixed(1) + '%</b> in its favour since'
+            + (r.since.moveAtr != null ? ' (' + r.since.moveAtr.toFixed(1) + ' ATR)' : '') + ' — <b style="color:' + sc + ';">' + r.since.label + '</b>.</p>');
+        L.push('<p>' + r.since.advice + '</p>');
+    } else {
+        L.push('<p>No directional view to date (no trade view, or not enough history).</p>');
+    }
+    var remTxt = _psRemainingText(r);
+    L.push('<div style="font-weight:800;margin:10px 0 4px;">How long might it still run?</div>');
+    L.push('<p>' + (remTxt ? remTxt.replace(/ · /g, '.</p><p>') + '.' : 'Not estimated for this row (needs a plan and conviction ' + _PS_IDEA_WATCH_MIN_CONV + '+).') + '</p>');
+    L.push('<p style="color:var(--gtb-muted);font-size:0.58rem;">These describe what this stock has done before — a range, not a date. A trend can end tomorrow or keep running.</p>');
+    L.push('<p style="color:var(--gtb-muted);">Day rhythm — ' + _psRhythmText(r.stats) + '.</p>');
+
     L.push('<p style="color:var(--gtb-muted);font-size:0.58rem;margin-top:14px;">None of this has been back-tested against real forward returns -- the Trend Template/Stage/Momentum math is a faithful port of named published rules (Minervini, Weinstein, Clenow), which is why it is treated as primary; the overlay\'s weights and thresholds are this app\'s own and were never fitted or validated. Treat both as a structured starting point, not a proven edge.</p>');
 
     return L.join('');
@@ -729,9 +752,10 @@ async function _psCurveLean(name, isMcx) {
         var annualizedPct = diffPct * (365 / daysGap);
         var bullThresh = isMcx ? -3 : -2, bearThresh = isMcx ? 8 : 10;
         var state = diffPct > 0.05 ? 'CONTANGO' : diffPct < -0.05 ? 'BACKWARDATION' : 'FLAT';
-        var dir = annualizedPct < bullThresh ? 1 : annualizedPct > bearThresh ? -1 : 0;
+        // A steep contango is bearish only for MCX (ample supply, no urgency). For NSE stock/index futures it mostly reflects financing cost and long positioning, so it is shown but casts no vote.
+        var dir = annualizedPct < bullThresh ? 1 : (isMcx && annualizedPct > bearThresh) ? -1 : 0;
         return { ok: true, state: state, diffPct: diffPct, annualizedPct: annualizedPct, dir: dir,
-                 label: dir > 0 ? 'BULL LEAN' : dir < 0 ? 'STEEP CONTANGO' : state };
+                 label: dir > 0 ? 'BULL LEAN' : annualizedPct > bearThresh ? (isMcx ? 'STEEP CONTANGO' : 'STEEP CONTANGO (no vote)') : state };
     } catch (e) { return { ok: false, reason: 'Fetch error' }; }
 }
 
@@ -1022,6 +1046,7 @@ async function _psRunScan(universe, opts) {
             if (niftyCandles.length > 20) {
                 niftyCloses = niftyCandles.map(function (c) { return parseFloat(c[4]); });
                 niftyPctChg20 = ((niftyCloses[niftyCloses.length - 1] - niftyCloses[niftyCloses.length - 21]) / niftyCloses[niftyCloses.length - 21]) * 100;
+                _PS_MARKET = { stats: _psDayStats(niftyCloses) };
             }
         } catch (e) {}
     }
@@ -1052,7 +1077,19 @@ async function _psRunScan(universe, opts) {
             // above) only confirms/times it — see _psComputeSetup's own comment.
             var primary = _psPrimaryRead(candles, niftyCloses);
             var setup = _psComputeSetup(candles, futCandles, niftyPctChg20, futToken, daysToExpiry, curveInfo, primary);
-            if (setup) { setup.name = name; _PS_CACHE[name] = setup; done++; }
+            if (setup) {
+                // Day rhythm + "when did this view start / how far has it already moved" — both
+                // read the series already in hand (see _psBuildSince).
+                try { setup.stats = _psDayStats(candles.map(function (c) { return parseFloat(c[4]); })); } catch (eS) { setup.stats = null; }
+                try { setup.since = _psBuildSince(setup, candles, niftyCloses); } catch (eT) { setup.since = null; }
+                // Duration estimates replay the primary read over the whole history (~0.2 s each),
+                // so only for rows that could make the Ideas list (a plan and conviction >= 40).
+                if (setup.since && setup.entry != null && setup.convictionPct != null && setup.convictionPct >= _PS_IDEA_WATCH_MIN_CONV) {
+                    await new Promise(function (res) { setTimeout(res, 0); });   // let the UI breathe
+                    try { setup.est = _psViewEstimates(setup, candles, niftyCloses); } catch (eE) { setup.est = null; }
+                }
+                setup.name = name; _PS_CACHE[name] = setup; done++;
+            }
         } catch (e) { console.log('[positional-screener]', name, e); }
         if (opts.renderDuring && i % 10 === 0) _psRenderTable(); // incremental render so results appear while scanning
     }
@@ -1216,30 +1253,62 @@ function _psVerdictDashRowsHtml() {
     // carry qualifiers like "BUY — overlay disagrees (caution)", not a fixed enum) — LONG/SHORT
     // forming are counted on their respective side since they're a directional lean, just not
     // yet mechanically confirmed.
-    var scanned = names.map(function (name) { return _PS_CACHE[name.toUpperCase()] || _PS_CACHE[name]; }).filter(Boolean);
-    var bulls = scanned.filter(function (r) { return r.verdict.indexOf('BUY') !== -1 || r.verdict.indexOf('LONG forming') !== -1; }).length;
-    var bears = scanned.filter(function (r) { return r.verdict.indexOf('SELL') !== -1 || r.verdict.indexOf('SHORT forming') !== -1; }).length;
-    var watch = scanned.length - bulls - bears;
-    var trend = bulls > bears ? 'BULLISH' : bears > bulls ? 'BEARISH' : 'MIXED';
-    var trendColor = bulls > bears ? 'var(--gtb-green)' : bears > bulls ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+    // Grouped into the two indices, the NIFTY 50 top-10 by weight and the BANK NIFTY top-10 by
+    // weight. A stock in both top-10s (HDFCBANK, ICICIBANK, AXISBANK, KOTAKBANK, SBIN) is listed
+    // under each group with that index's own weight, but counted ONCE in the overall summary.
+    var rowOf = function (name) { return _PS_CACHE[name.toUpperCase()] || _PS_CACHE[name]; };
+    var isBull = function (r) { return r.verdict.indexOf('BUY') !== -1 || r.verdict.indexOf('LONG forming') !== -1; };
+    var isBear = function (r) { return r.verdict.indexOf('SELL') !== -1 || r.verdict.indexOf('SHORT forming') !== -1; };
+    var lean = function (b, s) { return b > s ? ['BULLISH', 'var(--gtb-green)'] : s > b ? ['BEARISH', 'var(--gtb-red)'] : ['MIXED', 'var(--gtb-amber)']; };
+
+    var uniq = {}; names.forEach(function (n) { uniq[n] = 1; });
+    var uniqNames = Object.keys(uniq);
+    var scanned = uniqNames.map(rowOf).filter(Boolean);
+    var bulls = scanned.filter(isBull).length, bears = scanned.filter(isBear).length, watch = scanned.length - bulls - bears;
+    var tl = lean(bulls, bears);
     var summary = '<div style="display:flex;align-items:center;gap:8px;padding:0 0 6px;flex-wrap:wrap;font-size:0.56rem;border-bottom:1px solid var(--gtb-border);margin-bottom:4px;">'
-        + '<span style="font-weight:800;letter-spacing:0.04em;color:' + trendColor + ';">' + trend + '</span>'
+        + '<span style="font-weight:800;letter-spacing:0.04em;color:' + tl[1] + ';">' + tl[0] + '</span>'
         + '<span style="color:var(--gtb-green);font-weight:700;"><i class="bi bi-arrow-up-short"></i> ' + bulls + ' Bulls</span>'
         + '<span style="color:var(--gtb-red);font-weight:700;"><i class="bi bi-arrow-down-short"></i> ' + bears + ' Bears</span>'
         + '<span style="color:var(--gtb-amber);font-weight:700;">' + watch + ' Watch</span>'
-        + '<span style="color:var(--gtb-muted);">(' + scanned.length + '/' + names.length + ' scanned)</span>'
+        + '<span style="color:var(--gtb-muted);">(' + scanned.length + '/' + uniqNames.length + ' scanned)</span>'
         + '</div>';
-    var rows = names.map(function (name) {
-        var r = _PS_CACHE[name.toUpperCase()] || _PS_CACHE[name];
-        return '<div style="display:grid;grid-template-columns:80px 1fr 44px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--gtb-border)18;font-size:0.58rem;">'
+
+    var rowHtml = function (name, wt) {
+        var r = rowOf(name);
+        return '<div style="display:grid;grid-template-columns:84px 1fr 38px 40px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--gtb-border)18;font-size:0.58rem;">'
             + '<span style="color:var(--gtb-text);font-weight:700;">' + name + '</span>'
-            + (r
-                ? '<span style="color:' + r.verdictColor + ';">' + r.verdict + '</span>'
-                + '<span style="text-align:right;color:var(--gtb-muted);font-variant-numeric:tabular-nums;">' + (r.convictionPct != null ? r.convictionPct + '%' : '—') + '</span>'
-                : '<span style="color:var(--gtb-muted);">not scanned</span><span></span>')
+            + (r ? '<span style="color:' + r.verdictColor + ';">' + r.verdict + '</span>' : '<span style="color:var(--gtb-muted);">not scanned</span>')
+            + '<span style="text-align:right;color:var(--gtb-muted);font-variant-numeric:tabular-nums;" title="Weight in the index">' + (wt != null ? wt.toFixed(1) + '%' : '') + '</span>'
+            + '<span style="text-align:right;color:var(--gtb-muted);font-variant-numeric:tabular-nums;" title="Conviction">' + (r && r.convictionPct != null ? r.convictionPct + '%' : (r ? '—' : '')) + '</span>'
             + '</div>';
-    }).join('');
-    return summary + rows;
+    };
+    var groupHtml = function (title, list, weights) {
+        // list = [name...]; weights = {name: weight%} or null. Highest weight first.
+        var items = list.slice();
+        if (weights) items.sort(function (a, b) { return (weights[b] || 0) - (weights[a] || 0); });
+        var rs = items.map(function (n) { return { n: n, r: rowOf(n), w: weights ? weights[n] : null }; });
+        var gb = rs.filter(function (x) { return x.r && isBull(x.r); }), gs = rs.filter(function (x) { return x.r && isBear(x.r); });
+        var gl = lean(gb.length, gs.length);
+        var head = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 2px;font-size:0.54rem;">'
+            + '<span style="font-weight:800;letter-spacing:0.05em;color:var(--gtb-text);">' + title + '</span>'
+            + '<span style="font-weight:800;color:' + gl[1] + ';">' + gl[0] + '</span>'
+            + '<span style="color:var(--gtb-muted);">' + gb.length + ' bull · ' + gs.length + ' bear · ' + (rs.filter(function (x) { return x.r; }).length - gb.length - gs.length) + ' watch</span>';
+        if (weights) {
+            // Share of the group's weight sitting on each side — a heavyweight bear counts for more
+            // than a small-cap one; the plain stock count above can't show that.
+            var tot = rs.reduce(function (s, x) { return s + (x.w || 0); }, 0) || 1;
+            var wb = gb.reduce(function (s, x) { return s + (x.w || 0); }, 0) / tot * 100;
+            var ws = gs.reduce(function (s, x) { return s + (x.w || 0); }, 0) / tot * 100;
+            head += '<span style="margin-left:auto;color:var(--gtb-muted);" title="Share of this top-10\'s combined weight (' + tot.toFixed(1) + '% of the index) on each side">weight: <b style="color:var(--gtb-green);">↑' + wb.toFixed(0) + '%</b> <b style="color:var(--gtb-red);">↓' + ws.toFixed(0) + '%</b></span>';
+        }
+        head += '</div>';
+        return head + rs.map(function (x) { return rowHtml(x.n, x.w); }).join('');
+    };
+    return summary
+        + groupHtml('INDICES', ['NIFTY 50', 'NIFTY BANK'], null)
+        + groupHtml('NIFTY 50 — TOP 10 BY WEIGHT', Object.keys(NIFTY_50_WEIGHTED_STOCKS || {}), NIFTY_50_WEIGHTED_STOCKS)
+        + groupHtml('BANK NIFTY — TOP 10 BY WEIGHT', Object.keys(NIFTY_BANK_WEIGHTED_STOCKS || {}), NIFTY_BANK_WEIGHTED_STOCKS);
 }
 
 // ── Top Picks strip — always ranks the FULL scanned universe (_PS_CACHE), independent
@@ -1281,8 +1350,10 @@ function _psRenderSummary() {
     var buy = all.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; }).length;
     var sell = all.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; }).length;
     var watch = all.length - buy - sell;
+    var mv = _psMarketView();
     jQ('#ps-summary').html(
-        '<span class="ps-summary-buy">' + buy + ' BUY</span>'
+        '<span style="font-weight:800;color:' + mv.color + ';" title="Market lean from the number of BUY vs SELL verdicts among the scanned stocks (indices and MCX left out): net = (BUY − SELL) / (BUY + SELL) = ' + (mv.net * 100).toFixed(0) + '%. Needs at least 5 BUY/SELL signals. Heuristic bands, not back-tested.">MARKET: ' + mv.label + '</span>'
+        + '<span class="ps-summary-buy">' + buy + ' BUY</span>'
         + '<span class="ps-summary-sell">' + sell + ' SELL</span>'
         + '<span class="ps-summary-watch">' + watch + ' WATCH</span>'
         + '<span class="ps-summary-total">(' + all.length + ' scanned)</span>'
@@ -1418,11 +1489,13 @@ function _psRenderTable() {
     var html = _psTopPicksHtml() + '<table class="ps-table">'
         + '<thead><tr>'
         + '<th><input type="checkbox" id="ps-select-all-basket" title="Select all eligible rows currently shown"></th>'
+        + '<th></th><th></th><th></th>'
         + '<th>Symbol</th><th>Verdict</th><th>Conviction%' + _iiSafe('ps-conviction') + '</th><th>LTP</th>'
         + '<th>Trend Template / Stage' + _iiSafe('ps-primary') + '</th><th>Momentum' + _iiSafe('ps-primary') + '</th>'
         + '<th>20d Chg%</th><th>Trend</th><th>Breakout</th>'
         + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th>'
-        + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th><th></th><th></th><th></th>'
+        + '<th title="How long the current positional view has been on, how far price has moved in its favour since, and whether that leaves room to enter.">View since · moved · timing</th>'
+        + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th>'
         + '</tr></thead><tbody>'
         + rows.map(function (r) {
             var kiteLink = _psChartLink(r.name, _psPriceTokenFor(r.name));
@@ -1462,6 +1535,9 @@ function _psRenderTable() {
                 : '<td></td>';
             return '<tr style="background:' + rowTint + ';">'
                 + checkboxCell
+                + '<td><i class="bi bi-info-circle ps-exit-icon" title="' + (r.exitCriteria + (extTip ? ' (' + extTip + ')' : '') + ' [' + (r.levelsSource || '') + ']').replace(/"/g, '&quot;') + '"></i></td>'
+                + '<td><a href="' + kiteLink + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open chart"><i class="bi bi-graph-up"></i></a></td>'
+                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button></td>'
                 + '<td class="ps-cell-strong">' + r.name + '</td>'
                 + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
                 + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
@@ -1475,13 +1551,11 @@ function _psRenderTable() {
                 + '<td style="color:' + oiColor + ';">' + r.oiLabel + '</td>'
                 + '<td style="color:' + curveColor + ';font-size:0.55rem;">' + (r.curveLabel || 'NO DATA') + '</td>'
                 + '<td class="ps-cell-strong" style="color:' + r.overlayColor + ';" title="Same-day overlay total (trend/breakout/RS/OI/curve) — confirmation only, not the primary call.">' + r.overlayTotal.toFixed(1) + '</td>'
+                + '<td style="color:' + (r.since ? _psSinceColor(r.since.label) : 'var(--gtb-muted)') + ';font-size:0.55rem;white-space:nowrap;" title="' + _psSinceTip(r).replace(/"/g, '&quot;') + '">' + _psSinceText(r) + '</td>'
                 + '<td>' + (hasPlan ? r.entry.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-green);">' + (hasPlan ? r.target.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
                 + '<td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td>'
-                + '<td><i class="bi bi-info-circle ps-exit-icon" title="' + (r.exitCriteria + (extTip ? ' (' + extTip + ')' : '') + ' [' + (r.levelsSource || '') + ']').replace(/"/g, '&quot;') + '"></i></td>'
-                + '<td><a href="' + kiteLink + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open chart"><i class="bi bi-graph-up"></i></a></td>'
-                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button></td>'
                 + '</tr>';
         }).join('')
         + '</tbody></table>';
@@ -1510,6 +1584,403 @@ jQ(document).on('click', '#ps-tradeable-btn', function () {
     var on = !jQ(this).hasClass('ps-on');
     jQ(this).toggleClass('ps-on', on).css({ 'border-color': on ? 'var(--gtb-accent)' : '', color: on ? 'var(--gtb-accent)' : '', 'font-weight': on ? '800' : '' });
     _psRenderTable();
+});
+
+// ─── Timing, day-rhythm and market view ─────────────────────────────────────
+// All three read the same daily candles the scan already fetched — no extra requests.
+//   _psDayStats      up/down day counts, average up-run and down-run length, the current streak
+//                    and how often that streak has historically continued one more day.
+//   _psBuildSince    when the current positional view (the primary read's direction) began, found
+//                    by re-running the primary read on history cut back one day at a time, and
+//                    how far price has already moved since (in % and in ATR).
+//   _psMarketView    market lean from the number of BUY vs SELL verdicts in the scan.
+// The EARLY / MID / LATE cut-offs and the market-view bands are this app's own heuristics, not
+// back-tested; the plan's target is 2.5 ATR, so "early" means less than one planned target has
+// already been travelled since the view began.
+var _PS_STATS_WINDOW = 250;       // trading days of history used for day statistics
+var _PS_SIGNAL_LOOKBACK = 120;    // how far back to look for when the current view began
+var _PS_TIMING_EARLY_ATR = 2.5;   // favourable move since the view began, in ATR14
+var _PS_TIMING_LATE_ATR = 6;
+var _PS_MARKET = null;            // { stats } for NIFTY 50, set by _psRunScan
+
+function _psDayStats(closes) {
+    var c = (closes || []).slice(-(_PS_STATS_WINDOW + 1));
+    if (c.length < 21) return null;
+    var up = 0, down = 0, flat = 0, runs = { '1': [], '-1': [] }, curDir = 0, curLen = 0;
+    for (var i = 1; i < c.length; i++) {
+        var d = c[i] > c[i - 1] ? 1 : c[i] < c[i - 1] ? -1 : 0;
+        if (d === 1) up++; else if (d === -1) down++; else flat++;
+        if (d !== 0 && d === curDir) { curLen++; continue; }
+        if (curDir !== 0) runs[String(curDir)].push(curLen);   // a finished run
+        curDir = d; curLen = d === 0 ? 0 : 1;
+    }
+    var avg = function (a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; };
+    var max = function (a, extra) { return Math.max.apply(null, a.concat(extra ? [extra] : [0])); };
+    // After a run of curLen days, how often did earlier runs of the same direction go on to
+    // curLen + 1? Finished runs only — the open run's next day isn't known yet.
+    var cont = null;
+    if (curDir !== 0) {
+        var hist = runs[String(curDir)];
+        var reached = hist.filter(function (l) { return l >= curLen; }).length;
+        var ext = hist.filter(function (l) { return l >= curLen + 1; }).length;
+        if (reached) cont = { n: reached, p: ext / reached * 100 };
+    }
+    return {
+        days: c.length - 1, up: up, down: down, flat: flat, upPct: up + down ? up / (up + down) * 100 : null,
+        avgUp: avg(runs['1']), avgDown: avg(runs['-1']), upRuns: runs['1'].length, downRuns: runs['-1'].length,
+        maxUp: max(runs['1'], curDir === 1 ? curLen : 0), maxDown: max(runs['-1'], curDir === -1 ? curLen : 0),
+        cur: { dir: curDir, len: curLen }, cont: cont,
+    };
+}
+
+function _psRhythmText(s) {
+    if (!s) return 'not enough history';
+    var f1 = function (n) { return n == null ? '—' : n.toFixed(1); };
+    var cur = s.cur.dir === 0 ? 'flat today'
+        : (s.cur.dir > 0 ? '↑' : '↓') + s.cur.len + ' day' + (s.cur.len > 1 ? 's' : '') + ' in a row'
+          + (function () { var a = s.cur.dir > 0 ? s.avgUp : s.avgDown; return a ? ' (' + (s.cur.len / a).toFixed(1) + '× the usual ' + f1(a) + ')' : ''; })();
+    return 'Last ' + s.days + ' days: ' + s.up + ' up (' + f1(s.upPct) + '%) / ' + s.down + ' down'
+        + ' · rises last ' + f1(s.avgUp) + ' days on average, falls ' + f1(s.avgDown)
+        + ' · longest ↑' + s.maxUp + ' / ↓' + s.maxDown + ' · now ' + cur
+        + (s.cont ? ' · after ' + s.cur.len + ' ' + (s.cur.dir > 0 ? 'up' : 'down') + ' day' + (s.cur.len > 1 ? 's' : '')
+            + ' it went on one more day ' + s.cont.p.toFixed(0) + '% of the time (n=' + s.cont.n + ')' : '');
+}
+
+function _psViewSign(p) {
+    var d = p && p.ok ? p.dir : null;
+    return d == null ? 0 : d > 0 ? 1 : (d < 0 && d !== -0.3) ? -1 : 0;   // Stage 3 topping (-0.3) is no trade view
+}
+
+function _psBuildSince(setup, candles, niftyCloses) {
+    var primary = setup.primary, sign = _psViewSign(primary);
+    if (!sign || !candles || !candles.length) return null;
+    var n = candles.length, startK = 0, confK = Math.abs(primary.dir) === 1 ? 0 : null, confOpen = confK === 0;
+    var truncated = false, capped = false;
+    for (var k = 1; k <= _PS_SIGNAL_LOOKBACK; k++) {
+        var sub = candles.slice(0, n - k);
+        if (sub.length < 175) { truncated = true; break; }       // below the Stage read's minimum history
+        var nSub = niftyCloses ? niftyCloses.slice(0, Math.max(0, niftyCloses.length - k)) : null;
+        var pr = _psPrimaryRead(sub, nSub);
+        if (_psViewSign(pr) !== sign) break;
+        startK = k;
+        if (confOpen) { if (pr.ok && Math.abs(pr.dir) === 1) confK = k; else confOpen = false; }
+        if (k === _PS_SIGNAL_LOOKBACK) capped = true;
+    }
+    var dateOf = function (k) { return String(candles[n - 1 - k][0]).slice(0, 10); };
+    var startClose = parseFloat(candles[n - 1 - startK][4]), ltp = setup.ltp;
+    var favPct = startClose ? sign * (ltp - startClose) / startClose * 100 : null;
+    var atr = _psAtr14(candles);
+    var moveAtr = (atr && startClose) ? sign * (ltp - startClose) / atr : null;
+    var extended = /EXTENDED/.test(setup.extensionNote || '');
+    var label;
+    if (moveAtr == null) label = 'UNKNOWN';
+    else if (moveAtr < 0) label = 'NOT WORKING';                                     // price is behind where the view began
+    else if (moveAtr < _PS_TIMING_EARLY_ATR && !extended) label = 'EARLY';
+    else if (moveAtr < _PS_TIMING_LATE_ATR && !extended) label = 'MID';
+    else label = 'LATE';
+    var isLong = sign > 0;
+    var pullbackEntry = setup.entry != null && (isLong ? setup.entry < ltp * 0.995 : setup.entry > ltp * 1.005);
+    var advice = {
+        'EARLY': 'Good time — less than one planned target has been travelled since the view began, so most of the move is still ahead.',
+        'MID': 'Acceptable — a fair part of the move is done. Take it at the plan entry, not above it.',
+        'LATE': 'Late — price has already run well past the planned target distance (or is stretched from the 50-day line). Wait for a pullback rather than chase.',
+        'NOT WORKING': 'The view is on, but price is back below where it began — it has not worked so far. Wait for it to prove itself.',
+        'UNKNOWN': 'Not enough data to judge the timing.',
+    }[label];
+    if (pullbackEntry && label !== 'UNKNOWN') advice += ' The plan entry (' + setup.entry.toFixed(1) + ') is ' + (isLong ? 'below' : 'above') + ' the current price — it is a ' + (isLong ? 'pullback' : 'bounce') + ' entry, not a buy-now.';
+    return {
+        days: startK + 1, startDate: dateOf(startK), startClose: startClose,
+        atLeast: truncated || capped, favPct: favPct, moveAtr: moveAtr, label: label, advice: advice,
+        confDays: confK == null ? null : confK + 1, confDate: confK == null ? null : dateOf(confK),
+    };
+}
+
+// ── How long might the move still run? Two estimates, both from this stock's own past ──────
+//  1. Past runs of this view: the primary read is replayed over the whole fetched history
+//     (every _PS_EST_STEP-th session, so durations are approximate to about that many days)
+//     to list how long each earlier run of the SAME direction lasted. Of the past runs that
+//     lasted at least as long as this one has so far, how many sessions more did they last?
+//     Runs cut off by the start of the data are skipped (their true length is unknown), and
+//     fewer than _PS_EST_MIN_RUNS completed runs is reported as "too few", not guessed.
+//  2. Pace to target: sessions to reach the plan target at the favourable pace of the last 20
+//     sessions. Plain arithmetic — it breaks the moment the pace changes.
+// Neither says the move will end on a date; they say what this stock has done before.
+var _PS_EST_STEP = 2;
+var _PS_EST_MIN_RUNS = 4;
+var _PS_PACE_DAYS = 20;
+
+function _psMedian(a) {
+    if (!a.length) return null;
+    var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function _psViewEstimates(setup, candles, niftyCloses) {
+    var sign = _psViewSign(setup.primary), since = setup.since;
+    if (!sign || !since || !candles) return null;
+    var n = candles.length, est = { runs: null, pace: null };
+
+    // 1) past runs of this view
+    var series = [];                                    // [{i, sign}] sampled every _PS_EST_STEP sessions
+    for (var i = 174; i < n; i += _PS_EST_STEP) {
+        var pr = _psPrimaryRead(candles.slice(0, i + 1), niftyCloses ? niftyCloses.slice(0, Math.min(niftyCloses.length, i + 1)) : null);
+        series.push({ i: i, s: _psViewSign(pr) });
+    }
+    var done = [];                                      // completed runs of THIS direction, in sessions
+    for (var a = 0; a < series.length;) {
+        var b = a;
+        while (b + 1 < series.length && series[b + 1].s === series[a].s) b++;
+        var leftCut = a === 0, rightOpen = b === series.length - 1;   // touches the data start / today
+        if (series[a].s === sign && !leftCut && !rightOpen) done.push((series[b].i - series[a].i) + _PS_EST_STEP);
+        a = b + 1;
+    }
+    var age = since.days;
+    var survivors = done.filter(function (d) { return d > age; });
+    est.runs = {
+        n: done.length, tooFew: done.length < _PS_EST_MIN_RUNS, median: _psMedian(done),
+        min: done.length ? Math.min.apply(null, done) : null, max: done.length ? Math.max.apply(null, done) : null,
+        longer: survivors.length, remainMedian: survivors.length >= 2 ? _psMedian(survivors.map(function (d) { return d - age; })) : null,
+        age: age, historySessions: n,
+    };
+
+    // 2) pace to the plan target
+    if (setup.target != null && n > _PS_PACE_DAYS) {
+        var c0 = parseFloat(candles[n - 1 - _PS_PACE_DAYS][4]), c1 = setup.ltp;
+        var pace = sign * (c1 - c0) / _PS_PACE_DAYS;                 // favourable price per session
+        var dist = sign * (setup.target - c1);                       // price still to travel to the target
+        est.pace = { dist: dist, pace: pace, sessions: (dist > 0 && pace > 0) ? dist / pace : null,
+                     reached: dist <= 0, against: pace <= 0 };
+    }
+    return est;
+}
+
+function _psRemainingText(r) {
+    var e = r.est;
+    if (!e) return null;
+    var parts = [];
+    if (e.runs) {
+        var q = e.runs;
+        if (q.tooFew) parts.push('Past runs: too few completed runs of this view in ' + q.historySessions + ' sessions (' + q.n + ') to estimate a duration');
+        else {
+            var t = 'Past runs of this view lasted about ' + Math.round(q.median) + ' sessions (range ' + q.min + '–' + q.max + ', n=' + q.n + '); this one is on day ' + q.age;
+            if (q.longer && q.remainMedian != null) t += ' — ' + q.longer + ' of ' + q.n + ' past runs went past that, and they ran about ' + Math.round(q.remainMedian) + ' more sessions';
+            else t += ' — ' + (q.longer ? 'only ' + q.longer : 'none') + ' of ' + q.n + ' past runs went past that, too few to say how much longer';
+            parts.push(t);
+        }
+    }
+    if (e.pace) {
+        var p = e.pace;
+        parts.push('Pace: ' + (p.reached ? 'the plan target has already been reached' : p.against ? 'price has not been moving in the view\'s favour over the last ' + _PS_PACE_DAYS + ' sessions, so no pace-based estimate'
+            : p.sessions > 60 ? 'more than 60 sessions to the target at the last-' + _PS_PACE_DAYS + '-session pace'
+            : 'about ' + Math.max(1, Math.round(p.sessions)) + ' sessions to the target at the last-' + _PS_PACE_DAYS + '-session pace'));
+    }
+    return parts.length ? parts.join(' · ') : null;
+}
+
+function _psSinceColor(label) {
+    return label === 'EARLY' ? 'var(--gtb-green)' : label === 'MID' ? 'var(--gtb-amber)' : label === 'LATE' || label === 'NOT WORKING' ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+}
+function _psSinceText(r) {
+    var s = r.since;
+    if (!s) return '—';
+    return (s.atLeast ? '≥' : '') + s.days + 'd · ' + (s.favPct >= 0 ? '+' : '') + (s.favPct != null ? s.favPct.toFixed(1) : '—') + '% · ' + s.label;
+}
+function _psSinceTip(r) {
+    var s = r.since;
+    if (!s) return 'No directional view to date.';
+    return 'This ' + (_psViewSign(r.primary) > 0 ? 'long' : 'short') + ' view has been on ' + (s.atLeast ? 'for at least ' : 'since ') + s.startDate + ' (' + s.days + ' sessions)'
+        + (s.confDays ? '; fully confirmed (all 8 rules) since ' + s.confDate : '')
+        + '. Price has moved ' + (s.favPct >= 0 ? '+' : '') + s.favPct.toFixed(1) + '% in its favour since then' + (s.moveAtr != null ? ' (' + s.moveAtr.toFixed(1) + ' ATR)' : '') + '. ' + s.advice;
+}
+
+function _psMarketView() {
+    var skip = {};
+    (typeof _PS_EXTRA_INSTRUMENTS !== 'undefined' ? _PS_EXTRA_INSTRUMENTS : []).forEach(function (n) { skip[n] = 1; });
+    var rows = Object.values(_PS_CACHE).filter(function (r) { return !skip[r.name]; });
+    var buy = rows.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; }).length;
+    var sell = rows.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; }).length;
+    var total = buy + sell, net = total ? (buy - sell) / total : 0;
+    var label, color;
+    if (total < 5) { label = 'TOO FEW SIGNALS'; color = 'var(--gtb-muted)'; }
+    else if (net >= 0.4) { label = 'BULLISH'; color = 'var(--gtb-green)'; }
+    else if (net >= 0.15) { label = 'MILD BULLISH'; color = 'var(--gtb-green)'; }
+    else if (net <= -0.4) { label = 'BEARISH'; color = 'var(--gtb-red)'; }
+    else if (net <= -0.15) { label = 'MILD BEARISH'; color = 'var(--gtb-red)'; }
+    else { label = 'MIXED'; color = 'var(--gtb-amber)'; }
+    return { buy: buy, sell: sell, watch: rows.length - total, scanned: rows.length, net: net, label: label, color: color };
+}
+
+// ─── Trading Ideas ──────────────────────────────────────────────────────────
+// Turns the scanned universe (_PS_CACHE, whatever the table filters are set to) into a short
+// list of readable trade ideas: side, entry/stop/target, risk:reward, a plain-English "why"
+// built from the same fields the table already shows, and a position size from Account
+// Capital × risk % per trade. Pure read of cached scan results — nothing new is fetched, and
+// nothing is scored again, so an idea can never disagree with its own table row.
+//   READY   = _psIsTradeable (the Tradeable button's own rule).
+//   WATCH   = has a real plan and conviction >= 40, but not tradeable yet (usually awaiting
+//             overlay confirmation or still forming) and not flagged caution.
+// Conviction is the scanner's rule-count score, not a back-tested win rate — said on the popup.
+var _PS_IDEA_WATCH_MIN_CONV = 40;
+var _PS_IDEA_MAX_PER_SECTION = 10;
+
+function _psIdeaSide(r) { return r.stop != null && r.entry != null && r.stop < r.entry ? 'LONG' : 'SHORT'; }
+
+function _psBuildIdeas() {
+    var ready = [], watch = [];
+    Object.values(_PS_CACHE).forEach(function (r) {
+        if (r.entry == null || r.stop == null || r.target == null || r.convictionPct == null) return;
+        // A setup that is tradeable on conviction but has already run past the plan's target
+        // distance (LATE) is not a "take it now" idea — it goes to WATCH, waiting for a pullback.
+        if (_psIsTradeable(r) && !(r.since && r.since.label === 'LATE')) ready.push(r);
+        else if (r.convictionPct >= _PS_IDEA_WATCH_MIN_CONV && r.verdict.indexOf('caution') === -1) watch.push(r);
+    });
+    function byConv(a, b) { return (b.convictionPct - a.convictionPct) || ((b.riskReward || 0) - (a.riskReward || 0)); }
+    ready.sort(byConv); watch.sort(byConv);
+    return { ready: ready.slice(0, _PS_IDEA_MAX_PER_SECTION), watch: watch.slice(0, _PS_IDEA_MAX_PER_SECTION),
+             readyTotal: ready.length, watchTotal: watch.length };
+}
+
+// Why this idea exists, from fields already on the row — facts only, no new scoring.
+function _psIdeaWhy(r) {
+    var w = [], p = r.primary, isLong = _psIdeaSide(r) === 'LONG';
+    if (p && p.ok) {
+        var rules = isLong ? p.tt : p.st;
+        w.push(p.label + (rules && rules.ok ? ' — ' + rules.rulesPassed + '/' + rules.rulesTotal + ' ' + (isLong ? 'Trend' : 'Short') + ' Template rules pass' : ''));
+        if (rules && rules.ok && rules.rsPct != null) {
+            w.push('6-month ' + (isLong ? 'strength' : 'weakness') + ' vs NIFTY ' + (rules.rsPct >= 0 ? '+' : '') + rules.rsPct.toFixed(1) + '%');
+        }
+        if (p.mom && p.mom.ok) w.push('Momentum score ' + p.mom.score.toFixed(0) + ' (' + p.mom.annualizedPct.toFixed(0) + '% annualised, smoothness ' + p.mom.r2.toFixed(2) + ')');
+    }
+    w.push('Today: ' + r.trendLabel + (r.breakoutLabel && r.breakoutLabel !== 'INSIDE RANGE' ? ', ' + r.breakoutLabel : '')
+        + ', futures OI ' + r.oiLabel + ' — overlay ' + (r.overlayTotal >= 0 ? '+' : '') + r.overlayTotal.toFixed(1)
+        + (r.agree ? ' (agrees with the trend)' : r.disagree ? ' (disagrees with the trend)' : ' (not confirming yet)'));
+    if (r.relStrength != null) w.push('20-day relative strength vs NIFTY ' + (r.relStrength >= 0 ? '+' : '') + r.relStrength.toFixed(1) + '%');
+    if (r.extensionNote) w.push(r.extensionNote);
+    return w;
+}
+
+// Quantity from risk, not from buying power: risk amount = capital × risk% per trade, divided
+// by the stop distance. Capped so the position never costs more than the capital itself
+// (delivery/CNC sizing, matching how positional ideas are held). Null when capital isn't set.
+function _psIdeaSizing(r) {
+    var capital = (typeof MARGIN !== 'undefined' ? parseFloat(MARGIN) : NaN) || 0;
+    var riskPct = (typeof RISK_PCT_PER_TRADE !== 'undefined' ? RISK_PCT_PER_TRADE : 1) || 1;
+    var perShare = Math.abs(r.entry - r.stop);
+    if (!capital || !perShare) return null;
+    var riskAmt = capital * riskPct / 100;
+    var qty = Math.floor(riskAmt / perShare);
+    var capped = false;
+    var maxQty = Math.floor(capital / r.entry);
+    if (qty > maxQty) { qty = maxQty; capped = true; }
+    if (qty < 1) return { qty: 0, riskAmt: riskAmt, riskPct: riskPct, capital: capital, capped: capped };
+    return { qty: qty, riskAmt: riskAmt, riskPct: riskPct, capital: capital, capped: capped,
+             cost: qty * r.entry, maxLoss: qty * perShare, gain: qty * Math.abs(r.target - r.entry) };
+}
+
+function _psIdeaCardHtml(r, kind) {
+    var isLong = _psIdeaSide(r) === 'LONG';
+    var sideCol = isLong ? 'var(--gtb-green)' : 'var(--gtb-red)';
+    var riskPct = Math.abs(r.entry - r.stop) / r.entry * 100;
+    var rewPct = Math.abs(r.target - r.entry) / r.entry * 100;
+    var cc = r.convictionPct >= 60 ? 'var(--gtb-green)' : 'var(--gtb-amber)';
+    var sz = _psIdeaSizing(r);
+    var inr = function (n) { return '₹' + Math.round(n).toLocaleString('en-IN'); };
+    var sizeTxt = !sz ? 'Set Account Capital in Market Trend Settings to see a position size.'
+        : sz.qty < 1 ? 'Stop is too wide for ' + sz.riskPct + '% risk (' + inr(sz.riskAmt) + ') on ' + inr(sz.capital) + ' capital — skip or reduce size.'
+        : 'Qty ' + sz.qty + ' · cost ' + inr(sz.cost) + ' · risks ' + inr(sz.maxLoss) + ' (' + sz.riskPct + '% of ' + inr(sz.capital) + ') · targets ' + inr(sz.gain)
+          + (sz.capped ? ' · capped at capital' : '');
+    var why = _psIdeaWhy(r).map(function (t) { return '<li>' + t + '</li>'; }).join('');
+    var cell = function (label, val, col) {
+        return '<div style="display:flex;flex-direction:column;gap:1px;"><span style="font-size:0.5rem;color:var(--gtb-muted);letter-spacing:0.04em;">' + label + '</span>'
+            + '<span style="font-family:var(--gtb-mono);font-weight:700;' + (col ? 'color:' + col + ';' : '') + '">' + val + '</span></div>';
+    };
+    return '<div class="ps-idea" style="border:1px solid var(--gtb-border);background:var(--gtb-surface);padding:8px 10px;margin-bottom:6px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        +   '<span style="font-weight:900;font-size:0.62rem;padding:1px 6px;border:1px solid ' + sideCol + ';color:' + sideCol + ';">' + (isLong ? 'LONG' : 'SHORT') + '</span>'
+        +   '<span style="font-weight:800;font-size:0.8rem;">' + r.name + '</span>'
+        +   '<span style="font-size:0.56rem;color:' + r.verdictColor + ';">' + r.verdict + '</span>'
+        +   '<span style="margin-left:auto;font-size:0.56rem;color:var(--gtb-muted);">Conviction <b style="color:' + cc + ';font-size:0.75rem;">' + r.convictionPct + '%</b></span>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0;font-size:0.62rem;">'
+        +   cell('ENTRY', r.entry.toFixed(2))
+        +   cell('STOP', r.stop.toFixed(2) + ' <span style="font-weight:400;color:var(--gtb-muted);">(' + riskPct.toFixed(1) + '%)</span>', 'var(--gtb-red)')
+        +   cell('TARGET', r.target.toFixed(2) + ' <span style="font-weight:400;color:var(--gtb-muted);">(' + rewPct.toFixed(1) + '%)</span>', 'var(--gtb-green)')
+        +   cell('RISK : REWARD', r.riskReward != null ? '1 : ' + r.riskReward.toFixed(1) : '—')
+        +   cell('LTP', r.ltp.toFixed(2))
+        + '</div>'
+        + '<ul style="margin:0 0 5px 16px;padding:0;font-size:0.56rem;line-height:1.45;color:var(--gtb-text);">' + why + '</ul>'
+        + (r.since ? '<div style="font-size:0.56rem;margin-bottom:3px;"><b style="color:' + _psSinceColor(r.since.label) + ';">' + r.since.label + '</b> · view on '
+            + (r.since.atLeast ? 'for at least ' : 'since ') + r.since.startDate + ' (' + r.since.days + 'd), moved ' + (r.since.favPct >= 0 ? '+' : '') + r.since.favPct.toFixed(1) + '% since'
+            + (r.since.moveAtr != null ? ' (' + r.since.moveAtr.toFixed(1) + ' ATR)' : '') + ' — ' + r.since.advice + '</div>' : '')
+        + (_psRemainingText(r) ? '<div style="font-size:0.54rem;margin-bottom:3px;"><b>How long it may run:</b> ' + _psRemainingText(r).replace(/ · /g, '<br>') + '</div>' : '')
+        + '<div style="font-size:0.52rem;color:var(--gtb-muted);margin-bottom:3px;">Day rhythm: ' + _psRhythmText(r.stats) + '</div>'
+        + '<div style="font-size:0.54rem;color:var(--gtb-muted);margin-bottom:4px;">' + sizeTxt + '</div>'
+        + '<div style="font-size:0.54rem;color:var(--gtb-muted);"><b>' + (kind === 'ready' ? 'Exit / invalidation:' : 'Waiting for:') + '</b> '
+        +   (kind === 'ready' ? (r.exitCriteria || '—')
+            : (r.since && r.since.label === 'LATE' ? 'a pullback — the move since the view began is already past the planned target distance.'
+               : r.verdict.indexOf('awaiting overlay') !== -1 ? 'today\'s overlay to clear ' + (isLong ? '+1.5' : '-1.5') + ' in the trend\'s direction (breakout, fresh OI buildup or a supportive curve).'
+               : 'the trend to be confirmed — re-scan and look for it to graduate from "forming" to confirmed before sizing up.'))
+        +   ' <button type="button" class="ps-explain-btn sv-pill-btn" data-name="' + r.name + '" style="margin-left:6px;">Full breakdown</button></div>'
+        + '</div>';
+}
+
+function _psIdeasHtml() {
+    if (!Object.keys(_PS_CACHE).length) {
+        return '<div style="padding:20px;font-size:0.68rem;color:var(--gtb-muted);">Run a SCAN first — ideas are built from the scan results.</div>';
+    }
+    var ideas = _psBuildIdeas();
+    var sec = function (title, col, list, total, kind, empty) {
+        return '<div style="font-weight:800;font-size:0.62rem;letter-spacing:0.05em;color:' + col + ';margin:8px 0 5px;">' + title
+            + ' <span style="color:var(--gtb-muted);font-weight:600;">(' + (total > list.length ? 'top ' + list.length + ' of ' + total : total) + ')</span></div>'
+            + (list.length ? list.map(function (r) { return _psIdeaCardHtml(r, kind); }).join('')
+                : '<div style="font-size:0.58rem;color:var(--gtb-muted);padding:4px 0 8px;">' + empty + '</div>');
+    };
+    return '<div id="ps-ideas-body" style="padding:10px 14px;overflow-y:auto;height:100%;font-size:0.66rem;">'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+        +   '<span style="font-size:0.56rem;color:var(--gtb-muted);flex:1;">From ' + Object.keys(_PS_CACHE).length + ' scanned instruments. Conviction is how many of this scanner\'s own checks line up — not a back-tested win rate.</span>'
+        +   '<button type="button" id="ps-ideas-copy" class="sv-pill-btn"><i class="bi bi-clipboard"></i> Copy</button>'
+        + '</div>'
+        + (function () {
+            var mv = _psMarketView();
+            return '<div style="border:1px solid var(--gtb-border);background:var(--gtb-surface);padding:7px 10px;margin:8px 0 2px;font-size:0.58rem;line-height:1.5;">'
+                + '<div><b style="color:' + mv.color + ';font-size:0.72rem;">MARKET: ' + mv.label + '</b> <span style="color:var(--gtb-muted);">— ' + mv.buy + ' BUY vs ' + mv.sell + ' SELL'
+                + ' among ' + mv.scanned + ' scanned stocks (net ' + (mv.net >= 0 ? '+' : '') + (mv.net * 100).toFixed(0) + '%, ' + mv.watch + ' on watch)</span></div>'
+                + (_PS_MARKET && _PS_MARKET.stats ? '<div style="color:var(--gtb-muted);margin-top:2px;"><b>NIFTY 50 day rhythm</b> — ' + _psRhythmText(_PS_MARKET.stats) + '</div>' : '')
+                + '</div>';
+        })()
+        + sec('READY — meets the Tradeable rule', 'var(--gtb-accent)', ideas.ready, ideas.readyTotal, 'ready', 'Nothing meets the Tradeable rule (conviction ' + _PS_TRADEABLE_MIN_CONV + '+ with the overlay confirming) in this scan. That is a valid result — no forced trades.')
+        + sec('WATCH — real plan, not confirmed yet', 'var(--gtb-amber)', ideas.watch, ideas.watchTotal, 'watch', 'No watch-list setups at conviction ' + _PS_IDEA_WATCH_MIN_CONV + '+.')
+        + '</div>';
+}
+
+function _psIdeasText() {
+    var ideas = _psBuildIdeas(), L = [];
+    var fmt = function (r, kind) {
+        var sz = _psIdeaSizing(r);
+        return _psIdeaSide(r) + ' ' + r.name + ' [' + kind + ', conviction ' + r.convictionPct + '%] entry ' + r.entry.toFixed(2)
+            + ' stop ' + r.stop.toFixed(2) + ' target ' + r.target.toFixed(2) + ' R:R 1:' + (r.riskReward != null ? r.riskReward.toFixed(1) : '—')
+            + (sz && sz.qty ? ' qty ' + sz.qty : '') + ' — ' + r.verdict;
+    };
+    ideas.ready.forEach(function (r) { L.push(fmt(r, 'READY')); });
+    ideas.watch.forEach(function (r) { L.push(fmt(r, 'WATCH')); });
+    return L.join('\n');
+}
+
+jQ(document).on('click', '#ps-ideas-btn', function () {
+    showPopUpWindow('ps-ideas', _psIdeasHtml(), 'Trading Ideas', 780, 640);
+    var _cls = 'popup-custom-style-ps-ideas';
+    var _title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
+        + '<span style="font-weight:800;font-size:0.7rem;"><i class="bi bi-lightbulb"></i> TRADING IDEAS</span>'
+        + popupWinControls(_cls) + '</div>';
+    jQ('.' + _cls).find('.popupwindow_titlebar_text').html(_title);
+    hideNativePopupButtons(_cls);
+    jQ('.' + _cls).find('.popupwindow_titlebar').removeClass('popupwindow_titlebar_draggable');
+    jQ('.' + _cls).toggleClass('gtb-light', typeof _gtbIsLightTheme === 'function' ? _gtbIsLightTheme() : (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
+});
+jQ(document).on('click', '#ps-ideas-copy', function () {
+    var t = _psIdeasText();
+    if (!t) { try { callSackBarInfo('No ideas to copy'); } catch (e) {} return; }
+    try { navigator.clipboard.writeText(t).then(function () { callSackBarInfo('Ideas copied'); }); } catch (e) { try { callSackBarInfo('Copy failed'); } catch (e2) {} }
 });
 
 // ─── Pre-Market Brief ───────────────────────────────────────────────────────

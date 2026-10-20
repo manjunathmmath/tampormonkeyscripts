@@ -74,6 +74,10 @@ function makeUIChanges() {
     // affect the nav row's width/wrapping since it no longer participates in that flex
     // container's layout math -- it's just visually overlaid in the same spot.
     _gtbPositionNavToolsIcon();
+    // Kite's chart page renders its header after load, so the logo's rect at this moment can
+    // still be pre-layout; re-place the icon once the page has settled.
+    setTimeout(_gtbPositionNavToolsIcon, 1500);
+    setTimeout(_gtbPositionNavToolsIcon, 4000);
 }
 
 function _gtbPositionNavToolsIcon() {
@@ -83,7 +87,7 @@ function _gtbPositionNavToolsIcon() {
     if (!$icon.length) {
         $icon = jQ(
             '<a href="#" id="gtb-nav-tools-launcher" title="Groot — All Tools" '
-            + 'style="position:fixed;z-index:10000;display:inline-flex;align-items:center;'
+            + 'style="position:fixed;z-index:4000;display:inline-flex;align-items:center;'
             + 'justify-content:center;line-height:1;width:28px;height:28px;">'
             + '<i class="bi bi-grid-3x3-gap-fill" style="font-size:15px;"></i></a>'
         );
@@ -93,10 +97,22 @@ function _gtbPositionNavToolsIcon() {
         jQ(window).on('resize', _gtbPositionNavToolsIcon);
     }
     var rect = $logo[0].getBoundingClientRect();
-    // Clamped to a minimum of 2px from the viewport edge -- if the logo itself sits right at
-    // x≈0 (no room to its left at all), this keeps the icon visible (slightly overlapping the
-    // logo in that worst case) instead of computing a negative left and rendering off-screen.
-    $icon.css({ top: (rect.top + (rect.height - 28) / 2) + 'px', left: Math.max(2, rect.left - 34) + 'px' });
+    // Normally the icon sits just LEFT of the logo. On Kite's chart page the logo is pinned
+    // to the viewport's left edge (no room for a 28px icon there), and the old clamp to 2px
+    // put the icon right on top of the logo. When there is no room on the left, sit it just
+    // RIGHT of the logo instead, a little smaller so it fits the gap before the tab bar.
+    var roomLeft = rect.left - 2;
+    var size = 28, left;
+    if (roomLeft >= 34) {
+        left = rect.left - 34;
+    } else {
+        size = 24;
+        left = rect.right + 4;
+    }
+    $icon.css({
+        top: (rect.top + (rect.height - size) / 2) + 'px', left: left + 'px',
+        width: size + 'px', height: size + 'px'
+    });
 }
 
 // Confirm dialog before adding all FO_LIST instruments to watchlist.
