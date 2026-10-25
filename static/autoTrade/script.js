@@ -417,6 +417,8 @@ jQ(document).ready(function () {
 });
 
 async function showDetailsOnChartPage(exhange, symbol, token) {
+    // Settings flag (config.js show_detail_on_chart): only open the Instrument Detail View popup on a chart page when it is ticked.
+    if (typeof SHOW_DETAIL_ON_CHART !== 'undefined' && !SHOW_DETAIL_ON_CHART) return;
     let rowData = {}
     rowData['exchange'] = exhange
     rowData['TRADINGSYMBOL'] = symbol

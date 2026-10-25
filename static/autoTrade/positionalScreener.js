@@ -268,7 +268,14 @@ jQ(document).on('click', '#show-positional-screener', function (e) {
 // symbol directly regardless of which category filter is active, for genuine multi-select.
 function _psContentHtml() {
     var counts = _psCategoryCounts();
-    return '<div class="ps-wrap">'
+    var modeBar = (typeof _ltContentHtml === 'function')
+        ? '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;flex:0 0 auto;border-bottom:1px solid var(--gtb-border);"><div class="sv-seg-group">'
+            + '<button class="sv-seg-btn ps-mode-btn sv-seg-active" data-mode="swing" type="button"><span class="sv-seg-label">SWING (F&amp;O)</span></button>'
+            + '<button class="sv-seg-btn ps-mode-btn" data-mode="lt" type="button"><span class="sv-seg-label">LONG-TERM (NIFTY 50 / 100 / 200 / 500)</span></button>'
+            + '</div></div>'
+        : '';
+    return '<div class="ps-wrap">' + modeBar
+        + '<div id="ps-swing-panel" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;">'
         // ── Filter bar ───────────────────────────────────────────────────────
         + '<div id="ps-filter-row">'
         +   '<div class="sv-seg-group">'
@@ -335,6 +342,8 @@ function _psContentHtml() {
         + '<div id="ps-table-wrap" class="ps-table-wrap">'
         +   '<div class="sv-empty-state"><i class="bi bi-funnel-fill"></i><span>Choose a filter above, or add symbols by search, then click SCAN</span></div>'
         + '</div>'
+        + '</div>'
+        + ((typeof _ltContentHtml === 'function') ? '<div id="ps-lt-panel" style="display:none;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;">' + _ltContentHtml() + '</div>' : '')
         + '</div>';
 }
 
@@ -1436,6 +1445,97 @@ function _psRenderBreadth() {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+// ─── Per-stock detail card (same layout as the Option Strike Search detail) ──────────────
+// Click a symbol (or the chevron) to expand it under its row: verdict line, signal agreement chips, entry timing chips,
+// the final read and the risk line. Everything is read from the scan result already in _PS_CACHE; no fetch.
+// Heuristic checklists, not probabilities, not back-tested.
+var _PS_OPEN = {};   // name -> true while its detail row is expanded
+function _psDetailCardHtml(r) {
+    var sign = _psViewSign(r.primary);
+    var side = sign > 0 ? 'LONG' : sign < 0 ? 'SHORT' : 'NO DIRECTION';
+    var sideCol = sign > 0 ? 'var(--gtb-green)' : sign < 0 ? 'var(--gtb-red)' : 'var(--gtb-amber)';
+    var chip = function (label, st, tip) {
+        var col = st > 0 ? 'var(--gtb-green)' : st < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
+        return '<span title="' + String(tip || '').replace(/"/g, '&quot;') + '" style="color:' + col + ';border:1px solid ' + col + ';padding:0 5px;margin:0 3px 2px 0;display:inline-block;">'
+            + (st > 0 ? '✓ ' : st < 0 ? '✗ ' : '– ') + label + '</span>';
+    };
+    var vs = function (x, dead) { return sign === 0 || x == null || !isFinite(x) ? 0 : (Math.abs(x) <= (dead || 0) ? 0 : (x > 0 ? 1 : -1) * sign); };   // +1 agrees with the side, -1 opposes, 0 flat/unknown
+    var p = r.primary || {}, tt = p.tt, st = p.st, stg = p.stage, mom = p.mom;
+    var votes = [];
+    var vote = function (label, state, tip) { votes.push({ label: label, st: state, tip: tip }); };
+    if (sign !== 0) {
+        var rules = sign > 0 ? (tt && tt.ok ? tt.rulesPassed : null) : (st && st.ok ? st.rulesPassed : null);
+        if (rules != null) vote('Template ' + rules + '/8', rules >= 7 ? 1 : rules >= 5 ? 0 : -1, (sign > 0 ? 'Trend Template (long)' : 'Short Template') + ': ' + rules + ' of 8 rules pass.');
+        if (stg && stg.ok) { var sn = /2/.test(stg.label) ? 1 : /4/.test(stg.label) ? -1 : 0; vote('Stage', sn === 0 ? 0 : sn * sign, 'Weinstein: ' + stg.label + '.'); }
+        if (mom && mom.ok) vote('Momentum', mom.gapFlagged ? 0 : vs(mom.score), 'Clenow momentum score ' + mom.score.toFixed(0) + (mom.gapFlagged ? ' (a single big gap day distorts it)' : '') + '.');
+        vote('Daily trend', vs(r.trendScore), 'Today\'s daily trend: ' + r.trendLabel + '.');
+        vote('Breakout', vs(r.breakoutScore), 'Breakout state: ' + r.breakoutLabel + '.');
+        vote('Rel. strength', vs(r.relStrength, 1), '20-day strength vs NIFTY ' + (r.relStrength >= 0 ? '+' : '') + (r.relStrength != null ? r.relStrength.toFixed(1) : '?') + '%.');
+        vote('Futures OI', vs(r.oiScore), 'Futures OI read: ' + r.oiLabel + '.');
+        vote('Curve', vs(r.curveScore), 'Futures curve: ' + (r.curveLabel || 'no data') + '.');
+        var mv = null; try { mv = _psMarketView(); } catch (e) {}
+        if (mv && mv.label !== 'TOO FEW SIGNALS') vote('Market', vs(mv.net, 0.15), 'Market breadth of this scan: ' + mv.label + ' (' + mv.buy + ' buy / ' + mv.sell + ' sell).');
+    }
+    var good = votes.filter(function (v) { return v.st > 0; }).length, tot = votes.length;
+    var apct = tot ? Math.round(good / tot * 100) : null;
+    var aTone = apct == null ? ['NO DIRECTIONAL VIEW', 'var(--gtb-muted)'] : apct >= 70 ? ['FAVOURABLE', 'var(--gtb-green)'] : apct >= 45 ? ['MIXED', 'var(--gtb-amber)'] : ['UNFAVOURABLE', 'var(--gtb-red)'];
+
+    // Entry timing: is NOW a good moment for a swing entry?
+    var checks = [];
+    var tchk = function (label, state, why) { checks.push({ label: label, s: state, why: why }); };
+    if (sign !== 0) {
+        if (r.since) tchk('Swing timing', r.since.label === 'EARLY' ? 1 : r.since.label === 'MID' ? 0 : -1,
+            'The view is ' + r.since.label + ': ' + (r.since.favPct >= 0 ? '+' : '') + r.since.favPct.toFixed(1) + '% in its favour' + (r.since.moveAtr != null ? ' (' + r.since.moveAtr.toFixed(1) + ' ATR)' : '') + ' since it began.');
+        tchk('Extension', r.extensionNote ? -1 : 1, r.extensionNote ? 'Price is stretched: ' + r.extensionNote + '.' : 'Price is not stretched from its 50-day average.');
+        if (r.entry != null && r.stop != null && r.ltp) {
+            var rd = Math.abs(r.entry - r.stop) || 1, dist = Math.abs(r.ltp - r.entry) / rd;
+            tchk('Near entry', dist <= 0.5 ? 1 : dist <= 1.5 ? 0 : -1, 'Price is ' + dist.toFixed(1) + '× the stop distance from the planned entry ' + r.entry.toFixed(1) + '.');
+        }
+        tchk('Today\'s tape', r.agree ? 1 : r.disagree ? -1 : 0, r.agree ? 'Today\'s overlay agrees with the trend.' : r.disagree ? 'Today\'s overlay disagrees with the trend.' : 'Today\'s overlay is not confirming yet.');
+        if (r.convictionPct != null) tchk('Conviction', r.convictionPct >= 60 ? 1 : r.convictionPct >= 40 ? 0 : -1, 'Rule-based conviction is ' + r.convictionPct + '%.');
+        if (r.stats && r.stats.cur && r.stats.cur.dir) {
+            var stk = r.stats.cur, withTrend = (stk.dir > 0 ? 1 : -1) === sign;
+            tchk('Day streak', withTrend ? 0 : 1, withTrend ? 'Price has run ' + stk.len + ' day(s) in the trade direction: wait for a pause.' : 'Price is pulling back ' + stk.len + ' day(s) against the trend: a better entry than chasing.');
+        }
+    }
+    var tg = checks.filter(function (c) { return c.s > 0; }).length, tn = checks.filter(function (c) { return c.s === 0; }).length;
+    var tpct = checks.length >= 4 ? Math.round((tg + 0.5 * tn) / checks.length * 100) : null;
+    var tTone = tpct == null ? null : tpct >= 70 ? ['GOOD TIME TO ENTER', 'var(--gtb-green)'] : tpct >= 50 ? ['ACCEPTABLE, enter with care', 'var(--gtb-amber)'] : tpct >= 35 ? ['WAIT for a better entry', 'var(--gtb-amber)'] : ['POOR TIMING, do not chase', 'var(--gtb-red)'];
+    var against = checks.filter(function (c) { return c.s < 0; });
+
+    var inr = function (x) { return '₹' + Math.round(x).toLocaleString('en-IN'); };
+    var html = '<div class="ps-detail-card" style="padding:8px 12px 10px;font-size:0.62rem;line-height:1.5;">'
+        + '<div><b style="font-size:0.72rem;">' + r.name + '</b> <b style="color:' + sideCol + ';">' + side + '</b> <span style="color:' + r.verdictColor + ';">' + r.verdict + '</span>'
+        + (r.convictionPct != null ? ' <span class="oss-na">conviction ' + r.convictionPct + '%</span>' : '') + ' <span class="oss-na">LTP ' + r.ltp.toFixed(2) + '</span></div>'
+        + '<div style="color:var(--gtb-muted);">Primary read: ' + (p.ok ? p.label : 'insufficient history') + (stg && stg.ok ? ' · ' + stg.label : '') + '</div>';
+    if (tot) html += '<div style="margin-top:4px;"><b style="color:' + aTone[1] + ';">Signal agreement ' + good + '/' + tot + ' (' + apct + '%) — ' + aTone[0] + '</b>' + (typeof _ii === 'function' ? _ii('ps-sa') : '') + ' <span class="oss-na">not a probability of profit</span>'
+        + '<div style="margin-top:3px;">' + votes.map(function (v) { return chip(v.label, v.st, v.tip); }).join('') + '</div></div>';
+    if (tTone) html += '<div style="margin-top:4px;"><b style="color:' + tTone[1] + ';">Entry timing ' + tpct + '% — ' + tTone[0] + '</b>' + (typeof _ii === 'function' ? _ii('ps-timing') : '') + ' <span class="oss-na">checklist, not a probability of profit</span>'
+        + '<div style="margin-top:3px;">' + checks.map(function (c) { return chip(c.label, c.s, c.why); }).join('') + '</div>'
+        + (against.length ? '<div style="color:var(--gtb-muted);margin-top:2px;">Against: ' + against.map(function (c) { return c.why; }).join(' ') + '</div>' : '') + '</div>';
+    // Final read, in plain words
+    var why = []; try { why = _psIdeaWhy(r); } catch (e) {}
+    html += '<div style="margin-top:4px;"><b>Final read:</b> ' + (sign === 0 ? 'No directional view (' + (p.ok ? p.label : 'insufficient history') + ') — no trade plan by design.'
+        : r.verdict + (tpct != null && tpct < 50 ? ' — the trend is there but the entry is poor right now; wait for a pullback.' : tpct != null ? ' — ' + (tpct >= 70 ? 'the trend and the entry timing line up.' : 'the trend is there; entry is acceptable with care.') : '.')) + '</div>';
+    if (why.length) html += '<ul style="margin:2px 0 2px 16px;padding:0;color:var(--gtb-muted);">' + why.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
+    // Risk line
+    if (r.entry != null && r.stop != null) {
+        var stopPct = Math.abs(r.entry - r.stop) / r.entry * 100, tgtPct = Math.abs(r.target - r.entry) / r.entry * 100, sz = null;
+        try { sz = _psIdeaSizing(r); } catch (e) {}
+        html += '<div style="margin-top:3px;"><b>Risk:</b> entry ' + r.entry.toFixed(2) + ', stop ' + r.stop.toFixed(2) + ' (' + stopPct.toFixed(1) + '% away), target ' + r.target.toFixed(2) + ' (' + tgtPct.toFixed(1) + '%), reward:risk '
+            + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '. '
+            + (!sz ? 'Set Account Capital in Settings to see a size.' : sz.qty < 1 ? 'The stop is too wide for ' + sz.riskPct + '% risk (' + inr(sz.riskAmt) + ') on ' + inr(sz.capital) + ': skip or reduce size.'
+                : 'At ' + sz.riskPct + '% risk: qty ' + sz.qty + ', cost ' + inr(sz.cost) + ', max loss ' + inr(sz.maxLoss) + ', target gain ' + inr(sz.gain) + (sz.capped ? ' (capped at capital)' : '') + '.')
+            + (r.exitCriteria ? '<br><span class="oss-na">Exit / invalidation: ' + r.exitCriteria + '</span>' : '') + '</div>';
+    }
+    return html + '</div>';
+}
+jQ(document).on('click', '.ps-detail-toggle', function (e) {
+    e.preventDefault();
+    var nm = jQ(this).attr('data-name'); if (!nm) return;
+    _PS_OPEN[nm] = !_PS_OPEN[nm]; _psRenderTable();
+});
+
 function _psRenderTable() {
     _psRenderSummary();
     _psRenderBreadth();
@@ -1537,8 +1637,8 @@ function _psRenderTable() {
                 + checkboxCell
                 + '<td><i class="bi bi-info-circle ps-exit-icon" title="' + (r.exitCriteria + (extTip ? ' (' + extTip + ')' : '') + ' [' + (r.levelsSource || '') + ']').replace(/"/g, '&quot;') + '"></i></td>'
                 + '<td><a href="' + kiteLink + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open chart"><i class="bi bi-graph-up"></i></a></td>'
-                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button></td>'
-                + '<td class="ps-cell-strong">' + r.name + '</td>'
+                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button> <button class="oss-chart-link ps-bounce-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Bounce / pullback odds: how often this name reversed by 1 ATR within 5 and 10 sessions when it looked like this before"><i class="bi bi-arrow-repeat" style="color:var(--gtb-accent,#58a6ff);"></i></button></td>'
+                + '<td class="ps-cell-strong"><span class="ps-detail-toggle" data-name="' + r.name + '" style="cursor:pointer;white-space:nowrap;" title="Show the details for ' + r.name + ' (signal agreement, entry timing, risk)"><i class="bi bi-chevron-' + (_PS_OPEN[r.name] ? 'down' : 'right') + '" style="font-size:0.5rem;margin-right:3px;"></i>' + r.name + '</span></td>'
                 + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
                 + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
                 + '<td>' + r.ltp.toFixed(1) + '</td>'
@@ -1556,7 +1656,8 @@ function _psRenderTable() {
                 + '<td style="color:var(--gtb-green);">' + (hasPlan ? r.target.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
                 + '<td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td>'
-                + '</tr>';
+                + '</tr>'
+                + (_PS_OPEN[r.name] ? '<tr class="ps-detail-row"><td colspan="22" style="padding:0;background:var(--gtb-surface2);border-left:3px solid ' + r.verdictColor + ';">' + _psDetailCardHtml(r) + '</td></tr>' : '');
         }).join('')
         + '</tbody></table>';
     jQ('#ps-table-wrap').html(html);

@@ -216,7 +216,7 @@ function _ossSuggestedKey(name, opts) {
             if (ms0 && ms0.signal && ((/WAIT/i.test(ms0.signal) && /conflict/i.test(ms0.reason || '')) || /NO TRADE/i.test(ms0.signal)))
                 return { key: null, why: 'Market verdict: ' + ms0.signal + ' — ' + (ms0.reason || 'conflicting signals') + '. No strategy suggested until the signals line up; pick one manually if you disagree.' };
         }
-        if (name !== 'NIFTY 50' && name !== 'NIFTY BANK') {
+        if (name !== 'NIFTY 50' && name !== 'NIFTY BANK' && name !== 'SENSEX') {
             // Every other instrument: the SAME prediction the Instrument Detail View's Prediction
             // card shows (_svComputePrediction -> BUY CE / BUY PE / WAIT / RANGE / NO TRADE).
             if (typeof _svComputePrediction === 'function') {
@@ -238,7 +238,7 @@ function _ossSuggestedKey(name, opts) {
             return { key: 'condor', why: tx + ' (no clear direction) → a defined-risk range strategy.' };
         }
         if (typeof _gtbFinalVerdict !== 'function') return null;
-        var v = _gtbFinalVerdict();
+        var v = _gtbFinalVerdict(name);
         if (!v) return null;
         if (/dead zone/i.test(v.headline || '')) return { key: 'condor', why: 'Final Verdict: ' + v.headline + ' → price is expected to chop inside a band, so a defined-risk range strategy (Iron Condor) fits. Keep the short strikes outside the dead-zone band.' };
         if (/market guard/i.test(v.headline || '')) return { key: null, why: 'The verdict is "' + v.headline + '" — no strategy suggested.' };
@@ -314,8 +314,8 @@ function _ossAgreement(name, view) {
             if (r && r.primary && r.primary.ok) add('Positional', sg(r.primary.dir));
         } catch (e) {}
         try {
-            if (name === 'NIFTY 50' || name === 'NIFTY BANK') {
-                var fv = _gtbFinalVerdict();
+            if (name === 'NIFTY 50' || name === 'NIFTY BANK' || name === 'SENSEX') {
+                var fv = _gtbFinalVerdict(name);
                 if (fv) add('Final Verdict', fv.call === 'LONG' ? 1 : fv.call === 'SHORT' ? -1 : (fv.dir ? sg(fv.dir) : 0));
             } else {
                 var d = _svComputePrediction(name, '');
@@ -332,7 +332,7 @@ function _ossAgreement(name, view) {
             return '<span style="color:' + c + ';border:1px solid ' + c + ';padding:0 5px;margin:0 3px 2px 0;display:inline-block;">' + (ok ? '✓ ' : x.v === 0 ? '– ' : '✗ ') + x.label + '</span>';
         }).join('');
         return '<div class="oss-agree" title="How many independent signals point the same way as this strategy. A tally, not a probability of profit.">'
-            + '<b style="color:' + tone[1] + ';">Signal agreement ' + agree + '/' + votes.length + ' (' + pct + '%) — ' + tone[0] + '</b> '
+            + '<b style="color:' + tone[1] + ';">Signal agreement ' + agree + '/' + votes.length + ' (' + pct + '%) — ' + tone[0] + '</b>' + (typeof _ii === 'function' ? _ii('oss-agree') : '') + ' '
             + '<span class="oss-na">not a probability of profit</span><div style="margin-top:3px;">' + chips + '</div></div>';
     } catch (e) { return ''; }
 }
@@ -344,11 +344,81 @@ function _ossAgreement(name, view) {
 function _ossTiming(name, strat, dte) {
     var v = strat.view || '';
     var want = /Bullish|Mildly bullish/.test(v) ? 1 : /Bearish|Mildly bearish/.test(v) ? -1 : 0;
-    return want ? _ossTimingFor(name, want, strat.key, dte) : '';
+    if (want) return _ossTimingFor(name, want, strat.key, dte);
+    return /Range-bound/.test(v) ? _ossTimingFor(name, 0, strat.key, dte) : '';   // range strategies: is the market quiet enough now?
 }
 // want: +1 bullish / -1 bearish. stratKey and dte are optional (the expiry check needs both).
 // Also used by the dashboard's Final Verdict card, which has a direction but no strategy.
 var _OSS_TIMING_LAST = null;
+// Range-bound strategies (Iron Condor / Iron Fly / short straddle or strangle) want a QUIET market: price inside today's
+// 9:15 band, little of the expected day range used, flat flow, no squeeze, and not too close to expiry or the close.
+// Same chip format as the directional checklist. Heuristic, not a probability of profit.
+function _ossTimingRangeChecks(name, stratKey, dte, add, tr, sm, sg) {
+    var ltp = tr ? parseFloat(tr.ltp) : NaN, open = tr ? parseFloat(tr.open || tr.price) : NaN;
+    // 1. inside the 9:15 BSO..ASO band?
+    if (tr && tr.strikeData && ltp && open) {
+        var aso = parseFloat(tr.strikeData.ustrikeOne), s1 = aso - open, bso = open - s1;
+        if (s1 > 0) {
+            var off = Math.abs(ltp - open) / s1;      // 0 = at the open, 1 = at ASO/BSO
+            add('Inside 9:15 band', off < 0.6 ? 1 : off < 1 ? 0 : -1,
+                off < 0.6 ? 'Price is well inside the 9:15 ASO/BSO band, the quiet zone a range strategy wants.'
+                : off < 1 ? 'Price is near the edge of the 9:15 band (' + Math.round(off * 100) + '% of the way to ' + (ltp > open ? 'ASO' : 'BSO') + ').'
+                : 'Price is already outside the 9:15 ASO/BSO band, so the range is breaking.');
+        }
+        var rng = parseFloat(tr.vix && tr.vix.vixDDRange);
+        if (rng > 0) {
+            var used = Math.abs(ltp - open) / rng;
+            add('Day range', used < 0.4 ? 1 : used < 0.8 ? 0 : -1,
+                used < 0.4 ? 'Only ' + Math.round(used * 100) + '% of the expected day range is used: the market is quiet.'
+                : used < 0.8 ? Math.round(used * 100) + '% of the expected day range is used.'
+                : 'The expected day range is already ' + Math.round(used * 100) + '% used: not a quiet market.');
+        }
+    }
+    // 2. flow flat? (a clear futures trend is a directional day)
+    if (sm.futures_trend !== undefined && sm.futures_trend !== null) {
+        var f = sg(sm.futures_trend);
+        add('Flow flat', f === 0 ? 1 : -1, f === 0 ? 'Futures flow is flat right now, which suits a range.' : 'Futures flow is clearly ' + (f > 0 ? 'bullish' : 'bearish') + ': a directional day is not a range day.');
+    }
+    // 3. no short covering / long unwinding squeeze
+    var rem = sm.futures_trend_remark || '';
+    if (rem) {
+        var sq = rem === 'SHOT_COVERING' || rem === 'LONG_UNWINDING';
+        add('No squeeze', sq ? -1 : 1, sq ? 'A ' + (rem === 'SHOT_COVERING' ? 'short covering' : 'long unwinding') + ' squeeze is active: fast one-way moves hurt range sellers.' : 'No squeeze is active.');
+    }
+    // 4. price near futures VWAP
+    if (sm.avwap && ltp) {
+        var rg = tr && tr.vix && parseFloat(tr.vix.vixDDRange);
+        var dist = Math.abs(ltp - sm.avwap), rel = rg > 0 ? dist / rg : null;
+        if (rel != null) add('Near VWAP', rel < 0.15 ? 1 : rel < 0.3 ? 0 : -1, rel < 0.15 ? 'Price is hugging futures VWAP.' : rel < 0.3 ? 'Price is a little away from futures VWAP.' : 'Price has moved well away from futures VWAP.');
+    }
+    // 5. live probability of reaching either 9:15 level
+    try {
+        var lp = _gtbLevelProb(name);
+        if (lp && lp.ok) {
+            var hi = Math.max(lp.pASO, lp.pBSO);
+            add('Level prob', hi < 35 ? 1 : hi < 50 ? 0 : -1, 'Live-signal likelihood of reaching ASO is ' + lp.pASO + '% and BSO ' + lp.pBSO + '%' + (hi < 35 ? ': both unlikely.' : hi < 50 ? '.' : ': one side is likely, so the range may break.'));
+        }
+    } catch (e) {}
+    // 6. dead zone: signals are weak, chop expected (NSE names only)
+    try {
+        if (!_ossIsMcx(name)) { var dz = _gtbDeadZone(name); if (dz) add('Dead zone', 1, 'Signals are too weak for a trend: price is expected to chop between ' + dz.lo + ' and ' + dz.hi + '.'); }
+    } catch (e) {}
+    // 7. time of day: after the open settles, before the late session
+    try {
+        var tm = _gtbDecNowMin();
+        if (_ossIsMcx(name)) add('Time of day', (tm < 9 * 60 + 15 || tm >= 22 * 60 + 45) ? -1 : 1, (tm < 9 * 60 + 15 || tm >= 22 * 60 + 45) ? 'Outside the active MCX session window.' : 'Inside the MCX session.');
+        else add('Time of day', tm < 9 * 60 + 25 ? -1 : tm <= 13 * 60 + 30 ? 1 : tm <= 14 * 60 + 45 ? 0 : -1,
+            tm < 9 * 60 + 25 ? 'Before 9:25 the opening candle has not settled.'
+            : tm <= 13 * 60 + 30 ? 'Mid-session: the market has settled and there is time for decay to work.'
+            : tm <= 14 * 60 + 45 ? 'Late session: little time left to collect premium.'
+            : 'Last 45 minutes: a poor time to open a new position.');
+    } catch (e) {}
+    // 8. days to expiry: enough decay to be worth it, not so close that gamma bites
+    if (dte != null) add('Expiry', dte <= 1 ? -1 : dte <= 7 ? 1 : 0,
+        dte <= 1 ? 'Expiry is today or tomorrow: gamma risk is high, a small move can hurt a range position.'
+        : dte <= 7 ? dte + ' days to expiry: decay works for a seller and there is room to adjust.'
+        : dte + ' days to expiry: decay is slow, so the premium comes in slowly.');
+}
 function _ossTimingFor(name, want, stratKey, dte) {
     _OSS_TIMING_LAST = null;
     try {
@@ -358,6 +428,8 @@ function _ossTimingFor(name, want, stratKey, dte) {
         var sm = (typeof INSTRUMENT_SCORE_MAP !== 'undefined' && INSTRUMENT_SCORE_MAP[name]) || {};
         var sg = function (x) { return x > 0 ? 1 : x < 0 ? -1 : 0; };
 
+        if (want === 0) _ossTimingRangeChecks(name, stratKey, dte, add, tr, sm, sg);
+        else {
         // 1. Where price sits against today's 9:15 levels, and how much of the day's range is used
         if (tr && tr.strikeData) {
             var ltp = parseFloat(tr.ltp), open = parseFloat(tr.open || tr.price);
@@ -428,6 +500,7 @@ function _ossTimingFor(name, want, stratKey, dte) {
                 : dte <= 5 ? dte + ' days to expiry: decay is noticeable.'
                 : dte + ' days to expiry: enough time for the move.');
         }
+        }   // end directional checks
         if (checks.length < 4) return '<div class="oss-desc">Entry timing: not enough data yet (load prices or run the dashboard refresh).</div>';
         var good = checks.filter(function (c) { return c.s > 0; }).length, neu = checks.filter(function (c) { return c.s === 0; }).length;
         var pct = Math.round((good + 0.5 * neu) / checks.length * 100);
@@ -442,7 +515,7 @@ function _ossTimingFor(name, want, stratKey, dte) {
             return '<span title="' + c.why.replace(/"/g, '&quot;') + '" style="color:' + col + ';border:1px solid ' + col + ';padding:0 5px;margin:0 3px 2px 0;display:inline-block;">'
                 + (c.s > 0 ? '✓ ' : c.s < 0 ? '✗ ' : '– ') + c.label + '</span>';
         }).join('');
-        return '<div class="oss-agree"><b style="color:' + tone[1] + ';">Entry timing ' + pct + '% — ' + tone[0] + '</b> <span class="oss-na">checklist, not a probability of profit</span>'
+        return '<div class="oss-agree"><b style="color:' + tone[1] + ';">Entry timing ' + pct + '% — ' + tone[0] + '</b>' + (typeof _ii === 'function' ? _ii('oss-timing') : '') + ' <span class="oss-na">checklist, not a probability of profit</span>'
             + '<div style="margin-top:3px;">' + chips + '</div>'
             + (bad.length ? '<div class="oss-desc" style="margin-top:2px;">Against: ' + bad.map(function (c) { return c.why; }).join(' ') + '</div>' : '')
             + '</div>';
@@ -583,7 +656,7 @@ function _ossScanCompute(name, expMap) {
     if (_OSS_AGREE_LAST) row.agree = { agree: _OSS_AGREE_LAST.agree, total: _OSS_AGREE_LAST.total, pct: _OSS_AGREE_LAST.pct };
     // same rule as the search: a range strategy with under 45% agreement is dropped
     if (/Range-bound/.test(strat.view) && row.agree && row.agree.pct < 45) { row.key = null; row.label = 'none'; row.view = ''; row.want = 0; row.note = 'Range view dropped: only ' + row.agree.pct + '% of signals support it.'; return row; }
-    if (row.want) {
+    if (row.key) {
         _OSS_TIMING_LAST = null; _ossTimingFor(name, row.want, sg.key, _ossScanDte(name, expMap));
         if (_OSS_TIMING_LAST) row.timing = { pct: _OSS_TIMING_LAST.pct, label: _OSS_TIMING_LAST.label };
     }
@@ -741,7 +814,7 @@ function _ossScanSummaryHtml() {
             + '<span><b style="color:var(--gtb-green);">' + w.bull + '%</b> bullish · <b style="color:var(--gtb-red);">' + w.bear + '%</b> bearish · ' + (100 - w.bull - w.bear) + '% neutral <span class="oss-na">· of the directional weight ' + w.dirBull + '% bullish / ' + w.dirBear + '% bearish = <b>' + w.wLean + '</b> (top-' + w.k + ' of ' + w.n + ' weighted stocks scanned)</span></span></div>';
     }).join('');
     var warn = t.noConfirm.length ? '<div class="oss-sum-row" style="color:var(--gtb-amber);font-weight:700;">MIXED - the heavyweights are not confirming the ' + t.label.split('-')[0].toLowerCase() + ' lean (' + t.noConfirm.join('; ') + '). Treat NIFTY / BANK NIFTY trades with caution.</div>' : '';
-    return warn + '<div class="oss-sum-row"><b style="color:' + col + ';font-size:0.7rem;">' + (S.running ? 'So far: ' : 'Trend overview: ') + t.label + '</b>'
+    return warn + '<div class="oss-sum-row"><b style="color:' + col + ';font-size:0.7rem;">' + (S.running ? 'So far: ' : 'Trend overview: ') + t.label + '</b>' + (typeof _ii === 'function' ? _ii('oss-scan-sum') : '')
         + chip('bullish', t.bull + ' (' + pct(t.bull, t.n) + '%)', 'var(--gtb-green)', 'Names whose suggested strategy is bullish')
         + chip('bearish', t.bear + ' (' + pct(t.bear, t.n) + '%)', 'var(--gtb-red)', 'Names whose suggested strategy is bearish')
         + chip('range', t.range, 'var(--gtb-muted)', 'Range strategy suggested (no direction)')
@@ -924,6 +997,7 @@ function _ossWrapHtml() {
         +     '<button id="oss-search-btn" class="fsig-add-btn"><i class="bi bi-search"></i> Search</button>'
         +     '<div id="oss-ac-drop" class="fsig-ac-drop" style="position:fixed;"></div>'
         +   '</div>'
+        +   '<button id="oss-refresh-btn" class="sv-pill-btn" type="button" title="Re-fetch this instrument from Kite (LTP, OI/OBV, futures, every leg price) and search again, instead of using cached data"><i class="bi bi-arrow-clockwise"></i> Refresh</button>'
         +   '<button id="oss-scan-btn" class="sv-pill-btn" type="button" title="Scan all indices and F&amp;O stocks and rank them by signal agreement and entry timing"><i class="bi bi-list-check"></i> Scan all</button>'
         +   '<label class="oss-ltp-override">Strategy <select id="oss-strategy" class="oss-select">' + opts + '</select></label>'
         +   '<label class="oss-ltp-override" title="Distance of the short / OTM strikes from ATM, in points. Blank = auto (one expected move to expiry for indices, else 3 strikes).">Offset <input type="text" id="oss-offset" placeholder="auto"></label>'
@@ -993,6 +1067,40 @@ jQ(document).on('click', function (e) {
     if (!jQ(e.target).closest('#oss-ac-drop, #oss-input').length) jQ('#oss-ac-drop').empty().hide();
 });
 jQ(document).on('click', '#oss-search-btn', _ossRunSearch);
+// Refresh = a real re-fetch for the instrument in the box, not a re-render of cached data: drops the leg-price cache, the
+// loaded-data markers and the held suggestion, re-reads today's LTP, reloads OI/OBV + futures (NSE or MCX), then searches again.
+var _OSS_REFRESHING = false;
+async function _ossRefresh() {
+    if (_OSS_REFRESHING) return;
+    var name = (jQ('#oss-input').val() || '').trim();
+    if (!name) { _ossRunSearch(); return; }
+    _OSS_REFRESHING = true;
+    var $b = jQ('#oss-refresh-btn').prop('disabled', true).html('<i class="bi bi-arrow-repeat spin"></i> Refreshing…');
+    try {
+        _OSS_PRICE_CACHE = {}; _OSS_PRICE_META = {};
+        delete _OSS_DATA_AT[name]; delete _OSS_LOADED[name]; delete _OSS_STICKY[name];
+        // 1. today's LTP for this instrument (NSE names only; MCX LTP is re-read by showFutureDetailsMCX below)
+        try {
+            var tok = (typeof INSTRUMENT_TOKENS !== 'undefined') ? INSTRUMENT_TOKENS[name] : null;
+            if (tok && !_ossIsMcx(name)) {
+                var res = await getHistoricalDataUsingPromise(tok, CURRENT_DAY, _gtbCurrDayTo(), '5minute');
+                var cs = _gtbTrimCandles(res && res.data && res.data.candles);
+                if (cs && cs.length) {
+                    var ltpObj = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}');
+                    ltpObj[name] = { name: name, ltp: parseFloat(cs[cs.length - 1][4]).toFixed(2) };
+                    localStorage.setItem('INSTRUMENT_LTP_PRICE', JSON.stringify(ltpObj));
+                }
+            }
+        } catch (e) { console.log('[oss] refresh LTP', e); }
+        // 2. OI/OBV + futures (same loader the scan uses; it handles NSE and MCX)
+        await _ossScanLoad(name);
+        _OSS_LOADED[name] = true;
+    } catch (e) { console.log('[oss] refresh', e); }
+    $b.prop('disabled', false).html('<i class="bi bi-arrow-clockwise"></i> Refresh');
+    _OSS_REFRESHING = false;
+    _ossRunSearch();
+}
+jQ(document).on('click', '#oss-refresh-btn', _ossRefresh);
 jQ(document).on('change', '#oss-lots', function () { _ossRunSearchKeep(); });
 jQ(document).on('keydown', '#oss-input, #oss-ltp-override, #oss-offset, #oss-wing, #oss-lots', function (e) { if (e.key === 'Enter') _ossRunSearch(); });
 jQ(document).on('change', '#oss-strategy', function () {
@@ -1234,7 +1342,7 @@ function _ossRunSearch() {
         }).catch(function (e) { console.log('OSS MCX preload', name, e); }).then(_ossRunSearch);
         return;
     }
-    if (jQ('#oss-strategy').val() === 'suggested' && !_ossIsMcx(name) && name !== 'NIFTY 50' && name !== 'NIFTY BANK' && !_OSS_LOADED[name]
+    if (jQ('#oss-strategy').val() === 'suggested' && !_ossIsMcx(name) && name !== 'NIFTY 50' && name !== 'NIFTY BANK' && name !== 'SENSEX' && !_OSS_LOADED[name]
         && typeof showPrictionProbabilty === 'function' && typeof showFutureDetails === 'function') {
         _OSS_LOADED[name] = true;
         $result.html('<div class="sv-empty-state"><i class="bi bi-hourglass-split"></i><span>Loading ' + name + ' data (same as the Detail View) to pick a strategy…</span></div>');
@@ -1294,15 +1402,22 @@ function _ossRunSearch() {
         else { key = 'reference'; noTrade = true; suggestedNote = (sugg && sugg.why) || 'No suggestion available (no score data yet).'; }
     }
     // A suggested RANGE strategy is dropped when the market is trending or most signals disagree with it.
-    if (chosen === 'suggested' && key !== 'reference' && /Range-bound/.test(_ossStrategyByKey(key).view)) {
+    // rangeGate(k) returns why it must be dropped ('' = fine). It is applied to the fresh pick AND again to a pick the
+    // stabiliser is holding, so holding an earlier range pick can never keep one on screen that fails this check.
+    var rangeGate = function (k) {
+        if (!k || k === 'reference' || !/Range-bound/.test(_ossStrategyByKey(k).view)) return '';
         var gMs = null; try { gMs = _mcx ? null : _gtbHeadlineMarketSignal().ms; } catch (e) {}
         _ossAgreement(name, 'Range-bound');
         var ag = _OSS_AGREE_LAST;
         var trending = gMs && gMs.signal && /BUY|SELL/.test(gMs.signal);
-        if (trending || (ag && ag.pct < 45)) {
-            var gWhy = (trending ? 'the dashboard market verdict is ' + gMs.signal + ' (a trending market works against a range strategy)' : '')
-                + (trending && ag && ag.pct < 45 ? ' and ' : '')
-                + (ag && ag.pct < 45 ? 'only ' + ag.agree + '/' + ag.total + ' signals (' + ag.pct + '%) support a range view' : '');
+        if (!(trending || (ag && ag.pct < 45))) return '';
+        return (trending ? 'the dashboard market verdict is ' + gMs.signal + ' (a trending market works against a range strategy)' : '')
+            + (trending && ag && ag.pct < 45 ? ' and ' : '')
+            + (ag && ag.pct < 45 ? 'only ' + ag.agree + '/' + ag.total + ' signals (' + ag.pct + '%) support a range view' : '');
+    };
+    if (chosen === 'suggested' && key !== 'reference') {
+        var gWhy = rangeGate(key);
+        if (gWhy) {
             suggestedNote = (suggestedNote ? suggestedNote + ' ' : '') + 'But ' + gWhy + ' — no strategy suggested. Pick one manually if you disagree.';
             key = 'reference'; noTrade = true;
         }
@@ -1310,7 +1425,11 @@ function _ossRunSearch() {
     var stickyNote = '';
     if (chosen === 'suggested') {
         var fin = _ossStabilise(name, noTrade ? null : key, suggestedNote);
-        if (fin.held) { noTrade = !fin.key; key = fin.key || 'reference'; suggestedNote = fin.why; }
+        if (fin.held) {
+            noTrade = !fin.key; key = fin.key || 'reference'; suggestedNote = fin.why;
+            var gHold = noTrade ? '' : rangeGate(key);          // the held pick must still pass the range check
+            if (gHold) { suggestedNote = (suggestedNote ? suggestedNote + ' ' : '') + 'But ' + gHold + ' — no strategy suggested. Pick one manually if you disagree.'; key = 'reference'; noTrade = true; }
+        }
         stickyNote = fin.note || '';
     }
     var strat = _ossStrategyByKey(key);
@@ -1385,6 +1504,7 @@ function _ossRunSearch() {
         +   _ossPositionalFlag(name, strat.view)
         +   _ossAgreement(name, strat.view)
         +   _ossTiming(name, strat, dte)
+        +   (function () { try { return '<div class="oss-desc" style="margin-top:4px;">' + _gtbOiObvFuelBlockHtml(name, { view: strat.view, ag: (typeof _OSS_AGREE_LAST !== 'undefined' && _OSS_AGREE_LAST) ? { agree: _OSS_AGREE_LAST.agree, total: _OSS_AGREE_LAST.total, pct: _OSS_AGREE_LAST.pct } : null }) + '</div>'; } catch (e) { return ''; } })()
         +   (suggestedNote ? '<div class="oss-suggest">' + suggestedNote + '</div>' : '')
         +   (stickyNote ? '<div class="oss-suggest">' + stickyNote + '</div>' : '')
         +   '<div class="oss-desc">' + strat.desc + '</div>'
