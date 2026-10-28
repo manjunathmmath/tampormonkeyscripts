@@ -233,7 +233,15 @@ async function _ltRunScan() {
         for (var w = 0; w < _LT_POOL; w++) workers.push((async function () { while (idx < todo.length && !_LT_STATE.stop) { var it = todo[idx++]; await work(it); } })());
         await Promise.all(workers);
         setProg((_LT_STATE.stop ? 'Stopped at ' : 'Done: ') + Object.keys(_LT_CACHE).length + ' stocks analysed' + (_LT_META.noToken.length ? ', ' + _LT_META.noToken.length + ' without a Kite token' : '') + (_LT_META.noData.length ? ', ' + _LT_META.noData.length + ' without enough history' : '') + '.');
-        try { localStorage.setItem('GTB_LT_SCAN_' + key, JSON.stringify({ at: _LT_META.at, meta: _LT_META, rows: _LT_CACHE })); } catch (e) {}
+        try {
+            var _ltSaved = _gtbLsSet('GTB_LT_SCAN_' + key, JSON.stringify({ at: _LT_META.at, meta: _LT_META, rows: _LT_CACHE }));
+            if (!_ltSaved) {   // too big for the space left: keep the table but drop the long hover notes
+                var _slim = {};
+                Object.keys(_LT_CACHE).forEach(function (sym) { var o = Object.assign({}, _LT_CACHE[sym]); o.notes = []; _slim[sym] = o; });
+                _ltSaved = _gtbLsSet('GTB_LT_SCAN_' + key, JSON.stringify({ at: _LT_META.at, meta: _LT_META, rows: _slim, slim: true }));
+            }
+            if (!_ltSaved) jQ('#lt-progress').append(' (not saved: browser storage is full)');
+        } catch (e) {}
     } catch (e) {
         setProg('Scan failed: ' + (e && e.message ? e.message : e));
     }
@@ -243,7 +251,7 @@ async function _ltRunScan() {
 function _ltRestore(key) {
     try {
         var s = JSON.parse(localStorage.getItem('GTB_LT_SCAN_' + key) || 'null');
-        if (s && s.rows) { _LT_CACHE = s.rows; _LT_META = s.meta || _LT_META; jQ('#lt-progress').text('Last scan ' + s.at + ' (saved in this browser). Scan again for fresh data.'); return true; }
+        if (s && s.rows) { Object.keys(s.rows).forEach(function (k) { if (!s.rows[k].notes) s.rows[k].notes = []; }); _LT_CACHE = s.rows; _LT_META = s.meta || _LT_META; jQ('#lt-progress').text('Last scan ' + s.at + ' (saved in this browser). Scan again for fresh data.'); return true; }
     } catch (e) {}
     return false;
 }

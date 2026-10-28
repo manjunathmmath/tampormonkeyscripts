@@ -534,7 +534,7 @@ function saveVixQuote() {
     return new Promise((resolve, reject) => {
         if (!localStorage.getItem("VIX_QUOTE")) {
             jQ.when(getHistoricalData(264969, PREVIOUS_DAY, PREVIOUS_DAY, 'day')).done(function (res) {
-                localStorage.setItem("VIX_QUOTE", JSON.stringify(res));
+                _gtbLsSet("VIX_QUOTE", JSON.stringify(res));
                 resolve();
             })
         } else {
@@ -553,7 +553,7 @@ function savePreviousStockQuote(script, token) {
     return new Promise((resolve, reject) => {
         if (!localStorage.getItem(tempName + "_PREVIOUS_DAY_QUOTE")) {
             jQ.when(getHistoricalData(token, PREVIOUS_DAY, PREVIOUS_DAY, HISTORICAL_DATA_INTERVAL)).done(function (res) {
-                localStorage.setItem(tempName + "_PREVIOUS_DAY_QUOTE", JSON.stringify(res));
+                _gtbLsSet(tempName + "_PREVIOUS_DAY_QUOTE", JSON.stringify(res));   // never throws, so resolve() below always runs
                 resolve();
             })
         } else {
@@ -561,6 +561,59 @@ function savePreviousStockQuote(script, token) {
         }
     });
 }
+
+// ── localStorage quota helpers ────────────────────────────────────────────────────────────────────────────────────────
+// Kite's origin has only about 5 MB of localStorage for everything on the page, shared by Kite itself and every cache this app keeps
+// (long-term scans, backtests, squeeze studies, per-instrument quotes, dated logs). When it is full, any setItem throws QuotaExceededError.
+// _gtbLsSet() writes with that in mind: on a quota error it clears safe, re-creatable caches (old dated keys first, then, if still full,
+// the bigger scan caches) and retries; it never throws and returns true/false. Never touched: settings, trade journal, diary notes, logs.
+// Console: _gtbLsReport() lists the biggest keys, _gtbLsPrune(true) clears every cache listed below.
+function _gtbLsIsQuota(e) { return !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014 || /quota/i.test(String(e.message || ''))); }
+function _gtbLsReport(top) {
+    var rows = [], total = 0, i, k, v;
+    for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); v = localStorage.getItem(k) || ''; rows.push({ key: k, chars: k.length + v.length }); total += k.length + v.length; }
+    rows.sort(function (a, b) { return b.chars - a.chars; });
+    var out = rows.slice(0, top || 20);
+    try { console.log('[localStorage] ' + rows.length + ' keys, about ' + Math.round(total / 1024) + 'K characters (the browser limit is about 5000K)'); console.table(out); } catch (e) {}
+    return { keys: rows.length, chars: total, top: out };
+}
+function _gtbLsDaysOld(ds) { var t = new Date(ds + 'T00:00:00').getTime(); return isNaN(t) ? 0 : Math.floor((Date.now() - t) / 86400000); }
+// level 0: dated caches older than a few days; level 1 (aggressive): all of them except today's, plus the scan / quote caches
+function _gtbLsPrune(aggressive) {
+    var keys = [], i, k, removed = 0, freed = 0;
+    for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k) keys.push(k); }
+    var protectedKey = function (key) { return /JOURNAL|DIARY|NOTES|BRIEF_LOG|MACRO_HIST|^GTB_LOG_|SETTINGS|CONFIG|^GTB_THEME$/.test(key); };
+    keys.forEach(function (key) {
+        if (protectedKey(key)) return;
+        var drop = false, m = /(\d{4}-\d{2}-\d{2})/.exec(key);
+        if (/^GTB_/.test(key) && m) {
+            var age = _gtbLsDaysOld(m[1]);
+            if (/^GTB_(915TREND|SQZ_STUDY|SQUEEZE_STREAK|OI_SNAP|MP_PREV)/.test(key)) drop = aggressive ? age >= 1 : age >= 3;
+            else drop = aggressive ? age >= 1 : age >= 7;
+        }
+        if (aggressive && (/^GTB_LT_SCAN_|^GTB_LT_UNIV_|^GTB_STRIKEPROB_|^OSS_SCAN_LAST$|^GTB_LVLPROB_HISTORY$|_PREVIOUS_DAY_QUOTE$/.test(key))) drop = true;
+        if (drop) { try { freed += key.length + (localStorage.getItem(key) || '').length; localStorage.removeItem(key); removed++; } catch (e) {} }
+    });
+    try { console.log('[localStorage] pruned ' + removed + ' cache key(s), freed about ' + Math.round(freed / 1024) + 'K characters' + (aggressive ? ' (aggressive)' : '')); } catch (e) {}
+    return { removed: removed, freed: freed };
+}
+function _gtbLsSet(key, value) {
+    try { localStorage.setItem(key, value); return true; } catch (e) {
+        if (!_gtbLsIsQuota(e)) { try { console.warn('[localStorage] could not write ' + key, e); } catch (e0) {} return false; }
+    }
+    for (var lvl = 0; lvl < 2; lvl++) {
+        _gtbLsPrune(lvl === 1);
+        try { localStorage.setItem(key, value); return true; } catch (e2) { if (!_gtbLsIsQuota(e2)) return false; }
+    }
+    try {
+        console.warn('[localStorage] still full after clearing caches, ' + key + ' was not saved. Biggest keys:');
+        _gtbLsReport(10);
+        if (typeof _gtbApiFail === 'function') _gtbApiFail('ls-quota', 'Browser storage is full', 'Could not save ' + key + '. Open the console and run _gtbLsReport() to see what uses the space.', 'Caches and scans may not be saved until space is freed');
+    } catch (e3) {}
+    return false;
+}
+// one quiet clean-up shortly after load so dated caches do not pile up
+setTimeout(function () { try { _gtbLsPrune(false); } catch (e) {} }, 10000);
 
 // ── Order Management ──────────────────────────────────────────────────────────
 

@@ -10935,7 +10935,7 @@ async function _gtbBuild915Trend(lookback) {
     });
     try {
         var _serialized = JSON.stringify(rows);
-        localStorage.setItem(ckey, _serialized);
+        if (!_gtbLsSet(ckey, _serialized)) throw new Error("QuotaExceededError: browser storage is full, even after clearing old caches");
         console.log('[915 backtest] cached ' + rows.length + ' day(s) under ' + ckey + ' (' + (_serialized.length / 1024).toFixed(0) + ' KB) — next open today should hit cache.');
     } catch (e) {
         // Most likely QuotaExceededError — this is exactly the silent-failure case that
@@ -11799,9 +11799,9 @@ function _gtbPreSqueezeWatchHtml(names) {
     var rows = names.map(_gtbPreSqueezeScore).filter(Boolean).sort(function (a, b) { return b.score - a.score; });
     if (!rows.length) return '';
     return '<div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--gtb-border);">'
-        + '<div style="font-size:0.5rem;color:var(--gtb-muted);margin-bottom:4px;"><b>PRE-SQUEEZE WATCH</b> — building fuel, not yet firing. Setup Score reflects how much one-sided positioning has accumulated (streak length, PCR extremity, expiry proximity, historical remark accuracy) — it is NOT a probability the squeeze fires, or a timeframe for when.</div>'
+        + '<div style="font-size:0.5rem;color:var(--gtb-muted);margin-bottom:4px;"><b>PRE-SQUEEZE WATCH</b> — positions piling up, NOT a squeeze yet. Hover a tag to see its history. The card above shows real squeezes.</div>'
         + rows.map(function (r) {
-            var typeLabel = r.willBe === 'SHORT_COVERING' ? 'building toward Short Covering' : 'building toward Long Unwinding';
+            var typeLabel = r.willBe === 'SHORT_COVERING' ? 'shorts building' : 'longs building';
             var col = r.willBe === 'SHORT_COVERING' ? 'var(--gtb-green)' : 'var(--gtb-red)';
             var scoreCol = r.score >= 60 ? col : r.score >= 35 ? 'var(--gtb-amber)' : 'var(--gtb-muted)';
             return '<div style="display:grid;grid-template-columns:90px 1fr 90px 40px;align-items:center;gap:6px;padding:2px 0;font-size:0.44rem;">'
@@ -11809,11 +11809,9 @@ function _gtbPreSqueezeWatchHtml(names) {
                 + '<span style="color:' + col + ';">' + typeLabel + ' &middot; ' + r.streak + ' scans unreversed'
                     + (r.pcrExtreme ? ' &middot; one-sided PCR ' + r.pcr.toFixed(2) : '')
                     + (r.daysToExpiry != null && r.daysToExpiry <= 3 ? ' &middot; ' + r.daysToExpiry + 'd to expiry' : '') + '</span>'
-                + '<span></span>'
+                + '<span style="text-align:right;">' + _gtbSqzFuelBadgeHtml(r.name, r.willBe === 'SHORT_COVERING') + '</span>'
                 + '<span style="font-weight:900;font-family:var(--gtb-mono);color:' + scoreCol + ';text-align:right;" title="Setup score 0–100 — a hand-weighted ranking, not a probability">' + r.score + '</span>'
-                + '</div>'
-                // Has this kind of build-up ever been followed by the squeeze on this contract?
-                + '<div style="font-size:0.42rem;line-height:1.45;padding:0 0 4px;color:var(--gtb-muted);">' + _gtbSqzFuelHtml(r.name, r.willBe === 'SHORT_COVERING') + '</div>';
+                + '</div>';
         }).join('');
 }
 
@@ -12011,7 +12009,7 @@ async function _gtbSqzStudyBuild(name) {
 function _gtbSqzStudyGet(name) {
     var st = _GTB_SQZ_STUDY[name];
     if (st) return st;
-    var key = 'GTB_SQZ_STUDY_' + name + '_' + ((typeof CURRENT_DAY !== 'undefined' && CURRENT_DAY) || '') + '_v2';   // v2: + fuel-streak backtest
+    var key = 'GTB_SQZ_STUDY_' + name + '_' + ((typeof CURRENT_DAY !== 'undefined' && CURRENT_DAY) || '') + '_v3';   // v2: + fuel-streak backtest; v3: futures remark now reads today's own OI change
     try {
         var cached = localStorage.getItem(key);
         if (cached) { st = _GTB_SQZ_STUDY[name] = { state: 'ready', data: JSON.parse(cached) }; return st; }
@@ -12019,7 +12017,7 @@ function _gtbSqzStudyGet(name) {
     st = _GTB_SQZ_STUDY[name] = { state: 'loading' };
     _gtbSqzStudyBuild(name).then(function (data) {
         st.state = 'ready'; st.data = data;
-        try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+        _gtbLsSet(key, JSON.stringify(data));
         _gtbSqzRefreshPlaceholders(name);
     }).catch(function (e) {
         st.state = 'error'; st.err = (e && e.message) || String(e);
@@ -12086,7 +12084,9 @@ function _gtbSqzFuelInner(name, isUp) {
     }
     var pct = function (x) { return Math.round(x * 100) + '%'; };
     var lift = f.liftDay, clear = lift != null && lift >= 1.3 && f.zDay >= 1.64;
+    var neverFollowed = f.hitDay === 0 && f.hitH === 0;
     var verdict = clear ? '<b style="color:var(--gtb-green);">The streak has preceded ' + target + ' more often than chance on this contract.</b>'
+        : neverFollowed ? '<b style="color:var(--gtb-red);">In this history the streak was never followed by ' + target + ', so there is no sign it leads to one.</b>'
         : (lift != null && lift < 1.1) ? '<b style="color:var(--gtb-red);">No evidence the streak predicts ' + target + ' — it was followed by one no more often than any other point in the day.</b>'
         : '<b style="color:var(--gtb-amber);">Inconclusive — a small lift that the sample can\'t separate from chance.</b>';
     return 'Backtest: after ' + _GTB_SQZ_FUEL_STREAK + '+ ' + fuelWord + ' readings in a row (<b>' + f.trig + '</b> times over ' + f.days + ' sessions), ' + target + ' followed later that day <b>' + pct(f.hitDay)
@@ -12096,12 +12096,33 @@ function _gtbSqzFuelInner(name, isUp) {
 function _gtbSqzFuelHtml(name, isUp) {
     return '<span class="gtb-sqz-study" data-mode="fuel" data-name="' + name + '" data-up="' + (isUp ? 1 : 0) + '">' + _gtbSqzFuelInner(name, isUp) + '</span>';
 }
+// One short tag per Pre-Squeeze Watch row instead of a paragraph: has this build-up pattern ever been followed by the squeeze on this
+// contract? The full backtest sentence is kept in the tooltip.
+function _gtbSqzFuelBadgeInner(name, isUp) {
+    var G = 'var(--gtb-green)', R = 'var(--gtb-red)', A = 'var(--gtb-amber)', M = 'var(--gtb-muted)';
+    var st = _gtbSqzStudyGet(name), label, col;
+    var tip = String(_gtbSqzFuelInner(name, isUp)).replace(/<[^>]*>/g, '').replace(/"/g, '&quot;');
+    if (st.state === 'loading') { label = 'CHECKING'; col = M; }
+    else if (st.state === 'error') { label = 'NO HISTORY'; col = M; }
+    else {
+        var f = st.data && st.data.fuel && st.data.fuel[isUp ? 'up' : 'down'];
+        if (!f) { label = 'NO HISTORY'; col = M; }
+        else if (f.trig < _GTB_SQZ_FUEL_MIN_TRIG) { label = 'TOO FEW CASES'; col = M; }
+        else if (f.liftDay != null && f.liftDay >= 1.3 && f.zDay >= 1.64) { label = 'HAS WORKED'; col = G; }
+        else if ((f.hitDay === 0 && f.hitH === 0) || (f.liftDay != null && f.liftDay < 1.1)) { label = 'NO SIGNAL'; col = R; }
+        else { label = 'UNPROVEN'; col = A; }
+    }
+    return '<span title="' + tip + '" style="display:inline-block;padding:0 5px;border:1px solid ' + col + ';color:' + col + ';font-weight:800;font-size:0.4rem;letter-spacing:0.04em;cursor:help;">' + label + '</span>';
+}
+function _gtbSqzFuelBadgeHtml(name, isUp) {
+    return '<span class="gtb-sqz-study" data-mode="fuelbadge" data-name="' + name + '" data-up="' + (isUp ? 1 : 0) + '">' + _gtbSqzFuelBadgeInner(name, isUp) + '</span>';
+}
 function _gtbSqzRefreshPlaceholders(name) {
     try {
         jQ('.gtb-sqz-study').each(function () {
             if (jQ(this).attr('data-name') !== name) return;
-            var up = jQ(this).attr('data-up') === '1';
-            jQ(this).html(jQ(this).attr('data-mode') === 'fuel' ? _gtbSqzFuelInner(name, up) : _gtbSqzStudyInner(name, up));
+            var up = jQ(this).attr('data-up') === '1', mode = jQ(this).attr('data-mode');
+            jQ(this).html(mode === 'fuelbadge' ? _gtbSqzFuelBadgeInner(name, up) : mode === 'fuel' ? _gtbSqzFuelInner(name, up) : _gtbSqzStudyInner(name, up));
         });
     } catch (e) {}
 }
@@ -16838,7 +16859,7 @@ async function _gtbStrikeProb(name, lookback) {
     }
     var out = { name: name, days: candles.length, s1: s1, s2: s2,
         ASO: row(L.ASO), AST: row(L.AST), BSO: row(L.BSO), BST: row(L.BST) };
-    try { localStorage.setItem(ckey, JSON.stringify(out)); } catch (e) {}
+    _gtbLsSet(ckey, JSON.stringify(out));
     return out;
 }
 
@@ -19858,7 +19879,7 @@ function computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, change
     else if (aboveVwap && pChange > priceThresh && !recentBearish)    price = "+";
     else if (!aboveVwap && recentBearish)                             price = "-";
     else if (!aboveVwap && pChange < -priceThresh && !recentBullish)  price = "-";
-    else if (aboveVwap && recentBearish)                              price = "-";
+    else if (aboveVwap && recentBearish)                              price = "+-";   // a dip inside strength (above VWAP) is not selling pressure: it must not read as SHORT (fresh shorts)
     else if (!aboveVwap && recentBullish)                             price = "+-";
     else                                                              price = "+-";
 
@@ -19869,9 +19890,12 @@ function computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, change
     if (opts.dayOpenOI && opts.currOI && opts.dayOpenOI > 0) {
         intradayOiPct = (opts.currOI - opts.dayOpenOI) / opts.dayOpenOI * 100;
     }
-    // effective OI% = the stronger-magnitude of the two reads (fresher intraday wins when bigger)
+    // effective OI% = what happened TODAY when the day's own OI is known (OI now vs OI at the day's open). The old rule took
+    // whichever of the two reads was larger even when their signs disagreed, so a building contract (OI up vs yesterday)
+    // hid real intraday short covering / long unwinding and a mere dip read as "shorts building". Day-over-day OI is now
+    // only the fallback when there are no intraday candles.
     let effOiPct = oiPct;
-    if (intradayOiPct !== null && Math.abs(intradayOiPct) > Math.abs(oiPct)) effOiPct = intradayOiPct;
+    if (intradayOiPct !== null) effOiPct = intradayOiPct;
 
     let oi;
     if      (effOiPct >= oiThresh)  oi = "+";
@@ -19879,8 +19903,9 @@ function computeFuturesSignals(intradayCandles, vwap, lastPrice, pChange, change
     else                            oi = "+-";
 
     // covering/unwinding when OI falling meaningfully (day-over-day OR intraday)
-    let shortCoveringOrLongUnwinding = (oiAbs < 0 && Math.abs(oiPct) > oiUnwind)
-        || (intradayOiPct !== null && intradayOiPct < -oiUnwind);
+    let shortCoveringOrLongUnwinding = (intradayOiPct !== null)
+        ? (intradayOiPct < -oiUnwind)
+        : (oiAbs < 0 && Math.abs(oiPct) > oiUnwind);
 
     // premium-trend confirmation (exposed for the score layer; doesn't alter the remark)
     let premiumTrend = 0;

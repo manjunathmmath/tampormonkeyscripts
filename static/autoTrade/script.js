@@ -197,7 +197,7 @@ async function loadOpenPrice() {
         }
 
     }
-    localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
+    _gtbLsSet("INSTRUMENT_LIST_GLOBAL", JSON.stringify(storageObj));
     if (typeof _gtbProgress === 'function') _gtbProgress('Prices loaded', 'green');
     setTimeout(function(){ if (typeof _gtbProgressHide === 'function') _gtbProgressHide(); }, 2500);
 
@@ -305,7 +305,7 @@ async function scanLtpPrice() {
             return;
         }
 
-        localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));
+        _gtbLsSet("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));
         updateStatusBarFromApi(storageLtpObj);
         if (typeof _gtbProgress === 'function') _gtbProgress('LTP loaded (' + total + ')', 'green');
     } finally {
@@ -360,8 +360,8 @@ async function _gtbQuickOIOBV(names) {
             } catch (e) { console.log('Quick OI/OBV: LTP fetch failed for ' + name, e); }
         }));
 
-        localStorage.setItem("INSTRUMENT_LIST_GLOBAL", JSON.stringify(listGlobal));
-        localStorage.setItem("INSTRUMENT_LTP_PRICE", JSON.stringify(ltpObj));
+        _gtbLsSet("INSTRUMENT_LIST_GLOBAL", JSON.stringify(listGlobal));
+        _gtbLsSet("INSTRUMENT_LTP_PRICE", JSON.stringify(ltpObj));
         if (typeof _gtbProgress === 'function') _gtbProgress('Quick OI/OBV ready', 'green');
 
         names.forEach(function (name) {

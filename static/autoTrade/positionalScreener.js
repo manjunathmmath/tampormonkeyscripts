@@ -2409,7 +2409,7 @@ async function _gtbRunEodLevelScan(onProgress, onPhase) {
     });
 
     var dateStr = (typeof CURRENT_DAY !== 'undefined' && CURRENT_DAY) ? CURRENT_DAY : _psDateStr(new Date());
-    localStorage.setItem('GTB_LEVEL_SCAN_' + dateStr, JSON.stringify({ date: dateStr, results: results, savedAt: Date.now() }));
+    _gtbLsSet('GTB_LEVEL_SCAN_' + dateStr, JSON.stringify({ date: dateStr, results: results, savedAt: Date.now() }));
     return { date: dateStr, results: results };
 }
 
