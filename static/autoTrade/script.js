@@ -68,6 +68,7 @@ async function autoRefreshEachTabs(instance, isManual) {
         console.log("Refresh already in progress — skipping this trigger");
     } else if (allow || isManual) {
         _GTB_REFRESH_IN_PROGRESS = true;
+        window._GTB_LAST_REFRESH_AT = Date.now();            // read by the auto-pilot so a refresh the timer already ran this slot is not repeated
         jQ("#start-auto-refresh").attr("disabled", true);
         try {
             await updateStrorageLtpPrice(instance);
@@ -132,7 +133,10 @@ function startTimer(duration, display) {
         var s = d.getSeconds();
         var m = d.getMinutes();
         var h = d.getHours();
-        if (m % 5 == 0 && s == 10) {
+        // 4 s after the candle closes when the live feed holds the candles (the refresh then reads them locally); 10 s otherwise, to
+        // let Kite's historical API finalise the candle.
+        var _fireSec = (typeof _lfHealthy === 'function' && _lfHealthy() && _lfLiveAllowed()) ? 4 : 10;
+        if (m % 5 == 0 && s == _fireSec) {
             let enableAutoRefresh = jQ("#enable-auto-refresh").is(":checked");
             if (enableAutoRefresh) {
                 // Routes through autoRefreshEachTabs (isManual=true) so LTP gets refreshed
@@ -162,7 +166,9 @@ jQ(document).on("click", "#load-price", function (e) {
 // (no more pre-market sidebar DOM scrape); they'll populate on the first refresh after 09:15.
 // Runs the LTP scan (scanLtpPrice) at the end so INSTRUMENT_LTP_PRICE is populated
 // immediately, without waiting for the next manual/auto refresh.
-async function loadOpenPrice() {
+// opts.silent (auto-pilot): no confirmation alert at the end. With the live feed up, an instrument whose tick already carries
+// today's open and yesterday's close (_lfOpenPrev) is filled from it instead of a REST 'day' candle.
+async function loadOpenPrice(opts) {
     if (typeof _gtbProgress === 'function') _gtbProgress('Fetching VIX quote…');
     await saveVixQuote();
 
@@ -180,6 +186,11 @@ async function loadOpenPrice() {
             jQ("#processing-trend").html("Processing.... " + (i + 1) + "/" + instru.length);
             if (typeof _gtbProgress === 'function') _gtbProgress(_pMsg);
             let name = instru[i]['TRADINGSYMBOL']
+            let _fromFeed = (typeof _lfOpenPrev === 'function') ? _lfOpenPrev(name) : null;
+            if (_fromFeed) {
+                storageObj[name] = { name: name, price: _fromFeed.open, prevPrice: _fromFeed.prev, perc: parseFloat(_fromFeed.open - _fromFeed.prev).toFixed(2) };
+                continue;
+            }
             let data = await getHistoricalDataUsingPromise(instru[i]['TOKEN'], PREVIOUS_DAY, CURRENT_DAY, 'day');
             let candles = data && data.data && data.data.candles;
             if (!candles || candles.length < 2) continue; // today's candle not open yet (pre-market)
@@ -202,7 +213,7 @@ async function loadOpenPrice() {
     setTimeout(function(){ if (typeof _gtbProgressHide === 'function') _gtbProgressHide(); }, 2500);
 
     await updateStrorageLtpPrice();
-    alert("Price loaded successfully.")
+    if (!(opts && opts.silent)) alert("Price loaded successfully.")
 
 }
 
@@ -265,11 +276,25 @@ async function scanLtpPrice() {
     }
     _LTP_SCAN_IN_PROGRESS = true;
     try {
-        let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE")) || {};
+        // Live feed (liveFeed.js): every instrument that already has a live tick on the open socket keeps that price, and only
+        // the rest is fetched. With the feed down, or a snapshot time set, nothing is live and this fetches everything as before.
         let names = Object.keys(INSTRUMENT_TOKENS);
+        let liveCount = 0;
+        if (typeof _lfHas === 'function' && !(typeof _gtbHistTime === 'function' && _gtbHistTime())) {
+            try { _lfFlushLtp(); } catch (e) {}
+            let missing = names.filter(function (n) { return !_lfHas(n); });
+            liveCount = names.length - missing.length;
+            names = missing;
+        }
+        let storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE")) || {};
         let total = names.length;
         let completed = 0;
         let toTime = (typeof _gtbCurrDayTo === 'function') ? _gtbCurrDayTo() : CURRENT_DAY;
+        if (!names.length) {
+            updateStatusBarFromApi(storageLtpObj);
+            if (typeof _gtbProgress === 'function') _gtbProgress('LTP live (' + liveCount + ', no fetch needed)', 'green');
+            return;
+        }
 
         if (typeof _gtbProgress === 'function') _gtbProgress('LTP: 0/' + total);
 
@@ -289,16 +314,20 @@ async function scanLtpPrice() {
         }));
 
         let anyOk = false;
+        let fetched = {};
         results.forEach(function (r) {
             let raw = r.res && r.res.data && r.res.data.candles;
             let candles = (typeof _gtbTrimCandles === 'function') ? _gtbTrimCandles(raw) : raw;
             if (!candles || !candles.length) return;
             anyOk = true;
             let lastClose = candles[candles.length - 1][4];
-            storageLtpObj[r.name] = { name: r.name, ltp: parseFloat(lastClose).toFixed(2) };
+            fetched[r.name] = { name: r.name, ltp: parseFloat(lastClose).toFixed(2) };
         });
+        // Merge into a fresh copy: live ticks kept writing INSTRUMENT_LTP_PRICE while these requests were in flight.
+        storageLtpObj = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE")) || {};
+        Object.keys(fetched).forEach(function (n) { storageLtpObj[n] = fetched[n]; });
 
-        if (!anyOk) {
+        if (!anyOk && !liveCount) {
             console.log("LTP historical fetch returned no candles for any instrument — market closed, or enctoken session expired");
             callSackBar("LTP fetch failed — no candle data returned (market closed, or re-login to Kite)");
             if (typeof _gtbProgress === 'function') _gtbProgress('LTP fetch failed', 'orange');
@@ -307,7 +336,7 @@ async function scanLtpPrice() {
 
         _gtbLsSet("INSTRUMENT_LTP_PRICE", JSON.stringify(storageLtpObj));
         updateStatusBarFromApi(storageLtpObj);
-        if (typeof _gtbProgress === 'function') _gtbProgress('LTP loaded (' + total + ')', 'green');
+        if (typeof _gtbProgress === 'function') _gtbProgress('LTP loaded (' + total + (liveCount ? ' fetched, ' + liveCount + ' live' : '') + ')', 'green');
     } finally {
         _LTP_SCAN_IN_PROGRESS = false;
     }

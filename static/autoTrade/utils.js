@@ -354,9 +354,23 @@ function _gtbHistAjax(code, fromDate, toDate, interval, attempt) {
 }
 
 function getHistoricalDataUsingPromise(code, fromDate, toDate, interval) {
+    // Live candle cache (liveFeed.js): a 5-minute request for today that the tick feed already covers is answered locally, with no
+    // network and no queue wait. Otherwise REST as before; the token is subscribed first so its ticks are buffered during the fetch
+    // and the response becomes the seed of its live series.
+    var _lcOn = false;
+    try {
+        if (typeof _lcServe === 'function') {
+            var _hit = _lcServe(code, fromDate, toDate, interval);
+            if (_hit) return Promise.resolve(_hit);
+            _lcOn = _lcPrepare(code, fromDate, toDate, interval);
+        }
+    } catch (e) { _lcOn = false; }
     return new Promise(function (resolve) {
         _GTB_HIST_QUEUE.push(function () {
-            return _gtbHistAjax(code, fromDate, toDate, interval, 0).then(function (d) { resolve(d); });
+            return _gtbHistAjax(code, fromDate, toDate, interval, 0).then(function (d) {
+                if (_lcOn) { try { _lcSeed(code, fromDate, d); } catch (e) {} }
+                resolve(d);
+            });
         });
         _gtbHistPump();
     });
@@ -582,7 +596,7 @@ function _gtbLsDaysOld(ds) { var t = new Date(ds + 'T00:00:00').getTime(); retur
 function _gtbLsPrune(aggressive) {
     var keys = [], i, k, removed = 0, freed = 0;
     for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k) keys.push(k); }
-    var protectedKey = function (key) { return /JOURNAL|DIARY|NOTES|BRIEF_LOG|MACRO_HIST|^GTB_LOG_|SETTINGS|CONFIG|^GTB_THEME$/.test(key); };
+    var protectedKey = function (key) { return /JOURNAL|DIARY|NOTES|BRIEF_LOG|MACRO_HIST|^GTB_LOG_|^GTB_FOCUS_LOG_|SETTINGS|CONFIG|^GTB_THEME$/.test(key); };
     keys.forEach(function (key) {
         if (protectedKey(key)) return;
         var drop = false, m = /(\d{4}-\d{2}-\d{2})/.exec(key);

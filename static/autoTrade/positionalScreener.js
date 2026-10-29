@@ -330,6 +330,9 @@ function _psContentHtml() {
         +     '<option value="rs">Sort: Rel Strength</option>'
         +     '<option value="conv">Sort: Conviction%</option>'
         +   '</select>'
+        +   '<label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--gtb-muted);" title="Group the rows under EARLY / MID / LATE (how far price has already moved since the view began), with a count for each group. The sort above applies inside each group. Click a group header to fold it.">'
+        +     '<input type="checkbox" id="ps-group-timing"' + (localStorage.getItem('GTB_PS_GROUP') !== '0' ? ' checked' : '') + '> Group by timing'
+        +   '</label>'
         +   '<label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--gtb-muted);" title="Only show rows with Conviction% at or above this value. Rows with no conviction score (no direction) are hidden whenever this is set above 0.">'
         +     'Min Conv%'
         +     '<input type="number" id="ps-min-conv" class="dl-search" min="0" max="100" step="5" value="60" style="width:56px;margin:0;" placeholder="0">'
@@ -1586,7 +1589,7 @@ function _psRenderTable() {
     }
 
     var _iiSafe = typeof _ii === 'function' ? _ii : function () { return ''; };
-    var html = _psTopPicksHtml() + '<table class="ps-table">'
+    var html = _psTopPicksHtml() + _psTimingStripHtml(rows) + '<table class="ps-table">'
         + '<thead><tr>'
         + '<th><input type="checkbox" id="ps-select-all-basket" title="Select all eligible rows currently shown"></th>'
         + '<th></th><th></th><th></th>'
@@ -1597,7 +1600,7 @@ function _psRenderTable() {
         + '<th title="How long the current positional view has been on, how far price has moved in its favour since, and whether that leaves room to enter.">View since · moved · timing</th>'
         + '<th>Entry</th><th>Target</th><th>Stop</th><th>R:R' + _iiSafe('ps-tradeplan') + '</th>'
         + '</tr></thead><tbody>'
-        + rows.map(function (r) {
+        + _psTimingBody(rows, function (r) {
             var kiteLink = _psChartLink(r.name, _psPriceTokenFor(r.name));
             var chgColor = r.pctChg20 >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
             var trendColor = r.trendScore > 0 ? 'var(--gtb-green)' : r.trendScore < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
@@ -1658,10 +1661,75 @@ function _psRenderTable() {
                 + '<td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td>'
                 + '</tr>'
                 + (_PS_OPEN[r.name] ? '<tr class="ps-detail-row"><td colspan="22" style="padding:0;background:var(--gtb-surface2);border-left:3px solid ' + r.verdictColor + ';">' + _psDetailCardHtml(r) + '</td></tr>' : '');
-        }).join('')
+        })
         + '</tbody></table>';
     jQ('#ps-table-wrap').html(html);
 }
+
+// ── Group by timing (EARLY / MID / LATE) ───────────────────────────────────────────────────────────────────────────────
+// The timing label is r.since.label (how far price has already moved in the view's favour, in ATR14, see _psBuildSince). Rows with
+// no directional view, or not enough history, fall under NO READ. The active sort applies inside each group.
+var _PS_TIMING_ORDER = ['EARLY', 'MID', 'LATE', 'NOT WORKING', 'NO READ'];
+var _PS_GROUP_COLLAPSED = {};
+function _psTimingOf(r) { var l = r.since && r.since.label; return (!l || l === 'UNKNOWN') ? 'NO READ' : l; }
+function _psTimingColor(k) { return k === 'NO READ' ? 'var(--gtb-muted)' : _psSinceColor(k); }
+function _psTimingNote(k) {
+    var e = (typeof _PS_TIMING_EARLY_ATR !== 'undefined') ? _PS_TIMING_EARLY_ATR : 2.5, l = (typeof _PS_TIMING_LATE_ATR !== 'undefined') ? _PS_TIMING_LATE_ATR : 6;
+    return {
+        'EARLY': 'less than ' + e + ' ATR travelled since the view began, most of the move is still ahead',
+        'MID': e + ' to ' + l + ' ATR travelled, take it at the plan entry, not above it',
+        'LATE': l + ' ATR or more travelled (or stretched from the 50-day line), wait for a pullback',
+        'NOT WORKING': 'price is back behind where the view began',
+        'NO READ': 'no directional view, or not enough history'
+    }[k] || '';
+}
+function _psGroupOn() {
+    var $c = jQ('#ps-group-timing');
+    return $c.length ? $c.is(':checked') : localStorage.getItem('GTB_PS_GROUP') !== '0';
+}
+function _psTimingGroups(rows) {
+    var g = {};
+    _PS_TIMING_ORDER.forEach(function (k) { g[k] = []; });
+    rows.forEach(function (r) { g[_psTimingOf(r)].push(r); });
+    return g;
+}
+// One line of counts above the table, shown grouped or not.
+function _psTimingStripHtml(rows) {
+    var g = _psTimingGroups(rows), parts = [];
+    _PS_TIMING_ORDER.forEach(function (k) {
+        if (!g[k].length) return;
+        parts.push('<span title="' + _psTimingNote(k).replace(/"/g, '&quot;') + '" style="white-space:nowrap;"><b style="color:' + _psTimingColor(k) + ';">' + k + '</b> ' + g[k].length + '</span>');
+    });
+    return '<div style="padding:4px 8px;font-size:0.6rem;color:var(--gtb-muted);display:flex;gap:14px;flex-wrap:wrap;">'
+        + '<span style="font-weight:700;">Timing of the ' + rows.length + ' shown</span>' + parts.join('') + '</div>';
+}
+function _psTimingBody(rows, rowFn) {
+    if (!_psGroupOn()) return rows.map(function (r) { return rowFn(r); }).join('');
+    var g = _psTimingGroups(rows), out = '';
+    _PS_TIMING_ORDER.forEach(function (k) {
+        var list = g[k];
+        if (!list.length) return;
+        var col = _psTimingColor(k), closed = !!_PS_GROUP_COLLAPSED[k];
+        var pct = rows.length ? Math.round(list.length / rows.length * 100) : 0;
+        out += '<tr class="ps-group-row" data-grp="' + k + '" style="cursor:pointer;" title="Click to ' + (closed ? 'open' : 'fold') + ' this group">'
+            + '<td colspan="22" style="background:var(--gtb-surface2);border-left:3px solid ' + col + ';padding:4px 8px;font-size:0.6rem;">'
+            + '<i class="bi bi-chevron-' + (closed ? 'right' : 'down') + '" style="font-size:0.5rem;margin-right:4px;"></i>'
+            + '<b style="color:' + col + ';letter-spacing:0.5px;">' + k + '</b> '
+            + '<span style="color:var(--gtb-text);font-weight:700;">' + list.length + ' stock' + (list.length === 1 ? '' : 's') + '</span> '
+            + '<span style="color:var(--gtb-muted);">(' + pct + '% of shown) &mdash; ' + _psTimingNote(k) + '</span></td></tr>';
+        if (!closed) out += list.map(function (r) { return rowFn(r); }).join('');
+    });
+    return out;
+}
+jQ(document).on('change', '#ps-group-timing', function () {
+    try { localStorage.setItem('GTB_PS_GROUP', jQ(this).is(':checked') ? '1' : '0'); } catch (e) {}
+    _psRenderTable();
+});
+jQ(document).on('click', '.ps-group-row', function () {
+    var k = jQ(this).attr('data-grp');
+    _PS_GROUP_COLLAPSED[k] = !_PS_GROUP_COLLAPSED[k];
+    _psRenderTable();
+});
 jQ(document).on('change', '#ps-filter, #ps-sort', _psRenderTable);
 jQ(document).on('input', '#ps-min-conv', _psRenderTable);
 

@@ -157,6 +157,11 @@ function _qwParsePacket(view, offset, size) {
     var tradable = (token & 0xff) !== 9;
 
     if (size === 8) return { token: token, ltp: ltp, open: 0, high: 0, low: 0, close: 0, change: 0, tradable: tradable };
+    // Exchange timestamp (unix seconds): offset 28 on the 32-byte index packet, offset 60 on the 184-byte full packet. liveFeed.js
+    // uses it to put a tick in the right 5-minute candle; 0 / absent falls back to the time the tick arrived.
+    var exTs = 0;
+    if (size === 32) exTs = view.getUint32(offset + 28, false);
+    else if (size >= 64) exTs = view.getUint32(offset + 60, false);
 
     if (size === 28 || size === 32) {
         var high = view.getUint32(offset + 8, false) / div;
@@ -164,7 +169,7 @@ function _qwParsePacket(view, offset, size) {
         var open = view.getUint32(offset + 16, false) / div;
         var close = view.getUint32(offset + 20, false) / div;
         var change = view.getInt32(offset + 24, false) / div;
-        return { token: token, ltp: ltp, open: open, high: high, low: low, close: close, change: change, tradable: false };
+        return { token: token, ltp: ltp, open: open, high: high, low: low, close: close, change: change, tradable: false, ts: exTs };
     }
 
     if (size >= 44) {
@@ -182,6 +187,16 @@ function _qwParsePacket(view, offset, size) {
         var totalBuyQty  = view.getUint32(offset + 20, false);
         var totalSellQty = view.getUint32(offset + 24, false);
         var depth = null;
+        // Day VWAP (average_traded_price, offset 12, present from the 44-byte quote packet up) and, on the
+        // 184-byte full packet only, open interest (offset 48) and its day high/low (52/56) -- read by
+        // liveFeed.js for the futures VWAP / OI that the REMARK and the squeeze scan are built on.
+        var avgPrice = view.getUint32(offset + 12, false) / div;
+        var oi = null, oiHigh = null, oiLow = null;
+        if (size >= 64) {
+            oi = view.getUint32(offset + 48, false);
+            oiHigh = view.getUint32(offset + 52, false);
+            oiLow = view.getUint32(offset + 56, false);
+        }
         // Market depth (5 bid + 5 ask levels) — only present on the full 184-byte packet,
         // starting right after OI/OI-day-high/day-low/exchange-timestamp (bytes 44-64).
         // Each level is 12 bytes: qty(int32) + price(int32, needs /div) + orders(int16) +
@@ -210,7 +225,8 @@ function _qwParsePacket(view, offset, size) {
         }
         return { token: token, ltp: ltp, open: open2, high: high2, low: low2, close: close2,
                  change: ltp - close2, volume: volume, tradable: true,
-                 totalBuyQty: totalBuyQty, totalSellQty: totalSellQty, depth: depth };
+                 totalBuyQty: totalBuyQty, totalSellQty: totalSellQty, depth: depth,
+                 avgPrice: avgPrice, oi: oi, oiHigh: oiHigh, oiLow: oiLow, ts: exTs };
     }
     return null;
 }
@@ -294,12 +310,19 @@ var _QW_DOM_THROTTLE_MS = 1000;
 function _qwApplyLiveLtp(t) {
     var name = _qwTokenToName(t.token);
     if (!name || !t.ltp) return;
-    try {
-        var cache = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE')) || {};
-        cache[name] = { name: name, ltp: t.ltp };
-        localStorage.setItem('INSTRUMENT_LTP_PRICE', JSON.stringify(cache));
-    } catch (e) {}
+    // A snapshot / replay time is set: the dashboard must keep showing that moment, so live ticks never overwrite the LTP.
+    try { if (typeof _lfLiveAllowed === 'function' ? !_lfLiveAllowed() : (typeof _gtbHistTime === 'function' && _gtbHistTime())) return; } catch (e) {}
+    // In-memory write per tick; the localStorage copy that the rest of the app reads is rewritten at most once a second
+    // (liveFeed.js _lfFlushLtp). Parsing and re-saving the whole LTP object on every tick of ~230 instruments was far too heavy.
     try { if (typeof INSTRUMENT_LTP_PRICE !== 'undefined') INSTRUMENT_LTP_PRICE[name] = { name: name, ltp: t.ltp }; } catch (e) {}
+    if (typeof _lfMarkLtp === 'function') _lfMarkLtp(name, t.ltp);
+    else {
+        try {
+            var cache = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE')) || {};
+            cache[name] = { name: name, ltp: t.ltp };
+            localStorage.setItem('INSTRUMENT_LTP_PRICE', JSON.stringify(cache));
+        } catch (e) {}
+    }
     // MCX commodities have no INSTRUMENT_LTP_PRICE entry (scanLtpPrice() only ever populates
     // it via INSTRUMENT_TOKENS, which is NSE-only) — the Fair Value / verdict code instead
     // reads INSTRUMENT_SCORE_MAP[name].mcxLtp as its live-LTP source for MCX (see the Fair
@@ -345,34 +368,59 @@ function _qwApplyLiveLtp(t) {
     // change span tabular-nums, see common.css), so the text can keep updating live here
     // without the layout jumping around it. Still throttled to once/second per instrument via
     // the gate above, so a fast-ticking index doesn't call this needlessly often either.
-    try { if (typeof updateTopBarTickers === 'function') updateTopBarTickers(); } catch (e) {}
+    // With the live feed manager loaded, the topbar is redrawn from its once-a-second LTP flush instead of per instrument here.
+    try { if (typeof _lfMarkLtp !== 'function' && typeof updateTopBarTickers === 'function') updateTopBarTickers(); } catch (e) {}
 }
 
 function _qwWsSubscribeAll() {
     if (!_QW_WS || _QW_WS.readyState !== WebSocket.OPEN) return;
     var toks = Object.keys(_QW_SUBSCRIBED).map(Number);
     if (!toks.length) return;
-    _QW_WS.send(JSON.stringify({ a: 'subscribe', v: toks }));
-    _QW_WS.send(JSON.stringify({ a: 'mode', v: ['full', toks] }));
+    // In chunks: the web socket is happier with a few hundred tokens per message than with one big frame.
+    for (var i = 0; i < toks.length; i += 250) {
+        var part = toks.slice(i, i + 250);
+        _QW_WS.send(JSON.stringify({ a: 'subscribe', v: part }));
+        _QW_WS.send(JSON.stringify({ a: 'mode', v: ['full', part] }));
+    }
 }
 
-function _qwWsConnect(onStatus) {
-    var apiKey = g_config.get('api_key');
+// The official Kite Connect ticker (api_key + access_token from Settings). The access token expires daily.
+function _qwWsUrl() {
     var accessToken = g_config.get('api_access_token');
-    if (!accessToken) { onStatus('error', 'No Access Token set — open Settings and set api_access_token'); return; }
-    if (_QW_WS) { try { _QW_WS.close(1000); } catch (e) {} }
+    if (!accessToken) return null;
+    return 'wss://ws.kite.trade?api_key=' + g_config.get('api_key') + '&access_token=' + accessToken;
+}
 
-    var ws = new WebSocket('wss://ws.kite.trade?api_key=' + apiKey + '&access_token=' + accessToken);
+function _qwWsConnect(onStatus, source) {
+    source = 'connect';
+    var url = _qwWsUrl();
+    if (!url) {
+        onStatus('error', 'No Access Token set — open Settings and set api_access_token');
+        return;
+    }
+    if (_QW_WS) { try { _QW_WS.onclose = null; _QW_WS.close(1000); } catch (e) {} }
+
+    var ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
+    ws._qwSource = source;
+    ws._qwOpened = false;
     _QW_WS = ws;
 
-    ws.onopen = function () { onStatus('connected'); _qwWsSubscribeAll(); };
-    ws.onclose = function (evt) { onStatus('closed', 'code ' + evt.code); if (_QW_WS === ws) _QW_WS = null; };
-    ws.onerror = function () { onStatus('error', 'WebSocket error'); };
+    ws.onopen = function () { ws._qwOpened = true; onStatus('connected', source); _qwWsSubscribeAll(); };
+    ws.onclose = function (evt) {
+        onStatus('closed', 'code ' + evt.code + (ws._qwOpened ? '' : ' (never opened)'), source, ws._qwOpened);
+        if (_QW_WS === ws) _QW_WS = null;
+    };
+    ws.onerror = function () { onStatus('error', 'WebSocket error (' + source + ')', source, ws._qwOpened); };
     ws.onmessage = function (evt) {
         if (typeof evt.data === 'string') return; // heartbeat/text frame
         var ticks = _qwParseBinaryMessage(evt.data);
-        ticks.forEach(function (t) { _QW_LAST_TICK[t.token] = t; _qwApplyLiveLtp(t); });
+        var _now = Date.now();
+        ticks.forEach(function (t) {
+            _QW_LAST_TICK[t.token] = t; _qwApplyLiveLtp(t);
+            if (typeof _lcOnTick === 'function') { try { _lcOnTick(t, _now); } catch (e) {} }
+        });
+        if (ticks.length && typeof _lfOnTicks === 'function') { try { _lfOnTicks(ticks); } catch (e) {} }
         if (ticks.length && typeof window._qwOnTick === 'function') window._qwOnTick();
     };
 }
@@ -691,6 +739,7 @@ function showWebSocketPopup() {
 // table (window._qwOnTick) keep working unchanged — this is just a second way to reach the
 // same connection, not a separate one.
 function _gtbWsToggleUpdateIcon(state, detail) {
+    if (typeof _lfRenderStatus === 'function') { _lfRenderStatus(); return; }   // liveFeed.js owns the icon
     var $btn = jQ('#gtb-ws-toggle');
     if (!$btn.length) return;
     if (state === 'connected') {
@@ -705,6 +754,7 @@ function _gtbWsToggleUpdateIcon(state, detail) {
 }
 jQ(document).on('click', '#gtb-ws-toggle', function (e) {
     e.preventDefault();
+    if (typeof _lfToggle === 'function') { _lfToggle(); return; }
     var connected = typeof _QW_WS !== 'undefined' && _QW_WS && _QW_WS.readyState === WebSocket.OPEN;
     if (connected) {
         _qwWsDisconnect();

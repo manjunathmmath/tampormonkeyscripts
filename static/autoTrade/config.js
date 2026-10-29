@@ -151,6 +151,21 @@ const g_config = new MonkeyConfig({
         },
         // 5-minute futures auto-scan that alerts on short covering / long unwinding for NIFTY 50,
         // NIFTY BANK, RELIANCE, HDFCBANK and ICICIBANK (see _gtbSqueezeScanTick). Default ON.
+        autopilot: {
+            'label': 'Auto-pilot: run the morning routine and the 5-minute refresh by itself',
+            type: 'checkbox',
+            default: true
+        },
+        autopilot_open_dashboard: {
+            'label': 'Auto-pilot: open the Groot dashboard by itself (once a day)',
+            type: 'checkbox',
+            default: true
+        },
+        live_feed_auto: {
+            'label': 'Live price feed: connect automatically (Kite ticker WebSocket)',
+            type: 'checkbox',
+            default: true
+        },
         show_detail_on_chart: {
             'label': 'Show the Instrument Detail View popup on a Kite chart page',
             type: 'checkbox',
@@ -247,6 +262,9 @@ const g_config = new MonkeyConfig({
             type: 'text',
             default: 68.90
         },
+        // OVX level at or above which the crude Verdict turns NO TRADE ("extreme volatility"). Only crude and the NSE names are gated; GVZ,
+        // VXSLV and the VIX proxy are shown as context only.
+        vol_extreme_ovx:   { 'label': 'OVX: extreme level (the crude Verdict says NO TRADE at or above)', type: 'text', default: 35 },
         VXSLV: {
             'label': 'VXSLV <a href="https://in.investing.com/indices/cboe-silver-etf-volatility" target="_blank" rel="noopener" style="font-weight:normal;font-size:0.85em;">(source)</a>',
             type: 'text',
@@ -293,7 +311,9 @@ const MARGIN = g_config.get('margin');
 const RISK_PCT_PER_TRADE = parseFloat(g_config.get('risk_pct_per_trade')) || 1;
 const LONG_TERM_MARGIN = parseFloat(g_config.get('long_term_margin')) || 0;
 const SHOW_DETAIL_ON_CHART = g_config.get('show_detail_on_chart') !== false;
-const LEVEL_ROOM_MULT = parseFloat(g_config.get('level_room_mult')) || 1.5;
+const LIVE_FEED_AUTO = g_config.get('live_feed_auto') !== false;
+const AUTOPILOT = g_config.get('autopilot') !== false;
+const AUTOPILOT_OPEN_DASH = g_config.get('autopilot_open_dashboard') !== false;const LEVEL_ROOM_MULT = parseFloat(g_config.get('level_room_mult')) || 1.5;
 let weightIndex = []
 const HISTORICAL_DATA_INTERVAL = g_config.get('historical_data_interval');
 const REFRESH_TIME = g_config.get('refresh_time');
@@ -313,6 +333,9 @@ const OVX = g_config.get('OVX'); //CRUDE vix
 const VXSLV = g_config.get("VXSLV") //SILVER VIX
 const GVZ = g_config.get("GVZ") //GOLD VIX
 const VIX = g_config.get("VIX") //CBOE Volatility Index
+const VOL_EXTREME = {
+    'OVX': parseFloat(g_config.get('vol_extreme_ovx')) || 35
+};
 
 // Hedge strike distance (in points) — how far OTM to place the hedge leg's CE/PE strike
 // relative to the underlying's own ATM strike. Configurable per instrument class since a
