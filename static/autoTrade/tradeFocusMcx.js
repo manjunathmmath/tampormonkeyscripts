@@ -13,6 +13,57 @@
 var _TF_MCX_MULT = { GOLDM: 10, GOLD: 100, SILVERM: 5, SILVER: 30, SILVERMIC: 1, CRUDEOILM: 10, CRUDEOIL: 100, NATGASMINI: 250, NATURALGAS: 1250 };
 var _TF_MCX_NAMES = ['GOLDM', 'SILVERM', 'CRUDEOILM'];
 
+// ── Loading the commodity's data by itself ───────────────────────────────────────────────────────────────────────────────
+// CRUDEOILM is loaded at every full refresh (_refreshMCX in commonShowPopupWindow). GOLDM and SILVERM were only ever loaded by the MCX
+// Dashboard or the Commodities popup, so their gates said "load it first" until you opened one. This loads what the gates read (strike levels
+// via showTopChartMCX, the futures remark and live price, the option chain with its OI/OBV score), the same calls _refreshMCX makes, with no
+// screen of its own. It runs (1) when a commodity's gates are drawn and its data is missing, at most once every 2 minutes, and (2) at each full
+// refresh for _TF_MCX_AUTO (names the refresh does not load itself), when the copy is older than 4 minutes.
+var _TF_MCX_AUTO = ['GOLDM', 'SILVERM'];
+var _TF_MCX_LOADING = {}, _TF_MCX_TRIED = {}, _TF_MCX_LOADED_AT = {};
+function _tfMcxNeedsData(name) {
+    var sm = INSTRUMENT_SCORE_MAP[name] || {};
+    return !(sm.oiData && sm.oiData.tableData && sm.oiData.tableData.length) || !sm.strikeMap || !sm.futures_trend_remark;
+}
+async function _tfMcxLoad(name) {
+    _TF_MCX_LOADING[name] = true; _TF_MCX_TRIED[name] = Date.now();
+    try {
+        try { await showTopChartMCX(name); } catch (e) {}                       // strikeMap + open (no screen needed: it no-ops without a container)
+        var res = await showFutureDetailsMCX(name);
+        if (res) {
+            var sm = INSTRUMENT_SCORE_MAP[name] || (INSTRUMENT_SCORE_MAP[name] = {});
+            var l = parseFloat(res['ltp']); if (l) sm.mcxLtp = l;
+            sm.futures_trend = getFuturesTrendScore(res['REMARK']); sm.futures_trend_remark = res['REMARK']; sm.avwap = res['vwapPrice'] || 0;
+            sm.oi_obv = 0;
+            await showPrictionProbabiltyMCX(name, res);
+            var cached = sm.stockEntry, oiData = cached && cached['DATA'];
+            if (oiData && oiData.tableData && oiData.tableData.length) sm.oiData = oiData;
+            try { showOIOBVBarChart(name); } catch (e) {}                         // sets the OI/OBV sub-score the composite and consensus read
+            try { sm.score = computeInstrumentScore(name); } catch (e) {}
+        }
+        _TF_MCX_LOADED_AT[name] = Date.now();
+    } catch (e) { try { console.log('[trade-focus mcx load]', name, e); } catch (e2) {} }
+    delete _TF_MCX_LOADING[name];
+    try { if (typeof _tfRender === 'function' && typeof _TF_NAME !== 'undefined' && _TF_NAME === name && jQ('#gtb-pane-focus').is(':visible')) _tfRender(); } catch (e) {}
+}
+function _tfMcxEnsure(name, force) {
+    if (_TF_MCX_LOADING[name] || window._TF_SKIP_LOAD) return false;
+    var now = Date.now();
+    if (!force && _TF_MCX_TRIED[name] && now - _TF_MCX_TRIED[name] < 120000) return false;
+    if (force && _TF_MCX_LOADED_AT[name] && now - _TF_MCX_LOADED_AT[name] < 240000 && !_tfMcxNeedsData(name)) return false;
+    _tfMcxLoad(name);
+    return true;
+}
+// Called at every full refresh (tradeFocusLog.js _tfTick). The refresh itself now loads GOLDM / SILVERM (commonShowPopupWindow, same step as
+// crude), so this is only the fallback: if something the gates read is still missing afterwards (that load failed), try once more in the background.
+function _tfMcxAutoLoad() {
+    try {
+        var lv = _tfMcxLive();
+        if (lv.live && !_tfMcxInSession()) return;
+        _TF_MCX_AUTO.forEach(function (n) { if (typeof _gtbIsMcxFuture === 'function' && _gtbIsMcxFuture(n) && _tfMcxNeedsData(n)) _tfMcxEnsure(n); });
+    } catch (e) {}
+}
+
 function _tfMcxLive() {
     try {
         if (typeof _gtbHistTime === 'function' && _gtbHistTime()) return { live: false, why: _gtbFinalAsOf() };
@@ -52,6 +103,9 @@ function _tfComputeMcx(name) {
     var open = parseFloat(sm.open) || 0;
     var pc = (open && ltp) ? (ltp - open) / open * 100 : 0;
     var haveData = !!(sm.oiData && sm.oiData.tableData && sm.oiData.tableData.length) || !!sm.futures_trend_remark;
+    // anything the gates read is missing: load it in the background (once per 2 minutes) and redraw when it arrives
+    var loadingNow = false;
+    if (_tfMcxNeedsData(name)) { _tfMcxEnsure(name); loadingNow = !!_TF_MCX_LOADING[name]; }
     var mpd = null; try { mpd = _gtbComputeMaxPainGEX(name); } catch (e) {}
     var vd = null; try { vd = _cmdBuildVerdict(name, sm.oiData, pc, mpd); } catch (e) {}
     var cn = null; try { cn = _gtbMasterConsensus(name); } catch (e) {}
@@ -68,7 +122,7 @@ function _tfComputeMcx(name) {
     // the headline: the commodity verdict, but never louder than the consensus direction
     var call = 'NO TRADE', headline = 'NO TRADE', col = 'var(--gtb-muted)';
     if (vd && vd.ovxGate) { var vl = (vd.context && vd.context.label) ? String(vd.context.label) : 'volatility too high'; headline = /^NO TRADE/.test(vl) ? vl : 'NO TRADE — ' + vl; col = 'var(--gtb-red)'; }
-    else if (!haveData) { headline = 'WAIT — load ' + lbl + ' first (Commodities popup or MCX Dashboard)'; call = 'WAIT'; col = 'var(--gtb-amber)'; }
+    else if (!haveData || (loadingNow && !(sm.strikeMap && sm.oiData))) { headline = loadingNow ? 'WAIT — loading ' + lbl + '…' : 'WAIT — ' + lbl + ' data not loaded yet (retrying)'; call = 'WAIT'; col = 'var(--gtb-amber)'; }
     else if (!dir) { headline = 'NO TRADE — no clear direction'; col = 'var(--gtb-muted)'; }
     else if (vd && (vd.label === 'LONG' || vd.label === 'SHORT') && ((vd.label === 'LONG') === (dir > 0))) { call = word; headline = word + ' — ' + (vd.trade ? 'at ' + vd.trade.entry : 'wall nearby'); col = dir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)'; }
     else if (vdFlat) {
@@ -89,7 +143,7 @@ function _tfComputeMcx(name) {
         if (!lv.live) { r.tone = 'none'; r.line = 'Not live: ' + lv.why; r.detail.push('The dashboard is showing an earlier moment or day, so the live gates do not apply.'); res.rows.push(r); return; }
         if (!_tfMcxInSession()) { r.tone = 'none'; r.line = 'The MCX session is closed (09:00 to 23:55, Monday to Friday)'; res.rows.push(r); return; }
         var bad = [], warn = [], ok = [];
-        if (vd && vd.ovxGate) bad.push((vd.context && vd.context.lines && vd.context.lines[0]) || 'Volatility is extreme');
+        if (vd && vd.volWarn) warn.push(vd.volWarn.label + ' ' + vd.volWarn.value.toFixed(1) + ' is above ' + vd.volWarn.limit + ': high volatility, widen the stop and cut size (warning only)');
         else if (vd && vd.context && vd.context.lines && vd.context.lines[0]) ok.push(vd.context.lines[0]);
         if (!ltp) warn.push('No live price for ' + lbl + ' yet');
         try { var dz = _gtbDeadZone(name); if (dz) warn.push(lbl + ' is in a dead zone (' + dz.lo + ' – ' + dz.hi + '): signals too weak to commit'); } catch (e) {}
@@ -148,6 +202,15 @@ function _tfComputeMcx(name) {
             res.rows.push(r); return;
         }
         r.line = vd.label + (vd.location && vd.location.label ? ' · ' + vd.location.label : '') + (vd.confirmation && vd.confirmation.label && vd.confirmation.label !== 'N/A' ? ' · ' + vd.confirmation.label : '') + tmTxt;
+        // Live price against the wall the verdict entered at. The verdict measures "at the wall" from the at-the-money strike (which is how
+        // it can say 0.00%), so show where price actually is. Display only: the Actionable condition itself is unchanged.
+        var wk = (vd.trade && vd.trade.entry != null) ? parseFloat(vd.trade.entry) : NaN;
+        if (isFinite(wk) && ltp) {
+            var dpts = ltp - wk, fm = function (x) { return Math.round(x).toLocaleString('en-IN'); };
+            r.line = r.line.replace(' · timing', ' · price ' + fm(ltp) + (Math.abs(dpts) < 0.5 ? ' (at the wall)' : ' (' + fm(Math.abs(dpts)) + ' pts ' + (dpts < 0 ? 'below' : 'above') + ' the wall)') + ' · timing');
+            if (r.line.indexOf(' · price ') === -1) r.line += ' · price ' + fm(ltp) + (Math.abs(dpts) < 0.5 ? ' (at the wall)' : ' (' + fm(Math.abs(dpts)) + ' pts ' + (dpts < 0 ? 'below' : 'above') + ' the wall)');
+            r.detail.push('The verdict measures "at the wall" from the at-the-money strike, so its distance can read 0.00% while the live price is up to about half a strike step away. The price shown above is the live price, and the Actionable condition itself is unchanged.');
+        }
         [vd.context, vd.location, vd.confirmation].forEach(function (p) { if (p && p.lines) p.lines.forEach(function (x) { r.detail.push(typeof x === 'string' ? x : x.text); }); });
         if (tmTxt) r.detail.push('Entry timing is the same checklist the Option Strike Search shows; it is for a ' + word + ' and is not an entry signal while the verdict says WAIT.');
         res.rows.push(r);

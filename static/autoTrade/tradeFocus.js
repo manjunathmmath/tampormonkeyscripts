@@ -53,7 +53,7 @@ function _tfCompute(nm) {
         if (cn && cn.deadZone) warn.push('NIFTY is in a dead zone, signals too weak to commit: ' + (typeof _gtbDeadZoneText === 'function' ? _gtbDeadZoneText(nm, cn.deadZone) : cn.deadZone.lo + ' – ' + cn.deadZone.hi));
         try {
             var vx = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['INDIA VIX'] || {}).ltp) || 0;
-            if (vx > 25) bad.push('India VIX ' + vx.toFixed(1) + ' is HIGH (above 25): wide, unpredictable swings');
+            if (vx > 25) warn.push('India VIX ' + vx.toFixed(1) + ' is HIGH (above 25): wide swings, widen the stop and cut size (warning only)');
             else if (vx > 18) warn.push('India VIX ' + vx.toFixed(1) + ' is ELEVATED (18 to 25)');
             else if (vx > 0) ok.push('VIX ' + vx.toFixed(1));
         } catch (e) {}
@@ -209,7 +209,8 @@ function _tfRenderCmd() {
     if (!$p.length) return;
     var name = (typeof _CMD !== 'undefined' && _CMD.activeName) ? _CMD.activeName : null;
     if (!name || !_tfIsMcx(name)) { $p.html('<div style="padding:4px 8px;font-size:0.5rem;color:var(--gtb-muted);">Focus gates are not available for ' + (name || 'this instrument') + '.</div>'); return; }
-    try { $p.html(_tfHtml(_tfCompute(name), true)); }
+    // the Commodities popup loads its own commodity, so the gates strip must not start a second load of the same data
+    try { window._TF_SKIP_LOAD = true; $p.html(_tfHtml(_tfCompute(name), true)); window._TF_SKIP_LOAD = false; }
     catch (e) { $p.html('<div style="padding:4px 8px;font-size:0.5rem;color:var(--gtb-red);">Focus gates could not be built.</div>'); try { console.log('[trade-focus cmd]', e); } catch (e2) {} }
 }
 

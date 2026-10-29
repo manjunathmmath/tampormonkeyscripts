@@ -3481,6 +3481,15 @@ async function commonShowPopupWindow() {
         _refreshMCX('CRUDEOILM'),
         _refreshMCX('USDINR'),
     ];
+    // GOLDM and SILVERM are loaded in the same step as CRUDEOILM so the Trade Focus commodity gates have fresh data after every refresh
+    // (names in _TF_MCX_AUTO, tradeFocusMcx.js). Before this they only loaded from the MCX Dashboard or the Commodities popup.
+    try {
+        (typeof _TF_MCX_AUTO !== 'undefined' ? _TF_MCX_AUTO : []).forEach(function (n) {
+            if (typeof _gtbIsMcxFuture === 'function' && _gtbIsMcxFuture(n)) {
+                _phase2.push(_refreshMCX(n).then(function () { try { _TF_MCX_LOADED_AT[n] = Date.now(); } catch (e) {} }));
+            }
+        });
+    } catch(e) {}
     // Also refresh any custom instruments added dynamically
     try {
         _gtbGetCustomInstrs().forEach(function(ci) {
@@ -9056,8 +9065,8 @@ function _gtbCfgFieldGroups() {
         { key: 'VXSLV', label: 'VXSLV (CBOE Silver Volatility)', type: 'text', link: 'https://www.cboe.com/index/dashboard/VXSLV/', fetchSymbol: '_VXSLV' },
         { key: 'GVZ', label: 'GVZ (CBOE Gold Volatility)', type: 'text', link: 'https://www.cboe.com/index/dashboard/GVZ/', fetchSymbol: '_GVZ' },
         { key: 'VIX', label: 'VIX (CBOE, not India VIX)', type: 'text', link: 'https://www.cboe.com/index/dashboard/VIX/', fetchSymbol: '_VIX' },
-        // Crude Verdict says NO TRADE at or above this OVX level (default 35). GVZ / VXSLV / VIX do not gate the verdict.
-        { key: 'vol_extreme_ovx', label: 'OVX: extreme level, the crude Verdict says NO TRADE at or above', type: 'text' },
+        // The crude Verdict adds a volatility WARNING at or above this OVX level (default 35); it no longer blocks the call. GVZ / VXSLV / VIX do not warn.
+        { key: 'vol_extreme_ovx', label: 'OVX: warning level, the crude Verdict warns at or above (does not block)', type: 'text' },
     ]});
     // Futures and options expiry as two SEPARATE sections (per explicit request) rather than
     // interleaved per commodity — each is its own independent setting (see the mcx_expiry_ /
@@ -10316,7 +10325,7 @@ var GTB_INFO = {
             + '<br><b>MCX LTP</b> = what MCX crude is actually trading at right now.'
             + '<br><b>Gap</b> = (MCX LTP &minus; Fair Value) / Fair Value. Positive = MCX trading rich vs global &rarr; <i>reversion risk</i> (downside pull). Negative = MCX trading cheap vs global &rarr; <i>catch-up</i> (upside pull).'
             + '<br><br><b>A single-digit-% gap is normal and mostly structural</b>, even with fully correct live prices — MCX\'s price already bakes in import duty, GST, and freight/dealer margin that a plain WTI&times;USD/INR formula can\'t capture. Only treat this as a data-quality flag once it clears ~12%; check first whether USD/INR or WTI was stale/mistyped (use <b>Fetch Live (WTI + USD/INR)</b> to rule that out) before treating a large gap as a real signal.'
-            + '<br><br><b>Signal</b> combines this gap with WTI direction, USD/INR direction, and an OVX volatility guard (NO TRADE if OVX &ge; 35) into BUY CE / BUY PE / LEAN LONG / LEAN SHORT / WAIT.' },
+            + '<br><br><b>Signal</b> combines this gap with WTI direction, USD/INR direction, and an OVX volatility warning (OVX &ge; 35 adds a warning to the reasons; it does not block the signal) into BUY CE / BUY PE / LEAN LONG / LEAN SHORT / WAIT.' },
     score:        { icon:'bi-speedometer2',     title:'Score Gauge',
         body:'The composite market score on a −40…+40 dial. It sums every signal: 9:15 breakouts, advance/decline breadth, futures trend, OI/OBV, and weighted index constituents. Gauge colour: <b style="color:#f85149">red &lt;0</b>, <b style="color:#d29922">orange 0–4</b>, <b style="color:#fbbf24">yellow 4–8</b>, <b style="color:#3fb950">green ≥8</b>. Below it: live N50 &amp; Bank-Nifty advance/decline counts.<br><br><b>Recalibrated (v26.31):</b> the OI/OBV score was de-biased (per-strike wall + standing PCR removed), deflating the composite by ~5–8 points, so the signal/gauge thresholds were lowered and symmetrised. If it feels too sensitive or too quiet, they may need a further nudge after a few live sessions.' },
     rangesb:      { icon:'bi-bar-chart-line-fill', title:'Range Scoreboard',
@@ -10460,7 +10469,7 @@ var GTB_INFO = {
            + 'The <b>⚠</b> flag and tooltip warn when IV had a direction that <i>disagreed</i> with the OBV-based label on one or more strikes — those strikes still scored on OBV, just at half confidence. When OBV Flow and Futures agree but the composite score still looks off, check the ⚠ strikes and the standing-OI wall — the directional label itself now always follows OBV.' },
     'cmd-crude-verdict': { icon:'bi-flag-fill', title:'Verdict — combined decision framework',
         body:'Combines everything on this page into one card, checked in the order you should actually check them:<br><br>'
-           + '<b>1. Volatility gate (OVX)</b> — trumps everything. OVX ≥ 35 → NO TRADE, skip the rest.<br>'
+           + '<b>1. Volatility warning (OVX / India VIX)</b> — at or above the limit (OVX 35 in Settings, India VIX 30) the verdict adds a warning: widen the stop and cut size. It no longer blocks the call; the checks below still decide it.<br>'
            + '<b>2. Direction</b> — composite score (≥+3 long bias, ≤−3 short bias) + whether Futures and OI/OBV (the two fast, leading signals) agree. Disagreement = lower conviction.<br>'
            + '<b>3. Wall proximity</b> — is spot actually near a real support/resistance wall (full-weight WRITE), or sitting in a dead zone with no nearby signal? A directional bias with no nearby wall is unconfirmed — wait for price to reach the wall rather than entering in open space.<br>'
            + '<b>4. Max Pain / GEX</b> — expiry-horizon context and a target level, never a same-day trigger. Flagged separately if it disagrees with the flow.<br><br>'
@@ -13267,14 +13276,14 @@ function _cmdBuildVerdict(name, oiData, priceChange, mpd) {
     // The volatility gate (NO TRADE) applies to NSE names (India VIX) and crude (OVX) only. Gold (GVZ), silver (VXSLV) and the VIX-proxy
     // commodities no longer block the verdict (v29.427): their reading is still shown below as context.
     var _volGated = (ovxLabel === 'India VIX' || ovxLabel === 'OVX');
+    // A reading above the limit is a WARNING only (v29.434): it used to force NO TRADE and skip every check below. It is added to the lines and
+    // to out.volWarn, and the verdict goes on to the normal checks. out.ovxGate stays null (kept for the Pre-Flight diagram).
+    var _volWarnText = null;
     if (_volGated && ovx >= ovxExtreme) {
-        out.ovxGate = ovx;
-        out.label = 'NO TRADE'; out.col = 'var(--gtb-red)';
-        var _ovxTxt = ovxLabel + ' ' + ovx.toFixed(1) + ' — extreme volatility (limit ' + ovxExtreme + '). Skip, or widen SL and cut size drastically. Everything below is context only.'
+        _volWarnText = ovxLabel + ' ' + ovx.toFixed(1) + ' is above ' + ovxExtreme + ': high volatility, so widen the stop and cut size. A warning only; the checks below still decide the verdict.'
             + (ovxLabel === 'OVX' ? ' If this is the normal level for OVX, raise the limit in Settings > Volatility indices.' : '');
-        out.lines.push({ ok: false, text: _ovxTxt });
-        out.context = { ok: false, label: 'NO TRADE — vol too high', lines: [_ovxTxt] };
-        return out;
+        out.volWarn = { label: ovxLabel, value: ovx, limit: ovxExtreme, text: _volWarnText };
+        out.lines.push({ ok: false, warn: true, text: _volWarnText });
     }
 
     // ── CONTEXT part 2: Direction — is there a real edge, or no-edge/range-bound? ──
@@ -13283,7 +13292,7 @@ function _cmdBuildVerdict(name, oiData, priceChange, mpd) {
     var biasLbl = bias > 0 ? 'LONG bias' : bias < 0 ? 'SHORT bias' : 'No directional edge';
     var _ctxTxt = 'Composite score ' + (cs.total >= 0 ? '+' : '') + cs.total.toFixed(1) + ' → ' + biasLbl + '.';
     out.lines.push({ ok: bias !== 0, text: _ctxTxt });
-    out.context = { ok: bias !== 0, label: biasLbl, lines: [ovxLabel + ' ' + (ovx ? ovx.toFixed(1) : '—') + (_volGated ? ' (not extreme)' : ' (context only, not a gate for ' + name + ')'), _ctxTxt] };
+    out.context = { ok: bias !== 0, label: biasLbl, lines: [ovxLabel + ' ' + (ovx ? ovx.toFixed(1) : '—') + (_volWarnText ? ' (above ' + ovxExtreme + ': warning only)' : _volGated ? ' (not extreme)' : ' (context only, not a gate for ' + name + ')'), _ctxTxt] };
     out.raw.csTotal = cs.total;
 
     var fvo = null; try { fvo = _gtbFuturesOIConflict(name); } catch(e) {}
@@ -13395,7 +13404,8 @@ function _cmdRenderVerdict(elId, name, oiData, priceChange, mpd) {
     h += '</div>'
         + '<div style="margin-top:5px;display:flex;flex-direction:column;gap:2px;">'
         + v.lines.map(function(l) {
-            var icon = l.ok === true ? '<i class="bi bi-check-circle-fill" style="color:var(--gtb-green);"></i>'
+            var icon = l.warn ? '<i class="bi bi-exclamation-triangle-fill" style="color:var(--gtb-amber);"></i>'
+                     : l.ok === true ? '<i class="bi bi-check-circle-fill" style="color:var(--gtb-green);"></i>'
                      : l.ok === false ? '<i class="bi bi-x-circle-fill" style="color:var(--gtb-red);"></i>'
                      : '<i class="bi bi-info-circle" style="color:var(--gtb-muted);"></i>';
             return '<div style="font-size:0.46rem;color:var(--gtb-text);display:flex;gap:5px;align-items:flex-start;line-height:1.4;">' + icon + '<span>' + l.text + '</span></div>';
@@ -16167,11 +16177,9 @@ jQ(document).on('click', '#show-commodities', function (e) {
             signal = 'ENTER WTI'; sigCol = 'var(--gtb-muted)';
             sigReason.push('Enter WTI current and previous close to compute signal');
         } else {
-            // OVX guard — trumps everything
-            if (ovx >= 35) {
-                signal = 'NO TRADE'; sigCol = 'var(--gtb-red)';
-                sigReason.push('OVX ELEVATED (' + ovx.toFixed(1) + ') — volatility too high, widen SL or skip');
-            } else {
+            // OVX is a warning only (v29.434; it used to force NO TRADE and skip the rest): added to the reasons, the signal is worked out as normal
+            if (ovx >= 35) sigReason.push('OVX ELEVATED (' + ovx.toFixed(1) + ') — warning: widen SL / cut size');
+            {
                 // Fair value gap override
                 var gapBias = 0;
                 if (gap !== null) {
@@ -17226,7 +17234,7 @@ function _svComputePrediction(name, suffix) {
             bullP = Math.round(bullP * 0.75 + 25 * 0.25);
             bearP = Math.round(bearP * 0.75 + 25 * 0.25);
             sidewaysP = Math.max(0, 100 - bullP - bearP);
-        } else { vixRegime = 'HIGH'; vixColor = 'var(--gtb-red)'; noTrade = true; }
+        } else { vixRegime = 'HIGH'; vixColor = 'var(--gtb-red)'; }     // warning only (v29.434), shown next to the VIX figure
     }
 
     // Strike levels, LTP, and VIX daily range — via INSTRUMENT_LIST_GLOBAL/getStrikeDetails
@@ -17590,6 +17598,7 @@ function _svBuildPrediction(name, sfx) {
         + '<div style="display:flex;gap:12px;align-items:center;padding-top:6px;border-top:1px solid var(--gtb-border);">'
         + '<span style="font-size:0.5rem;color:var(--gtb-muted);">Confidence: <b style="color:' + confColor + ';">' + confLabel + ' (' + confidence + '%)</b></span>'
         + '<span style="font-size:0.5rem;color:var(--gtb-muted);">' + volLabel + ': <b style="color:' + vixColor + ';">' + (_vixVal ? _vixVal.toFixed(2) + ' · ' + vixRegime : '—') + '</b></span>'
+        + (vixRegime === 'HIGH' ? '<span style="font-size:0.5rem;color:var(--gtb-amber);" title="Warning only: the call above is not blocked by it"><i class="bi bi-exclamation-triangle-fill"></i> High volatility: widen the stop, cut size</span>' : '')
         + '</div>'
         + '</div>';
 
@@ -22233,7 +22242,7 @@ function _gtbBuildPrediction(threeCol) {
             bullP     = Math.round(bullP     * 0.75 + 25 * 0.25);
             bearP     = Math.round(bearP     * 0.75 + 25 * 0.25);
             sidewaysP = 100 - bullP - bearP;
-        } else { vixRegime = 'HIGH'; vixColor = 'var(--gtb-red)'; noTrade = true; }
+        } else { vixRegime = 'HIGH'; vixColor = 'var(--gtb-red)'; }     // warning only (v29.434), shown next to the VIX figure
     }
 
     // Check VIXU/VIXL from NIFTY 50 trends
@@ -22392,6 +22401,7 @@ function _gtbBuildPrediction(threeCol) {
         + '<div style="display:flex;gap:12px;align-items:center;padding-top:6px;border-top:1px solid var(--gtb-border);">'
         + '<span style="font-size:0.5rem;color:var(--gtb-muted);" title="Share of the signals that point the same way as the lean. It measures agreement between signals, not how often the call is right.">Confidence: <b style="color:' + confColor + ';">' + confLabel + ' (' + confidence + '%)</b></span>'
         + '<span style="font-size:0.5rem;color:var(--gtb-muted);">VIX: <b style="color:' + vixColor + ';">' + (_vixVal ? _vixVal.toFixed(2) + ' · ' + vixRegime : '—') + '</b></span>'
+        + (vixRegime === 'HIGH' ? '<span style="font-size:0.5rem;color:var(--gtb-amber);" title="Warning only: the call above is not blocked by it"><i class="bi bi-exclamation-triangle-fill"></i> High VIX: widen the stop, cut size</span>' : '')
         + (leadLagConflict ? '<span style="font-size:0.5rem;color:var(--gtb-amber);"><i class="bi bi-exclamation-triangle-fill"></i> Lead/Lag conflict</span>' : '')
         + (!comboStats ? '<span style="font-size:0.5rem;color:var(--gtb-amber);" title="Today\'s 9:15 combo has no historical backtest match — the base rate behind this prediction is a hand-authored heuristic, not measured data"><i class="bi bi-exclamation-triangle-fill"></i> Combo unvalidated</span>' : '')
         + '</div>'

@@ -264,7 +264,7 @@ const g_config = new MonkeyConfig({
         },
         // OVX level at or above which the crude Verdict turns NO TRADE ("extreme volatility"). Only crude and the NSE names are gated; GVZ,
         // VXSLV and the VIX proxy are shown as context only.
-        vol_extreme_ovx:   { 'label': 'OVX: extreme level (the crude Verdict says NO TRADE at or above)', type: 'text', default: 35 },
+        vol_extreme_ovx:   { 'label': 'OVX: warning level (the crude Verdict warns at or above; it does not block)', type: 'text', default: 35 },
         VXSLV: {
             'label': 'VXSLV <a href="https://in.investing.com/indices/cboe-silver-etf-volatility" target="_blank" rel="noopener" style="font-weight:normal;font-size:0.85em;">(source)</a>',
             type: 'text',

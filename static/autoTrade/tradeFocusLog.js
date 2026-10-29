@@ -74,6 +74,7 @@ function _tfLogPrune() {
 function _tfTick(full, show) {
     try {
         var vis = jQ('#gtb-pane-focus').is(':visible'), cmdOpen = jQ('#cmd-crude-focus').length > 0;
+        if (full && typeof _tfMcxAutoLoad === 'function') _tfMcxAutoLoad();        // keep GOLDM / SILVERM data current (loads in the background)
         if (!full && !(show && vis)) return;
         var shown = null;
         if (full || _TF_NAME === 'NIFTY 50') {
