@@ -596,7 +596,7 @@ function _gtbLsDaysOld(ds) { var t = new Date(ds + 'T00:00:00').getTime(); retur
 function _gtbLsPrune(aggressive) {
     var keys = [], i, k, removed = 0, freed = 0;
     for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k) keys.push(k); }
-    var protectedKey = function (key) { return /JOURNAL|DIARY|NOTES|BRIEF_LOG|MACRO_HIST|^GTB_LOG_|^GTB_FOCUS_LOG_|SETTINGS|CONFIG|^GTB_THEME$/.test(key); };
+    var protectedKey = function (key) { return /JOURNAL|DIARY|NOTES|BRIEF_LOG|MACRO_HIST|^GTB_LOG_|^GTB_FOCUS_LOG_|^GTB_LX_LOG_|SETTINGS|CONFIG|^GTB_THEME$/.test(key); };
     keys.forEach(function (key) {
         if (protectedKey(key)) return;
         var drop = false, m = /(\d{4}-\d{2}-\d{2})/.exec(key);

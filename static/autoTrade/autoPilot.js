@@ -79,6 +79,7 @@ function _apNineFifteenDone() {
 
 async function _apTick() {
     if (!_apOn() || _AP.busy) return;
+    if (location.pathname.indexOf('/markets/ext/chart/') !== -1) { _apSay('on a Kite chart page: auto-pilot paused (no dashboard, no scans)'); return; }
     var t = _apNow();
     if (t.dow < 1 || t.dow > 5) { _apSay('weekend'); return; }
     if (t.min < 8 * 60 + 50 || t.min > 15 * 60 + 35) { _apSay('outside market hours'); return; }

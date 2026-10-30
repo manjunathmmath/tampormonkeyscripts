@@ -1850,6 +1850,13 @@ function commonMarkupPlaceHolder() {
     });
     h += '</div>'; // end futures strip
 
+    // ── POSITIONAL SCREENER DOCK (below the futures strip, collapsed unless GTB_PS_DOCK = 1) ──
+    // The screener content is mounted lazily by _psDockInit() (positionalScreener.js), so nothing is built here when it is closed.
+    h += '<div id="gtb-ps-dock"' + (localStorage.getItem('GTB_PS_DOCK') === '1' ? ' class="open"' : '') + '>'
+       + '<div id="gtb-ps-dock-bar" title="Open or close the Positional Screener under the futures strip"><i class="bi bi-funnel-fill"></i> POSITIONAL SCREENER'
+       + '<span id="gtb-ps-dock-sum"></span><span id="gtb-ps-dock-tall" title="Make the panel taller or shorter" style="margin-left:auto;padding:0 6px;">⤢</span><span id="gtb-ps-dock-caret">▴</span></div>'
+       + '<div id="gtb-ps-dock-body"></div></div>';
+
     // ── Refresh status bar ────────────────────────────────────────────────────
     h += '<div id="gtb-refresh-statusbar" style="'
        + 'font-size:0.6rem;color:var(--gtb-muted);padding:3px 10px;border-top:1px solid var(--gtb-border);'
@@ -1880,6 +1887,7 @@ function showCompoenentPlaceHolders() {
     _gtbCheckHolidayAlert().catch(function() {});
     // Initialize unified tab system + analyze drawer
     _gtbInitTabs();
+    try { if (typeof _psDockInit === 'function') _psDockInit(); } catch (e) {}
 }
 
 // ── Unified Tab System ────────────────────────────────────────────────────────
@@ -8493,7 +8501,9 @@ function setScore(opts) {
     try { if (typeof _lfLogScore === 'function') _lfLogScore(_light ? 'light' : 'full', SCORE, marketSignal && marketSignal.signal); } catch (e) {}
     // The dashboard pane is drawn earlier in this function (before SCORE exists), so the Level Confirmation
     // card was always built from the PREVIOUS cycle's signal — or none on a fresh load. Redraw just that card now.
-    try { if ((!_light || (opts && opts.cards)) && jQ('#gtb-pane-dashboard').is(':visible')) { jQ('#gtb-dash-lvlconfirm').html(_gtbLevelConfirmHtml()); jQ('#gtb-dash-final').html(_gtbFinalVerdictHtml()); if (!_light) _gtbDashSigAgreeSchedule(); } } catch (e) {}
+    try { if ((!_light || (opts && opts.cards)) && jQ('#gtb-pane-dashboard').is(':visible')) { jQ('#gtb-dash-lvlconfirm').html(_gtbLevelConfirmHtml()); jQ('#gtb-dash-final').html(_gtbFinalVerdictHtml()); if (typeof _lxRenderCard === 'function') _lxRenderCard(); if (!_light) _gtbDashSigAgreeSchedule(); } } catch (e) {}
+    // live-context snapshot for its futures / breadth windows and the review log (about every 4 min, live only)
+    try { if (!_light && typeof _lxLogSnapshot === 'function') _lxLogSnapshot(); } catch (e) {}
 
     // Trade Focus tab: redrawn after every full refresh, and every ~6 s from the live light tick (opts.cards)
     // (a full refresh also logs the five row states, tradeFocusLog.js)
@@ -19026,6 +19036,7 @@ function renderRangeScoreboard() {
               + '<i class="bi bi-exclamation-triangle-fill"></i> one-sided: ' + _top[0] + ' is ' + domPct + '% of this score</div>';
     }
     if (rangeChk.on) html += _gtbRangePlanWarnHtml(rangeChk, true);
+    if (typeof _lxScoreboardNote === 'function') html += _lxScoreboardNote(verdict);
 
     el.innerHTML = html;
 }
@@ -22328,6 +22339,16 @@ function _gtbBuildPrediction(threeCol) {
         }
     }
 
+    // Price-confirmation gate (liveContext.js): a BUY / SELL waits while price is not doing what the call needs. Display only.
+    var _lxGate = null, _lxWas = '';
+    try {
+        if (typeof _lxGateFor === 'function' && (tradeAction === 'BUY CE' || tradeAction === 'BUY PE')) {
+            _lxWas = tradeAction;
+            _lxGate = _lxGateFor('NIFTY 50', tradeAction === 'BUY CE' ? 1 : -1);
+            if (_lxGate && !_lxGate.ok) { tradeAction = 'WAIT: PRICE NOT CONFIRMING'; tradeColor = 'var(--gtb-amber)'; }
+        }
+    } catch (e) {}
+
     // ── Outcome scenarios ─────────────────────────────────────────────────────
     var scenarios = [];
     if (primaryBull) {
@@ -22405,6 +22426,7 @@ function _gtbBuildPrediction(threeCol) {
         + (leadLagConflict ? '<span style="font-size:0.5rem;color:var(--gtb-amber);"><i class="bi bi-exclamation-triangle-fill"></i> Lead/Lag conflict</span>' : '')
         + (!comboStats ? '<span style="font-size:0.5rem;color:var(--gtb-amber);" title="Today\'s 9:15 combo has no historical backtest match — the base rate behind this prediction is a hand-authored heuristic, not measured data"><i class="bi bi-exclamation-triangle-fill"></i> Combo unvalidated</span>' : '')
         + '</div>'
+        + (_lxGate && !_lxGate.ok ? _lxGateHtml(_lxGate, _lxWas) : '')
         + '</div>';
 
     // ── Trade plan ────────────────────────────────────────────────────────────
@@ -23360,6 +23382,10 @@ function _gtbRenderDashboardPane() {
         +      '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-flag-fill"></i> FINAL VERDICT</span></div>'
         +      '<div class="gtb-card-body" id="gtb-dash-final" style="padding:0;"></div>'
         +    '</div>';
+        h += '<div class="gtb-card gtb-widget" style="margin:0 8px 8px;">'
+        +      '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-activity"></i> LIVE CONTEXT: IS THE MORNING VIEW STILL VALID?' + _ii('lx-card') + '</span></div>'
+        +      '<div class="gtb-card-body" id="gtb-dash-lx" style="padding:0;"></div>'
+        +    '</div>';
 
         h += _gtbDashboardOverviewHtml();
 
@@ -23558,6 +23584,7 @@ function _gtbRenderDashboardPane() {
     try { if (typeof _gtbRenderDashMacroStrip === 'function') _gtbRenderDashMacroStrip(); } catch (e) {}
     try { jQ('#gtb-dash-lvlconfirm').html(_gtbPT('dash-lvlconfirm', function () { return _gtbLevelConfirmHtml(); })); } catch (e) {}
     try { jQ('#gtb-dash-final').html(_gtbPT('dash-final', function () { return _gtbFinalVerdictHtml(); })); } catch (e) {}
+    try { if (typeof _lxCardHtml === 'function') jQ('#gtb-dash-lx').html(_gtbPT('dash-lx', function () { return _lxCardHtml('NIFTY 50'); })); } catch (e) {}
 
     _gtbDashGridNames().forEach(function (name) {
         try {

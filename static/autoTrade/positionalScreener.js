@@ -266,6 +266,40 @@ jQ(document).on('click', '#show-positional-screener', function (e) {
 // classes/UX: category segment buttons open a chip panel, chips toggle selected) — plus
 // a search+autocomplete box (same pattern as backtest.js's instrument picker) to add any
 // symbol directly regardless of which category filter is active, for genuine multi-select.
+// Verdict tabs: one tab per verdict (replaces the dropdown), in groups. The selected tab is kept in the hidden #ps-filter so the rest of the
+// screener still reads one value. Counts follow the other filters (search, Tradeable, Min Conv%).
+var _PS_VTAB = 'all';
+var _PS_VGROUPS = [
+    { label: '', tabs: [['all', 'ALL']] },
+    { label: 'BULLISH', tabs: [['strongbuy', 'STRONG BUY'], ['buy', 'BUY (any)']] },
+    { label: 'BEARISH', tabs: [['strongsell', 'STRONG SELL'], ['sell', 'SELL (any)']] },
+    { label: 'STAGE', tabs: [['longforming', 'LONG forming (2)'], ['shortforming', 'SHORT forming (4)'], ['basing', 'Basing (1)'], ['topping', 'Topping (3)']] },
+    { label: '', tabs: [['watch', 'WATCH']] }
+];
+function _psVerdictMatch(f, r) {
+    var v = r.verdict || '';
+    if (f === 'strongbuy') return v.indexOf('STRONG BUY') !== -1;
+    if (f === 'buy') return v.indexOf('BUY') !== -1;
+    if (f === 'strongsell') return v.indexOf('STRONG SELL') !== -1;
+    if (f === 'sell') return v.indexOf('SELL') !== -1;
+    if (f === 'longforming') return v.indexOf('LONG forming') !== -1;
+    if (f === 'shortforming') return v.indexOf('SHORT forming') !== -1;
+    if (f === 'basing') return v.indexOf('basing') !== -1;
+    if (f === 'topping') return v.indexOf('topping') !== -1;
+    if (f === 'watch') return v.indexOf('BUY') === -1 && v.indexOf('SELL') === -1;
+    return true;
+}
+function _psVtabsHtml(counts) {
+    var cur = _PS_VTAB;
+    return _PS_VGROUPS.map(function (g) {
+        return '<span class="ps-vgroup">' + (g.label ? '<span class="ps-vgroup-label">' + g.label + '</span>' : '')
+            + g.tabs.map(function (t) {
+                var c = counts && counts[t[0]] != null ? '<span class="sv-seg-count">' + counts[t[0]] + '</span>' : '';
+                return '<button type="button" class="sv-seg-btn ps-vtab' + (t[0] === cur ? ' sv-seg-active' : '') + '" data-v="' + t[0] + '"><span class="sv-seg-label">' + t[1] + '</span>' + c + '</button>';
+            }).join('') + '</span>';
+    }).join('');
+}
+
 function _psContentHtml() {
     var counts = _psCategoryCounts();
     var modeBar = (typeof _ltContentHtml === 'function')
@@ -288,6 +322,7 @@ function _psContentHtml() {
         +     _psSegBtn('weight', 'WEIGHTED',   null,          '')
         +     _psSegBtn('idx',    'INDEX + MCX', null,         '')
         +   '</div>'
+        +   '<button id="ps-scan-top" class="sv-load-btn" type="button" title="Scan the selected symbols. With nothing selected it scans the highlighted filter above (or all F&O stocks)."><i class="bi bi-play-fill"></i> SCAN</button>'
         + '</div>'
         // ── Chip panel: search-autocomplete add + category chip list ───────────
         + '<div id="ps-chip-panel">'
@@ -306,24 +341,15 @@ function _psContentHtml() {
         +   '</div>'
         +   '<div id="ps-chip-list"></div>'
         + '</div>'
+        // ── Verdict tabs (one per verdict, grouped) ──────────────────────────────
+        + '<div id="ps-vtabs">' + _psVtabsHtml() + '</div>'
         // ── Results controls + table ────────────────────────────────────────────
         + '<div class="ps-controls">'
         +   '<span id="ps-progress" class="ps-progress"></span>'
         +   '<span id="ps-summary" class="ps-summary"></span>'
         +   '<button id="ps-tradeable-btn" class="sv-pill-btn" type="button" title="One-click shortlist: STRONG BUY / STRONG SELL / LONG forming / SHORT forming at Conviction 60 or more, plus BUY / SELL (awaiting overlay) at 65 or more. Excludes anything flagged caution (overlay disagreeing). Combines with the other filters."><i class="bi bi-check2-circle"></i> Tradeable</button>'
         +   '<button id="ps-ideas-btn" class="sv-pill-btn" type="button" title="Readable trade ideas from the scan: side, entry / stop / target, why, and a position size from your Account Capital and risk %."><i class="bi bi-lightbulb"></i> Ideas</button>'
-        +   '<select id="ps-filter" class="sv-pill-btn">'
-        +     '<option value="all">All</option>'
-        +     '<option value="strongbuy">STRONG BUY</option>'
-        +     '<option value="buy">BUY (any)</option>'
-        +     '<option value="strongsell">STRONG SELL</option>'
-        +     '<option value="sell">SELL (any)</option>'
-        +     '<option value="longforming">LONG forming (Stage 2)</option>'
-        +     '<option value="shortforming">SHORT forming (Stage 4)</option>'
-        +     '<option value="basing">Basing (Stage 1)</option>'
-        +     '<option value="topping">Topping (Stage 3)</option>'
-        +     '<option value="watch">WATCH (all forming/no-plan)</option>'
-        +   '</select>'
+        +   '<input type="hidden" id="ps-filter" value="' + _PS_VTAB + '">'
         +   '<select id="ps-sort" class="sv-pill-btn">'
         +     '<option value="score">Sort: Score</option>'
         +     '<option value="name">Sort: Name</option>'
@@ -338,6 +364,7 @@ function _psContentHtml() {
         +     '<input type="number" id="ps-min-conv" class="dl-search" min="0" max="100" step="5" value="60" style="width:56px;margin:0;" placeholder="0">'
         +   '</label>'
         +   '<input type="text" id="ps-search" class="dl-search" style="width:140px;margin:0;" placeholder="Search results…">'
+        +   '<button id="ps-track-list-btn" class="sv-pill-btn" type="button" title="Stocks you track: you get an alert, and a Telegram message, when one nears an OI/OBV support or resistance. Add one with the bell on a row."><i class="bi bi-bell"></i> Tracking (<span class="ps-track-n">' + (typeof _pwNames === 'function' ? _pwNames().length : 0) + '</span>)</button>'
         +   '<button id="ps-telegram-btn" class="sv-pill-btn" type="button" title="Send the currently filtered rows to Telegram"><i class="bi bi-send"></i> Telegram</button>'
         +   '<button id="ps-basket-btn" class="sv-pill-btn" type="button" title="Add the checked stocks to a Kite basket for bulk execution"><i class="bi bi-cart-plus"></i> Add to Basket (<span id="ps-basket-count">0</span>)</button>'
         + '</div>'
@@ -351,6 +378,8 @@ function _psContentHtml() {
 }
 
 function _psShowPopup() {
+    // the popup is a second copy with the same ids: drop the dock's copy first (results stay in _PS_CACHE)
+    if (jQ('#gtb-ps-dock-body .ps-wrap').length) { jQ('#gtb-ps-dock-body .ps-wrap').remove(); jQ('#gtb-ps-dock').removeClass('open'); try { localStorage.setItem('GTB_PS_DOCK', '0'); } catch (e) {} if (typeof _psDockCaret === 'function') _psDockCaret(); }
     showPopUpWindow('positional-screener', _psContentHtml(), 'Positional Screener', 1150, 700);
     var cls = 'popup-custom-style-positional-screener';
     var title = '<div style="display:flex;align-items:center;gap:6px;width:100%;">'
@@ -374,10 +403,10 @@ function _psShowPopup() {
 function _psRenderInPane() {
     var $pane = jQ('#gtb-pane-positional');
     if (!$pane.length) return;
-    if (!$pane.find('.ps-wrap').length) {
-        $pane.html(_psContentHtml());
-    }
-    if (Object.keys(_PS_CACHE).length) _psRenderTable(); // keep results in sync on every tab activation
+    // The screener has one set of global ids, so only one copy can exist: if the bottom dock holds it, move that same element here
+    // (scan results and selection come with it) and close the dock.
+    if (jQ('#gtb-ps-dock-body .ps-wrap').length) { jQ('#gtb-ps-dock').removeClass('open'); try { localStorage.setItem('GTB_PS_DOCK', '0'); } catch (e) {} _psDockCaret(); }
+    _psMountWrap($pane);
 }
 
 function _psSegBtn(filter, label, count, color) {
@@ -449,8 +478,20 @@ jQ(document).on('click', '#ps-chip-select-none', function () { jQ('#ps-chip-pane
 
 function _psUpdateScanCount() {
     var n = jQ('#ps-chip-panel .sv-chip.sv-chip-selected').length;
-    jQ('#ps-scan-btn').html('<i class="bi bi-play-fill"></i> SCAN' + (n ? ' (' + n + ')' : ''));
+    jQ('#ps-scan-btn, #ps-scan-top').html('<i class="bi bi-play-fill"></i> SCAN' + (n ? ' (' + n + ')' : ''));
 }
+// Always-visible SCAN button: the chip panel (with its own SCAN) only opens after a filter is picked, so this one scans the selected chips, or,
+// with none loaded, the highlighted filter (default: all F&O stocks), then runs the same scan.
+jQ(document).on('click', '#ps-scan-top', function () {
+    if (_PS_SCANNING) return;
+    if (!jQ('#ps-chip-list .sv-chip').length) {
+        var f = jQ('.ps-seg-btn.sv-seg-active').attr('data-psfilter') || 'all';
+        var list = _psBuildList(f);
+        jQ('#ps-chip-list').html(list.map(function (name) { return '<div class="sv-chip sv-chip-selected" data-name="' + name + '"><span class="sv-chip-name">' + name + '</span></div>'; }).join(''));
+        _psUpdateScanCount();
+    }
+    jQ('#ps-scan-btn').trigger('click');
+});
 
 // ── Search + autocomplete "Add" — lets a symbol be added regardless of which category
 // filter is active, e.g. add one stock from outside NIFTY 50 while that filter is shown.
@@ -1111,14 +1152,16 @@ async function _psRunScan(universe, opts) {
 jQ(document).on('click', '#ps-scan-btn', async function () {
     if (_PS_SCANNING) return;
     _PS_SCANNING = true;
-    var $btn = jQ(this).prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Scanning…');
+    var $btn = jQ('#ps-scan-btn, #ps-scan-top').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Scanning…');
     _PS_CACHE = {};
 
     try {
         var universe = jQ('#ps-chip-panel .sv-chip.sv-chip-selected').map(function () { return jQ(this).attr('data-name'); }).get();
         if (!universe.length) { _gtbToast('Pick a filter above (or add symbols by search) before scanning.', 'error'); return; }
+        jQ('#ps-chip-panel').hide();      // free the space for the results while they fill in
         var done = await _psRunScan(universe, { progressEl: '#ps-progress', renderDuring: true });
         _psRenderTable();
+        jQ('#ps-chip-panel').hide();      // the chip list (up to ~200 chips) would push the results out of view; pick a filter again to reopen it
         jQ('#ps-progress').text('Done — ' + done + ' / ' + universe.length + ' scanned');
         _gtbToast('Positional scan complete (' + done + ' stocks)', 'success');
     } finally {
@@ -1548,18 +1591,6 @@ function _psRenderTable() {
     var q = (jQ('#ps-search').val() || '').trim().toUpperCase();
     var minConv = parseFloat(jQ('#ps-min-conv').val());
 
-    // Verdict strings now carry qualifiers ("BUY (awaiting overlay confirmation)", "SELL —
-    // overlay disagrees (caution)", etc.) instead of the old fixed 4 values — match by
-    // substring so the filter buttons still group them sensibly.
-    if (filter === 'strongbuy') rows = rows.filter(function (r) { return r.verdict.indexOf('STRONG BUY') !== -1; });
-    else if (filter === 'buy') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') !== -1; });
-    else if (filter === 'strongsell') rows = rows.filter(function (r) { return r.verdict.indexOf('STRONG SELL') !== -1; });
-    else if (filter === 'sell') rows = rows.filter(function (r) { return r.verdict.indexOf('SELL') !== -1; });
-    else if (filter === 'longforming') rows = rows.filter(function (r) { return r.verdict.indexOf('LONG forming') !== -1; });
-    else if (filter === 'shortforming') rows = rows.filter(function (r) { return r.verdict.indexOf('SHORT forming') !== -1; });
-    else if (filter === 'basing') rows = rows.filter(function (r) { return r.verdict.indexOf('basing') !== -1; });
-    else if (filter === 'topping') rows = rows.filter(function (r) { return r.verdict.indexOf('topping') !== -1; });
-    else if (filter === 'watch') rows = rows.filter(function (r) { return r.verdict.indexOf('BUY') === -1 && r.verdict.indexOf('SELL') === -1; });
     if (q) rows = rows.filter(function (r) { return r.name.indexOf(q) !== -1; });
     if (jQ('#ps-tradeable-btn').hasClass('ps-on')) rows = rows.filter(_psIsTradeable);
     // Conviction% floor -- rows with NO conviction score (basing/topping/insufficient history,
@@ -1567,6 +1598,13 @@ function _psRenderTable() {
     // excluded whenever a floor > 0 is actually set, same as how the 'watch' verdict filter
     // already treats "no real signal" rows as not matching a directional ask.
     if (isFinite(minConv) && minConv > 0) rows = rows.filter(function (r) { return r.convictionPct != null && r.convictionPct >= minConv; });
+    // Verdict tabs: counts over the rows left by the filters above, then the selected tab. Verdict strings carry qualifiers ("BUY (awaiting overlay
+    // confirmation)", "SELL - overlay disagrees (caution)"), so the match is by substring.
+    _PS_VTAB = filter;
+    var _vcounts = {};
+    _PS_VGROUPS.forEach(function (g) { g.tabs.forEach(function (t) { _vcounts[t[0]] = rows.filter(function (r) { return _psVerdictMatch(t[0], r); }).length; }); });
+    jQ('#ps-vtabs').html(_psVtabsHtml(_vcounts));
+    rows = rows.filter(function (r) { return _psVerdictMatch(filter, r); });
 
     // 'score' sort ranks by groot-research's primary direction FIRST (confirmed Stage 2 > Stage
     // 2 forming > basing > topping > Stage 4 forming > confirmed Stage 4), overlay total as the
@@ -1640,7 +1678,7 @@ function _psRenderTable() {
                 + checkboxCell
                 + '<td><i class="bi bi-info-circle ps-exit-icon" title="' + (r.exitCriteria + (extTip ? ' (' + extTip + ')' : '') + ' [' + (r.levelsSource || '') + ']').replace(/"/g, '&quot;') + '"></i></td>'
                 + '<td><a href="' + kiteLink + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open chart"><i class="bi bi-graph-up"></i></a></td>'
-                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button> <button class="oss-chart-link ps-bounce-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Bounce / pullback odds: how often this name reversed by 1 ATR within 5 and 10 sessions when it looked like this before"><i class="bi bi-arrow-repeat" style="color:var(--gtb-accent,#58a6ff);"></i></button></td>'
+                + '<td><button class="oss-chart-link ps-explain-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Full trade recommendation with explanation"><i class="bi bi-file-text-fill" style="color:var(--gtb-accent,#58a6ff);"></i></button> <button class="oss-chart-link ps-bounce-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="Bounce / pullback odds: how often this name reversed by 1 ATR within 5 and 10 sessions when it looked like this before"><i class="bi bi-arrow-repeat" style="color:var(--gtb-accent,#58a6ff);"></i></button> <button class="oss-chart-link ps-track-btn" data-name="' + r.name + '" style="background:none;border:none;cursor:pointer;padding:0;" title="' + ((typeof _pwHas === 'function' && _pwHas(r.name)) ? 'Tracking: click to stop' : 'Track this stock: alert (and Telegram) when it nears an OI/OBV support or resistance') + '"><i class="bi ' + ((typeof _pwHas === 'function' && _pwHas(r.name)) ? 'bi-bell-fill' : 'bi-bell') + '" style="color:' + ((typeof _pwHas === 'function' && _pwHas(r.name)) ? 'var(--gtb-amber)' : 'var(--gtb-accent,#58a6ff)') + ';"></i></button></td>'
                 + '<td class="ps-cell-strong"><span class="ps-detail-toggle" data-name="' + r.name + '" style="cursor:pointer;white-space:nowrap;" title="Show the details for ' + r.name + ' (signal agreement, entry timing, risk)"><i class="bi bi-chevron-' + (_PS_OPEN[r.name] ? 'down' : 'right') + '" style="font-size:0.5rem;margin-right:3px;"></i>' + r.name + '</span></td>'
                 + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
                 + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
@@ -1731,6 +1769,7 @@ jQ(document).on('click', '.ps-group-row', function () {
     _psRenderTable();
 });
 jQ(document).on('change', '#ps-filter, #ps-sort', _psRenderTable);
+jQ(document).on('click', '.ps-vtab', function () { jQ('#ps-filter').val(jQ(this).attr('data-v')); _psRenderTable(); });
 jQ(document).on('input', '#ps-min-conv', _psRenderTable);
 
 // "Tradeable" shortlist, excluding any verdict flagged "caution" (overlay disagreeing with the
@@ -3064,3 +3103,67 @@ jQ(document).on('click', '#ps-basket-new-btn', function () {
         _psRunBasketAdd(basket.id, basket.name, _psBasketSelectedNames());
     }, function (err) { $status.html('<span style="color:var(--gtb-red);">' + err + '</span>'); });
 });
+
+// ── Bottom dock (v29.438): the screener below the futures strip, opened and closed from a bar ───────────────────────────────────
+// One .ps-wrap element is mounted in the dock, the Positional tab or (when opened from All Tools) the popup is a separate copy; the
+// element is moved, not rebuilt, so a scan in progress, the results and the selection survive a move between dock and tab.
+function _psMountWrap($host) {
+    var $ex = jQ('#main-trade-bot-container .ps-wrap').first();
+    if ($ex.length) { if (!$host.has($ex).length) $host.append($ex); }
+    else $host.html(_psContentHtml());
+    if ($host.is('#gtb-ps-dock-body')) _psDockFit();
+    else jQ('#main-trade-bot-container .ps-wrap, #ps-swing-panel, #ps-lt-panel').css('height', '');   // pixel heights belong to the dock only
+    if (Object.keys(_PS_CACHE).length) { try { _psRenderTable(); } catch (e) {} }
+}
+function _psDockCaret() {
+    var open = jQ('#gtb-ps-dock').hasClass('open');
+    jQ('#gtb-ps-dock-caret').text(open ? '▾' : '▴');
+    jQ('#gtb-ps-dock').toggleClass('tall', localStorage.getItem('GTB_PS_DOCK_TALL') === '1');
+    _psDockFit();
+}
+jQ(document).on('click', '#gtb-ps-dock-tall', function (e) {
+    e.stopPropagation();
+    try { localStorage.setItem('GTB_PS_DOCK_TALL', localStorage.getItem('GTB_PS_DOCK_TALL') === '1' ? '0' : '1'); } catch (e2) {}
+    _psDockCaret();
+});
+function _psDockSummary() {
+    try {
+        var rows = Object.keys(_PS_CACHE).map(function (k) { return _PS_CACHE[k]; });
+        if (!rows.length) { jQ('#gtb-ps-dock-sum').text('no scan yet'); return; }
+        var tr = 0; rows.forEach(function (r) { try { if (typeof _psIsTradeable === 'function' && _psIsTradeable(r)) tr++; } catch (e) {} });
+        jQ('#gtb-ps-dock-sum').text(rows.length + ' scanned · ' + tr + ' tradeable');
+    } catch (e) {}
+}
+function _psDockOpenNow(open) {
+    jQ('#gtb-ps-dock').toggleClass('open', !!open);
+    try { localStorage.setItem('GTB_PS_DOCK', open ? '1' : '0'); } catch (e) {}
+    if (open) _psMountWrap(jQ('#gtb-ps-dock-body'));
+    _psDockCaret(); _psDockSummary();
+}
+// Pixel sizes for the dock (the percentage / flex chain does not bound the panel inside the popup, same as the strike-search popups): the body
+// gets a height that leaves room for the top bar, the futures strip and the status bar, and the screener panels get that height minus the
+// mode bar, so the panel itself scrolls. Re-run on open, on resize and when the tall switch changes.
+function _psDockFit() {
+    try {
+        var $c = jQ('#main-trade-bot-container'), $dock = jQ('#gtb-ps-dock'), $body = jQ('#gtb-ps-dock-body');
+        if (!$c.length || !$dock.hasClass('open')) return;
+        var H = $c.innerHeight(), tall = localStorage.getItem('GTB_PS_DOCK_TALL') === '1';
+        var other = (jQ('#gtb-topbar').outerHeight(true) || 0) + (jQ('#gtb-futures-strip').outerHeight(true) || 0) + (jQ('#gtb-refresh-statusbar').outerHeight(true) || 0) + (jQ('#gtb-ps-dock-bar').outerHeight(true) || 0);
+        var h = Math.max(170, Math.min(Math.round(H * (tall ? 0.82 : 0.5)), H - other - (tall ? 60 : 140)));
+        $body.css({ height: h + 'px', maxHeight: h + 'px', minHeight: '0' });
+        var $wrap = $body.find('.ps-wrap').first(); if (!$wrap.length) return;
+        $wrap.css('height', h + 'px');
+        var mode = $wrap.children('div').first(), mh = (mode.attr('id') ? 0 : (mode.outerHeight(true) || 0));
+        $wrap.find('#ps-swing-panel, #ps-lt-panel').css('height', Math.max(80, h - mh) + 'px');
+    } catch (e) {}
+}
+jQ(window).on('resize', _psDockFit);
+
+// called after every rebuild of the dashboard markup
+function _psDockInit() {
+    if (!jQ('#gtb-ps-dock').length) return;
+    _psDockCaret(); _psDockSummary();
+    if (jQ('#gtb-ps-dock').hasClass('open')) _psMountWrap(jQ('#gtb-ps-dock-body'));
+    try { if (window.ResizeObserver && !window._PS_DOCK_RO) { window._PS_DOCK_RO = new ResizeObserver(function () { _psDockFit(); }); window._PS_DOCK_RO.observe(document.getElementById('main-trade-bot-container')); } } catch (e) {}
+}
+jQ(document).on('click', '#gtb-ps-dock-bar', function (e) { e.preventDefault(); _psDockOpenNow(!jQ('#gtb-ps-dock').hasClass('open')); });

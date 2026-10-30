@@ -16,12 +16,12 @@ function _tfFmt(n) { return Math.round(n).toLocaleString('en-IN'); }
 
 var _TF_NAME = 'NIFTY 50';                 // instrument shown on the Focus tab
 function _tfNames() {
-    var out = ['NIFTY 50'], add = function (n) { if (out.indexOf(n) === -1) out.push(n); };
+    var out = ['NIFTY 50', 'NIFTY BANK', 'SENSEX'], add = function (n) { if (out.indexOf(n) === -1) out.push(n); };
     try { (typeof _TF_MCX_NAMES !== 'undefined' ? _TF_MCX_NAMES : []).forEach(add); } catch (e) {}
     try { (typeof _gtbMcxDashNames === 'function' ? _gtbMcxDashNames() : []).forEach(add); } catch (e) {}
     return out;
 }
-function _tfIsMcx(nm) { return nm && nm !== 'NIFTY 50' && typeof _tfComputeMcx === 'function' && typeof _gtbIsMcxFuture === 'function' && _gtbIsMcxFuture(nm); }
+function _tfIsMcx(nm) { return nm && nm !== 'NIFTY 50' && nm !== 'NIFTY BANK' && nm !== 'SENSEX' && typeof _tfComputeMcx === 'function' && typeof _gtbIsMcxFuture === 'function' && _gtbIsMcxFuture(nm); }
 
 function _tfCompute(nm) {
     nm = nm || 'NIFTY 50';
@@ -50,7 +50,7 @@ function _tfCompute(nm) {
         if (!live) { r.tone = 'none'; r.line = 'Not live: this is a ' + (/snapshot/.test(notLiveTxt) ? 'snapshot' : 'replay') + ' (' + String(notLiveTxt).replace(/\s*\((snapshot|replay of that day)\)/, '') + ')'; r.detail.push('The dashboard is showing an earlier moment, so the live gates do not apply.'); res.rows.push(r); return; }
         try { var ms = _gtbHeadlineMarketSignal().ms; if (ms && ms.signal === 'NO TRADE') bad.push('Market guard: ' + (ms.reason || 'the VIX range guard is on')); else ok.push('Market guard clear'); } catch (e) {}
         try { var rc = _gtbRangePlanCheck(); if (rc && rc.on) bad.push('Range plan invalid: ' + rc.reasons.join('; ') + ' (the 9:15 combo expected a range)'); else if (rc && rc.expected) ok.push('Range plan still valid'); } catch (e) {}
-        if (cn && cn.deadZone) warn.push('NIFTY is in a dead zone, signals too weak to commit: ' + (typeof _gtbDeadZoneText === 'function' ? _gtbDeadZoneText(nm, cn.deadZone) : cn.deadZone.lo + ' – ' + cn.deadZone.hi));
+        if (cn && cn.deadZone) warn.push(nm + ' is in a dead zone, signals too weak to commit: ' + (typeof _gtbDeadZoneText === 'function' ? _gtbDeadZoneText(nm, cn.deadZone) : cn.deadZone.lo + ' – ' + cn.deadZone.hi));
         try {
             var vx = parseFloat((JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}')['INDIA VIX'] || {}).ltp) || 0;
             if (vx > 25) warn.push('India VIX ' + vx.toFixed(1) + ' is HIGH (above 25): wide swings, widen the stop and cut size (warning only)');
@@ -83,6 +83,18 @@ function _tfCompute(nm) {
         }
         (v.why || []).forEach(function (x) { r.detail.push(x); });
         (v.warn || []).forEach(function (x) { if (/disagree|consensus/i.test(x)) r.detail.push(x); });
+        // live context (liveContext.js): has price moved against the morning view?
+        try {
+            if (dir && typeof _lxCompute === 'function') {
+                var lx = _lxCompute(nm, dir);
+                if (lx && (lx.status === 'STALE' || lx.status === 'WEAKENING')) {
+                    if (r.tone === 'good') r.tone = 'warn';
+                    r.line += ' · price check: view ' + lx.status + ' (' + lx.against + ' checks against, live view ' + (lx.live > 0 ? '+' : '') + lx.live + ')';
+                    lx.checks.filter(function (c) { return c.state === 'against'; }).forEach(function (c) { r.detail.push('Price is against it: ' + c.text); });
+                    r.detail.push('The Live context card on the Dashboard tab lists every check.');
+                }
+            }
+        } catch (e) {}
         res.rows.push(r);
     })();
 
@@ -94,7 +106,7 @@ function _tfCompute(nm) {
         var tmTxt = '';
         try {
             if (typeof _ossTimingFor === 'function') {
-                _ossTimingFor('NIFTY 50', dir > 0 ? 1 : -1, null, null);
+                _ossTimingFor(nm, dir > 0 ? 1 : -1, null, null);
                 var t = (typeof _OSS_TIMING_LAST !== 'undefined') ? _OSS_TIMING_LAST : null;
                 // when the verdict says wait for a dip / level, the timing figure is for entering right now, which it advises against
                 if (t && t.pct != null) tmTxt = (/NOW/.test(String(v.headline)) ? ' · timing ' : ' · timing if entered now: ') + t.pct + '% ' + t.label;
@@ -102,6 +114,12 @@ function _tfCompute(nm) {
         } catch (e) {}
         r.tone = v.call === 'NO TRADE' ? 'bad' : v.call === 'WAIT' ? 'warn' : /NOW/.test(String(v.headline)) ? 'good' : 'warn';
         r.line = (v.headline || '') + tmTxt;
+        try {
+            if (r.tone === 'good' && typeof _lxGateFor === 'function') {
+                var gt = _lxGateFor(nm, dir);
+                if (gt && !gt.ok) { r.tone = 'warn'; r.line += ' · price is not confirming it'; gt.against.forEach(function (c) { r.detail.push('Price is against it: ' + c.text); }); }
+            }
+        } catch (e) {}
         if (v.action) r.detail.push(v.action);
         (v.warn || []).forEach(function (x) { if (!/disagree/i.test(x)) r.detail.push(x); });
         if (tmTxt) r.detail.push('Entry timing is the same checklist the Option Strike Search shows; it is for a ' + word + ' and is not an entry signal while the verdict is NO TRADE or WAIT.');
@@ -112,22 +130,22 @@ function _tfCompute(nm) {
     (function () {
         var r = { key: 'risk', n: 4, title: 'RISK', tone: 'none', line: '', detail: [] };
         if (!dir) { r.line = 'No direction, so no stop to size against'; res.rows.push(r); return; }
-        var b = {}; try { b = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}')['NIFTY 50'] || {}; } catch (e) {}
+        var b = {}; try { b = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}')[nm] || {}; } catch (e) {}
         var entry = parseFloat(dir > 0 ? b.bso : b.aso), stop = parseFloat(dir > 0 ? b.bst : b.ast);
         if (!entry || !stop) { r.line = 'No 9:15 levels yet: run the 9:15 scan'; res.rows.push(r); return; }
         var step = Math.abs(entry - stop), lvl = dir > 0 ? 'BSO' : 'ASO', stopName = dir > 0 ? 'BST' : 'AST';
         var cap = parseFloat(typeof MARGIN !== 'undefined' ? MARGIN : 0) || 0, pct = (typeof RISK_PCT_PER_TRADE !== 'undefined' ? RISK_PCT_PER_TRADE : 1);
-        var lot = 0; try { var f = FUTURE_INTRUMENT_LIST.find(function (x) { return x.name === 'NIFTY'; }); lot = parseInt(f && f.lot_size, 10) || 0; } catch (e) {}
+        var lot = 0; try { var f = FUTURE_INTRUMENT_LIST.find(function (x) { return x.name === (nm === 'NIFTY BANK' ? 'BANKNIFTY' : nm === 'SENSEX' ? 'SENSEX' : 'NIFTY'); }); lot = parseInt(f && f.lot_size, 10) || 0; } catch (e) {}
         var base = 'Plan stop ' + stopName + ' ' + _tfFmt(stop) + ', ' + _tfFmt(step) + ' pts beyond ' + lvl + ' ' + _tfFmt(entry);
         r.detail.push('The stop is the 9:15 plan stop for a ' + word + ' (' + stopName + '). A trend entry on a dip or rally would use a nearer stop; this is the plan reference.');
         if (!cap || !lot) {
-            r.tone = 'warn'; r.line = base + '. Set Account Capital in Settings (and load the instruments) to see the rupee risk.';
+            r.tone = 'warn'; r.line = base + '. Set Account Capital in Settings (and load the instruments; ' + (nm === 'SENSEX' ? 'SENSEX has no futures lot size here' : '') + ') to see the rupee risk.';
             res.rows.push(r); return;
         }
         var budget = cap * pct / 100, perLot = step * lot, lots = Math.floor(budget / perLot);
         r.tone = lots >= 1 ? 'good' : 'warn';
         r.line = base + ' · risk budget ₹' + _tfFmt(budget) + ' (' + pct + '% of ₹' + _tfFmt(cap) + ') · ' + (lots >= 1 ? lots + ' lot' + (lots > 1 ? 's' : '') + ' fit' : 'not even 1 lot fits') + ' (futures-equivalent)';
-        r.detail.push('One NIFTY lot (' + lot + ') risks about ₹' + _tfFmt(perLot) + ' to that stop as a futures position; an option position loses less per point (its delta) but can lose the whole premium.');
+        r.detail.push('One ' + nm + ' lot (' + lot + ') risks about ₹' + _tfFmt(perLot) + ' to that stop as a futures position; an option position loses less per point (its delta) but can lose the whole premium.');
         r.detail.push('This is arithmetic on your own Settings (Account Capital and risk % per trade), not sizing advice. Margin and brokerage are not included.');
         res.rows.push(r);
     })();

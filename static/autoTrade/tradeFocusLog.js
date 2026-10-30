@@ -105,8 +105,8 @@ function _tfSideDir(side) { var s = String(side || ''); return /buy ce|long/i.te
 // a commodity = its own contracts (GOLDM26NOVFUT, GOLDM...CE). Stock trades belong to no gate set here and are left out.
 function _tfTradeMatches(name, inst) {
     var s = String(inst || '').toUpperCase().replace(/\s+/g, '');
-    if (!name || name === 'NIFTY 50') return /^(NIFTY|BANKNIFTY|FINNIFTY|MIDCPNIFTY|SENSEX)(\d|$)/.test(s);
-    return new RegExp('^' + name.toUpperCase() + '(\\d|$)').test(s);
+    var key = !name || name === 'NIFTY 50' ? 'NIFTY' : name === 'NIFTY BANK' ? 'BANKNIFTY' : name.toUpperCase();
+    return new RegExp('^' + key + '(\\d|$)').test(s);
 }
 var _TF_REVIEW_NAME = 'NIFTY 50';
 function _tfReviewData(all, name) {

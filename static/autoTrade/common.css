@@ -7391,3 +7391,43 @@ td.details-control {
 .oss-scan-sum:empty { display: none; }
 .oss-sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.55rem; line-height: 1.4; }
 .oss-sum-chip { border: 1px solid; padding: 0 7px; font-size: 0.56rem; }
+
+/* ── Positional Screener dock (below the futures strip) ─────────────────────────────────────── */
+#gtb-ps-dock { flex-shrink: 0; background: var(--gtb-surface); border-top: 1px solid var(--gtb-border); display: flex; flex-direction: column; }
+#gtb-ps-dock-bar { display: flex; align-items: center; gap: 8px; padding: 3px 10px; cursor: pointer; user-select: none; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.05em; color: var(--gtb-muted); }
+#gtb-ps-dock-bar:hover { color: var(--gtb-text); background: var(--gtb-surface2); }
+#gtb-ps-dock-sum { font-weight: 600; letter-spacing: 0; color: var(--gtb-muted); }
+#gtb-ps-dock-body { display: none; height: 38vh; min-height: 220px; max-height: 60vh; overflow: hidden; border-top: 1px solid var(--gtb-border); background: var(--gtb-bg); }
+#gtb-ps-dock.open #gtb-ps-dock-body { display: flex; flex-direction: column; }
+#gtb-ps-dock-body .ps-wrap { height: 100%; }
+#gtb-ps-dock-body .ps-table-wrap { max-height: none; }
+
+/* Positional Screener verdict tabs (replace the verdict dropdown) */
+#ps-vtabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--gtb-border); flex: 0 0 auto; }
+.ps-vgroup { display: inline-flex; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid var(--gtb-border); }
+.ps-vgroup:first-child { padding-left: 0; border-left: none; }
+.ps-vgroup-label { font-size: 0.44rem; font-weight: 800; letter-spacing: 0.06em; color: var(--gtb-muted); margin-right: 3px; }
+
+/* Positional Screener: always-visible SCAN, dock height, chip list never swallows the results */
+#ps-filter-row { display: flex; align-items: center; gap: 8px; }
+#ps-filter-row #ps-scan-top { margin-left: auto; flex-shrink: 0; }
+#ps-chip-list { max-height: 90px; overflow-y: auto; }
+#gtb-ps-dock-body { height: 52vh; min-height: 260px; }
+
+/* one visible SCAN: the chip panel keeps its (hidden) button only as the click target for #ps-scan-top */
+#ps-chip-controls #ps-scan-btn { display: none; }
+
+/* Positional Screener in the dock: the whole panel scrolls, the table keeps its full height (it was squeezed to nothing by the filter rows and the breadth card) */
+#gtb-ps-dock-body #ps-swing-panel { overflow-y: auto; }
+#gtb-ps-dock-body .ps-table-wrap { flex: 0 0 auto; overflow: visible; max-height: none; }
+#gtb-ps-dock.tall #gtb-ps-dock-body { height: 80vh; max-height: none; }
+#gtb-ps-dock-tall { cursor: pointer; }
+#gtb-ps-dock-tall:hover { color: var(--gtb-text); }
+
+/* Positional Screener dock, scroll fix: the swing panel has an inline overflow:hidden (needs !important to scroll), the dock must shrink inside the window instead of pushing the dashboard out, and the screener fills the dock as a flex child */
+#gtb-ps-dock { flex: 0 1 auto; min-height: 0; max-height: 75%; }
+#gtb-ps-dock.tall { max-height: 88%; }
+#gtb-ps-dock-body { flex: 0 1 auto; min-height: 120px; }
+#gtb-ps-dock-body .ps-wrap { flex: 1 1 0; min-height: 0; height: auto; }
+#gtb-ps-dock-body #ps-swing-panel { overflow-y: auto !important; overflow-x: auto !important; }
+#gtb-ps-dock-body #ps-lt-panel { overflow-y: auto !important; }
