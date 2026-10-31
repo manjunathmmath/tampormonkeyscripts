@@ -469,68 +469,65 @@ function _gdbWidgetScanner() {
 
 // ── WIDGET: Backtest Summary ───────────────────────────────────────────────────
 function _gdbWidgetBacktest() {
-    var cacheKey = null;
-    try {
-        for (var k in localStorage) {
-            if (k.indexOf('GTB_915TREND_') === 0 && k.indexOf('_250_v2') > 0) { cacheKey = k; break; }
-        }
-    } catch(e) {}
+    // Reads the same cache the 9:15 Opening-Trend tool writes (GTB_915TREND_<today>_250_<version>) and the same combo key the Predict card uses
+    // (NIFTY-SENSEX-BANK, AST/BST folded into ASO/BSO). Row fields: key, vix, legs[{win, pnl, mfe}].
+    var ver = (typeof _GTB_915_TREND_VER !== 'undefined') ? _GTB_915_TREND_VER : 'v8';
+    var cacheKey = 'GTB_915TREND_' + moment().format('YYYY-MM-DD') + '_250_' + ver;
 
-    var todayCombo = '--', n915 = 'B/W', b915 = 'B/W';
+    var todayCombo = '--', comboKey = null;
     try {
         var nb = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}');
-        n915 = (nb['NIFTY 50'] || {}).CLOSE_9_15 || 'B/W';
-        b915 = (nb['NIFTY BANK'] || {}).CLOSE_9_15 || 'B/W';
-        todayCombo = n915 + ' / ' + b915;
+        var z = function (n) { return (nb[n] || {}).CLOSE_9_15 || 'B/W'; };
+        comboKey = _gtbNorm915(z('NIFTY 50')) + '-' + _gtbNorm915(z('SENSEX')) + '-' + _gtbNorm915(z('NIFTY BANK'));
+        todayCombo = comboKey;
     } catch(e) {}
 
-    if (!cacheKey) {
+    var raw = null;
+    try { raw = localStorage.getItem(cacheKey); } catch(e) {}
+    if (!raw) {
         jQ('#gdb-body-backtest').html(
             '<div class="gdb-bt-row"><span>Today\'s 9:15</span><span style="color:var(--gtb-accent);font-weight:700;">' + todayCombo + '</span></div>'
-            + '<div class="gdb-hint" style="margin-top:8px;">No cached backtest data. Open the 9:15 Opening-Trend tool to compute.</div>'
+            + '<div class="gdb-hint" style="margin-top:8px;">No cached backtest for today. Open the 9:15 Opening-Trend tool to compute it.</div>'
         );
         return;
     }
 
     try {
-        var rows = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        var rows = JSON.parse(raw || '[]');
         if (!rows.length) throw new Error('empty');
 
-        var wins = 0, losses = 0, total915 = 0, totalPL = 0, mfes = [];
-        var todayWins = 0, todayLosses = 0, todayTotal = 0, todayPL = 0;
-        var lvWins = 0, lvLoss = 0, hvWins = 0, hvLoss = 0;
-        rows.forEach(function(r) {
-            if (!r.legs || !r.legs.length) return;
-            total915++;
-            var rowPL = r.legs.reduce(function(s,l){ return s + parseFloat(l.pl||0); }, 0);
-            totalPL += rowPL;
-            if (rowPL > 0) wins++; else if (rowPL < 0) losses++;
-            r.legs.forEach(function(leg) { mfes.push(parseFloat(leg.mfe||0)); });
-            var todayKey = (n915||'B/W') + '/' + (b915||'B/W');
-            var combo = (r.nifty_combo||'') + '/' + (r.bank_combo||'');
-            if (combo === todayKey) { todayTotal++; todayPL += rowPL; if (rowPL>0) todayWins++; else if (rowPL<0) todayLosses++; }
-            var vix = parseFloat(r.vix || 0);
-            if (vix < 15) { if (rowPL>0) lvWins++; else lvLoss++; } else { if (rowPL>0) hvWins++; else hvLoss++; }
+        var days = 0, wins = 0, legsN = 0, totalPL = 0, mfeSum = 0;
+        var cDays = 0, cLegs = 0, cWins = 0, cPL = 0;
+        var lo = [], hi = [];
+        var vixs = rows.map(function (r) { return r.vix; }).filter(function (v) { return v != null && !isNaN(v); }).sort(function (a, b) { return a - b; });
+        var med = vixs.length ? vixs[Math.floor(vixs.length / 2)] : null;
+        var loW = 0, loL = 0, hiW = 0, hiL = 0;
+        rows.forEach(function (r) {
+            var legs = r.legs || [];
+            if (!legs.length) return;
+            days++;
+            legs.forEach(function (lg) {
+                legsN++; if (lg.win) wins++; totalPL += (lg.pnl || 0); mfeSum += (lg.mfe || 0);
+                if (med != null && r.vix != null) { if (r.vix <= med) { loL++; if (lg.win) loW++; } else { hiL++; if (lg.win) hiW++; } }
+            });
+            if (r.key === comboKey) { cDays++; legs.forEach(function (lg) { cLegs++; if (lg.win) cWins++; cPL += (lg.pnl || 0); }); }
         });
-
-        var winRate = total915 ? (wins/total915*100).toFixed(0) : '--';
-        var avgPL   = total915 ? (totalPL/total915).toFixed(1) : '--';
-        var avgMFE  = mfes.length ? (mfes.reduce(function(a,b){return a+b;},0)/mfes.length).toFixed(1) : '--';
-        var todayWR = todayTotal ? (todayWins/todayTotal*100).toFixed(0) : '--';
-        var lvWR    = (lvWins+lvLoss) ? (lvWins/(lvWins+lvLoss)*100).toFixed(0) : '--';
-        var hvWR    = (hvWins+hvLoss) ? (hvWins/(hvWins+hvLoss)*100).toFixed(0) : '--';
-        var tc = todayWR !== '--' && parseFloat(todayWR) >= 60 ? '#3fb950' : parseFloat(todayWR) < 40 ? '#f85149' : '#fbbf24';
+        var pct = function (w, n) { return n ? Math.round(w / n * 100) + '%' : '--'; };
+        var winRate = legsN ? wins / legsN * 100 : null, comboWR = cLegs ? cWins / cLegs * 100 : null;
+        var col = function (v, good, bad) { return v == null ? 'var(--gtb-muted)' : v >= good ? 'var(--gtb-green)' : v <= bad ? 'var(--gtb-red)' : 'var(--gtb-amber)'; };
 
         jQ('#gdb-body-backtest').html(
             '<div class="gdb-bt-row bt-highlight"><span>Today\'s combo</span><span style="color:var(--gtb-accent);font-weight:700;">' + todayCombo + '</span></div>'
-            + (todayTotal ? '<div class="gdb-bt-row"><span>Combo win rate</span><span style="color:' + tc + ';font-weight:700;">' + todayWR + '% (' + todayTotal + ' days)</span></div>' : '')
-            + '<div style="height:1px;background:var(--gtb-border2);margin:5px 0;"></div>'
-            + '<div class="gdb-bt-row"><span>Overall win rate</span><span style="color:' + (parseFloat(winRate)>=55?'#3fb950':'#f85149') + ';font-weight:700;">' + winRate + '%</span></div>'
-            + '<div class="gdb-bt-row"><span>Avg P/L per day</span><span style="color:' + (parseFloat(avgPL)>=0?'#3fb950':'#f85149') + '">' + avgPL + ' pts</span></div>'
-            + '<div class="gdb-bt-row"><span>Avg max favorable</span><span style="color:#3fb950">' + avgMFE + ' pts</span></div>'
-            + '<div class="gdb-bt-row"><span>Low-VIX (&lt;15) win%</span><span style="color:#3fb950">' + lvWR + '%</span></div>'
-            + '<div class="gdb-bt-row"><span>High-VIX (15+) win%</span><span style="color:#fbbf24">' + hvWR + '%</span></div>'
-            + '<div class="gdb-bt-row"><span>Sample size</span><span style="color:var(--gtb-muted)">' + total915 + ' days</span></div>'
+            + (cLegs ? '<div class="gdb-bt-row"><span>Combo win rate</span><span style="color:' + col(comboWR, 55, 45) + ';font-weight:700;">' + Math.round(comboWR) + '% (' + cLegs + ' legs, ' + cDays + ' days)</span></div>'
+                     + '<div class="gdb-bt-row"><span>Combo avg P/L per leg</span><span style="color:' + (cPL >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + '">' + (cPL / cLegs).toFixed(1) + ' pts</span></div>'
+                     : '<div class="gdb-bt-row"><span>Combo win rate</span><span style="color:var(--gtb-muted)">no matching days</span></div>')
+            + '<div style="height:1px;background:var(--gtb-border);margin:5px 0;"></div>'
+            + '<div class="gdb-bt-row"><span>All combos win rate</span><span style="color:' + col(winRate, 55, 45) + ';font-weight:700;">' + (winRate == null ? '--' : Math.round(winRate) + '%') + '</span></div>'
+            + '<div class="gdb-bt-row"><span>Avg P/L per leg</span><span style="color:' + (totalPL >= 0 ? 'var(--gtb-green)' : 'var(--gtb-red)') + '">' + (legsN ? (totalPL / legsN).toFixed(1) : '--') + ' pts</span></div>'
+            + '<div class="gdb-bt-row"><span>Avg max favorable</span><span style="color:var(--gtb-green)">' + (legsN ? (mfeSum / legsN).toFixed(1) : '--') + ' pts</span></div>'
+            + '<div class="gdb-bt-row"><span>Lower-VIX half win%</span><span>' + pct(loW, loL) + '</span></div>'
+            + '<div class="gdb-bt-row"><span>Higher-VIX half win%</span><span>' + pct(hiW, hiL) + '</span></div>'
+            + '<div class="gdb-bt-row"><span>Sample size</span><span style="color:var(--gtb-muted)">' + days + ' days, ' + legsN + ' legs</span></div>'
         );
     } catch(e) {
         jQ('#gdb-body-backtest').html('<div class="gdb-bt-row"><span>Today\'s 9:15</span><span style="color:var(--gtb-accent)">' + todayCombo + '</span></div>'
