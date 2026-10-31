@@ -622,7 +622,7 @@ async function _ossScanLoad(name) {
             if (fr) {
                 if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
                 INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(fr['REMARK']);
-                INSTRUMENT_SCORE_MAP[name].futures_trend_remark = fr['REMARK'];
+                INSTRUMENT_SCORE_MAP[name].futures_trend_remark = fr['REMARK']; INSTRUMENT_SCORE_MAP[name].futures_trend_at = (typeof _gtbDataStamp === 'function' ? _gtbDataStamp() : ''); try { if (typeof _gtbSyncFutStrip === 'function') _gtbSyncFutStrip(name); } catch (eFs) {}
                 await showPrictionProbabiltyMCX(name, fr);
             }
         } catch (e) { console.log('[oss-scan] MCX load', name, e); }
@@ -637,7 +637,7 @@ async function _ossScanLoad(name) {
     if (f) {
         if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
         INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(f['REMARK']);
-        INSTRUMENT_SCORE_MAP[name].futures_trend_remark = f['REMARK'];
+        INSTRUMENT_SCORE_MAP[name].futures_trend_remark = f['REMARK']; INSTRUMENT_SCORE_MAP[name].futures_trend_at = (typeof _gtbDataStamp === 'function' ? _gtbDataStamp() : ''); try { if (typeof _gtbSyncFutStrip === 'function') _gtbSyncFutStrip(name); } catch (eFs) {}
         INSTRUMENT_SCORE_MAP[name].avwap = f['vwapPrice'] || 0;
     }
     _OSS_DATA_AT[name] = { t: Date.now(), asof: asofNow }; _OSS_LOADED[name] = true;
@@ -1337,7 +1337,7 @@ function _ossRunSearch() {
             if (!res) return;
             if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
             INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(res['REMARK']);
-            INSTRUMENT_SCORE_MAP[name].futures_trend_remark = res['REMARK'];
+            INSTRUMENT_SCORE_MAP[name].futures_trend_remark = res['REMARK']; INSTRUMENT_SCORE_MAP[name].futures_trend_at = (typeof _gtbDataStamp === 'function' ? _gtbDataStamp() : ''); try { if (typeof _gtbSyncFutStrip === 'function') _gtbSyncFutStrip(name); } catch (eFs) {}
             return showPrictionProbabiltyMCX(name, res);
         }).catch(function (e) { console.log('OSS MCX preload', name, e); }).then(_ossRunSearch);
         return;
@@ -1354,7 +1354,7 @@ function _ossRunSearch() {
             if (f) {
                 if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
                 INSTRUMENT_SCORE_MAP[name].futures_trend = getFuturesTrendScore(f['REMARK']);
-                INSTRUMENT_SCORE_MAP[name].futures_trend_remark = f['REMARK'];
+                INSTRUMENT_SCORE_MAP[name].futures_trend_remark = f['REMARK']; INSTRUMENT_SCORE_MAP[name].futures_trend_at = (typeof _gtbDataStamp === 'function' ? _gtbDataStamp() : ''); try { if (typeof _gtbSyncFutStrip === 'function') _gtbSyncFutStrip(name); } catch (eFs) {}
                 INSTRUMENT_SCORE_MAP[name].avwap = f['vwapPrice'] || 0;
             }
         }).catch(function (e) { console.log('OSS preload', name, e); }).then(_ossRunSearch);

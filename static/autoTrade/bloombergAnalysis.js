@@ -376,7 +376,7 @@ function _btAnalyzeInstrument(name, targetEl) {
                     if (!oiData || !oiData.tableData || !oiData.tableData.length) {
                         throw new Error('Empty OI response');
                     }
-                    var oiScore = computeOIScoreFromData(oiData);
+                    var oiScore = computeOIScoreFromData(oiData, iname);
                     if (!INSTRUMENT_SCORE_MAP[iname]) INSTRUMENT_SCORE_MAP[iname] = {};
                     INSTRUMENT_SCORE_MAP[iname].oi_obv = oiScore;
                     INSTRUMENT_SCORE_MAP[iname].pcr    = oiData.pcr;

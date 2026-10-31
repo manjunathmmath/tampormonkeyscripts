@@ -74,7 +74,7 @@ function _tfCompute(nm) {
         var r = { key: 'direction', n: 2, title: 'DIRECTION', tone: 'none', line: '', detail: [] };
         if (!cn) { r.line = 'Consensus not available yet: run a refresh'; res.rows.push(r); return; }
         var nF = function (x) { return (x >= 0 ? '+' : '') + x.toFixed(2); };
-        var stat = 'consensus net ' + nF(cn.net) + ', ' + cn.agree + ' of ' + cn.voting + ' engines agree' + (cn.thin ? ' (thin)' : '');
+        var stat = 'consensus net ' + nF(cn.net) + ', ' + cn.agree + ' of ' + cn.voting + ' signal groups agree' + (cn.thin ? ' (thin)' : '');
         if (!dir) { r.tone = 'bad'; r.line = 'No clear direction: ' + stat; }
         else {
             var disagree = (v.warn || []).some(function (w) { return /disagree/i.test(w); });

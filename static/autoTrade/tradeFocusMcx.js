@@ -33,7 +33,7 @@ async function _tfMcxLoad(name) {
         if (res) {
             var sm = INSTRUMENT_SCORE_MAP[name] || (INSTRUMENT_SCORE_MAP[name] = {});
             var l = parseFloat(res['ltp']); if (l) sm.mcxLtp = l;
-            sm.futures_trend = getFuturesTrendScore(res['REMARK']); sm.futures_trend_remark = res['REMARK']; sm.avwap = res['vwapPrice'] || 0;
+            sm.futures_trend = getFuturesTrendScore(res['REMARK']); sm.futures_trend_remark = res['REMARK']; sm.futures_trend_at = (typeof _gtbDataStamp === 'function' ? _gtbDataStamp() : ''); sm.avwap = res['vwapPrice'] || 0;
             sm.oi_obv = 0;
             await showPrictionProbabiltyMCX(name, res);
             var cached = sm.stockEntry, oiData = cached && cached['DATA'];
@@ -165,7 +165,7 @@ function _tfComputeMcx(name) {
         var r = { key: 'direction', n: 2, title: 'DIRECTION', tone: 'none', line: '', detail: [] };
         if (!cn) { r.line = 'Consensus not available yet: load ' + lbl; res.rows.push(r); return; }
         var nF = function (x) { return (x >= 0 ? '+' : '') + x.toFixed(2); };
-        var stat = 'consensus net ' + nF(cn.net) + ', ' + cn.agree + ' of ' + cn.voting + ' engines agree' + (cn.thin ? ' (thin)' : '');
+        var stat = 'consensus net ' + nF(cn.net) + ', ' + cn.agree + ' of ' + cn.voting + ' signal groups agree' + (cn.thin ? ' (thin)' : '');
         var vBias = vd && vd.context ? vd.context.label : '';
         if (!dir) { r.tone = 'bad'; r.line = 'No clear direction: ' + stat; }
         else {

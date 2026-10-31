@@ -263,7 +263,14 @@ function generateTrends() {
 function generateTrend(name) {
     let ltpPrices  = JSON.parse(localStorage.getItem("INSTRUMENT_LTP_PRICE"));
     let openDetails = JSON.parse(localStorage.getItem("INSTRUMENT_LIST_GLOBAL"));
-    let vixQuote   = JSON.parse(localStorage.getItem("VIX_QUOTE")).data['candles'][0];
+    let _vq = null; try { _vq = JSON.parse(localStorage.getItem("VIX_QUOTE")); } catch (e) {}
+    if (!_vq || !_vq.data || !_vq.data['candles'] || !_vq.data['candles'][0]) {
+        // every level / trend calculation needs the cached India VIX quote; without it they all fail (and the scores quietly read 0), so say so
+        try { if (typeof _gtbApiFail === 'function' && (!window._gtbVixAlertAt || Date.now() - window._gtbVixAlertAt > 30000)) { window._gtbVixAlertAt = Date.now(); _gtbApiFail('vix-quote-missing', 'India VIX quote', 'not cached yet', 'Level, trend and expected-range calculations fail and trend scores read 0 for every instrument until it loads. Click Refresh or Load Prices.'); } } catch (e) {}
+        throw new Error('India VIX quote (VIX_QUOTE) is not cached');
+    }
+    try { if (window._gtbVixAlertAt) { window._gtbVixAlertAt = 0; if (typeof _gtbApiOk === 'function') _gtbApiOk('vix-quote-missing'); } } catch (e) {}
+    let vixQuote   = _vq.data['candles'][0];
 
     let openDetail = openDetails[name]
     let script     = ltpPrices[name]
@@ -478,7 +485,22 @@ function getStrikeDiff(instrument) {
         // entry for the same name.
         strikeDiff = MCX_FUTURE_STRIKE_DIFF[instrument].replace(/ /g, '')
     }
+    // not found anywhere: the 100/100 default is only a placeholder, so say so (once per name) instead of silently drawing wrong levels
+    if (!NSE_STRIKE_DIFF[instrument] && !(typeof MCX_FUTURE_STRIKE_DIFF !== 'undefined' && MCX_FUTURE_STRIKE_DIFF[instrument])) _gtbNoteMissingStep(instrument);
     return strikeDiff;
+}
+
+var _GTB_STEP_MISSING = {}, _GTB_STEP_TIMER = null;
+function _gtbNoteMissingStep(name) {
+    try {
+        if (!name || name === 'INDIA VIX' || _GTB_STEP_MISSING[name]) return;     // INDIA VIX has no strikes, by design
+        _GTB_STEP_MISSING[name] = 1; console.warn('[strike step] no strike step for ' + name + ': using the default 100/100, so its ASO / AST / BSO / BST are probably wrong');
+        if (_GTB_STEP_TIMER) return;
+        _GTB_STEP_TIMER = setTimeout(function () {
+            _GTB_STEP_TIMER = null;
+            try { var names = Object.keys(_GTB_STEP_MISSING); if (typeof _gtbApiFail === 'function' && names.length) _gtbApiFail('strike-step-missing', 'Strike step missing', names.slice(0, 8).join(', ') + (names.length > 8 ? ' +' + (names.length - 8) + ' more' : ''), 'These use a placeholder step of 100/100, so their levels and 9:15 zones are probably wrong. Run Data Load > Strike Intervals.'); } catch (e) {}
+        }, 1500);
+    } catch (e) {}
 }
 
 // ── VIX Range Calculation ─────────────────────────────────────────────────────

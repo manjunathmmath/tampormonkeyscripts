@@ -1160,7 +1160,7 @@ function buildHelpHTML() {
         <tbody>
           <tr><td>LONG, SHOT_COVERING, BULLS_CONSOLIDATING, GAMBLING_BUY_NEWS_AND_EVENTS, DEFENCE_BUY_ON_DECLINE</td><td>+1</td><td>SHOT_COVERING = shorts exiting = bullish despite "short" in name</td></tr>
           <tr><td>SHORT, LONG_UNWINDING, BEARS_COMING_SELL_ON_RISE, BEARS_CONSOLIDATING, CAUTION_WRITES_ERODING_PREMIUM</td><td>−1</td><td>LONG_UNWINDING = longs exiting = bearish despite "long" in name</td></tr>
-          <tr><td>Anything else</td><td>0</td><td>Neutral / inconclusive</td></tr>
+          <tr><td>NO_CLEAR_SIGNAL (and anything else)</td><td>0</td><td>Neutral / inconclusive. Price and open interest do not agree on a direction (for example price mixed with flat OI). This used to read DEFENCE_BUY_ON_DECLINE (+1) for every unclear case; DEFENCE_BUY_ON_DECLINE is no longer produced, only scored +1 if an old cached remark carries it.</td></tr>
         </tbody>
       </table>
 

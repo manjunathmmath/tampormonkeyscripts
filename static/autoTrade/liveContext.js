@@ -289,7 +289,16 @@ function _lxCardHtml(name, forcedDir) {
     name = name || 'NIFTY 50';
     var r = _lxCompute(name, forcedDir);
     var M = 'var(--gtb-muted)';
-    if (!r) return '<div style="padding:10px 12px;font-size:0.6rem;color:' + M + ';">Waiting for today\'s candles for ' + name + ': run a refresh.</div>';
+    if (!r) {
+        // say WHY there is nothing to show instead of always asking for a refresh
+        var n = 0, last = '', why;
+        try { var cs = _lxCandles(name); n = cs.length; last = n ? cs[n - 1].t : ''; } catch (e) {}
+        var snap = (typeof _gtbHistTime === 'function') ? _gtbHistTime() : null;
+        if (!n) why = 'No 5-minute candles are loaded for ' + name + ' yet (they come with its OI / option-chain load). Run a refresh' + (snap ? ', and check that the snapshot time (' + snap + ') is after the 9:15 open.' : '.');
+        else if (n < 3) why = 'Only ' + n + ' five-minute candle' + (n === 1 ? '' : 's') + ' so far (last ' + last + (snap ? ', snapshot ' + snap : '') + '); the checks need at least 3. ' + (snap ? 'Move the snapshot time later (about 09:30 or after) to see it.' : 'It fills in after 09:30.');
+        else why = n + ' candles are loaded (last ' + last + ') but the calculation failed; the console has a [live-context] line with the error.';
+        return '<div style="padding:10px 12px;font-size:0.6rem;color:' + M + ';">' + why + '</div>';
+    }
     var col = r.status === 'STALE' ? 'var(--gtb-red)' : r.status === 'WEAKENING' ? 'var(--gtb-amber)' : r.status === 'VALID' ? 'var(--gtb-green)' : M;
     var vw = r.view.dir > 0 ? 'LONG' : r.view.dir < 0 ? 'SHORT' : 'none';
     var lw = r.live >= 3 ? 'price is recovering / bullish' : r.live <= -3 ? 'price is falling / bearish' : 'price is neutral';
