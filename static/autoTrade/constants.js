@@ -1,72 +1,8 @@
-let NIFTY_50_LIST = [
-	'ADANIENT',
-	'ADANIPORTS',
-	'APOLLOHOSP',
-	'ASIANPAINT',
-	'AXISBANK',
-	'BAJAJ-AUTO',
-	'BAJFINANCE',
-	'BAJAJFINSV',
-	'BEL',
-	'BHARTIARTL',
-	'CIPLA',
-	'COALINDIA',
-	'DRREDDY',
-	'EICHERMOT',
-	'ETERNAL',
-	'GRASIM',
-	'HCLTECH',
-	'HDFCBANK',
-	'HDFCLIFE',
-	'HINDALCO',
-	'HINDUNILVR',
-	'ICICIBANK',
-	'ITC',
-	'INFY',
-	'INDIGO',
-	'JSWSTEEL',
-	'JIOFIN',
-	'KOTAKBANK',
-	'LT',
-	'M&M',
-	'MARUTI',
-	'MAXHEALTH',
-	'NTPC',
-	'NESTLEIND',
-	'ONGC',
-	'POWERGRID',
-	'RELIANCE',
-	'SBILIFE',
-	'SHRIRAMFIN',
-	'SBIN',
-	'SUNPHARMA',
-	'TCS',
-	'TATACONSUM',
-	'TMPV',
-	'TATASTEEL',
-	'TECHM',
-	'TITAN',
-	'TRENT',
-	'ULTRACEMCO',
-	'WIPRO'
-]
+// filled at run time by indexWeights.js from niftyindices.com (no hardcoded list)
+let NIFTY_50_LIST = []
 
-let NIFTY_BANK_LIST = [
-	'AUBANK',
-	'AXISBANK',
-	'BANKBARODA',
-	'CANBK',
-	'FEDERALBNK',
-	'HDFCBANK',
-	'ICICIBANK',
-	'IDFCFIRSTB',
-	'INDUSINDBK',
-	'KOTAKBANK',
-	'PNB',
-	'SBIN',
-	'UNIONBANK',
-	'YESBANK'
-]
+// filled at run time by indexWeights.js from niftyindices.com (no hardcoded list)
+let NIFTY_BANK_LIST = []
 
 let INDICES = [
 	'NIFTY 50',
@@ -79,18 +15,8 @@ let INDICES = [
 	'INDIA VIX'
 ]
 
-let WEIGHTED_STOCKS = [
-	'HDFCBANK',
-	'RELIANCE',
-	'ICICIBANK',
-	'AXISBANK',
-	'SBIN',
-	'KOTAKBANK',
-	'FEDERALBNK',
-	'INDUSINDBK',
-	'BHARTIARTL',
-	'INFY',
-]
+// union of the live NIFTY 50 and NIFTY BANK top-10 weighted stocks, filled by indexWeights.js
+let WEIGHTED_STOCKS = []
 
 let WEIGHTED_STOCKS_WEIGHT = {
 	'HDFCBANK': "[19.010%/10.94]",
@@ -105,33 +31,11 @@ let WEIGHTED_STOCKS_WEIGHT = {
 	'INFY': "[4.28%]"
 }
 
-// Top 10 Nifty 50 constituents by index weightage (June 2026)
-const NIFTY_50_WEIGHTED_STOCKS = {
-	'HDFCBANK':   10.56,
-	'ICICIBANK':   8.32,
-	'RELIANCE':    8.27,
-	'BHARTIARTL':  5.20,
-	'LT':          4.43,
-	'INFY':        3.77,
-	'SBIN':        3.71,
-	'AXISBANK':    3.42,
-	'KOTAKBANK':   2.62,
-	'ITC':         2.56
-}
+// Top 10 Nifty 50 constituents by index weightage: filled at run time by indexWeights.js from niftyindices.com (no hardcoded list)
+const NIFTY_50_WEIGHTED_STOCKS = {}
 
-// Top 10 Bank Nifty constituents by index weightage (June 2026)
-const NIFTY_BANK_WEIGHTED_STOCKS = {
-	'HDFCBANK':   17.93,
-	'ICICIBANK':  13.63,
-	'AXISBANK':   10.28,
-	'KOTAKBANK':   9.81,
-	'SBIN':        9.07,
-	'FEDERALBNK':  6.38,
-	'INDUSINDBK':  5.40,
-	'AUBANK':      4.87,
-	'BANKBARODA':  4.47,
-	'IDFCFIRSTB':  4.27
-}
+// Top 10 Bank Nifty constituents by index weightage: filled at run time by indexWeights.js from niftyindices.com (no hardcoded list)
+const NIFTY_BANK_WEIGHTED_STOCKS = {}
 
 /** List of all available stocks and data which changes every month*/
 let FO_LIST =[]

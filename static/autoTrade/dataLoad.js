@@ -308,7 +308,8 @@ function _dlShowPopup() {
         +   '<div id="dl-fostrikediff-table"></div>'
         + '</div>'
         + '<div id="dl-panel-constlists" class="dl-panel">'
-        +   '<div class="dl-derived-hint">Read-only view of the existing NIFTY_50_LIST / NIFTY_BANK_LIST / INDICES / WEIGHTED_STOCKS globals (constants.js) — shown as-is, nothing here is fetched or modified.</div>'
+        +   '<div class="dl-derived-hint">Read-only view of the existing NIFTY_50_LIST / NIFTY_BANK_LIST / INDICES / WEIGHTED_STOCKS globals (constants.js) — shown as-is, NIFTY_50_LIST, NIFTY_BANK_LIST, WEIGHTED_STOCKS and the two weighted maps are filled from niftyindices.com (indexWeights.js), the rest is shown as-is.</div>'
+        +   '<div style="display:flex;align-items:center;gap:10px;margin:6px 0;"><button id="dl-iw-update" class="sv-load-btn" type="button">Update from niftyindices.com</button><span id="dl-iw-status" class="dl-cell-muted"></span></div>'
         +   '<div id="dl-constlists-table"></div>'
         + '</div>'
         + '<div id="dl-panel-rawglobals" class="dl-panel"></div>'
@@ -1193,6 +1194,7 @@ function _dlRenderConstListsTable() {
         + _dlConstFuturesListSection('FUTURE_INTRUMENT_LIST (NSE/BFO)', (typeof FUTURE_INTRUMENT_LIST !== 'undefined') ? FUTURE_INTRUMENT_LIST : null)
         + _dlConstFuturesListSection('COMMODITIES_FUTURE_INSTRUMENT_LIST (MCX/CDS)', (typeof COMMODITIES_FUTURE_INSTRUMENT_LIST !== 'undefined') ? COMMODITIES_FUTURE_INSTRUMENT_LIST : null);
     jQ('#dl-constlists-table').html(html);
+    try { if (typeof _iwStatusLine === 'function') jQ('#dl-iw-status').html(_iwStatusLine()); } catch (e) {}
 }
 
 // ── Raw Globals tab — click-to-load, one at a time ──────────────────────────────
