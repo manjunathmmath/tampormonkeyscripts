@@ -270,11 +270,11 @@ jQ(document).on('click', '#show-positional-screener', function (e) {
 // screener still reads one value. Counts follow the other filters (search, Tradeable, Min Conv%).
 var _PS_VTAB = 'all';
 var _PS_VGROUPS = [
-    { label: '', tabs: [['all', 'ALL']] },
-    { label: 'BULLISH', tabs: [['strongbuy', 'STRONG BUY'], ['buy', 'BUY (any)']] },
-    { label: 'BEARISH', tabs: [['strongsell', 'STRONG SELL'], ['sell', 'SELL (any)']] },
-    { label: 'STAGE', tabs: [['longforming', 'LONG forming (2)'], ['shortforming', 'SHORT forming (4)'], ['basing', 'Basing (1)'], ['topping', 'Topping (3)']] },
-    { label: '', tabs: [['watch', 'WATCH']] }
+    { label: '', tabs: [['all', 'ALL', '']] },
+    { label: 'BULLISH', tone: 'bull', tabs: [['strongbuy', 'STRONG BUY', 'bull'], ['buy', 'BUY (any)', 'bull']] },
+    { label: 'BEARISH', tone: 'bear', tabs: [['strongsell', 'STRONG SELL', 'bear'], ['sell', 'SELL (any)', 'bear']] },
+    { label: 'STAGE', tabs: [['longforming', 'LONG forming (2)', 'bull'], ['shortforming', 'SHORT forming (4)', 'bear'], ['basing', 'Basing (1)', 'warn'], ['topping', 'Topping (3)', 'warn']] },
+    { label: '', tabs: [['watch', 'WATCH', 'warn']] }
 ];
 function _psVerdictMatch(f, r) {
     var v = r.verdict || '';
@@ -292,10 +292,10 @@ function _psVerdictMatch(f, r) {
 function _psVtabsHtml(counts) {
     var cur = _PS_VTAB;
     return _PS_VGROUPS.map(function (g) {
-        return '<span class="ps-vgroup">' + (g.label ? '<span class="ps-vgroup-label">' + g.label + '</span>' : '')
+        return '<span class="ps-vgroup">' + (g.label ? '<span class="ps-vgroup-label"' + (g.tone ? ' data-tone="' + g.tone + '"' : '') + '>' + g.label + '</span>' : '')
             + g.tabs.map(function (t) {
                 var c = counts && counts[t[0]] != null ? '<span class="sv-seg-count">' + counts[t[0]] + '</span>' : '';
-                return '<button type="button" class="sv-seg-btn ps-vtab' + (t[0] === cur ? ' sv-seg-active' : '') + '" data-v="' + t[0] + '"><span class="sv-seg-label">' + t[1] + '</span>' + c + '</button>';
+                return '<button type="button" class="sv-seg-btn ps-vtab' + (t[0] === cur ? ' sv-seg-active' : '') + '" data-v="' + t[0] + '"' + (t[2] ? ' data-tone="' + t[2] + '"' : '') + '><span class="sv-seg-label">' + t[1] + '</span>' + c + '</button>';
             }).join('') + '</span>';
     }).join('');
 }
@@ -322,6 +322,7 @@ function _psContentHtml() {
         +     _psSegBtn('weight', 'WEIGHTED',   null,          '')
         +     _psSegBtn('idx',    'INDEX + MCX', null,         '')
         +   '</div>'
+        +   '<span id="ps-asof" title="The date (and snapshot time) the daily candles are read up to: Settings current_day_date, and the snapshot time picker if one is set. Change it in Settings, then scan again." style="font-size:0.5rem;color:var(--gtb-amber);margin-left:auto;margin-right:8px;white-space:nowrap;">' + _psAsOfText() + '</span>'
         +   '<button id="ps-scan-top" class="sv-load-btn" type="button" title="Scan the selected symbols. With nothing selected it scans the highlighted filter above (or all F&O stocks)."><i class="bi bi-play-fill"></i> SCAN</button>'
         + '</div>'
         // ── Chip panel: search-autocomplete add + category chip list ───────────
@@ -364,6 +365,7 @@ function _psContentHtml() {
         +     '<input type="number" id="ps-min-conv" class="dl-search" min="0" max="100" step="5" value="60" style="width:56px;margin:0;" placeholder="0">'
         +   '</label>'
         +   '<input type="text" id="ps-search" class="dl-search" style="width:140px;margin:0;" placeholder="Search results…">'
+        +   '<button id="ps-ob-btn" class="sv-pill-btn" type="button" title="Backtest: OBV higher high + Elder Force rising + a close above a volume-profile level"><i class="bi bi-bar-chart-steps"></i> OBV test</button>'
         +   '<button id="ps-track-list-btn" class="sv-pill-btn" type="button" title="Stocks you track: you get an alert, and a Telegram message, when one nears an OI/OBV support or resistance. Add one with the bell on a row."><i class="bi bi-bell"></i> Tracking (<span class="ps-track-n">' + (typeof _pwNames === 'function' ? _pwNames().length : 0) + '</span>)</button>'
         +   '<button id="ps-telegram-btn" class="sv-pill-btn" type="button" title="Send the currently filtered rows to Telegram"><i class="bi bi-send"></i> Telegram</button>'
         +   '<button id="ps-basket-btn" class="sv-pill-btn" type="button" title="Add the checked stocks to a Kite basket for bulk execution"><i class="bi bi-cart-plus"></i> Add to Basket (<span id="ps-basket-count">0</span>)</button>'
@@ -544,6 +546,13 @@ function _psDateStr(d) {
     return y + '-' + m + '-' + day;
 }
 
+// "Data as of ..." for the screener header and Telegram: the day the daily candles end on and the snapshot time when one is set.
+function _psAsOfText() {
+    var day = (typeof CURRENT_DAY !== 'undefined' && CURRENT_DAY) ? CURRENT_DAY : _psDateStr(new Date());
+    var snap = (typeof _gtbHistTime === 'function') ? _gtbHistTime() : null;
+    var past = day !== _psDateStr(new Date());
+    return 'Data as of ' + moment(day).format('DD MMM YYYY') + (snap ? ' ' + snap + ' (snapshot)' : (past ? ' close' : '')) + (past ? ' · replay' : '');
+}
 async function _psFetchDaily(token, days) {
     // "Today" here is Tampermonkey's configured CURRENT_DAY (Settings → current_day_date),
     // the same convention every other historical fetch in this app uses (_gtbCurrDay()) —
@@ -560,7 +569,27 @@ async function _psFetchDaily(token, days) {
     var histTime = (typeof _gtbHistTime === 'function') ? _gtbHistTime() : null;
     var toTime = histTime || '15:30';
     var raw = await getHistoricalDataUsingPromise(token, _psDateStr(from) + ' 09:00:00', _psDateStr(to) + ' ' + toTime + ':00', 'day');
-    return (raw && raw.data && raw.data.candles) ? raw.data.candles : [];
+    var candles = (raw && raw.data && raw.data.candles) ? raw.data.candles : [];
+    // A 'day' candle cannot be cut at a time of day: with a snapshot time set, the candle of CURRENT_DAY (live or a past session) is the WHOLE day, so a
+    // past-date review would see the close, high, low and volume of the full session (hindsight). Rebuild that last candle from the 5-minute candles up
+    // to the snapshot time. No 5-minute candle yet at that time (before the open) means the day has not started, so the candle is dropped.
+    try {
+        var dayStr = _psDateStr(to);
+        if (histTime && histTime < '15:30' && candles.length && String(candles[candles.length - 1][0]).slice(0, 10) === dayStr) {
+            var m5 = await getHistoricalDataUsingPromise(token, dayStr + ' 09:00:00', dayStr + ' ' + histTime + ':00', '5minute');
+            var c5 = (m5 && m5.data && m5.data.candles) ? m5.data.candles.filter(function (c) { return String(c[0]).slice(0, 10) === dayStr && String(c[0]).slice(11, 16) <= histTime; }) : [];
+            var last = candles[candles.length - 1];
+            if (!c5.length) candles = candles.slice(0, -1);
+            else {
+                var hi = -Infinity, lo = Infinity, vol = 0;
+                c5.forEach(function (c) { hi = Math.max(hi, parseFloat(c[2])); lo = Math.min(lo, parseFloat(c[3])); vol += parseFloat(c[5]) || 0; });
+                var nc = [last[0], parseFloat(c5[0][1]), hi, lo, parseFloat(c5[c5.length - 1][4]), vol];
+                if (c5[c5.length - 1].length > 6) nc.push(c5[c5.length - 1][6]); else if (last.length > 6) nc.push(last[6]);
+                candles = candles.slice(0, -1).concat([nc]);
+            }
+        }
+    } catch (eSnap) {}
+    return candles;
 }
 
 // Indices/MCX use different naming + token sources than F&O stocks — same mapping
@@ -1164,6 +1193,7 @@ jQ(document).on('click', '#ps-scan-btn', async function () {
         jQ('#ps-chip-panel').hide();      // the chip list (up to ~200 chips) would push the results out of view; pick a filter again to reopen it
         jQ('#ps-progress').text('Done — ' + done + ' / ' + universe.length + ' scanned');
         _gtbToast('Positional scan complete (' + done + ' stocks)', 'success');
+        try { if (typeof _psBoQuickAll === 'function') _psBoQuickAll(); } catch (eBo) {}
     } finally {
         _PS_SCANNING = false;
         $btn.prop('disabled', false);
@@ -1631,7 +1661,7 @@ function _psRenderTable() {
         + '<thead><tr>'
         + '<th><input type="checkbox" id="ps-select-all-basket" title="Select all eligible rows currently shown"></th>'
         + '<th></th><th></th><th></th>'
-        + '<th>Symbol</th><th>Verdict</th><th>Conviction%' + _iiSafe('ps-conviction') + '</th><th>LTP</th>'
+        + '<th>Symbol</th><th>Verdict</th><th>Conviction%' + _iiSafe('ps-conviction') + '</th><th title="Bounce (below the 200-day average) or pullback (above it): YES / NO / 50-50 with the share of similar past days that reversed by 1 ATR within 5 sessions">Bounce?</th><th>LTP</th>'
         + '<th>Trend Template / Stage' + _iiSafe('ps-primary') + '</th><th>Momentum' + _iiSafe('ps-primary') + '</th>'
         + '<th>20d Chg%</th><th>Trend</th><th>Breakout</th>'
         + '<th>Rel. Strength</th><th>Futures OI (5d)' + _iiSafe('ps-signals') + '</th><th>Curve' + _iiSafe('ps-curve') + '</th><th>Overlay</th>'
@@ -1682,6 +1712,7 @@ function _psRenderTable() {
                 + '<td class="ps-cell-strong"><span class="ps-detail-toggle" data-name="' + r.name + '" style="cursor:pointer;white-space:nowrap;" title="Show the details for ' + r.name + ' (signal agreement, entry timing, risk)"><i class="bi bi-chevron-' + (_PS_OPEN[r.name] ? 'down' : 'right') + '" style="font-size:0.5rem;margin-right:3px;"></i>' + r.name + '</span></td>'
                 + '<td><span class="ps-verdict" style="color:' + r.verdictColor + ';border-color:' + r.verdictColor + ';font-size:0.5rem;">' + r.verdict + '</span></td>'
                 + '<td class="ps-cell-strong" style="color:' + convColor + ';" title="' + convTip.replace(/"/g, '&quot;') + '">' + convText + '</td>'
+                + (typeof _psBoQuickCell === 'function' ? _psBoQuickCell(r.name) : '<td></td>')
                 + '<td>' + r.ltp.toFixed(1) + '</td>'
                 + '<td style="color:' + primColor + ';font-size:0.55rem;" title="' + primTip.replace(/"/g, '&quot;') + '">' + primText + '</td>'
                 + '<td style="color:' + momColor + ';" title="' + momTip.replace(/"/g, '&quot;') + '">' + momText + '</td>'
@@ -1698,7 +1729,7 @@ function _psRenderTable() {
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
                 + '<td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td>'
                 + '</tr>'
-                + (_PS_OPEN[r.name] ? '<tr class="ps-detail-row"><td colspan="22" style="padding:0;background:var(--gtb-surface2);border-left:3px solid ' + r.verdictColor + ';">' + _psDetailCardHtml(r) + '</td></tr>' : '');
+                + (_PS_OPEN[r.name] ? '<tr class="ps-detail-row"><td colspan="23" style="padding:0;background:var(--gtb-surface2);border-left:3px solid ' + r.verdictColor + ';">' + _psDetailCardHtml(r) + '</td></tr>' : '');
         })
         + '</tbody></table>';
     jQ('#ps-table-wrap').html(html);
@@ -1750,7 +1781,7 @@ function _psTimingBody(rows, rowFn) {
         var col = _psTimingColor(k), closed = !!_PS_GROUP_COLLAPSED[k];
         var pct = rows.length ? Math.round(list.length / rows.length * 100) : 0;
         out += '<tr class="ps-group-row" data-grp="' + k + '" style="cursor:pointer;" title="Click to ' + (closed ? 'open' : 'fold') + ' this group">'
-            + '<td colspan="22" style="background:var(--gtb-surface2);border-left:3px solid ' + col + ';padding:4px 8px;font-size:0.6rem;">'
+            + '<td colspan="23" style="background:var(--gtb-surface2);border-left:3px solid ' + col + ';padding:4px 8px;font-size:0.6rem;">'
             + '<i class="bi bi-chevron-' + (closed ? 'right' : 'down') + '" style="font-size:0.5rem;margin-right:4px;"></i>'
             + '<b style="color:' + col + ';letter-spacing:0.5px;">' + k + '</b> '
             + '<span style="color:var(--gtb-text);font-weight:700;">' + list.length + ' stock' + (list.length === 1 ? '' : 's') + '</span> '
@@ -2475,7 +2506,7 @@ async function _lvsActiveFetchOI(names, onProgress) {
             if (onProgress) onProgress(name, done, names.length);
             if (!oiData || !oiData.tableData) return;
             if (!INSTRUMENT_SCORE_MAP[name]) INSTRUMENT_SCORE_MAP[name] = {};
-            INSTRUMENT_SCORE_MAP[name].oi_obv = computeOIScoreFromData(oiData);
+            INSTRUMENT_SCORE_MAP[name].oi_obv = computeOIScoreFromData(oiData, name);
             INSTRUMENT_SCORE_MAP[name].pcr    = oiData.pcr;
             INSTRUMENT_SCORE_MAP[name].chPcr  = oiData.chPcr;
             INSTRUMENT_SCORE_MAP[name].oiData = oiData;
@@ -2825,7 +2856,7 @@ function _psBuildTelegramMessage(rows) {
         return line;
     }
 
-    var parts = ['<b>Positional Screener — ' + moment().format('DD-MMM HH:mm') + '</b>', '(' + rows.length + ' shown, as currently filtered)'];
+    var parts = ['<b>Positional Screener — ' + _psAsOfText() + '</b>', '(' + rows.length + ' shown, as currently filtered)'];
     if (longs.length) parts.push('\n<b>LONG (' + longs.length + ')</b>\n' + longs.map(fmtRow).join('\n'));
     if (shorts.length) parts.push('\n<b>SHORT (' + shorts.length + ')</b>\n' + shorts.map(fmtRow).join('\n'));
     if (other.length) parts.push('\n<b>OTHER / WATCH (' + other.length + ')</b>\n' + other.map(fmtRow).join('\n'));

@@ -7431,3 +7431,16 @@ td.details-control {
 #gtb-ps-dock-body .ps-wrap { flex: 1 1 0; min-height: 0; height: auto; }
 #gtb-ps-dock-body #ps-swing-panel { overflow-y: auto !important; overflow-x: auto !important; }
 #gtb-ps-dock-body #ps-lt-panel { overflow-y: auto !important; }
+
+/* Positional Screener verdict tabs coloured by trend: green bullish, red bearish, amber basing / topping / watch; the selected tab is filled */
+.ps-vtab[data-tone="bull"], .ps-vgroup-label[data-tone="bull"] { color: var(--gtb-green); }
+.ps-vtab[data-tone="bear"], .ps-vgroup-label[data-tone="bear"] { color: var(--gtb-red); }
+.ps-vtab[data-tone="warn"] { color: var(--gtb-amber); }
+.ps-vtab[data-tone] .sv-seg-label { color: inherit; }
+.ps-vtab[data-tone="bull"] { box-shadow: inset 0 -2px 0 var(--gtb-green); }
+.ps-vtab[data-tone="bear"] { box-shadow: inset 0 -2px 0 var(--gtb-red); }
+.ps-vtab[data-tone="warn"] { box-shadow: inset 0 -2px 0 var(--gtb-amber); }
+.ps-vtab.sv-seg-active[data-tone="bull"] { background: var(--gtb-green); color: #fff; }
+.ps-vtab.sv-seg-active[data-tone="bear"] { background: var(--gtb-red); color: #fff; }
+.ps-vtab.sv-seg-active[data-tone="warn"] { background: var(--gtb-amber); color: #fff; }
+.ps-vtab.sv-seg-active[data-tone] .sv-seg-label, .ps-vtab.sv-seg-active[data-tone] .sv-seg-count { color: #fff; }

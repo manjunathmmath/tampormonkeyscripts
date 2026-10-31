@@ -217,3 +217,64 @@ function _psShowBounce(name) {
 jQ(document).on('click', '.ps-bounce-btn', function (e) { e.stopPropagation(); _psShowBounce(jQ(this).data('name')); });
 jQ(document).on('click', '#psbo-run', function () { _psBoRun(); });
 jQ(document).on('click', '#psbo-stop', function () { _PS_BO.stop = true; });
+
+// ── One-word Bounce / Pullback column in the swing screener (v29.456) ─────────────────────────────────────────────────────────────
+// Same measurement as the popup, for ONE name on its own history and the 5-session window: among past days that looked like now (same side of the
+// 200-day average, similar 20-day move), the share where price reversed by 1 ATR before moving 1 ATR further. Below the 200-day average the reversal
+// is a BOUNCE (up), above it a PULLBACK (down). YES = 55% or more, NO = 45% or less, 50-50 in between, FEW = under 8 past cases.
+// 50% is what pure chance gives, so a figure near it says nothing either way. Runs in the background after a scan (4 names at a time).
+var _PS_BO_QUICK = {}, _PS_BO_QUICK_RUNNING = false;
+async function _psBoQuickOne(name) {
+    var key = _psBoDay() + '|' + name;
+    if (_PS_BO_QUICK[key]) return _PS_BO_QUICK[key];
+    var out = { word: '—', pct: null, n: 0, side: null, tip: 'No daily history for this name.' };
+    try {
+        var c = await _psBoCandles(name);
+        if (c && c.length >= _PS_BO_MIN_BARS) {
+            var P = _psBoPrepare(c), s0 = _psBoState(P, P.n - 1);
+            if (s0) {
+                var m = _psBoMatcher(s0.side, s0.z), o = _psBoObserve(P, 5, s0.side, m, name), a = _psBoAgg(o.match), b = _psBoAgg(o.base), kind = s0.side === 'down' ? 'bounce' : 'pullback';
+                out.side = kind;
+                if (!a || a.n < _PS_BO_SHOW_MIN_N) { out.word = 'FEW'; out.n = a ? a.n : 0; out.tip = 'Only ' + out.n + ' past days looked like now (' + m.text + '): too few to read. Open the arrows icon for the full table.'; }
+                else {
+                    out.pct = Math.round(a.revP); out.n = a.n;
+                    out.word = a.revP >= 55 ? 'YES' : a.revP <= 45 ? 'NO' : '50-50';
+                    out.tip = 'Past days that looked like now (' + m.text + '; ' + (s0.side === 'down' ? 'below' : 'above') + ' the 200-day average): ' + a.rev + ' of ' + a.n + ' reversed by 1 ATR (a ' + kind + ') before moving 1 ATR further, within 5 sessions = ' + out.pct + '%.'
+                        + (b ? ' All days on this side: ' + Math.round(b.revP) + '% of ' + b.n + '.' : '') + ' About 50% is what chance gives. Past frequency, not a forecast.';
+                }
+            }
+        }
+    } catch (e) { out.tip = 'Could not load history: ' + (e && e.message ? e.message : e); }
+    _PS_BO_QUICK[key] = out;
+    return out;
+}
+function _psBoQuickCell(name) {
+    var q = _PS_BO_QUICK[_psBoDay() + '|' + name];
+    if (!q) return '<td class="ps-cell-muted" title="' + (_PS_BO_QUICK_RUNNING ? 'Measuring from daily history…' : 'Not measured yet (runs after a scan)') + '">' + (_PS_BO_QUICK_RUNNING ? '…' : '—') + '</td>';
+    // Plain-language read. "bounce" = below its 200-day average (the question is whether it rises 1 ATR before falling 1 ATR more);
+    // "pullback" = above it (whether it falls 1 ATR before rising 1 ATR more). The colour follows the DIRECTION the message points to, not YES / NO.
+    var bounce = q.side === 'bounce', main, col, sub;
+    if (q.word === 'FEW') { main = 'Too few similar cases'; col = 'var(--gtb-muted)'; sub = q.n + ' similar past case' + (q.n === 1 ? '' : 's') + ', not enough to read'; }
+    else if (q.word === 'YES') { main = bounce ? 'Bounce likely first' : 'Pullback likely first'; col = bounce ? 'var(--gtb-green)' : 'var(--gtb-red)'; }
+    else if (q.word === 'NO') { main = bounce ? 'More downside first' : 'More upside first'; col = bounce ? 'var(--gtb-red)' : 'var(--gtb-green)'; }
+    else if (q.word === '50-50') { main = 'No clear lean'; col = 'var(--gtb-muted)'; }
+    else { main = q.word; col = 'var(--gtb-muted)'; }
+    if (q.pct != null) sub = q.pct + '% ' + (bounce ? 'bounced' : 'pulled back') + ' first · ' + q.n + ' similar cases';
+    var tip = (q.pct != null ? (main + '. In ' + q.n + ' similar past cases (' + (bounce ? 'below' : 'above') + ' the 200-day average, similar recent move), ' + q.pct + '% ' + (bounce ? 'rose 1 ATR before falling a further 1 ATR' : 'fell 1 ATR before rising a further 1 ATR') + ' within 5 sessions; about 50% is what chance gives. ') : '') + q.tip;
+    return '<td class="ps-cell-strong" style="color:' + col + ';min-width:120px;line-height:1.25;" title="' + tip.replace(/"/g, '&quot;') + '">' + main + (sub ? '<div style="font-size:0.48rem;font-weight:500;color:var(--gtb-muted);">' + sub + '</div>' : '') + '</td>';
+}
+async function _psBoQuickAll() {
+    if (_PS_BO_QUICK_RUNNING) return;
+    var names = Object.keys(_PS_CACHE).filter(function (n) { return !_PS_BO_QUICK[_psBoDay() + '|' + n]; });
+    if (!names.length) return;
+    _PS_BO_QUICK_RUNNING = true;
+    var idx = 0, done = 0, workers = [];
+    var redraw = function () { try { if (jQ('#ps-table-wrap').length) _psRenderTable(); } catch (e) {} };
+    for (var w = 0; w < _PS_BO_POOL; w++) workers.push((async function () {
+        while (idx < names.length) { var nm = names[idx++]; await _psBoQuickOne(nm); done++; if (done % 15 === 0) { jQ('#ps-progress').text('Bounce odds ' + done + ' / ' + names.length + '…'); redraw(); await new Promise(function (r) { setTimeout(r, 0); }); } }
+    })());
+    await Promise.all(workers);
+    _PS_BO_QUICK_RUNNING = false;
+    jQ('#ps-progress').text('Bounce odds done (' + names.length + ')');
+    redraw();
+}
