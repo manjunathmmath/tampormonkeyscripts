@@ -4060,6 +4060,8 @@ function getMarketSignal(SCORE, breakOutNineFifteen) {
     let n50FutDir  = (INSTRUMENT_SCORE_MAP['NIFTY 50']  && INSTRUMENT_SCORE_MAP['NIFTY 50'].futures_trend)  || 0;
     let bnFutDir   = (INSTRUMENT_SCORE_MAP['NIFTY BANK'] && INSTRUMENT_SCORE_MAP['NIFTY BANK'].futures_trend) || 0;
     let indexFuturesScore = n50FutDir + bnFutDir;
+    // the conflict rules below use the SUM of the two futures scores, so one can be neutral (NO_CLEAR_SIGNAL) while the other leans; the reason texts say which
+    var _futW = function (v) { return v > 0 ? 'bullish' : v < 0 ? 'bearish' : 'neutral'; };
 
     // --- Score → base signal ---
     let signal, color, reason;
@@ -4115,7 +4117,7 @@ function getMarketSignal(SCORE, breakOutNineFifteen) {
             reason = 'Score bullish (' + SCORE.toFixed(2) + ') but futures + leading score bearish. 9:15 not fully confirming — wait for alignment.';
         } else {
             signal = 'WAIT'; color = 'sv-badge-amber';
-            reason = 'Score bullish (' + SCORE.toFixed(2) + ') but both index futures bearish. Conflicting signals — no trade.';
+            reason = 'Score bullish (' + SCORE.toFixed(2) + ') but index futures lean bearish (NIFTY ' + _futW(n50FutDir) + ', BANK NIFTY ' + _futW(bnFutDir) + '). Conflicting signals — no trade.';
         }
     } else if (SCORE < -4 && indexFuturesScore > 0) {
         // Score bearish but index futures bullish
@@ -4130,7 +4132,7 @@ function getMarketSignal(SCORE, breakOutNineFifteen) {
             reason = 'Score bearish (' + SCORE.toFixed(2) + ') but futures + leading score bullish. 9:15 not fully confirming — wait for alignment.';
         } else {
             signal = 'WAIT'; color = 'sv-badge-amber';
-            reason = 'Score bearish (' + SCORE.toFixed(2) + ') but both index futures bullish. Conflicting signals — no trade.';
+            reason = 'Score bearish (' + SCORE.toFixed(2) + ') but index futures lean bullish (NIFTY ' + _futW(n50FutDir) + ', BANK NIFTY ' + _futW(bnFutDir) + '). Conflicting signals — no trade.';
         }
     }
 
@@ -8940,7 +8942,7 @@ jQ(document).on("change", "#gtb-hist-time", function() {
         if (jQ('#gtb-pane-dashboard').is(':visible')) {
             jQ('#gtb-dash-lvlconfirm').html(_gtbLevelConfirmHtml());
             jQ('#gtb-dash-final').html(_gtbFinalVerdictHtml());
-            try { _gtbRenderDashStrength(); _gtbRenderDashSR(); } catch (eSt2) {}
+            try { _gtbRenderDashStrength(); _gtbRenderDashSR(); _gtbRenderDashOutlook(); } catch (eSt2) {}
         }
     } catch (e) {}
 });
@@ -10274,6 +10276,7 @@ var GTB_INFO = {
     'sa-drivers': { icon:'bi-diagram-3', title:'What is moving the index',
         body:'Index impact of a stock = its index weight % x its price change % / 100, an approximate number of index points it adds or removes (the same formula as the Weighted Constituents OI table). <b>Pulling down</b> and <b>Holding up</b> list the biggest negative and positive contributors among the top-10 weighted stocks. The panel uses every constituent of the index with its current weight (downloaded daily from niftyindices.com; if that fails it falls back to the built-in top-10 list, which covers only about 53% of NIFTY 50 and 86% of BANK NIFTY), so when the net disagrees with the real index move, the move is coming from stocks with no price data. For NIFTY 50 the banks (stocks that are also in the BANK NIFTY list) are split from the rest, so you can see whether BANK NIFTY is dragging NIFTY. <br><br><b>Verdict (UP / DOWN / FLAT):</b> UP or DOWN when the top-10 net is at least 0.08 pts and agrees with the index move; when the index moves 0.05% or more but the top-10 net does not explain it, the verdict follows the index and says the move comes from outside the top-10; otherwise FLAT. Descriptive only, not a forecast.' },
     'str-card': { icon: 'bi-bar-chart-steps', title: 'Strongest and weakest index', body: 'Ranks the indices by the change today against the previous close (the same figure the rest of the dashboard uses): NIFTY 50, NIFTY BANK, SENSEX, NIFTY FIN SERVICE, NIFTY MID SELECT, BANKEX and GIFT NIFTY (those that have a price). The top one is marked STRONGEST, the bottom one WEAKEST, and the spread is the gap between them. SCORE is the dashboard composite for NIFTY 50 / BANK / SENSEX; 9:15 is the zone of the 9:15 close. The same badges appear on the Price Action cells. It ranks what happened today; it is not a forecast.' },
+    'ol-card': { icon: 'bi-compass-fill', title: 'Probable trade from today\'s metrics', body: 'What the live metrics point to right now, WITHOUT using the 9:15 combo as a driver (the combo is a high-level plan that may or may not play out). Direction = the Master Consensus (independent signal groups: price vs strike levels, futures remark, option flow, order flow, curve; the 9:15 zone is one vote, and it is flat when the index closed inside BSO..ASO). Confidence = the same rank the Final Verdict uses (HIGH / MEDIUM / LOW). The levels come from the Strong support and resistance card: for a LONG the entry is the nearest strong support at or below price (now if price is within 0.15% of it, otherwise on a pullback to it), the stop sits just beyond that zone, the targets are the next resistance zones above. A SHORT is the mirror. Reward : risk is shown, and a plan below 1 : 1 is flagged. If Live Context says price has turned against the direction, or NIFTY is in a dead zone, the card says so. Rule-based, levels are where several sources agree, not a forecast; not back-tested; it never places an order.' },
     'sr-card': { icon: 'bi-layers-fill', title: 'Strong support and resistance', body: 'Stacks the levels the dashboard already has for an index and merges any that fall within 0.12% of each other into one zone. Sources: the OI/OBV walls R1, R2, S1, S2 (count 3 for the primary wall, 2 for the secondary, half when the wall is eroding), the 9:15 levels (ASO, AST, BSO, BST), today\'s Market Profile (point of control, value area high and low), max pain, the previous-day high, low and close, and today\'s high and low (1 each). Zones above price are resistance, below are support. More dots = more sources agree; STRONG = strength of 3 or more, for example an OI wall that sits at a 9:15 level. Hover a row to see its sources. It shows where levels cluster; it does not say whether a level will hold.' },
     'sa-card': { icon:'bi-check2-square', title:'Signal Agreement and Entry Timing',
         body:'One row per index and per weighted stock (top-10 of NIFTY 50 and BANK NIFTY). It shows what the Option Strike Search would suggest for that name, how many independent signals back it, and whether NOW is a good moment to enter. Rows are grouped by trend with the count and share of names in each group. Click a name for the checks behind the numbers. It reads data already loaded, so refresh the dashboard first. Heuristic checklists, not a probability of profit, not back-tested.' },
@@ -14689,7 +14692,7 @@ function _gtbFinalVerdictCore(nm) {
         if (cn.deadZone) {
             out.call = 'WAIT'; out.col = 'var(--gtb-amber)'; out.headline = 'WAIT — ' + (nm === 'NIFTY 50' ? 'NIFTY' : nm) + ' is in a dead zone';
             // Where price is, what counts as a break, and (as a note only; the call stays WAIT) which way the consensus leans.
-            out.action = 'Signals are too weak to commit. ' + _gtbDeadZoneText(nm, cn.deadZone) + '. The call stays WAIT until a 5-minute candle closes outside either edge.'
+            out.action = 'Signals are too weak to commit. ' + _gtbDeadZoneText(nm, cn.deadZone) + '. The call stays WAIT until a 5-minute candle closes beyond either edge by more than ' + _GTB_DZ_BUFFER_PCT + '% of price.'
                 + (dN !== 0 ? ' Consensus leans ' + (dN > 0 ? 'LONG' : 'SHORT') + ' (net ' + nF(cn.net) + ', ' + cn.agree + ' of ' + cn.voting + ' signal groups agree' + (cn.thin ? ', thin' : '') + '), but the signals are too weak to act on.' : '');
             out.why.push(line);
             return out;
@@ -14777,10 +14780,13 @@ function _gtbFinalVerdictCore(nm) {
             out.conf = confTxt[rank];
             return out;
         }
-        out.why.push((counterPlan ? 'Counter-plan (' + word + ' vs 9:15 ' + plan + ') — ' : '9:15 plan: ' + plan + ' (' + strat.level + ') — ') + dec.title + '.');
+        out.why.push((counterPlan ? 'Counter-plan (' + word + ' vs 9:15 ' + plan + ') — ' : '9:15 plan: ' + plan + ' (' + strat.level + ') — ') + (counterPlan ? dec.title.replace(/plan is to (buy|sell) at ([A-Z]+ [\d,]+)/, 'a $1 would be at $2 (the 9:15 plan is ' + plan + ')') : dec.title) + '.');
         dec.why.slice(0, 2).forEach(function (x) { out.why.push(x); });
         if (dec.action === 'SKIP') {
-            out.call = 'NO TRADE'; out.entryBlocked = true; out.col = 'var(--gtb-amber)'; out.headline = 'NO TRADE — ' + dec.title.replace(/^(DON'T (BUY|SELL|CHASE)|NO (BUY|SELL) NOW)\s*—\s*/, '');
+            out.call = 'NO TRADE'; out.entryBlocked = true; out.col = 'var(--gtb-amber)'; var _dt = dec.title.replace(/^(DON'T (BUY|SELL|CHASE)|NO (BUY|SELL) NOW)\s*—\s*/, '');
+            // In the counter-plan case the level is NOT the 9:15 plan (that plan is on the other side), so do not call it the plan
+            if (counterPlan) _dt = _dt.replace(/plan is to (buy|sell) at ([A-Z]+ [\d,]+)/, 'a $1 would be at $2 (the 9:15 plan is ' + plan + ')');
+            out.headline = 'NO TRADE — ' + _dt;
             out.action = 'The direction (' + word + ') is clear, but the entry is not: ' + dec.why[dec.why.length - 1];   // the blocker is the LAST reason (the first is usually "stop waiting for the level")
             addHeadsUp();
             return out;
@@ -23607,6 +23613,87 @@ function _gtbDashSRHtml() {
     return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">' + chips + '<span style="font-size:0.58rem;color:' + M + ';">price <b style="color:var(--gtb-text);font-family:var(--gtb-mono);">' + f0(d.spot) + '</b> · levels within ' + _GTB_SR_TOL + '% are merged · more dots = more sources agree · hover a row for its sources</span></div>'
         + '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + col('&#9650; RESISTANCE (above price, nearest first)', up, R, bu, true) + col('&#9660; SUPPORT (below price, nearest first)', dn, G, bd, false) + '</div>';
 }
+// ── Probable trade from the live metrics, independent of the 9:15 combo (v29.493) ──────────────────────────────────────
+// Direction and confidence come from the Master Consensus (independent signal groups). Entry / stop / targets come from the zones of the Strong
+// support and resistance card. Nothing here is back-tested and nothing places an order.
+var _GTB_OL_NAME = 'NIFTY 50', _GTB_OL_NEAR_PCT = 0.15, _GTB_OL_STOP_BUF_PCT = 0.12, _GTB_OL_MIN_STRENGTH = 2;
+function _gtbOutlook(nm) {
+    var d = null; try { d = _gtbSrLevels(nm); } catch (e) {}
+    if (!d) return { ok: false, why: 'Waiting for ' + nm + ' price and OI data (run a refresh).' };
+    var cn = _gtbMasterConsensus(nm), spot = d.spot;
+    var dir = cn.net > 0.2 ? 1 : cn.net < -0.2 ? -1 : 0;
+    var rank = (Math.abs(cn.net) >= _GTB_FV_HIGH_NET && cn.voting >= _GTB_FV_HIGH_GROUPS && !cn.thin) ? 3 : (Math.abs(cn.net) >= _GTB_FV_MED_NET && cn.voting >= _GTB_FV_MED_GROUPS && !cn.thin) ? 2 : 1;
+    var lx = null; try { if (typeof _lxCompute === 'function') lx = _lxCompute(nm, dir || undefined); } catch (e) {}
+    var dz = null; try { dz = _gtbDeadZone(nm); } catch (e) {}
+    var near = spot * _GTB_OL_NEAR_PCT / 100, buf = spot * _GTB_OL_STOP_BUF_PCT / 100, tol = spot * 0.03 / 100;     // tol: a zone this close on the wrong side still counts as at the price
+    var strong = function (z) { return z.strength >= _GTB_OL_MIN_STRENGTH; };
+    var below = d.zones.filter(function (z) { return z.price <= spot + tol; }).sort(function (a, b) { return b.price - a.price; });
+    var above = d.zones.filter(function (z) { return z.price >= spot - tol; }).sort(function (a, b) { return a.price - b.price; });
+    var out = { ok: true, nm: nm, spot: spot, dir: dir, rank: rank, cn: cn, lx: lx, dz: dz, plan: null, range: null };
+    if (dir !== 0) {
+        var long = dir > 0, ent = long ? (below.filter(strong)[0] || below[0]) : (above.filter(strong)[0] || above[0]);
+        if (ent) {
+            var atLevel = Math.abs(spot - ent.price) <= near, entryPx = atLevel ? spot : ent.price, stop = long ? ent.loP - buf : ent.hiP + buf;
+            var tg = d.zones.filter(function (z) { return long ? z.price > entryPx + near : z.price < entryPx - near; }).sort(function (a, b) { return long ? a.price - b.price : b.price - a.price; });
+            var t1 = tg.filter(strong)[0] || tg[0] || null, t2 = t1 ? (tg.filter(function (z) { return z !== t1 && (long ? z.price > t1.price : z.price < t1.price); })[0] || null) : null;
+            var risk = Math.abs(entryPx - stop), reward = t1 ? Math.abs(t1.price - entryPx) : null;
+            out.plan = { long: long, ent: ent, atLevel: atLevel, entryPx: entryPx, stop: stop, t1: t1, t2: t2, risk: risk, reward: reward, rr: (reward != null && risk > 0) ? reward / risk : null };
+        }
+    } else {
+        out.range = { sup: below.filter(strong)[0] || below[0] || null, res: above.filter(strong)[0] || above[0] || null };
+    }
+    try { var tr = generateTrend(nm); if (tr && tr.vix) out.vix = { lo: parseFloat(tr.vix.vixDDLower), hi: parseFloat(tr.vix.vixDDUpper) }; } catch (e) {}
+    try { var st = (window._GTB_LC || {}).strat; if (st) out.strat = st; } catch (e) {}
+    return out;
+}
+function _gtbOutlookHtml() {
+    var G = 'var(--gtb-green)', R = 'var(--gtb-red)', M = 'var(--gtb-muted)', A = 'var(--gtb-amber)';
+    var f0 = function (x) { return Math.round(x).toLocaleString('en-IN'); };
+    var chips = ['NIFTY 50', 'NIFTY BANK', 'SENSEX'].map(function (n) { var on = n === _GTB_OL_NAME; return '<button class="gtb-ol-name sv-pill-btn" data-name="' + n + '" style="' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);' : '') + 'font-size:0.55rem;padding:1px 8px;margin-right:4px;">' + n + '</button>'; }).join('');
+    var o = null; try { o = _gtbOutlook(_GTB_OL_NAME); } catch (e) { return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">Could not build the outlook: ' + (e && e.message ? e.message : e) + '</span>'; }
+    if (!o.ok) return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">' + o.why + '</span>';
+    var lbl = o.nm === 'NIFTY 50' ? 'NIFTY' : o.nm, rankTxt = ['', 'LOW', 'MEDIUM', 'HIGH'][o.rank];
+    var head, hcol, lines = [];
+    if (o.dir === 0) {
+        head = 'NO CLEAR DIRECTION'; hcol = M;
+        lines.push('The metrics are split (net ' + (o.cn.net >= 0 ? '+' : '') + o.cn.net.toFixed(2) + ', ' + o.cn.voting + ' signal group' + (o.cn.voting === 1 ? '' : 's') + ' voting). Expect chop' + (o.range && o.range.sup && o.range.res ? ' between support ' + f0(o.range.sup.price) + ' and resistance ' + f0(o.range.res.price) + '; sell strength near the top, buy weakness near the bottom only with small size, or stay out' : ' until a direction forms') + '.');
+    } else {
+        var word = o.dir > 0 ? 'LONG' : 'SHORT';
+        head = (o.rank === 3 ? 'PROBABLE: ' : o.rank === 2 ? 'LIKELY: ' : 'LEAN (low confidence): ') + word; hcol = o.dir > 0 ? G : R;
+        var p = o.plan;
+        if (!p) lines.push('No support / resistance zone near price to build an entry on. Wait for a level to form.');
+        else {
+            lines.push('<b>Entry:</b> ' + (p.atLevel ? 'price is at ' + (p.long ? 'support' : 'resistance') + ' now, about ' + f0(p.entryPx) : (p.long ? 'on a pullback to support ' : 'on a rally to resistance ') + f0(p.entryPx) + ' (' + f0(Math.abs(o.spot - p.entryPx)) + ' pts away)') + ' &nbsp;<span style="color:' + M + ';">(' + p.ent.items.map(function (x) { return x.src; }).join(', ') + ')</span>');
+            lines.push('<b>Stop:</b> ' + f0(p.stop) + ' (' + (p.long ? 'below' : 'above') + ' that zone by ' + _GTB_OL_STOP_BUF_PCT + '% of price, ' + f0(p.risk) + ' pts risk) &nbsp; <b>Target 1:</b> ' + (p.t1 ? f0(p.t1.price) + ' (' + f0(p.reward) + ' pts, ' + p.t1.items.map(function (x) { return x.src; }).join(', ') + ')' : 'no level ahead') + (p.t2 ? ' &nbsp; <b>Target 2:</b> ' + f0(p.t2.price) : ''));
+            if (p.rr != null) lines.push('<b>Reward : risk</b> ' + p.rr.toFixed(1) + ' : 1' + (p.rr < 1 ? ' <span style="color:' + A + ';font-weight:700;">below 1 : 1, so a better entry is needed</span>' : ''));
+            lines.push('<b>Expect:</b> ' + lbl + ' ' + f0(o.spot) + (p.long ? ' to hold above ' : ' to stay below ') + f0(p.stop) + (p.t1 ? ' and drift ' + (p.long ? 'up' : 'down') + ' toward ' + f0(p.t1.price) : '') + '; the view is wrong if it closes ' + (p.long ? 'below ' : 'above ') + f0(p.stop) + '.');
+        }
+    }
+    var warn = [];
+    if (o.lx && o.dir !== 0 && o.lx.status === 'STALE') warn.push('Live Context is STALE for this ' + (o.dir > 0 ? 'LONG' : 'SHORT') + ': price is moving against it, so wait for price to confirm before using this plan.');
+    else if (o.lx && o.dir !== 0 && o.lx.status === 'WEAKENING') warn.push('Live Context is WEAKENING: ' + o.lx.against + ' price checks against, ' + o.lx.agree + ' for.');
+    if (o.dz) warn.push(lbl + ' is inside a dead zone (' + f0(o.dz.lo) + ' - ' + f0(o.dz.hi) + '): the signals are weak, so expect chop until a 5-minute candle closes beyond an edge; keep size small.');
+    if (o.vix && o.plan && o.plan.t1 && isFinite(o.vix.lo) && isFinite(o.vix.hi)) {
+        var inside = o.plan.t1.price >= o.vix.lo && o.plan.t1.price <= o.vix.hi;
+        warn.push('Expected day range by VIX: ' + f0(o.vix.lo) + ' - ' + f0(o.vix.hi) + '; target 1 is ' + (inside ? 'inside' : 'outside') + ' it.');
+    }
+    if (o.strat && o.strat.outcome) {
+        var sw = o.strat.outcome === 'Sell' ? -1 : o.strat.outcome === 'Buy' ? 1 : 0;
+        warn.push('9:15 plan for context: ' + o.strat.outcome + (o.strat.level ? ' (' + o.strat.level + ')' : '') + (sw !== 0 && o.dir !== 0 && sw !== o.dir ? '. It points the other way from this outlook; the combo is a high-level plan and is not used here.' : '. Not used as a driver here.'));
+    }
+    var NAMES = { zone: '9:15 zone', trend: 'Price vs levels', futures: 'Futures', options: 'Option flow', orderflow: 'Order flow', curve: 'Curve' };
+    var ev = (o.cn.families || []).filter(function (g) { return g.members; }).map(function (g) { var c = g.dir > 0 ? G : g.dir < 0 ? R : M; return '<span style="margin-right:10px;color:' + c + ';">' + (g.dir > 0 ? '&#9650;' : g.dir < 0 ? '&#9660;' : '&mdash;') + ' ' + (NAMES[g.name] || g.name) + '</span>'; }).join('');
+    return '<div style="margin-bottom:6px;">' + chips + '<span style="font-size:0.58rem;color:' + M + ';">price <b style="color:var(--gtb-text);font-family:var(--gtb-mono);">' + f0(o.spot) + '</b></span></div>'
+        + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;"><span style="font-weight:900;font-size:0.95rem;color:' + hcol + ';">' + head + '</span>'
+        + (o.dir !== 0 ? '<span style="font-weight:800;font-size:0.5rem;color:' + hcol + ';border:1px solid ' + hcol + ';padding:1px 6px;">CONFIDENCE ' + rankTxt + '</span>' : '')
+        + '<span style="font-size:0.5rem;color:' + M + ';">net ' + (o.cn.net >= 0 ? '+' : '') + o.cn.net.toFixed(2) + ' &middot; ' + o.cn.agree + ' of ' + o.cn.voting + ' signal groups agree' + (o.cn.thin ? ' (thin)' : '') + '</span></div>'
+        + lines.map(function (l) { return '<div style="font-size:0.6rem;margin:2px 0;color:var(--gtb-text);">' + l + '</div>'; }).join('')
+        + (ev ? '<div style="font-size:0.52rem;margin-top:5px;"><span style="color:' + M + ';">Signal groups:</span> ' + ev + '</div>' : '')
+        + warn.map(function (w) { return '<div style="font-size:0.52rem;margin-top:3px;color:' + A + ';"><i class="bi bi-exclamation-triangle-fill"></i> ' + w + '</div>'; }).join('')
+        + '<div style="font-size:0.44rem;color:' + M + ';margin-top:5px;">Levels are where several sources agree (OI walls, max pain, 9:15 levels, value area, day and previous-day highs / lows), not a forecast. Rule-based, not back-tested. It never places an order.</div>';
+}
+function _gtbRenderDashOutlook() { if (jQ('#gtb-dash-outlook').length) jQ('#gtb-dash-outlook').html(_gtbOutlookHtml()); }
+jQ(document).on('click', '.gtb-ol-name', function () { _GTB_OL_NAME = jQ(this).attr('data-name'); _gtbRenderDashOutlook(); });
 function _gtbRenderDashSR() { if (jQ('#gtb-dash-sr').length) jQ('#gtb-dash-sr').html(_gtbDashSRHtml()); }
 jQ(document).on('click', '.gtb-sr-name', function () { _GTB_SR_NAME = jQ(this).attr('data-name'); _gtbRenderDashSR(); });
 async function _gtbDashPARenderCell(inst) {
@@ -23738,6 +23825,10 @@ function _gtbRenderDashboardPane() {
         h += '<div class="gtb-card gtb-widget" style="margin:0 8px 8px;">'
         +      '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-flag-fill"></i> FINAL VERDICT</span></div>'
         +      '<div class="gtb-card-body" id="gtb-dash-final" style="padding:0;"></div>'
+        +    '</div>';
+        h += '<div class="gtb-card gtb-widget" style="margin:0 8px 8px;">'
+        +      '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-compass-fill"></i> PROBABLE TRADE FROM TODAY\'S METRICS' + _ii('ol-card') + '</span></div>'
+        +      '<div class="gtb-card-body" id="gtb-dash-outlook" style="padding:6px 8px;"></div>'
         +    '</div>';
         h += '<div class="gtb-card gtb-widget" style="margin:0 8px 8px;">'
         +      '<div class="gtb-card-header"><span class="gtb-card-title"><i class="bi bi-activity"></i> LIVE CONTEXT: IS THE MORNING VIEW STILL VALID?' + _ii('lx-card') + '</span></div>'
@@ -23951,7 +24042,7 @@ function _gtbRenderDashboardPane() {
     try { if (typeof _gtbRenderDashMacroStrip === 'function') _gtbRenderDashMacroStrip(); } catch (e) {}
     try { jQ('#gtb-dash-lvlconfirm').html(_gtbPT('dash-lvlconfirm', function () { return _gtbLevelConfirmHtml(); })); } catch (e) {}
     try { jQ('#gtb-dash-final').html(_gtbPT('dash-final', function () { return _gtbFinalVerdictHtml(); })); } catch (e) {}
-    try { _gtbRenderDashStrength(); _gtbRenderDashSR(); } catch (e) {}
+    try { _gtbRenderDashStrength(); _gtbRenderDashSR(); _gtbRenderDashOutlook(); } catch (e) {}
     try { if (typeof _lxCardHtml === 'function') jQ('#gtb-dash-lx').html(_gtbPT('dash-lx', function () { return _lxCardHtml('NIFTY 50'); })); } catch (e) {}
 
     _gtbDashGridNames().forEach(function (name) {
