@@ -136,12 +136,12 @@ var _OSS_STRATEGIES = [
     { key: 'bullcall', group: 'Directional', label: 'Bull Call Spread (debit)', view: 'Bullish', usesOff: false, usesWing: true,
       desc: 'Buy the ATM call, sell a higher call. Cheaper than a long call; profit is capped at the spread width.',
       risk: 'Max loss: net debit. Max profit: width − net debit.',
-      defWing: function (c) { return c.offAuto; },
+      defWing: function (c) { return Math.max(c.step * 2, Math.min(c.offAuto, c.hedge * 1.5)); },   // debit spread width: one expected move, but never wider than 1.5x the standard hedge distance (v29.505)
       legs: function (c) { return [{ label: 'Buy ATM CE', side: 'BUY', type: 'CE', k: c.atm }, { label: 'Sell CE (ATM +' + c.wing + ')', side: 'SELL', type: 'CE', k: c.atm + c.wing }]; } },
     { key: 'bearput', group: 'Directional', label: 'Bear Put Spread (debit)', view: 'Bearish', usesOff: false, usesWing: true,
       desc: 'Buy the ATM put, sell a lower put. Cheaper than a long put; profit is capped at the spread width.',
       risk: 'Max loss: net debit. Max profit: width − net debit.',
-      defWing: function (c) { return c.offAuto; },
+      defWing: function (c) { return Math.max(c.step * 2, Math.min(c.offAuto, c.hedge * 1.5)); },   // debit spread width: one expected move, but never wider than 1.5x the standard hedge distance (v29.505)
       legs: function (c) { return [{ label: 'Buy ATM PE', side: 'BUY', type: 'PE', k: c.atm }, { label: 'Sell PE (ATM −' + c.wing + ')', side: 'SELL', type: 'PE', k: c.atm - c.wing }]; } },
     { key: 'bullput', group: 'Directional', label: 'Bull Put Spread (credit)', view: 'Mildly bullish', usesOff: true, usesWing: true,
       desc: 'Sell an OTM put, buy a lower put. Collect premium; profits if the underlying stays above the short put.',

@@ -129,6 +129,7 @@ jQ(document).ready(function () {
 
 function startTimer(duration, display) {
     timerInstance = setInterval(function () {
+        try { if (typeof _rpActive === 'function' && _rpActive()) return; } catch (e) {}      // the replay recorder drives the refreshes itself
         var d = new Date();
         var s = d.getSeconds();
         var m = d.getMinutes();

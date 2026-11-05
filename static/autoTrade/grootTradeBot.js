@@ -1366,6 +1366,7 @@ function commonMarkupPlaceHolder() {
         + '<a id="gtb-add-instr-btn"         class="gtb-ctrl-link" title="Add instrument"><i class="bi bi-plus-circle-fill"></i></a>'
         + '<a id="gtb-settings-toggle"       class="gtb-ctrl-link" title="Settings"><i class="bi bi-gear-fill"></i></a>'
         + '<a id="gtb-tools-launcher"        class="gtb-ctrl-link" title="All Tools"><i class="bi bi-grid-3x3-gap-fill"></i></a>'
+        + '<a id="gtb-news-toggle"           class="gtb-ctrl-link" title="News feed"><i class="bi bi-newspaper"></i><span id="gtb-news-badge"></span></a>'
         + '<a id="gtb-ws-toggle"             class="gtb-ctrl-link" title="WebSocket: click to connect"><i class="bi bi-broadcast"></i></a>'
         + '</div>';
 
@@ -8124,7 +8125,23 @@ function computeInstrumentScore(name) {
         else if (c915 === 'BSO') score.nine_fifteen = -1;
     }
 
+    // MCX names have no INSTRUMENT_TOKENS entry, so generateTrend() throws for them and the price-vs-levels part used to read 0 for every commodity.
+    // For them it is the live price against the commodity's own 9:15 strike levels (strikeMap), same at-or-beyond rule as generateTrend.
+    var _mcxTrendDone = false;
     try {
+        if (_gtbIsMcxFuture(name)) {
+            var _smx = INSTRUMENT_SCORE_MAP[name] || {}, _stm = _smx.strikeMap, _px = parseFloat(_smx.mcxLtp);
+            if (_stm && _px) {
+                var _u1 = parseFloat(_stm.ustrikeOne), _u2 = parseFloat(_stm.ustrikeTwo), _b1 = parseFloat(_stm.bstrikeOne), _b2 = parseFloat(_stm.bstrikeTwo);
+                if (isFinite(_u2) && _px >= _u2) score.current_trend = 2;
+                else if (isFinite(_u1) && _px >= _u1) score.current_trend = 1;
+                else if (isFinite(_b2) && _px <= _b2) score.current_trend = -2;
+                else if (isFinite(_b1) && _px <= _b1) score.current_trend = -1;
+                _mcxTrendDone = true;
+            }
+        }
+    } catch (e) {}
+    if (!_mcxTrendDone) try {
         let trend = generateTrend(name);
         let trends = trend.trends || [];
         if (trends.indexOf('AST') !== -1) score.current_trend = 2;
@@ -10022,6 +10039,7 @@ function updateTopBarTickers() {
 //                   commodity: { available: { live_balance, ... }, utilised: {...} } } }
 function _gtbFetchFundsMargins() {
     return new Promise(function (resolve) {
+        try { if (typeof _rpActive === 'function' && _rpActive()) { resolve({}); return; } } catch (e) {}      // no /oms calls during a replay
         jQ.ajax({
             url: BASE_URL + '/oms/margins', type: 'GET', cache: false,
             headers: _gtbDiaryKiteAuthHeader(),
@@ -12526,6 +12544,7 @@ async function _gtbSqueezeScanGroup(slot, group) {
 }
 
 function _gtbSqueezeScanTick(slot) {
+    try { if (typeof _rpActive === 'function' && _rpActive()) return Promise.resolve([]); } catch (e) {}      // no live alerts while a past day is being replayed
     return Promise.all(_GTB_SQUEEZE_SCAN_GROUPS.map(function (g) { return _gtbSqueezeScanGroup(slot, g); }));
 }
 
@@ -13369,8 +13388,12 @@ function _cmdBuildVerdict(name, oiData, priceChange, mpd) {
             var _t1 = 'No matching wall found nearby in the chain scanned — treat the bias as unconfirmed.';
             out.lines.push({ ok: false, text: _t1 }); out.location = { ok: false, label: 'No wall nearby', lines: [_t1] };
         } else if (wall.distPct > DEAD_ZONE_PCT) {
-            var _t2 = 'Nearest matching wall is ' + wall.strike + ' (' + wall.distPct.toFixed(2) + '% away) — spot is in a dead zone right now. Wait for price to reach it before entering.';
-            out.lines.push({ ok: false, text: _t2 }); out.location = { ok: false, label: 'Dead zone (' + wall.distPct.toFixed(1) + '% from ' + wall.strike + ')', lines: [_t2] };
+            // A resistance wall (short bias) BELOW price, or a support wall (long bias) ABOVE price, is a wall price has already gone through: say that instead of 'wait for price to reach it'.
+            var _passed = (bias < 0 && wall.strike < spot) || (bias > 0 && wall.strike > spot);
+            var _t2 = _passed
+                ? 'Nearest matching wall is ' + wall.strike + ' (' + wall.distPct.toFixed(2) + '% away) but price has already moved ' + (bias < 0 ? 'above' : 'below') + ' it, so it is a level price went through, not one it is approaching. No wall ' + (bias < 0 ? 'above' : 'below') + ' price to enter against.'
+                : 'Nearest matching wall is ' + wall.strike + ' (' + wall.distPct.toFixed(2) + '% away) — spot is in a dead zone right now. Wait for price to reach it before entering.';
+            out.lines.push({ ok: false, text: _t2 }); out.location = { ok: false, label: _passed ? 'Price already past the ' + wall.strike + ' wall (' + wall.distPct.toFixed(1) + '%)' : 'Dead zone (' + wall.distPct.toFixed(1) + '% from ' + wall.strike + ')', lines: [_t2] };
         } else {
             var _t3 = 'Spot is near the ' + wall.strike + ' wall (' + wall.distPct.toFixed(2) + '% away) — this is where the ' + (bias>0?'support':'resistance') + ' actually is.';
             out.lines.push({ ok: true, text: _t3 }); out.location = { ok: true, label: 'At wall ' + wall.strike + ' (' + wall.distPct.toFixed(2) + '%)', lines: [_t3] };
@@ -13420,7 +13443,15 @@ function _cmdBuildVerdict(name, oiData, priceChange, mpd) {
     // ── Final label ────────────────────────────────────────────────────────────
     var actionable = bias !== 0 && wall && wall.distPct <= DEAD_ZONE_PCT && !fvo;
     if (bias === 0) { out.label = 'WAIT'; out.col = 'var(--gtb-amber)'; }
-    else if (!actionable) { out.label = (bias > 0 ? 'LONG bias — WAIT' : 'SHORT bias — WAIT'); out.col = 'var(--gtb-amber)'; }
+    else if (!actionable) {
+        out.label = (bias > 0 ? 'LONG bias — WAIT' : 'SHORT bias — WAIT'); out.col = 'var(--gtb-amber)';
+        // Say WHY it stays WAIT. The Market Profile Value Area read can mark Location as confirmed ("At Value Area High"), but the Actionable call stays strict
+        // on purpose: an OI wall within the dead-zone band AND futures with OI/OBV agreeing. Without this line a green Location check sat next to a WAIT.
+        var _why = [];
+        if (!(wall && wall.distPct <= DEAD_ZONE_PCT)) _why.push('no OI wall within ' + DEAD_ZONE_PCT + '% of price' + (out.location && out.location.ok && /Value Area/.test(out.location.label || '') ? ' (the Value Area read confirms the location but does not replace a wall)' : ''));
+        if (fvo) _why.push('futures and OI/OBV disagree');
+        if (_why.length) out.lines.push({ ok: false, text: 'Stays WAIT: ' + _why.join('; ') + '. Actionable needs an OI wall at price, and futures and OI/OBV agreeing.' });
+    }
     else {
         out.label = bias > 0 ? 'LONG' : 'SHORT'; out.col = bias > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)';
         var entry = wall.strike, stopDist = Math.max(wall.strike * 0.004, 1);
@@ -15119,13 +15150,15 @@ function _gtb915ComboStatsToday(comboKey) {
         var cached = localStorage.getItem(ckey);
         if (!cached) return null;
         var rows = JSON.parse(cached);
-        var legs = 0, win = 0;
+        var legs = 0, win = 0, lvl = { legs: 0, win: 0 }, trd = { legs: 0, win: 0 };
         rows.forEach(function (r) {
             if (r.key !== comboKey) return;
-            (r.legs || []).forEach(function (lg) { legs++; if (lg.win) win++; });
+            (r.legs || []).forEach(function (lg) { legs++; if (lg.win) win++; var b = lg.entryType === 'level' ? lvl : lg.entryType === 'trend' ? trd : null; if (b) { b.legs++; if (lg.win) b.win++; } });
         });
         if (!legs) return null;
-        return { legs: legs, win: win, winPct: Math.round(win / legs * 100) };
+        var pc = function (b) { return b.legs ? Math.round(b.win / b.legs * 100) : null; };
+        // split: a leg that pulled back to the strike level (entered at the level) and a leg that never pulled back (entered at the open, a trend entry) have different odds
+        return { legs: legs, win: win, winPct: Math.round(win / legs * 100), lvlLegs: lvl.legs, lvlPct: pc(lvl), trdLegs: trd.legs, trdPct: pc(trd) };
     } catch (e) { return null; }
 }
 
@@ -15212,7 +15245,9 @@ function _gtbLevelConfirmSideHtml(sideLabel, side, level, direction, comboKey) {
         + _gtbLevelDecisionHtml(decision)
         + '<div style="margin-top:5px;padding:3px 5px;background:rgba(0,0,0,0.15);font-weight:800;font-size:0.5rem;color:' + verdict.col + ';">Signal agreement — ' + verdict.text + '</div>'
         + '<div style="margin-top:4px;padding-top:3px;border-top:1px solid var(--gtb-border);font-size:0.46rem;color:var(--gtb-muted);">'
-        + (stats ? 'Historical: <b style="color:' + (stats.winPct >= 60 ? 'var(--gtb-green)' : stats.winPct <= 40 ? 'var(--gtb-red)' : 'var(--gtb-amber)') + ';">' + stats.winPct + '% win-rate</b> (' + stats.legs + ' legs) for this combo — separate context, not part of the tally above.'
+        + (stats ? 'Historical: <b style="color:' + (stats.winPct >= 60 ? 'var(--gtb-green)' : stats.winPct <= 40 ? 'var(--gtb-red)' : 'var(--gtb-amber)') + ';">' + stats.winPct + '% win-rate</b> (' + stats.legs + ' legs) for this combo'
+            + (stats.lvlLegs || stats.trdLegs ? ' (<span title="The leg pulled back to the strike level and was entered there">entered at the level: ' + (stats.lvlPct != null ? stats.lvlPct + '% of ' + stats.lvlLegs : 'none') + '</span>; <span title="The leg never pulled back to the level, so it was entered at the open: a trend entry">trend entry at the open: ' + (stats.trdPct != null ? stats.trdPct + '% of ' + stats.trdLegs : 'none') + '</span>)' : '')
+            + ' — separate context, not part of the tally above.'
                 : '<span style="color:var(--gtb-amber);">UNVALIDATED</span> — this combo has no/too little history in the backtest sample.')
         + (maxPainTxt ? '<br>' + maxPainTxt : '')
         + '</div>'
@@ -15920,6 +15955,9 @@ jQ(document).on('click', '#show-commodities', function (e) {
         +         '<div class="cmd-st"><i class="bi bi-bullseye"></i> FOCUS GATES</div>'
         +         '<div id="cmd-crude-focus"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading after OI fetch…</div></div>'
         +       '</div>'
+        +       '<div class="cmd-card" style="margin-bottom:8px;"><div class="cmd-st"><i class="bi bi-compass"></i> PROBABLE TRADE FROM TODAY\'S METRICS</div><div id="cmd-crude-ol"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading after OI fetch…</div></div></div>'
+        +       '<div class="cmd-card" style="margin-bottom:8px;"><div class="cmd-st"><i class="bi bi-layers"></i> STRONG SUPPORT AND RESISTANCE</div><div id="cmd-crude-sr"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading after OI fetch…</div></div></div>'
+        +       '<div class="cmd-card" style="margin-bottom:8px;"><div class="cmd-st"><i class="bi bi-check2-square"></i> SIGNAL AGREEMENT &amp; ENTRY TIMING</div><div id="cmd-crude-sa"><div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading after OI fetch…</div></div></div>'
         +       '<div class="cmd-card cmd-score-strip">'
         +         '<div class="cmd-score-strip-gauge">'
         +           '<div id="cmd-crude-score-gauge" style="height:74px;width:92px;"></div>'
@@ -16672,6 +16710,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
             } catch(e7) { jQ('#cmd-crude-mpgex').html('<div class="cmd-load" style="color:var(--gtb-red);">Max Pain error.</div>'); }
             try { _cmdRenderVerdict('cmd-crude-verdict', _cmdName, oiData, pc, _mpd); } catch(e8) { jQ('#cmd-crude-verdict').html('<div class="cmd-load" style="color:var(--gtb-red);">Verdict error.</div>'); }
             try { if (typeof _tfRenderCmd === 'function') _tfRenderCmd(); } catch(e8b) {}
+            try { _cmdRenderIdxCards(); } catch(e8d) {}
             try { jQ('#cmd-crude-brief').html(_gtbInstrBriefHtml(_cmdName)); } catch(e9b) {}
             try { jQ('#cmd-crude-oiobv').html(_gtbOiObvFuelBlockHtml(_cmdName)); } catch(e9d) {}
             try { jQ('#cmd-crude-lvlprob').html(_gtbLevelProbHtml(_cmdName)); } catch(e9) { jQ('#cmd-crude-lvlprob').html('<div class="cmd-load" style="color:var(--gtb-red);">Level probability error.</div>'); }
@@ -16680,6 +16719,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
             jQ('#cmd-crude-mpgex').html('<div class="cmd-load" style="color:var(--gtb-muted);">OI unavailable — Max Pain requires OI data.</div>');
             jQ('#cmd-crude-verdict').html('<div class="cmd-load" style="color:var(--gtb-muted);">OI unavailable — verdict requires OI data.</div>');
             try { if (typeof _tfRenderCmd === 'function') _tfRenderCmd(); } catch(e8c) {}
+            try { _cmdRenderIdxCards(); } catch(e8e) {}
             jQ('#cmd-crude-lvlprob').html('<div class="cmd-load" style="color:var(--gtb-muted);">OI unavailable — level probability requires OI data.</div>');
             try { jQ('#cmd-crude-brief').html(_gtbInstrBriefHtml(_cmdName)); } catch(e9c) {}
         }
@@ -16787,7 +16827,7 @@ jQ(document).on('click', '#show-commodities', function (e) {
         // added for the auto-refresh interval/manual Refresh button.
         var $select = jQ(this).prop('disabled', true);
         jQ('#cmd-instr-loading').show();
-        ['#cmd-crude-predict','#cmd-crude-focus','#cmd-crude-verdict','#cmd-crude-lvlprob','#cmd-crude-oiobv','#cmd-crude-brief','#cmd-crude-sig-strip','#cmd-crude-mpgex','#cmd-crude-trade']
+        ['#cmd-crude-predict','#cmd-crude-focus','#cmd-crude-ol','#cmd-crude-sr','#cmd-crude-sa','#cmd-crude-verdict','#cmd-crude-lvlprob','#cmd-crude-oiobv','#cmd-crude-brief','#cmd-crude-sig-strip','#cmd-crude-mpgex','#cmd-crude-trade']
             .forEach(function(id) { jQ(id).html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading…</div>'); });
         ['#cmd-crude-oi','#cmd-crude-obv'].forEach(function(id) { jQ(id).html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading…</div>'); });
         jQ('#cmd-crude-oi-table').html('<div class="cmd-load"><i class="bi bi-hourglass-split"></i> Loading OI…</div>');
@@ -17649,11 +17689,14 @@ function _svComputePrediction(name, suffix) {
         tradeEntry  = 'Entry: near BSO ' + parseFloat(strikeData.bstrikeOne).toFixed(0) + (atVIXL ? ' ★ at VIXL — high-probability bounce' : '');
         tradeTarget = 'Target 1: ASO ' + parseFloat(strikeData.ustrikeOne).toFixed(0) + ' → Target 2: AST ' + parseFloat(strikeData.ustrikeTwo).toFixed(0);
         tradeStop   = 'Stop: below BST ' + parseFloat(strikeData.bstrikeTwo).toFixed(0);
+        // the plan levels come from the 9:15 open: say so when price has already moved past the entry zone
+        if (isFinite(ltpResolved) && ltpResolved > parseFloat(strikeData.ustrikeOne)) tradeEntry += ' (price ' + ltpResolved.toFixed(0) + ' is already above ASO: this entry level has passed)';
     } else if (primaryBear && bearP >= 52 && strikeData) {
         tradeAction = 'BUY PE'; tradeColor = 'var(--gtb-red)';
         tradeEntry  = 'Entry: near ASO ' + parseFloat(strikeData.ustrikeOne).toFixed(0) + (atVIXU ? ' ★ at VIXU — high-probability reversal' : '');
         tradeTarget = 'Target 1: BSO ' + parseFloat(strikeData.bstrikeOne).toFixed(0) + ' → Target 2: BST ' + parseFloat(strikeData.bstrikeTwo).toFixed(0);
         tradeStop   = 'Stop: above AST ' + parseFloat(strikeData.ustrikeTwo).toFixed(0);
+        if (isFinite(ltpResolved) && ltpResolved < parseFloat(strikeData.bstrikeOne)) tradeEntry += ' (price ' + ltpResolved.toFixed(0) + ' is already below BSO: this entry level has passed)';
     } else {
         tradeAction = 'WAIT / RANGE'; tradeColor = 'var(--gtb-amber)';
         if (strikeData) {
@@ -23000,7 +23043,7 @@ function _gtbFuelFor(name, want, ag) {
 }
 var _GTB_SA_OPEN = {};   // name -> true while its details are expanded
 var _GTB_SA_GROUP = '';  // group of the row built last: Bullish / Bearish / Range-bound / No pick
-function _gtbDashSigAgreeHtml() {
+function _gtbDashSigAgreeHtml(onlyNames) {
     if (typeof _ossSuggestedKey !== 'function' || typeof _ossAgreement !== 'function' || typeof _ossTimingFor !== 'function') return '<div class="oss-desc">Option Strike Search module not loaded.</div>';
     var idx = ['NIFTY 50', 'NIFTY BANK', 'SENSEX'], seen = {}, stocks = [];
     var byW = function (o) { return Object.keys(o || {}).sort(function (a, b) { return o[b] - o[a]; }); };
@@ -23067,6 +23110,7 @@ function _gtbDashSigAgreeHtml() {
         return '<div style="margin:0 0 3px;font-size:0.55rem;">' + sum + '</div>'
             + '<div style="' + (scroll ? 'max-height:460px;overflow:auto;' : '') + '"><table style="width:100%;border-collapse:collapse;font-size:0.56rem;"><thead>' + (imp ? head.replace('</tr>', '<th style="padding:2px 8px;">INDEX IMPACT</th></tr>') : head) + '</thead><tbody>' + body + '</tbody></table></div>';
     };
+    if (onlyNames) return grouped(onlyNames.map(function (n) { return { n: n, g: '' }; }));   // Commodities popup: just the selected commodity
     return '<div style="font-size:0.5rem;font-weight:800;letter-spacing:0.05em;color:var(--gtb-muted);margin-bottom:2px;">INDICES</div>'
         + grouped(idx.map(function (n) { return { n: n, g: '' }; }))
         + (function () { try { return _gtbDashDriversHtml(); } catch (e) { return ''; } })()
@@ -23538,13 +23582,18 @@ function _gtbRenderDashStrength() {
 // Sources: OI/OBV walls R1/R2/S1/S2 (_gtbFindWalls), 9:15 levels (OPEN/ASO/AST/BSO/BST), today's Market Profile (POC / value area high / low),
 // max pain, previous-day high / low / close, today's high / low. Above price = resistance, below = support. Descriptive, not a forecast.
 var _GTB_SR_NAME = 'NIFTY 50', _GTB_SR_PREV = {}, _GTB_SR_TOL = 0.12;
+// Same cards for the commodities (v29.497): the chips add GOLDM / SILVERM / CRUDEOILM; the levels come from the same sources where an MCX equivalent exists.
+var _GTB_SR_MCX_NAMES = ['GOLDM', 'SILVERM', 'CRUDEOILM'];
+function _gtbSrIsMcx(nm) { try { return _gtbIsMcxFuture(nm); } catch (e) { return false; } }
+function _gtbSrNames() { return ['NIFTY 50', 'NIFTY BANK', 'SENSEX']; }   // dashboard chips; commodities have their own cards in the Commodities popup
 function _gtbSrPrevLoad(nm) {                      // previous day's high / low once per name per day, then redraw
     var key = (typeof CURRENT_DAY !== 'undefined' ? CURRENT_DAY : '') + '|' + nm;
     if (_GTB_SR_PREV[key] !== undefined) return _GTB_SR_PREV[key];
     _GTB_SR_PREV[key] = null;
     try {
-        var token = INSTRUMENT_TOKENS[nm]; if (!token || typeof PREVIOUS_DAY === 'undefined') return null;
-        getHistoricalDataUsingPromise(token, PREVIOUS_DAY, PREVIOUS_DAY, 'day').then(function (res) {
+        var mcxN = _gtbSrIsMcx(nm), token = INSTRUMENT_TOKENS[nm] || (mcxN ? _gtbTokenForName(nm) : null), pd = mcxN ? _gtbMcxPrevDay() : (typeof PREVIOUS_DAY !== 'undefined' ? PREVIOUS_DAY : null);
+        if (!token || !pd) return null;
+        getHistoricalDataUsingPromise(token, pd, pd, 'day').then(function (res) {
             var c = res && res.data && res.data.candles;
             if (c && c.length) { _GTB_SR_PREV[key] = { hi: parseFloat(c[0][2]), lo: parseFloat(c[0][3]), cl: parseFloat(c[0][4]) }; try { _gtbRenderDashSR(); } catch (e) {} }
         }).catch(function () {});
@@ -23552,7 +23601,9 @@ function _gtbSrPrevLoad(nm) {                      // previous day's high / low 
     return null;
 }
 function _gtbSrLevels(nm) {
-    var tr = generateTrend(nm), spot = parseFloat(tr.ltp), pc = parseFloat(tr.change) || 0;
+    var mcx = _gtbSrIsMcx(nm), spot, pc;
+    if (mcx) { var smx = INSTRUMENT_SCORE_MAP[nm] || {}, opx = parseFloat(smx.open); spot = parseFloat(smx.mcxLtp); pc = (opx && spot) ? (spot - opx) / opx * 100 : 0; }
+    else { var tr = generateTrend(nm); spot = parseFloat(tr.ltp); pc = parseFloat(tr.change) || 0; }
     if (!spot) return null;
     var L = [], sm = INSTRUMENT_SCORE_MAP[nm] || {}, oi = sm.oiData, td = oi && oi.tableData;
     var add = function (price, src, w, note) { price = parseFloat(price); if (isFinite(price) && price > 0) L.push({ price: price, src: src, w: w, note: note || '' }); };
@@ -23563,7 +23614,9 @@ function _gtbSrLevels(nm) {
         (walls.support || []).forEach(function (w, i) { var er = !!eroding['S' + w.strike]; add(w.strike, 'OI wall S' + (i + 1) + (er ? ' (eroding)' : ''), (w.tier === 'primary' ? 3 : 2) * (er ? 0.5 : 1), 'Put writing below price'); });
         try { var mp = _gtbComputeMaxPainGEX(nm); if (mp && mp.maxPainK) add(mp.maxPainK, 'Max pain', 1, 'A pull level'); } catch (e) {}
     }
-    var sd = null; try { sd = getStrikeDetails({ price: parseFloat((INSTRUMENT_LIST_GLOBAL || []).filter(function (x) { return x.name === nm; }).map(function (x) { return x.price; })[0]) }, nm); } catch (e) {}
+    var sd = null;
+    if (mcx) { var smp = sm.strikeMap; if (smp) sd = { ustrikeOne: smp.ustrikeOne, ustrikeTwo: smp.ustrikeTwo, bstrikeOne: smp.bstrikeOne, bstrikeTwo: smp.bstrikeTwo }; }
+    else try { sd = getStrikeDetails({ price: parseFloat((INSTRUMENT_LIST_GLOBAL || []).filter(function (x) { return x.name === nm; }).map(function (x) { return x.price; })[0]) }, nm); } catch (e) {}
     if (sd) { add(sd.ustrikeOne, '9:15 ASO', 1); add(sd.ustrikeTwo, '9:15 AST', 1); add(sd.bstrikeOne, '9:15 BSO', 1); add(sd.bstrikeTwo, '9:15 BST', 1); }
     var cs = oi && oi.spotCandles;
     if (cs && cs.length) {
@@ -23589,11 +23642,12 @@ function _gtbSrLevels(nm) {
     });
     return { spot: spot, zones: zones };
 }
-function _gtbDashSRHtml() {
+function _gtbDashSRHtml(oneName) {
     var G = 'var(--gtb-green)', R = 'var(--gtb-red)', M = 'var(--gtb-muted)';
-    var chips = ['NIFTY 50', 'NIFTY BANK', 'SENSEX'].map(function (n) { var on = n === _GTB_SR_NAME; return '<button class="gtb-sr-name sv-pill-btn" data-name="' + n + '" style="' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : '') + '">' + n + '</button>'; }).join(' ');
-    var d = null; try { d = _gtbSrLevels(_GTB_SR_NAME); } catch (e) {}
-    if (!d) return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">Waiting for ' + _GTB_SR_NAME + ' price and OI data (run a refresh).</span>';
+    var _nm = oneName || _GTB_SR_NAME;
+    var chips = oneName ? '' : _gtbSrNames().map(function (n) { var on = n === _GTB_SR_NAME; return '<button class="gtb-sr-name sv-pill-btn" data-name="' + n + '" style="' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : '') + '">' + n + '</button>'; }).join(' ');
+    var d = null; try { d = _gtbSrLevels(_nm); } catch (e) {}
+    if (!d) return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">Waiting for ' + _nm + ' price and OI data (run a refresh).</span>';
     var up = d.zones.filter(function (z) { return z.price > d.spot; }).sort(function (a, b) { return a.price - b.price; }), dn = d.zones.filter(function (z) { return z.price <= d.spot; }).sort(function (a, b) { return b.price - a.price; });
     var best = function (a) { var m = 0; a.forEach(function (z) { if (z.strength > m) m = z.strength; }); return m; }, bu = best(up), bd = best(dn);
     var f0 = function (x) { return Math.round(x).toLocaleString('en-IN'); };
@@ -23642,15 +23696,19 @@ function _gtbOutlook(nm) {
     } else {
         out.range = { sup: below.filter(strong)[0] || below[0] || null, res: above.filter(strong)[0] || above[0] || null };
     }
-    try { var tr = generateTrend(nm); if (tr && tr.vix) out.vix = { lo: parseFloat(tr.vix.vixDDLower), hi: parseFloat(tr.vix.vixDDUpper) }; } catch (e) {}
-    try { var st = (window._GTB_LC || {}).strat; if (st) out.strat = st; } catch (e) {}
+    if (_gtbSrIsMcx(nm)) { try { var smv = (INSTRUMENT_SCORE_MAP[nm] || {}).strikeMap; if (smv) out.vix = { lo: parseFloat(smv.vixDDLower), hi: parseFloat(smv.vixDDUpper) }; } catch (e) {} }
+    else {
+        try { var tr = generateTrend(nm); if (tr && tr.vix) out.vix = { lo: parseFloat(tr.vix.vixDDLower), hi: parseFloat(tr.vix.vixDDUpper) }; } catch (e) {}
+        try { var st = (window._GTB_LC || {}).strat; if (st) out.strat = st; } catch (e) {}
+    }
     return out;
 }
-function _gtbOutlookHtml() {
+function _gtbOutlookHtml(oneName) {
     var G = 'var(--gtb-green)', R = 'var(--gtb-red)', M = 'var(--gtb-muted)', A = 'var(--gtb-amber)';
     var f0 = function (x) { return Math.round(x).toLocaleString('en-IN'); };
-    var chips = ['NIFTY 50', 'NIFTY BANK', 'SENSEX'].map(function (n) { var on = n === _GTB_OL_NAME; return '<button class="gtb-ol-name sv-pill-btn" data-name="' + n + '" style="' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);' : '') + 'font-size:0.55rem;padding:1px 8px;margin-right:4px;">' + n + '</button>'; }).join('');
-    var o = null; try { o = _gtbOutlook(_GTB_OL_NAME); } catch (e) { return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">Could not build the outlook: ' + (e && e.message ? e.message : e) + '</span>'; }
+    var _onm = oneName || _GTB_OL_NAME;
+    var chips = oneName ? '' : _gtbSrNames().map(function (n) { var on = n === _GTB_OL_NAME; return '<button class="gtb-ol-name sv-pill-btn" data-name="' + n + '" style="' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);' : '') + 'font-size:0.55rem;padding:1px 8px;margin-right:4px;">' + n + '</button>'; }).join('');
+    var o = null; try { o = _gtbOutlook(_onm); } catch (e) { return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">Could not build the outlook: ' + (e && e.message ? e.message : e) + '</span>'; }
     if (!o.ok) return '<div style="margin-bottom:6px;">' + chips + '</div><span style="font-size:0.58rem;color:' + M + ';">' + o.why + '</span>';
     var lbl = o.nm === 'NIFTY 50' ? 'NIFTY' : o.nm, rankTxt = ['', 'LOW', 'MEDIUM', 'HIGH'][o.rank];
     var head, hcol, lines = [];
@@ -23690,11 +23748,22 @@ function _gtbOutlookHtml() {
         + lines.map(function (l) { return '<div style="font-size:0.6rem;margin:2px 0;color:var(--gtb-text);">' + l + '</div>'; }).join('')
         + (ev ? '<div style="font-size:0.52rem;margin-top:5px;"><span style="color:' + M + ';">Signal groups:</span> ' + ev + '</div>' : '')
         + warn.map(function (w) { return '<div style="font-size:0.52rem;margin-top:3px;color:' + A + ';"><i class="bi bi-exclamation-triangle-fill"></i> ' + w + '</div>'; }).join('')
-        + '<div style="font-size:0.44rem;color:' + M + ';margin-top:5px;">Levels are where several sources agree (OI walls, max pain, 9:15 levels, value area, day and previous-day highs / lows), not a forecast. Rule-based, not back-tested. It never places an order.</div>';
+        + '<div style="font-size:0.44rem;color:' + M + ';margin-top:5px;">Levels are where several sources agree (OI walls, max pain, 9:15 levels, value area, day and previous-day highs / lows), not a forecast. Rule-based, not back-tested. It never places an order.</div>'
+        + (oneName ? '' : '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.52rem;color:' + M + ';"><span title="A toast and a beep always fire when price reaches a pullback / rally entry zone; this adds a Telegram message (Settings: Telegram bot token and chat id)."><label style="cursor:pointer;"><input type="checkbox" id="gtb-ol-tg"' + ((function () { try { return localStorage.getItem('GTB_OL_TG') === '1'; } catch (e) { return false; } })() ? ' checked' : '') + '> Telegram alert when price reaches the entry zone</label></span><button id="gtb-ol-log" class="sv-pill-btn" title="Every plan this card showed, followed through the day: entry reached, target or stop first">Does it work? (log)</button></div>');
 }
 function _gtbRenderDashOutlook() { if (jQ('#gtb-dash-outlook').length) jQ('#gtb-dash-outlook').html(_gtbOutlookHtml()); }
 jQ(document).on('click', '.gtb-ol-name', function () { _GTB_OL_NAME = jQ(this).attr('data-name'); _gtbRenderDashOutlook(); });
-function _gtbRenderDashSR() { if (jQ('#gtb-dash-sr').length) jQ('#gtb-dash-sr').html(_gtbDashSRHtml()); }
+// Commodities popup: the same three cards for the commodity selected there, redrawn on Refresh / instrument change (and when the previous-day levels arrive)
+function _cmdRenderIdxCards() {
+    if (!jQ('#cmd-crude-ol').length) return;
+    var nm = (typeof _cmdName !== 'undefined' && _cmdName) ? _cmdName : (_CMD && _CMD.activeName);
+    if (!nm) return;
+    try { jQ('#cmd-crude-ol').html(_gtbOutlookHtml(nm)); } catch (e) { jQ('#cmd-crude-ol').html('<div class="cmd-load" style="color:var(--gtb-red);">Probable trade error.</div>'); }
+    try { jQ('#cmd-crude-sr').html(_gtbDashSRHtml(nm)); } catch (e) { jQ('#cmd-crude-sr').html('<div class="cmd-load" style="color:var(--gtb-red);">Support / resistance error.</div>'); }
+    try { jQ('#cmd-crude-sa').html(_gtbDashSigAgreeHtml([nm])); } catch (e) { jQ('#cmd-crude-sa').html('<div class="cmd-load" style="color:var(--gtb-red);">Signal agreement error.</div>'); }
+}
+function _gtbRenderDashSR() { try { _cmdRenderIdxCards(); } catch (e) {}
+    if (jQ('#gtb-dash-sr').length) jQ('#gtb-dash-sr').html(_gtbDashSRHtml()); }
 jQ(document).on('click', '.gtb-sr-name', function () { _GTB_SR_NAME = jQ(this).attr('data-name'); _gtbRenderDashSR(); });
 async function _gtbDashPARenderCell(inst) {
     var tid = inst.name.replace(/\s+/g, '-').replace(/&/g, '-');
@@ -25170,6 +25239,7 @@ function _gtbDiaryKiteAuthHeader() {
 
 function _gtbDiaryFetchOrders() {
     return new Promise(function(resolve) {
+        try { if (typeof _rpActive === 'function' && _rpActive()) { resolve([]); return; } } catch (e) {}
         jQ.ajax({
             url: BASE_URL + '/oms/orders', type: 'GET', cache: false,
             headers: _gtbDiaryKiteAuthHeader(),
@@ -25181,6 +25251,7 @@ function _gtbDiaryFetchOrders() {
 
 function _gtbDiaryFetchPositions() {
     return new Promise(function(resolve) {
+        try { if (typeof _rpActive === 'function' && _rpActive()) { resolve({ net: [], day: [] }); return; } } catch (e) {}
         jQ.ajax({
             url: BASE_URL + '/oms/portfolio/positions', type: 'GET', cache: false,
             headers: _gtbDiaryKiteAuthHeader(),
@@ -25489,6 +25560,9 @@ function _gtbMasterConsensus(name) {
     rows.forEach(function (r) {
         r.family = 'other:' + r.label; FAM.forEach(function (f) { if (f[0].test(r.label)) r.family = f[1]; });
         var g = famMap[r.family] = famMap[r.family] || { name: r.family, sum: 0, w: 0, cap: 0, members: 0 };
+        // Max Pain is an informational level only (see trade-signal-priority): it still shows as a row but never votes inside the option-flow group,
+        // otherwise a bullish Max Pain (0.5) cancels a bearish OI/OBV (0.5) and the whole group reads flat.
+        if (/^Max Pain/.test(r.label)) { r.note = (r.note ? r.note + '; ' : '') + 'shown for context, not counted in the option-flow vote'; return; }
         if (r.dir !== 0) { g.sum += r.dir * r.weight; g.w += r.weight; g.members++; if (r.weight > g.cap) g.cap = r.weight; }
     });
     var famList = Object.keys(famMap).map(function (k) { var g = famMap[k]; g.strength = g.w ? g.sum / g.w : 0; g.dir = Math.abs(g.strength) >= 0.2 ? (g.strength > 0 ? 1 : -1) : 0; return g; });
@@ -30430,6 +30504,8 @@ function _gtbCreateFloatingBar() {
         { id: 'show-vol-profile',            icon: 'bi-align-start',          title: 'Volume Profile / POC' },
         { id: 'show-liq-scanner',            icon: 'bi-water',                title: 'Liquidity / SL-Hunt' },
         { id: 'show-quote-fetch',            icon: 'bi-search',               title: 'Quote Fetch' },
+        { id: 'show-news-feed',              icon: 'bi-newspaper',            title: 'News Feed' },
+        { id: 'show-data-recorder',          icon: 'bi-database-down',        title: 'Data Recorder' },
         { id: 'show-live-score-log',         icon: 'bi-activity',             title: 'Live Score Log' },
         { id: 'show-ws-subscribe',           icon: 'bi-broadcast',            title: 'WebSocket Subscribe' },
         { id: 'show-backtest-popup',         icon: 'bi-clock-history',        title: 'F&O Backtest' },
@@ -30498,6 +30574,8 @@ function _gtbCreateFloatingBar() {
             if (id === 'show-trade-ideas')       { _gtbShowTradeIdeas(); return; }
             if (id === 'show-opportunities')     { _gtbShowOpportunitiesPopup(); return; }
             if (id === 'show-quote-fetch')       { showQuotePopup(); return; }
+            if (id === 'show-news-feed')         { _nfToggle(); return; }
+            if (id === 'show-data-recorder')     { _drShowPopup(); return; }
             if (id === 'show-live-score-log')    { _lfShowScoreLog(); return; }
             if (id === 'show-ws-subscribe')      { showWebSocketPopup(); return; }
             if (id === 'show-backtest-popup')    { _btShowPopup(); return; }

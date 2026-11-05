@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recorded Data Viewer</title>
+<style>
+:root{
+  --bg:#f4f6f9; --panel:#ffffff; --panel2:#eef1f6; --line:#d9dee7; --text:#18212f; --muted:#667085; --accent:#1d5fd1;
+  --good:#12805c; --warn:#a15c00; --bad:#c0392b; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0c121b; --panel:#131b27; --panel2:#18222f; --line:#263447; --text:#e4e9f1; --muted:#8a97aa; --accent:#5b9bff; --good:#3fb98a; --warn:#e0a13a; --bad:#ef6b5c; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:15px;margin:0 8px 0 0;letter-spacing:.02em}
+label{color:var(--muted);font-size:12px}
+select,button{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:5px 10px;font:inherit;cursor:pointer}
+button:hover,select:hover{border-color:var(--accent)}
+button.danger{color:var(--bad)}
+button.danger:hover{border-color:var(--bad)}
+button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.spacer{flex:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px 18px 0}
+.card{background:var(--panel);border:1px solid var(--line);padding:9px 12px}
+.card b{display:block;font-size:18px;font-weight:600;margin-top:2px}
+.card span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px;padding:10px 18px 0}
+.chart{background:var(--panel);border:1px solid var(--line);padding:8px 10px}
+.chart h3{margin:0 0 4px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+svg{display:block;width:100%;height:120px}
+.layout{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:12px;padding:12px 18px 24px;align-items:start}
+@media (max-width:1150px){.layout{grid-template-columns:1fr}.scroll{max-height:60vh}}
+.box{background:var(--panel);border:1px solid var(--line)}
+.box>h2{margin:0;padding:8px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.scroll{max-height:68vh;overflow:auto}
+table{border-collapse:collapse;width:100%}
+th{position:sticky;top:0;background:var(--panel2);text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.n,th.n{text-align:right;font-family:var(--mono)}
+tr.slot{cursor:pointer}
+tr.slot:hover td{background:var(--panel2)}
+tr.sel td{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+tr.miss td{color:var(--muted);font-style:italic}
+.pos{color:var(--good)}.neg{color:var(--bad)}.warn{color:var(--warn)}.muted{color:var(--muted)}
+.tabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pad{padding:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.kv{border:1px solid var(--line);background:var(--panel)}
+.kv h4{margin:0;padding:5px 9px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;background:var(--panel2);border-bottom:1px solid var(--line)}
+.kv table td{border:0;padding:2px 9px}
+.kv table td:first-child{color:var(--muted)}
+.kv table td:last-child{text-align:right;font-family:var(--mono);white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.kv{min-width:0;overflow:hidden}
+.kv table{width:100%;table-layout:auto}
+.inst{margin-bottom:18px}
+.inst>h3{margin:0 0 8px;font-size:14px}
+pre{margin:0;padding:12px;font:11px/1.4 var(--mono);white-space:pre-wrap;word-break:break-word;max-height:68vh;overflow:auto}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.tag{display:inline-block;padding:0 6px;border:1px solid var(--line);font-size:11px;margin-right:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Recorded data</h1>
+  <label>Day <select id="day"></select></label>
+  <label>Session <select id="session"><option>NSE</option><option>MCX</option></select></label>
+  <label id="inst-wrap" style="display:none">Instrument <select id="inst"></select></label>
+  <button id="refresh">Refresh</button>
+  <span class="spacer"></span>
+  <button id="dl-jsonl">Download day (.jsonl)</button>
+  <button id="dl-csv">Download table (.csv)</button>
+  <button id="del-session" class="danger" title="Delete the recorded slots of the selected day and session">Delete this session</button>
+  <button id="del-day" class="danger" title="Delete everything recorded for the selected day (NSE and MCX)">Delete this day</button>
+</header>
+<div class="cards" id="cards"></div>
+<div class="charts" id="charts"></div>
+<div class="layout">
+  <div class="box"><h2>Slots</h2><div class="scroll" id="slots"></div></div>
+  <div class="box"><h2 id="dtitle">Slot detail</h2><div class="tabs" id="tabs"></div><div class="scroll" id="detail"><div class="empty">Pick a slot on the left.</div></div></div>
+</div>
+<script>
+'use strict';
+var S = { inst: '', days: [], day: '', session: 'NSE', rows: [], expected: [], slot: '', snap: null, tab: 'Overview' };
+var $ = function (id) { return document.getElementById(id); };
+function el(tag, attrs, kids) {
+  var e = document.createElement(tag);
+  if (attrs) Object.keys(attrs).forEach(function (k) { if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k.slice(0, 2) === 'on') e[k] = attrs[k]; else e.setAttribute(k, attrs[k]); });
+  (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+  return e;
+}
+function fmt(v, d) {
+  if (v == null || v === '') return '-';
+  if (typeof v === 'number') return isFinite(v) ? v.toLocaleString('en-IN', { maximumFractionDigits: d == null ? 2 : d }) : '-';
+  if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  return String(v);
+}
+function sgn(v) { return typeof v === 'number' ? (v > 0 ? 'pos' : v < 0 ? 'neg' : 'muted') : 'muted'; }
+function api(path) { return fetch(path).then(function (r) { return r.json(); }); }
+
+function init() {
+  var q = new URLSearchParams(location.search);
+  api('/api/snapshot/days').then(function (j) {
+    S.days = (j && j.days) || [];
+    var sel = $('day'); sel.innerHTML = '';
+    S.days.forEach(function (d) { sel.appendChild(el('option', { value: d.day, text: d.day + (d.NSE ? '  NSE ' + d.NSE.slots.length : '') + (d.MCX ? '  MCX ' + d.MCX.slots.length : '') })); });
+    if (!S.days.length) { $('cards').innerHTML = ''; $('slots').innerHTML = ''; $('slots').appendChild(el('div', { class: 'empty', text: 'Nothing recorded yet. Run a replay from the Data Recorder panel in the dashboard.' })); return; }
+    S.day = q.get('day') && S.days.some(function (d) { return d.day === q.get('day'); }) ? q.get('day') : S.days[0].day;
+    S.session = q.get('session') === 'MCX' ? 'MCX' : 'NSE';
+    var d0 = S.days.filter(function (d) { return d.day === S.day; })[0];
+    if (d0 && !d0[S.session]) S.session = d0.NSE ? 'NSE' : 'MCX';
+    sel.value = S.day; $('session').value = S.session;
+    loadSlots();
+  }).catch(function () { $('slots').appendChild(el('div', { class: 'empty', text: 'The recorder server did not answer. Is node server.js running?' })); });
+}
+function loadSlots() {
+  S.day = $('day').value; S.session = $('session').value;
+  history.replaceState(null, '', '?day=' + S.day + '&session=' + S.session);
+  api('/api/snapshot/slots?day=' + S.day + '&session=' + S.session + (S.inst ? '&name=' + encodeURIComponent(S.inst) : '')).then(function (j) {
+    var nm = (j && j.names) || [], sel = $('inst'); $('inst-wrap').style.display = nm.length > 1 ? '' : 'none';
+    if (nm.length && nm.indexOf(S.inst) < 0) S.inst = nm[0];
+    if (sel.options.length !== nm.length || nm.some(function (x, i) { return sel.options[i].value !== x; })) { sel.innerHTML = ''; nm.forEach(function (x) { var o = document.createElement('option'); o.value = x; o.textContent = x; sel.appendChild(o); }); }
+    sel.value = S.inst || '';
+    S.rows = (j && j.rows) || []; S.expected = (j && j.expected) || [];
+    renderCards(); renderCharts(); renderTable();
+    var keep = S.rows.some(function (r) { return r.slot === S.slot; }) ? S.slot : (S.rows.length ? S.rows[S.rows.length - 1].slot : '');
+    if (keep) selectSlot(keep); else { $('detail').innerHTML = ''; $('detail').appendChild(el('div', { class: 'empty', text: 'No slot recorded for this day and session.' })); $('tabs').innerHTML = ''; }
+  });
+}
+function renderCards() {
+  var rows = S.rows, kb = rows.reduce(function (a, r) { return a + r.kb; }, 0), errs = rows.filter(function (r) { return r.errors; }).length, have = {}; rows.forEach(function (r) { have[r.slot] = 1; });
+  var missing = S.expected.filter(function (s) { return !have[s]; }).length;
+  var data = [['Slots recorded', rows.length + ' of ' + S.expected.length, missing ? 'warn' : 'pos'], ['Missing slots', String(missing), missing ? 'warn' : 'pos'], ['First / last', rows.length ? rows[0].slot + ' to ' + rows[rows.length - 1].slot : '-', ''],
+    ['Slots with section errors', String(errs), errs ? 'warn' : 'pos'], ['Size', (kb / 1024).toFixed(1) + ' MB', ''], ['Avg refresh', rows.some(function (r) { return r.refreshMs; }) ? (rows.reduce(function (a, r) { return a + (r.refreshMs || 0); }, 0) / rows.filter(function (r) { return r.refreshMs; }).length / 1000).toFixed(1) + ' s' : '-', ''], ['App version', rows.length ? rows[rows.length - 1].app : '-', '']];
+  var c = $('cards'); c.innerHTML = '';
+  data.forEach(function (d) { c.appendChild(el('div', { class: 'card' }, [el('span', { text: d[0] }), el('b', { class: d[2], text: d[1] })])); });
+}
+function lineChart(title, key, color) {
+  var pts = S.rows.map(function (r, i) { return { i: i, slot: r.slot, v: r[key] }; }).filter(function (p) { return typeof p.v === 'number'; });
+  var box = el('div', { class: 'chart' }, [el('h3', { text: title })]);
+  if (pts.length < 2) { box.appendChild(el('div', { class: 'muted', text: 'Not enough points yet.' })); return box; }
+  var W = 600, H = 120, P = 26, lo = Math.min.apply(null, pts.map(function (p) { return p.v; })), hi = Math.max.apply(null, pts.map(function (p) { return p.v; }));
+  if (hi === lo) { hi += 1; lo -= 1; }
+  var n = S.rows.length - 1 || 1, x = function (i) { return P + (W - P - 6) * i / n; }, y = function (v) { return 6 + (H - 22) * (1 - (v - lo) / (hi - lo)); };
+  var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('preserveAspectRatio', 'none');
+  var add = function (tag, a) { var e = document.createElementNS(ns, tag); Object.keys(a).forEach(function (k) { e.setAttribute(k, a[k]); }); svg.appendChild(e); return e; };
+  [lo, (lo + hi) / 2, hi].forEach(function (v) { add('line', { x1: P, x2: W - 6, y1: y(v), y2: y(v), stroke: 'currentColor', 'stroke-opacity': '.12' }); var t = add('text', { x: 2, y: y(v) + 3, 'font-size': '8', fill: 'currentColor', 'fill-opacity': '.55' }); t.textContent = fmt(v, Math.abs(hi - lo) < 10 ? 2 : 0); });
+  add('polyline', { points: pts.map(function (p) { return x(p.i).toFixed(1) + ',' + y(p.v).toFixed(1); }).join(' '), fill: 'none', stroke: color, 'stroke-width': '1.6' });
+  pts.forEach(function (p) { var c = add('circle', { cx: x(p.i), cy: y(p.v), r: p.slot === S.slot ? 4 : 2.2, fill: color, style: 'cursor:pointer' }); var t = document.createElementNS(ns, 'title'); t.textContent = p.slot + ': ' + fmt(p.v); c.appendChild(t); c.addEventListener('click', function () { selectSlot(p.slot); }); });
+  [0, Math.floor(S.rows.length / 2), S.rows.length - 1].forEach(function (i) { var t = add('text', { x: Math.max(P, x(i) - 10), y: H - 3, 'font-size': '8', fill: 'currentColor', 'fill-opacity': '.55' }); t.textContent = S.rows[i].slot; });
+  box.appendChild(svg); return box;
+}
+function renderCharts() {
+  var c = $('charts'); c.innerHTML = ''; if (!S.rows.length) return;
+  var nm = S.rows[0].name || '';
+  c.appendChild(lineChart(nm + ' price', 'px', '#1d5fd1'));
+  c.appendChild(lineChart(nm + ' score (all parts summed)', 'score', '#12805c'));
+  c.appendChild(lineChart('Composite market score', 'comp', '#a15c00'));
+  c.appendChild(lineChart(S.session === 'MCX' ? 'Volatility index (OVX / GVZ / VXSLV)' : 'India VIX', 'vix', '#c0392b'));
+}
+function renderTable() {
+  var have = {}; S.rows.forEach(function (r) { have[r.slot] = r; });
+  var t = el('table'), head = el('tr'); ['Slot', 'Price', 'Score', 'Futures', 'Consensus', 'Composite', 'VIX', 'Chain', 'Stocks', 'KB', 'Err'].forEach(function (h, i) { head.appendChild(el('th', { class: i > 0 && [3, 4].indexOf(i) === -1 ? 'n' : '', text: h })); });
+  t.appendChild(head);
+  S.expected.forEach(function (slot) {
+    var r = have[slot], tr = el('tr', { class: r ? 'slot' + (slot === S.slot ? ' sel' : '') : 'miss', 'data-slot': slot });
+    if (!r) { tr.appendChild(el('td', { text: slot })); tr.appendChild(el('td', { colspan: '10', text: 'not recorded' })); t.appendChild(tr); return; }
+    var cell = function (v, cls, txt) { return el('td', { class: cls || '', text: txt != null ? txt : fmt(v) }); };
+    tr.appendChild(cell(slot, '', slot)); tr.appendChild(cell(r.px, 'n')); tr.appendChild(cell(r.score, 'n ' + sgn(r.score))); tr.appendChild(cell(r.fut, '', r.fut || '-')); tr.appendChild(cell(r.cons, '', r.cons || '-'));
+    tr.appendChild(cell(r.comp, 'n ' + sgn(r.comp))); tr.appendChild(cell(r.vix, 'n')); tr.appendChild(cell(r.chain, 'n', String(r.chain))); tr.appendChild(cell(r.stocks, 'n', String(r.stocks))); tr.appendChild(cell(r.kb, 'n', String(r.kb))); tr.appendChild(cell(r.errors, 'n ' + (r.errors ? 'warn' : 'muted'), String(r.errors)));
+    tr.onclick = function () { selectSlot(slot); }; t.appendChild(tr);
+  });
+  var box = $('slots'); box.innerHTML = ''; box.appendChild(t);
+}
+function selectSlot(slot) {
+  S.slot = slot;
+  Array.prototype.forEach.call(document.querySelectorAll('tr.slot'), function (tr) { tr.classList.toggle('sel', tr.getAttribute('data-slot') === slot); });
+  var sel = document.querySelector('tr.sel'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+  renderCharts();
+  $('dtitle').textContent = 'Slot ' + slot + ' - ' + S.day + ' ' + S.session;
+  api('/api/snapshot/slot?day=' + S.day + '&session=' + S.session + '&slot=' + slot).then(function (j) {
+    if (!j || !j.ok) { $('detail').innerHTML = ''; $('detail').appendChild(el('div', { class: 'empty', text: (j && j.error) || 'Could not load the slot.' })); return; }
+    S.snap = j.snapshot; renderTabs(); renderDetail();
+  });
+}
+function renderTabs() {
+  var tabs = $('tabs'); tabs.innerHTML = '';
+  ['Overview', 'Instruments', 'Stocks', 'Market', 'App outputs', 'Errors', 'Raw JSON'].forEach(function (t) {
+    if (t === 'Stocks' && !S.snap.stocks) return;
+    tabs.appendChild(el('button', { class: S.tab === t ? 'on' : '', text: t, onclick: function () { S.tab = t; renderTabs(); renderDetail(); } }));
+  });
+  if (S.tab === 'Stocks' && !S.snap.stocks) S.tab = 'Instruments';
+}
+function kvBox(title, obj, digits) {
+  var keys = Object.keys(obj || {}).filter(function (k) { return obj[k] != null && typeof obj[k] !== 'object'; });
+  if (!keys.length) return null;
+  var tb = el('table'); keys.forEach(function (k) { tb.appendChild(el('tr', null, [el('td', { text: k }), el('td', { class: sgn(obj[k]), text: fmt(obj[k], digits) })])); });
+  return el('div', { class: 'kv' }, [el('h4', { text: title }), tb]);
+}
+function listTable(title, rows, cols) {
+  if (!rows || !rows.length) return null;
+  var tb = el('table'), h = el('tr'); cols.forEach(function (c) { h.appendChild(el('th', { class: 'n', text: c[0] })); }); tb.appendChild(h);
+  rows.forEach(function (r) { var tr = el('tr'); cols.forEach(function (c) { var v = typeof c[1] === 'function' ? c[1](r) : r[c[1]]; tr.appendChild(el('td', { class: 'n ' + (typeof v === 'number' ? sgn(v) : ''), text: fmt(v) })); }); tb.appendChild(tr); });
+  return el('div', { class: 'kv' }, [el('h4', { text: title }), el('div', { class: 'scroll', style: 'max-height:260px' }, [tb])]);
+}
+function instView(name, i) {
+  var wrap = el('div', { class: 'inst' }, [el('h3', { text: name })]), g = el('div', { class: 'grid' });
+  [kvBox('Price', i.px), kvBox('Strike levels', i.lv), kvBox('9:15 zone', i.z915), kvBox('Score parts', i.score), kvBox('Futures', i.fut), kvBox('Open interest', i.oi), kvBox('Max pain', i.mp), kvBox('Level probability', i.lp), kvBox('Dead zone', i.dz), kvBox('Live context', i.lx), kvBox('Day so far', i.day)].forEach(function (b) { if (b) g.appendChild(b); });
+  if (i.trends && i.trends.length) g.appendChild(el('div', { class: 'kv' }, [el('h4', { text: 'Trend flags' }), el('div', { class: 'pad', text: i.trends.join(', ') })]));
+  if (i.cons) { var cb = listTable('Consensus: ' + fmt(i.cons.out) + ' (net ' + fmt(i.cons.net) + ', ' + i.cons.agree + ' of ' + i.cons.voting + ' agree' + (i.cons.thin ? ', thin' : '') + ')', i.cons.groups, [['Group', 'g'], ['Dir', 'dir'], ['Strength', 's']]); if (cb) g.appendChild(cb); }
+  if (i.walls) { var w = [].concat((i.walls.res || []).map(function (x) { return Object.assign({ side: 'resistance' }, x); }), (i.walls.sup || []).map(function (x) { return Object.assign({ side: 'support' }, x); })); var wb = listTable('OI walls', w, [['Side', 'side'], ['Strike', 'strike'], ['Tier', 'tier']]); if (wb) g.appendChild(wb); }
+  if (i.sr) { var z = [].concat((i.sr.up || []).map(function (x) { return Object.assign({ side: 'above' }, x); }), (i.sr.dn || []).map(function (x) { return Object.assign({ side: 'below' }, x); })); var sb = listTable('Support / resistance zones', z, [['Side', 'side'], ['Price', 'p'], ['Strength', 's'], ['Sources', 'n']]); if (sb) g.appendChild(sb); }
+  wrap.appendChild(g);
+  if (i.chain && i.chain.length) {
+    var ch = listTable('Option chain around the money (' + i.chain.length + ' strikes)', i.chain, [['Strike', 'k'], ['ATM', function (r) { return r.atm ? 'ATM' : ''; }], ['CE OI', 'oiC'], ['CE chg', 'dC'], ['CE price', 'pC'], ['CE OBV', 'obvC'], ['CE IV', 'ivC'], ['PE OI', 'oiP'], ['PE chg', 'dP'], ['PE price', 'pP'], ['PE OBV', 'obvP'], ['PE IV', 'ivP']]);
+    ch.style.marginTop = '10px'; wrap.appendChild(ch);
+  }
+  return wrap;
+}
+// The dashboard for this 5-minute slot: score gauge, signal, Range Scoreboard (rebuilt here from the stored scores, same formula as the app) and one row per instrument
+function overviewView(s) {
+  var m = s.mkt || {}, sc = m.scores || {}, wrap = el('div'), g = el('div', { class: 'grid' });
+  var n = function (k) { return typeof sc[k] === 'number' ? sc[k] : 0; };
+  var stk = function (name, f) { var i = (s.stocks || {})[name]; return i && i.score && typeof i.score[f] === 'number' ? i.score[f] : 0; };
+  var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+  if (sc.composite != null) {
+    var G = {
+      '9:15': sum(['all915', 'n50_915', 'bn_915', 'gift_915', 'sx_915', 'rel_915', 'hdfc_915'].map(n)),
+      'ADV/DEC': sum(['all_ad', 'n50_ad', 'bn_ad'].map(n)),
+      'FUTURES': sum(['all_fut', 'n50_fut', 'bn_fut'].map(n)),
+      'OI/OBV': sum(['n50_oi', 'bn_oi', 'rel_oi', 'hdfc_oi', 'icici_oi'].map(n)),
+      'MAX PAIN': n('n50_mp') + n('bn_mp') + stk('RELIANCE', 'max_pain') + stk('HDFCBANK', 'max_pain') + stk('ICICIBANK', 'max_pain'),
+      'IV SKEW': n('n50_ivs') + n('bn_ivs') + stk('RELIANCE', 'iv_skew') + stk('HDFCBANK', 'iv_skew') + stk('ICICIBANK', 'iv_skew'),
+      'COMP WT': n('n50_comp') + n('bn_comp')
+    }, MX = { '9:15': 7, 'ADV/DEC': 3, 'FUTURES': 3, 'OI/OBV': 10, 'MAX PAIN': 5, 'IV SKEW': 5, 'COMP WT': 5 };
+    var tot = 0, capped = 0, mxs = 0, abs = 0, top = '', lead = G['9:15'] + G['ADV/DEC'] + G['FUTURES'], lag = G['OI/OBV'] + G['MAX PAIN'] + G['IV SKEW'] + G['COMP WT'];
+    Object.keys(G).forEach(function (k) { tot += G[k]; capped += Math.max(-MX[k], Math.min(MX[k], G[k])); mxs += MX[k]; abs += Math.abs(G[k]); if (!top || Math.abs(G[k]) > Math.abs(G[top])) top = k; G[k] = Math.round(G[k] * 100) / 100; });
+    var verdict = tot >= 4 ? 'LONG' : tot <= -4 ? 'SHORT' : 'WAIT', dirC = verdict === 'LONG' ? Math.max(0, capped) : verdict === 'SHORT' ? Math.max(0, -capped) : Math.abs(capped);
+    var gauge = { 'score (gauge)': sc.composite, 'mode': m.lag === false ? 'leading only' : m.lag === true ? 'leading + lagging' : '?', 'leading (9:15, A/D, futures)': Math.round(lead * 100) / 100, 'lagging (OI/OBV, max pain, IV skew, comp wt)': Math.round(lag * 100) / 100, 'signal': m.signal || '-', '9:15 plan': m.strat ? (m.strat.outcome + (m.strat.level ? ' ' + m.strat.level : '')) : '-', 'India VIX': m.vix, 'GIFT NIFTY change %': m.gift && m.gift.chg };
+    g.appendChild(kvBox('Score and signal', gauge));
+    var sbx = Object.assign({}, G); sbx['TOTAL'] = Math.round(tot * 100) / 100; sbx['VERDICT'] = verdict; sbx['confidence %'] = Math.min(100, Math.round(dirC / mxs * 100)); sbx['largest group'] = top + ' (' + (abs ? Math.round(Math.abs(G[top]) / abs * 100) : 0) + '%)';
+    g.appendChild(kvBox('Range scoreboard (rebuilt from the stored scores)', sbx));
+  } else if (m.signal || m.vix != null) g.appendChild(kvBox('Market', { signal: m.signal || '-', 'India VIX': m.vix }));
+  if (m.ad) g.appendChild(kvBox('Advance / decline (counts)', { 'all F&O spot': m.ad.all, 'NIFTY 50 spot': m.ad.n50, 'BANK spot': m.ad.bn, 'all F&O futures': m.ad.allF, 'NIFTY 50 futures': m.ad.n50F, 'BANK futures': m.ad.bnF }));
+  if (m.b915) g.appendChild(kvBox('9:15 zone counts (all F&O)', m.b915));
+  if (m.lc) { var lq = {}; ['support', 'resistance'].forEach(function (k) { var x = m.lc[k]; if (x) { lq[k + ' decision'] = x.state; lq[k + ' checks agree'] = (x.conf != null ? x.conf + ' of ' + x.total : '-'); } }); if (m.lc.plan) lq['9:15 plan'] = m.lc.plan.outcome + ' ' + (m.lc.plan.level || ''); var lb = kvBox('Level confirmation', lq); if (lb) g.appendChild(lb); }
+  wrap.appendChild(g);
+  var rows = Object.keys(s.inst || {}).map(function (nm) {
+    var i = s.inst[nm], a = (s.app_out || {})[nm] || {};
+    return { nm: nm, px: i.px && i.px.ltp, chg: i.px && i.px.chg, z: i.z915 && i.z915.zone, tr: i.score && i.score.current_trend, fut: i.fut && i.fut.remark, tot: i.score && i.score.total, oi: i.score && i.score.oi_obv, cons: i.cons && i.cons.out, ag: i.cons && (i.cons.agree + '/' + i.cons.voting), pa: i.lp && i.lp.pASO, pb: i.lp && i.lp.pBSO, dz: i.dz ? 'dead zone' : '', pcr: i.oi && i.oi.pcr, vol: i.vol && (i.vol.index + ' ' + i.vol.value), call: (a.fv && a.fv.call) || (a.cmdv && a.cmdv.label) || '', n: i.chain ? i.chain.length : 0 };
+  });
+  var tb = listTable('Instruments at this slot', rows, [['Instrument', 'nm'], ['Price', 'px'], ['Chg %', 'chg'], ['9:15', 'z'], ['Trend', 'tr'], ['Futures', 'fut'], ['OI/OBV', 'oi'], ['Score', 'tot'], ['Consensus', 'cons'], ['Agree', 'ag'], ['P(ASO)', 'pa'], ['P(BSO)', 'pb'], ['Zone', 'dz'], ['PCR', 'pcr'], ['Chain rows', 'n'], ['Vol idx', 'vol'], ['App call', 'call']]);
+  if (tb) { tb.style.marginTop = '10px'; wrap.appendChild(tb); }
+  var oo = Object.keys(s.app_out || {}).filter(function (k) { return s.app_out[k].oiobv; }).map(function (k) { return Object.assign({ nm: k }, s.app_out[k].oiobv); });
+  if (oo.length) { var cols = [['Instrument', 'nm']]; Object.keys(oo[0]).filter(function (k) { return k !== 'nm'; }).forEach(function (k) { cols.push([k, k]); }); var ob = listTable('OI CHG + OBV', oo, cols); if (ob) { ob.style.marginTop = '10px'; wrap.appendChild(ob); } }
+  return wrap;
+}
+function renderDetail() {
+  var d = $('detail'), s = S.snap; d.innerHTML = ''; if (!s) return;
+  var pad = el('div', { class: 'pad' });
+  var meta = el('div', { style: 'margin-bottom:12px' }, [el('span', { class: 'tag', text: 'as of ' + (s.asOf || s.slot) }), el('span', { class: 'tag', text: 'source ' + (s.source || '-') }), el('span', { class: 'tag', text: 'app ' + (s.app || '-') }), el('span', { class: 'tag', text: 'schema ' + s.schema }), s.refreshMs ? el('span', { class: 'tag', text: 'refresh ' + (s.refreshMs / 1000).toFixed(1) + ' s' }) : null,
+    s.ctx && s.ctx.expiryDay && s.ctx.expiryDay.length ? el('span', { class: 'tag warn', text: 'expiry day: ' + s.ctx.expiryDay.join(', ') }) : null]);
+  pad.appendChild(meta);
+  if (S.tab === 'Overview') { pad.appendChild(overviewView(s)); }
+  else if (S.tab === 'Instruments') { Object.keys(s.inst || {}).forEach(function (n) { pad.appendChild(instView(n, s.inst[n])); }); }
+  else if (S.tab === 'Stocks') {
+    var rows = Object.keys(s.stocks || {}).map(function (n) { var i = s.stocks[n]; return { n: n, px: i.px && i.px.ltp, chg: i.px && i.px.chg, z: i.z915 && i.z915.zone, tot: i.score && i.score.total, fut: i.fut && i.fut.remark, pcr: i.oi && i.oi.pcr, obv: i.score && i.score.oi_obv, cons: i.cons && i.cons.out, lp: i.lp && Math.max(i.lp.pASO || 0, i.lp.pBSO || 0), ch: i.chain ? i.chain.length : 0 }; });
+    var tb = el('table'), h = el('tr'); ['Stock', 'Price', 'Chg %', '9:15', 'Score', 'Futures', 'PCR', 'OI/OBV', 'Consensus', 'Chain'].forEach(function (c) { h.appendChild(el('th', { text: c })); }); tb.appendChild(h);
+    rows.forEach(function (r) { var tr = el('tr'); [r.n, fmt(r.px), fmt(r.chg), r.z || '-', fmt(r.tot, 1), r.fut || '-', fmt(r.pcr), fmt(r.obv, 1), r.cons || '-', String(r.ch)].forEach(function (v, k) { tr.appendChild(el('td', { class: [2, 4, 7].indexOf(k) > -1 ? sgn(parseFloat(String(v).replace(/,/g, ''))) : '', text: v })); }); tb.appendChild(tr); });
+    pad.appendChild(tb); if (s.wts) pad.appendChild(el('div', { class: 'muted', style: 'margin-top:8px', text: 'Weights recorded for this slot: NIFTY 50 ' + Object.keys(s.wts.n50 || {}).length + ' stocks, NIFTY BANK ' + Object.keys(s.wts.bn || {}).length + ' stocks.' }));
+  }
+  else if (S.tab === 'Market') {
+    var m = s.mkt || {}, g = el('div', { class: 'grid' });
+    [kvBox('Composite score parts', m.scores), kvBox('9:15 zone counts (all F&O)', m.b915), kvBox('Sentiment', { vix: m.vix, 'GIFT NIFTY': m.gift && m.gift.ltp, 'GIFT change %': m.gift && m.gift.chg, signal: m.signal, macro: m.macro && m.macro.label, 'macro score': m.macro && m.macro.score }), kvBox('9:15 plan', m.strat), kvBox('Context', { 'day of week': s.ctx && s.ctx.dow, 'minutes since midnight': s.ctx && s.ctx.mins })].forEach(function (b) { if (b) g.appendChild(b); });
+    if (s.ctx && s.ctx.dte) { var dt = Object.keys(s.ctx.dte).map(function (k) { return { k: k, exp: s.ctx.dte[k].exp, d: s.ctx.dte[k].days }; }); var db = listTable('Expiry (as of this day)', dt, [['Index', 'k'], ['Expiry', 'exp'], ['Days', 'd']]); if (db) g.appendChild(db); }
+    [kvBox('Advance / decline counts', m.ad), kvBox('Settings', { 'include lagging': m.lag })].forEach(function (b) { if (b) g.appendChild(b); });
+    var st = listTable('Strongest / weakest index today', m.strength, [['Index', 'n'], ['Change %', 'c']]); if (st) g.appendChild(st);
+    pad.appendChild(g);
+  }
+  else if (S.tab === 'App outputs') {
+    var ao = s.app_out || {}, g2 = el('div', { class: 'grid' });
+    Object.keys(ao).forEach(function (n) {
+      var a = ao[n], flat = {};
+      if (a.fv) { flat['Final Verdict'] = a.fv.call; flat['confidence'] = a.fv.conf; flat['direction'] = a.fv.dir; flat['headline'] = a.fv.head; }
+      if (a.outlook) { flat['Probable trade direction'] = a.outlook.dir; flat['rank'] = a.outlook.rank; if (a.outlook.plan) { flat['plan side'] = a.outlook.plan.long ? 'LONG' : 'SHORT'; flat['entry'] = a.outlook.plan.entry; flat['stop'] = a.outlook.plan.stop; flat['target 1'] = a.outlook.plan.t1; flat['reward:risk'] = a.outlook.plan.rr; } }
+      if (a.cmdv) { flat['Commodity verdict'] = a.cmdv.label; flat['location'] = a.cmdv.loc; if (a.cmdv.trade) Object.keys(a.cmdv.trade).forEach(function (k) { flat['trade ' + k] = a.cmdv.trade[k]; }); }
+      var b = kvBox(n, flat); if (b) g2.appendChild(b);
+    });
+    pad.appendChild(g2.children.length ? g2 : el('div', { class: 'muted', text: 'No app outputs in this slot.' }));
+  }
+  else if (S.tab === 'Errors') {
+    pad.appendChild(s.errors && s.errors.length ? el('div', null, s.errors.map(function (e) { return el('div', { class: 'warn', text: e }); })) : el('div', { class: 'pos', text: 'No section errors in this slot.' }));
+  }
+  else { var pre = el('pre'); pre.textContent = JSON.stringify(s, null, 1); pad.appendChild(el('button', { text: 'Copy', onclick: function () { navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(s, null, 1)); } })); pad.appendChild(pre); }
+  d.appendChild(pad);
+}
+function download(name, text, type) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+$('day').onchange = loadSlots; $('session').onchange = function () { S.inst = ''; loadSlots(); }; $('inst').onchange = function () { S.inst = $('inst').value; loadSlots(); }; $('refresh').onclick = function () { init(); };
+function deleteData(whole) {
+  var d0 = S.days.filter(function (d) { return d.day === S.day; })[0] || {}, parts = [];
+  ['NSE', 'MCX'].forEach(function (x) { if (d0[x] && (whole || x === S.session)) parts.push(x + ': ' + d0[x].slots.length + ' slots'); });
+  if (!parts.length) { alert('Nothing is recorded for that selection.'); return; }
+  if (!confirm('Delete the recorded data of ' + S.day + ' (' + parts.join(', ') + ')?\n\nThis removes the saved snapshot file(s) from this computer and cannot be undone.')) return;
+  fetch('/api/snapshot/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(whole ? { day: S.day } : { day: S.day, session: S.session }) })
+    .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) { alert('Could not delete: ' + (j.error || 'unknown error')); return; } S.slot = ''; S.snap = null; $('detail').innerHTML = ''; $('tabs').innerHTML = ''; $('charts').innerHTML = ''; $('cards').innerHTML = ''; $('slots').innerHTML = ''; init(); })
+    .catch(function () { alert('The recorder server did not answer.'); });
+}
+$('del-session').onclick = function () { deleteData(false); }; $('del-day').onclick = function () { deleteData(true); };
+$('dl-jsonl').onclick = function () { location.href = '/api/snapshot/export?day=' + S.day + '&session=' + S.session; };
+$('dl-csv').onclick = function () {
+  var cols = ['slot', 'capturedAt', 'name', 'px', 'score', 'fut', 'cons', 'comp', 'vix', 'chain', 'stocks', 'kb', 'errors', 'refreshMs', 'app'];
+  var csv = [cols.join(',')].concat(S.rows.map(function (r) { return cols.map(function (c) { var v = r[c]; return v == null ? '' : /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v; }).join(','); })).join('\n');
+  download(S.day + '_' + S.session + '_slots.csv', csv, 'text/csv');
+};
+init();
+</script>
+</body>
+</html>

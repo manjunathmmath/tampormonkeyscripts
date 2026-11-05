@@ -123,7 +123,14 @@ function _tfComputeMcx(name) {
     var call = 'NO TRADE', headline = 'NO TRADE', col = 'var(--gtb-muted)';
     if (vd && vd.ovxGate) { var vl = (vd.context && vd.context.label) ? String(vd.context.label) : 'volatility too high'; headline = /^NO TRADE/.test(vl) ? vl : 'NO TRADE — ' + vl; col = 'var(--gtb-red)'; }
     else if (!haveData || (loadingNow && !(sm.strikeMap && sm.oiData))) { headline = loadingNow ? 'WAIT — loading ' + lbl + '…' : 'WAIT — ' + lbl + ' data not loaded yet (retrying)'; call = 'WAIT'; col = 'var(--gtb-amber)'; }
-    else if (!dir) { headline = 'NO TRADE — no clear direction'; col = 'var(--gtb-muted)'; }
+    else if (!dir) {
+        // say WHY the consensus is flat: which signal groups lean which way (a split cancels to net 0), and what the commodity verdict says meanwhile
+        var fb = [], fs = [];
+        if (cn && cn.families) cn.families.forEach(function (g) { var nm = ({ zone: '9:15', trend: 'price vs levels', futures: 'futures', options: 'OI/OBV flow', orderflow: 'order flow', curve: 'curve' })[g.name] || g.name; if (g.dir > 0) fb.push(nm); else if (g.dir < 0) fs.push(nm); });
+        var split = (fb.length && fs.length) ? ' (split: bullish ' + fb.join(', ') + ' vs bearish ' + fs.join(', ') + ')' : '';
+        // same as NIFTY / BANK NIFTY (Final Verdict): a flat consensus is NO TRADE, the instrument's own verdict does not override it
+        headline = (cn && cn.voting === 0 ? 'WAIT — not enough data yet' : 'NO TRADE — no clear direction') + split; col = 'var(--gtb-muted)';
+    }
     else if (vd && (vd.label === 'LONG' || vd.label === 'SHORT') && ((vd.label === 'LONG') === (dir > 0))) { call = word; headline = word + ' — ' + (vd.trade ? 'at ' + vd.trade.entry : 'wall nearby'); col = dir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)'; }
     else if (vdFlat) {
         // Never actionable from here: the commodity verdict's own LONG / SHORT ("actionable": composite outside +-3, a wall within 0.35%, futures
@@ -133,6 +140,11 @@ function _tfComputeMcx(name) {
         if (loc && loc.at) headline = word + ' lean at the ' + wn + ' — verdict not actionable (composite score flat)';
         else if (loc) headline = word + ' lean — WAIT for the ' + wn + ' (' + loc.distPct.toFixed(1) + '% away); verdict not actionable';
         else headline = word + ' lean — WAIT (no OI wall found); verdict not actionable';
+    }
+    else if (vd && /^(LONG|SHORT) bias/.test(String(vd.label)) && ((/^LONG/.test(vd.label)) !== (dir > 0))) {
+        // consensus and the commodity verdict point opposite ways: say so instead of printing one direction over the other's location text
+        call = 'WAIT'; col = 'var(--gtb-amber)';
+        headline = 'WAIT — signals disagree: consensus ' + word + ', verdict ' + (/^LONG/.test(vd.label) ? 'LONG' : 'SHORT') + ' bias' + (vd.location && vd.location.label ? ' (' + vd.location.label + ')' : '');
     }
     else { call = 'WAIT'; headline = word + ' bias — WAIT' + (vd && vd.location && vd.location.label ? ' (' + vd.location.label + ')' : ''); col = 'var(--gtb-amber)'; }
     res.v = { call: call, headline: headline, col: col, conf: dir ? conf : null, dir: dir, consensus: cn, action: '', why: [], warn: [] };

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Groot Bot
 // @namespace    Groot Bot
-// @version      29.493
+// @version      29.537
 // @description  Groot Bot
 // @author       Manjunath
 // @match        https://kite.zerodha.com/*
@@ -22,6 +22,17 @@
 // @connect      cdn-api.cboe.com
 // @connect      api.telegram.org
 // @connect      liveindexsa.niftyindices.com
+// @connect      news.google.com
+// @connect      nfs.faireconomy.media
+// @connect      localhost
+// @connect      127.0.0.1
+// @connect      economictimes.indiatimes.com
+// @connect      www.moneycontrol.com
+// @connect      www.livemint.com
+// @connect      www.cnbc.com
+// @connect      feeds.finance.yahoo.com
+// @connect      feeds.content.dowjones.io
+// @connect      feeds.bbci.co.uk
 // @resource     BOOTSTRAP_CSS http://localhost:3000/autoTrade/dist/css/bootstrap.css
 // @resource     DATATABLE_CSS http://localhost:3000/autoTrade/global/vendor/datatables/datatables.min.css
 // @resource     BOOTSTRAP_ICON_CSS http://localhost:3000/autoTrade/dist/font/bootstrap-icons.css
@@ -113,6 +124,11 @@
 // @require      http://localhost:3000/autoTrade/stockWatch.js
 // @require      http://localhost:3000/autoTrade/indexWeights.js
 // @require      http://localhost:3000/autoTrade/obvBreakout.js
+// @require      http://localhost:3000/autoTrade/newsFeed.js
+// @require      http://localhost:3000/autoTrade/outlookWatch.js
+// @require      http://localhost:3000/autoTrade/focusBrief.js
+// @require      http://localhost:3000/autoTrade/dataRecorder.js
+// @require      http://localhost:3000/autoTrade/replayRecorder.js
 // @require      http://localhost:3000/autoTrade/autoPilot.js
 // @require      http://localhost:3000/autoTrade/macro.js
 // @require      http://localhost:3000/autoTrade/briefingCore.js

@@ -75,7 +75,12 @@ var _BF_WINDOWS = [
     { from: 900, to: 915, name: 'AVOID',  key: 'eod',   label: 'End-of-day squaring (15:00–15:15)' },
     { from: 915, to: 1441, name: 'CLOSED', key: 'post', label: 'After the 15:15 cut-off' },
 ];
-function _bfWindow(minutes, weekend) {
+function _bfWindow(minutes, weekend, mcx) {
+    if (!weekend && mcx) {
+        // MCX trades 09:00-23:55, not the NSE 09:15-15:30 windows
+        if (minutes >= 540 && minutes < 1435) return { name: 'OPEN', key: 'mcx', label: 'MCX session (09:00-23:55)', minsLeft: 1435 - minutes, next: null };
+        return { name: 'CLOSED', key: minutes < 540 ? 'pre' : 'post', label: minutes < 540 ? 'Before the MCX open (09:00)' : 'After the MCX close (23:55)', minsLeft: null, next: null };
+    }
     if (weekend) return { name: 'CLOSED', key: 'weekend', label: 'Weekend — market closed', minsLeft: null, next: null };
     var w = _BF_WINDOWS[_BF_WINDOWS.length - 1], idx = _BF_WINDOWS.length - 1;
     for (var i = 0; i < _BF_WINDOWS.length; i++) { if (minutes >= _BF_WINDOWS[i].from && minutes < _BF_WINDOWS[i].to) { w = _BF_WINDOWS[i]; idx = i; break; } }

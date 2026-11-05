@@ -1029,6 +1029,15 @@ function _psComputeConviction(setup) {
     return Math.max(0, Math.min(100, Math.round(pts)));
 }
 
+// A plan whose entry is a bounce / pullback level (not the current price): say so, with the distance, so the entry is not read as 'enter now'.
+function _psPendingTag(r) {
+    if (r.entry == null || !r.ltp || r.stop == null) return '';
+    var short = r.stop > r.entry, pct = (r.entry / r.ltp - 1) * 100;
+    if (Math.abs(pct) < 0.5 || (short && pct < 0) || (!short && pct > 0)) return '';
+    var beyond = short ? r.ltp < r.target : r.ltp > r.target;
+    return '<div style="font-size:0.5rem;color:var(--gtb-amber);white-space:nowrap;" title="This entry is a ' + (short ? 'bounce' : 'pullback') + ' level, not the current price. No trade unless price gets there'+ (beyond ? '; price is already beyond the target' : '') + '.">wait for ' + (short ? 'bounce' : 'pullback') + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%)' + (beyond ? ' · past target' : '') + '</div>';
+}
+
 function _psAttachTradePlan(setup, candles) {
     var range20 = setup.high20 - setup.low20;
     var dir = setup.primary && setup.primary.ok ? setup.primary.dir : null;
@@ -1724,7 +1733,7 @@ function _psRenderTable() {
                 + '<td style="color:' + curveColor + ';font-size:0.55rem;">' + (r.curveLabel || 'NO DATA') + '</td>'
                 + '<td class="ps-cell-strong" style="color:' + r.overlayColor + ';" title="Same-day overlay total (trend/breakout/RS/OI/curve) — confirmation only, not the primary call.">' + r.overlayTotal.toFixed(1) + '</td>'
                 + '<td style="color:' + (r.since ? _psSinceColor(r.since.label) : 'var(--gtb-muted)') + ';font-size:0.55rem;white-space:nowrap;" title="' + _psSinceTip(r).replace(/"/g, '&quot;') + '">' + _psSinceText(r) + '</td>'
-                + '<td>' + (hasPlan ? r.entry.toFixed(1) : '—') + '</td>'
+                + '<td>' + (hasPlan ? r.entry.toFixed(1) + _psPendingTag(r) : '—') + '</td>'
                 + '<td style="color:var(--gtb-green);">' + (hasPlan ? r.target.toFixed(1) : '—') + '</td>'
                 + '<td style="color:var(--gtb-red);">' + (hasPlan ? r.stop.toFixed(1) : '—') + '</td>'
                 + '<td>' + (r.riskReward != null ? '1:' + r.riskReward.toFixed(1) : '—') + '</td>'

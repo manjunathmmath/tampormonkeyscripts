@@ -33,7 +33,7 @@ const c3_css = GM_getResourceText("C3_CSS");
 // not just its descendants) instead of one scoped "<root> sel" per original comma branch.
 // :where() (not :is()) so this never adds specificity beyond what each rule already had.
 var GTB_CSS_SCOPE_ROOTS = ':where(#gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, '
-    + '#gtb-chartgrid-overlay, #gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout)';
+    + '#gtb-chartgrid-overlay, #gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout, #gtb-news-panel)';
 
 // Splits a comma-separated selector list at TOP-LEVEL commas only (not inside parens, e.g.
 // `:not(a, b)` or `:is(.x, .y)` must stay intact as one selector), prefixes each with the

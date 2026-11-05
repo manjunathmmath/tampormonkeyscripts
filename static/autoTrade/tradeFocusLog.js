@@ -72,6 +72,7 @@ function _tfLogPrune() {
 }
 // Called from setScore(): full = a full refresh finished (log it), show = repaint the tab if it is open.
 function _tfTick(full, show) {
+    try { if (typeof _olwTick === 'function') _olwTick(); } catch (e) {}      // Probable trade entry-zone alert + outcome log (outlookWatch.js)
     try {
         var vis = jQ('#gtb-pane-focus').is(':visible'), cmdOpen = jQ('#cmd-crude-focus').length > 0;
         if (full && typeof _tfMcxAutoLoad === 'function') _tfMcxAutoLoad();        // keep GOLDM / SILVERM data current (loads in the background)

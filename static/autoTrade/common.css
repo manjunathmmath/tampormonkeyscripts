@@ -1804,7 +1804,7 @@ td.details-control {
    third-party libraries in monkeyStyle.js, kept in sync manually since this file has no
    preprocessor. */
 #gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, #gtb-chartgrid-overlay,
-#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout {
+#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout, #gtb-news-panel {
   /* Surfaces */
   --gtb-bg:        #060a12;
   --gtb-surface:   #0b1220;
@@ -1865,7 +1865,7 @@ td.details-control {
    with matching ID specificity. Keep this list in sync with the dark one. */
 #gtb-popup-win.gtb-light, .popupwindow_container.gtb-light, #groot-maximize-overlay.gtb-light,
 #gtb-chartgrid-overlay.gtb-light, #gtb-info-pop.gtb-light, #gtb-daychart-overlay.gtb-light,
-#gtb-combochart-overlay.gtb-light, #gtb-tools-flyout.gtb-light {
+#gtb-combochart-overlay.gtb-light, #gtb-tools-flyout.gtb-light, #gtb-news-panel.gtb-light {
   --gtb-bg:        #ffffff;
   --gtb-surface:   #f3f6fa;
   --gtb-surface2:  #e7edf4;
@@ -2932,7 +2932,7 @@ td.details-control {
    they stay pixel-aligned automatically.
    INSTRUMENT(sticky) | CHART | 9:15 | FUTURES | OI MATRIX | OI/OBV | WEIGHTAGE | DETAILS */
 #gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, #gtb-chartgrid-overlay,
-#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout {
+#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout, #gtb-news-panel {
   --gtb-col-instr:   140px;
   --gtb-col-chart:   260px;
   --gtb-col-915:      56px;
@@ -4348,7 +4348,7 @@ td.details-control {
 
 /* ── Card header token ─────────────────────────────────────── */
 #gtb-popup-win, .popupwindow_container, #groot-maximize-overlay, #gtb-chartgrid-overlay,
-#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout {
+#gtb-info-pop, #gtb-daychart-overlay, #gtb-combochart-overlay, #gtb-tools-flyout, #gtb-news-panel {
   --hdr-height: 28px;
   --badge-h:    20px;
   --btn-sz:     22px;

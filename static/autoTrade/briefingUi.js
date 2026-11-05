@@ -266,7 +266,7 @@ function _gtbInstrBriefHtml(name) {
         var gaps = [];
         var S = { ts: Date.now(), gaps: gaps, instr: {}, dom: {} };
         S.clock = _bfTry(gaps, 'clock', _bfClock, null) || { hhmm: '—', source: 'unknown', isReplay: false, curDay: '', weekend: false };
-        S.window = _bfTry(gaps, 'window', function () { return _bfWindow(S.clock.minutes, S.clock.weekend); }, null);
+        S.window = _bfTry(gaps, 'window', function () { var _mx = false; try { _mx = _gtbIsMcxFuture(name); } catch (e) {} return _bfWindow(S.clock.minutes, S.clock.weekend, _mx); }, null);
         var b915 = _bfTry(gaps, '9:15', function () { return JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || '{}'); }, {});
         var I = _bfInstrument(name, b915);
         S.instr[name] = I;

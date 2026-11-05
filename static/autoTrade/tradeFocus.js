@@ -218,7 +218,7 @@ function _tfHtml(res, compact) {
 function _tfRender(res) {
     var $p = jQ('#gtb-pane-focus');
     if (!$p.length) return;
-    try { $p.html(_tfHtml(res && res.name === _TF_NAME ? res : _tfCompute(_TF_NAME))); }
+    try { $p.html((typeof _fbHtml === 'function' ? _fbHtml() : '') + _tfHtml(res && res.name === _TF_NAME ? res : _tfCompute(_TF_NAME))); }
     catch (e) { $p.html('<div style="padding:12px;font-size:0.6rem;color:var(--gtb-red);">Trade Focus could not be built: ' + (e && e.message ? e.message : e) + '</div>'); try { console.log('[trade-focus]', e); } catch (e2) {} }
 }
 // The same five gates as a compact strip in the Commodities popup, for the commodity selected there (#cmd-crude-focus).

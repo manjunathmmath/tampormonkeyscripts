@@ -443,6 +443,7 @@ setInterval(function () { try { if (_LF_WATCH_N % 2 === 0) _lfScoreTick(); } cat
 // Today's open and yesterday's close straight from the tick (day OHLC + previous close are part of every quote / full packet), so
 // loadOpenPrice() (script.js) needs no REST 'day' candle for it. Null until the exchange has an open (before 09:15 open is 0).
 function _lfOpenPrev(name) {
+    try { if (typeof _rpActive === 'function' && _rpActive()) return null; } catch (e) {}      // a replay day must never take today's live open / previous close
     var o = LIVE_TICKS[name];
     if (!o || !_lfHas(name)) return null;
     if (!(o.open > 0) || !(o.prevClose > 0)) return null;
