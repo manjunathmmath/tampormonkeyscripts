@@ -325,7 +325,7 @@ function _ossAgreement(name, view) {
         if (votes.length < 3) return '<div class="oss-desc">Signal agreement: not enough signals loaded yet.</div>';
         var agree = votes.filter(function (x) { return x.v === want; }).length;
         var pct = Math.round(agree / votes.length * 100);
-        _OSS_AGREE_LAST = { agree: agree, total: votes.length, pct: pct };
+        _OSS_AGREE_LAST = { agree: agree, total: votes.length, pct: pct, votes: votes, want: want };
         var tone = pct >= 65 ? ['FAVOURABLE', 'var(--gtb-green)'] : pct >= 45 ? ['MIXED', 'var(--gtb-amber)'] : ['UNFAVOURABLE', 'var(--gtb-red)'];
         var chips = votes.map(function (x) {
             var ok = x.v === want, c = ok ? 'var(--gtb-green)' : (x.v === 0 ? 'var(--gtb-muted)' : 'var(--gtb-red)');
@@ -509,7 +509,7 @@ function _ossTimingFor(name, want, stratKey, dte) {
             : pct >= 50 ? ['ACCEPTABLE, enter with care', 'var(--gtb-amber)']
             : pct >= 35 ? ['WAIT for a better entry', 'var(--gtb-amber)']
             : ['POOR TIMING, do not chase', 'var(--gtb-red)'];
-        _OSS_TIMING_LAST = { pct: pct, label: tone[0], n: checks.length, bad: bad.length };
+        _OSS_TIMING_LAST = { pct: pct, label: tone[0], n: checks.length, bad: bad.length, checks: checks };
         var chips = checks.map(function (c) {
             var col = c.s > 0 ? 'var(--gtb-green)' : c.s < 0 ? 'var(--gtb-red)' : 'var(--gtb-muted)';
             return '<span title="' + c.why.replace(/"/g, '&quot;') + '" style="color:' + col + ';border:1px solid ' + col + ';padding:0 5px;margin:0 3px 2px 0;display:inline-block;">'

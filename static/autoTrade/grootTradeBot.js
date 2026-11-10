@@ -7177,7 +7177,8 @@ function _gtbLoadInstrDetailPanel(name) {
     h +=     '<span id="' + tid + '-futures-premium' + sfx + '" class="gtb-cell-premium-chip"></span>';
     h +=     '<span id="' + tid + '-futures-trend' + sfx + '" class="gtb-cell-fut-remark"></span>';
     h +=     '<span id="' + tid + '-avwap' + sfx + '" class="gtb-avwap-chip"></span>';
-    h +=     '<button class="sv-icon-btn gtb-dv-strikes" data-name="' + name + '" style="margin-left:auto;" title="Option strikes from LTP (strategy picker)"><i class="bi bi-bullseye"></i></button>';
+    h +=     '<button class="sv-icon-btn gtb-dv-chartview" data-name="' + name + '" style="margin-left:auto;" title="Open the Chart View: every detail drawn on one chart"><i class="bi bi-bar-chart-line"></i></button>';
+    h +=     '<button class="sv-icon-btn gtb-dv-strikes" data-name="' + name + '" style="margin-left:4px;" title="Option strikes from LTP (strategy picker)"><i class="bi bi-bullseye"></i></button>';
     h +=     '<button class="sv-icon-btn gtb-dv-panel-refresh" data-name="' + name + '" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>';
     h +=     '<button class="sv-icon-btn gtb-dv-panel-close" data-name="' + name + '" style="color:var(--gtb-muted);" title="Remove"><i class="bi bi-x-lg"></i></button>';
     h +=   '</div>';
@@ -23671,11 +23672,12 @@ function _gtbDashSRHtml(oneName) {
 // Direction and confidence come from the Master Consensus (independent signal groups). Entry / stop / targets come from the zones of the Strong
 // support and resistance card. Nothing here is back-tested and nothing places an order.
 var _GTB_OL_NAME = 'NIFTY 50', _GTB_OL_NEAR_PCT = 0.15, _GTB_OL_STOP_BUF_PCT = 0.12, _GTB_OL_MIN_STRENGTH = 2;
-function _gtbOutlook(nm) {
+function _gtbOutlook(nm, forceDir) {
     var d = null; try { d = _gtbSrLevels(nm); } catch (e) {}
     if (!d) return { ok: false, why: 'Waiting for ' + nm + ' price and OI data (run a refresh).' };
     var cn = _gtbMasterConsensus(nm), spot = d.spot;
-    var dir = cn.net > 0.2 ? 1 : cn.net < -0.2 ? -1 : 0;
+    var dir = cn.net > 0.2 ? 1 : cn.net < -0.2 ? -1 : 0, natural = dir;
+    if (!dir && forceDir) dir = forceDir;      // Chart View asks for a plan on the weaker lean too (out.forced), so it can show the levels even when the signal groups are split
     var rank = (Math.abs(cn.net) >= _GTB_FV_HIGH_NET && cn.voting >= _GTB_FV_HIGH_GROUPS && !cn.thin) ? 3 : (Math.abs(cn.net) >= _GTB_FV_MED_NET && cn.voting >= _GTB_FV_MED_GROUPS && !cn.thin) ? 2 : 1;
     var lx = null; try { if (typeof _lxCompute === 'function') lx = _lxCompute(nm, dir || undefined); } catch (e) {}
     var dz = null; try { dz = _gtbDeadZone(nm); } catch (e) {}
@@ -23683,7 +23685,7 @@ function _gtbOutlook(nm) {
     var strong = function (z) { return z.strength >= _GTB_OL_MIN_STRENGTH; };
     var below = d.zones.filter(function (z) { return z.price <= spot + tol; }).sort(function (a, b) { return b.price - a.price; });
     var above = d.zones.filter(function (z) { return z.price >= spot - tol; }).sort(function (a, b) { return a.price - b.price; });
-    var out = { ok: true, nm: nm, spot: spot, dir: dir, rank: rank, cn: cn, lx: lx, dz: dz, plan: null, range: null };
+    var out = { ok: true, forced: !natural && !!dir, nm: nm, spot: spot, dir: dir, rank: rank, cn: cn, lx: lx, dz: dz, plan: null, range: null };
     if (dir !== 0) {
         var long = dir > 0, ent = long ? (below.filter(strong)[0] || below[0]) : (above.filter(strong)[0] || above[0]);
         if (ent) {
@@ -23692,6 +23694,23 @@ function _gtbOutlook(nm) {
             var t1 = tg.filter(strong)[0] || tg[0] || null, t2 = t1 ? (tg.filter(function (z) { return z !== t1 && (long ? z.price > t1.price : z.price < t1.price); })[0] || null) : null;
             var risk = Math.abs(entryPx - stop), reward = t1 ? Math.abs(t1.price - entryPx) : null;
             out.plan = { long: long, ent: ent, atLevel: atLevel, entryPx: entryPx, stop: stop, t1: t1, t2: t2, risk: risk, reward: reward, rr: (reward != null && risk > 0) ? reward / risk : null };
+            // Sanity pass (v29.572, same rule the Chart View used since v29.562): a stop closer than one average 5-minute candle range is inside normal noise, so it is widened to one range;
+            // a first target farther than 4 x the risk is replaced by the nearest zone 1.5 to 4 x the risk away (else 2 x the risk, targets 2 and 3 x). Rule of thumb, not back-tested.
+            try {
+                var ocs = (INSTRUMENT_SCORE_MAP[nm] || {}).oiData; ocs = ocs && ocs.spotCandles; var on = ocs ? Math.min(14, ocs.length) : 0;
+                if (on >= 3) {
+                    var atr = 0; for (var oi2 = ocs.length - on; oi2 < ocs.length; oi2++) atr += parseFloat(ocs[oi2][2]) - parseFloat(ocs[oi2][3]); atr /= on;
+                    var P = out.plan;
+                    if (atr > 0 && P.risk < atr) { P.stop = long ? entryPx - atr : entryPx + atr; P.risk = atr; P.widened = true; }
+                    if (P.t1 && P.risk > 0 && Math.abs(P.t1.price - entryPx) > 4 * P.risk) {
+                        var nz = tg.filter(function (z) { var dd = Math.abs(z.price - entryPx); return dd >= 1.5 * P.risk && dd <= 4 * P.risk; });
+                        var mk = function (px) { return { price: px, items: [], n: 0, strength: 0, loP: px, hiP: px }; };
+                        P.t1 = nz[0] || mk(long ? entryPx + 2 * P.risk : entryPx - 2 * P.risk);
+                        P.t2 = nz[1] || mk(long ? entryPx + 3 * P.risk : entryPx - 3 * P.risk); P.capped = true;
+                    }
+                    if (P.t1) { P.reward = Math.abs(P.t1.price - entryPx); P.rr = P.risk > 0 ? P.reward / P.risk : null; }
+                }
+            } catch (e) {}
         }
     } else {
         out.range = { sup: below.filter(strong)[0] || below[0] || null, res: above.filter(strong)[0] || above[0] || null };
@@ -23730,6 +23749,8 @@ function _gtbOutlookHtml(oneName) {
     var warn = [];
     if (o.lx && o.dir !== 0 && o.lx.status === 'STALE') warn.push('Live Context is STALE for this ' + (o.dir > 0 ? 'LONG' : 'SHORT') + ': price is moving against it, so wait for price to confirm before using this plan.');
     else if (o.lx && o.dir !== 0 && o.lx.status === 'WEAKENING') warn.push('Live Context is WEAKENING: ' + o.lx.against + ' price checks against, ' + o.lx.agree + ' for.');
+    if (o.plan && o.plan.widened) warn.push('The stop was widened to one average 5-minute candle range, because the level-based stop was inside normal noise.');
+    if (o.plan && o.plan.capped) warn.push('Target 1 was moved closer (the first level was more than 4 x the risk away, which is rarely reached in a day).');
     if (o.dz) warn.push(lbl + ' is inside a dead zone (' + f0(o.dz.lo) + ' - ' + f0(o.dz.hi) + '): the signals are weak, so expect chop until a 5-minute candle closes beyond an edge; keep size small.');
     if (o.vix && o.plan && o.plan.t1 && isFinite(o.vix.lo) && isFinite(o.vix.hi)) {
         var inside = o.plan.t1.price >= o.vix.lo && o.plan.t1.price <= o.vix.hi;
@@ -30505,13 +30526,14 @@ function _gtbCreateFloatingBar() {
         { id: 'show-liq-scanner',            icon: 'bi-water',                title: 'Liquidity / SL-Hunt' },
         { id: 'show-quote-fetch',            icon: 'bi-search',               title: 'Quote Fetch' },
         { id: 'show-news-feed',              icon: 'bi-newspaper',            title: 'News Feed' },
-        { id: 'show-data-recorder',          icon: 'bi-database-down',        title: 'Data Recorder' },
-        { id: 'show-live-score-log',         icon: 'bi-activity',             title: 'Live Score Log' },
+        { id: 'show-data-recorder',          icon: 'bi-hdd-stack',        title: 'Data Recorder' },
+        { id: 'show-live-score-log',         icon: 'bi-speedometer2',             title: 'Live Score Log' },
         { id: 'show-ws-subscribe',           icon: 'bi-broadcast',            title: 'WebSocket Subscribe' },
         { id: 'show-backtest-popup',         icon: 'bi-clock-history',        title: 'F&O Backtest' },
         { id: 'show-option-strike-search',   icon: 'bi-upc-scan',             title: 'Option Strike Search' },
         { id: 'show-positional-screener',    icon: 'bi-funnel-fill',          title: 'Positional Screener' },
         { id: 'show-obv-breakout-test',      icon: 'bi-bar-chart-steps',      title: 'OBV + Force Breakout Test' },
+        { id: 'show-chart-view',             icon: 'bi-bar-chart-line',      title: 'Chart View' },
         { id: 'show-curve-compare',          icon: 'bi-graph-up',             title: 'Curve Structure Compare' },
         { id: 'show-log-viewer',             icon: 'bi-bell-fill',            title: 'Error / Warning Log' },
         { id: 'gtb-toggle-groot',            icon: 'bi-toggles',              title: 'Toggle Dashboard' },
@@ -30582,6 +30604,7 @@ function _gtbCreateFloatingBar() {
             if (id === 'show-option-strike-search') { _ossShowPopup(); return; }
             if (id === 'show-positional-screener') { _psShowPopup(); return; }
             if (id === 'show-obv-breakout-test') { _obShowPopup(); return; }
+            if (id === 'show-chart-view')        { _cvShowPopup(); return; }
             if (id === 'show-data-load-popup')   { _dlShowPopup(); return; }
             if (id === 'show-market-trend-settings') { _gtbShowMarketTrendSettings(); return; }
             if (id === 'show-master-consensus')  { _gtbShowMasterConsensus('NIFTY 50'); return; }
