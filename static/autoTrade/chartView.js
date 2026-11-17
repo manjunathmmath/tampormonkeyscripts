@@ -7,7 +7,7 @@ var _CV_FB = {}, _CV_FUTC = {}, _CV_FUTRAW = {};      // shared by every pane: f
 var _CV_VIEWS = { clean: { levels: 1, walls: 1, zones: 0, range: 0, profile: 0, oi: 0, score: 1, fut: 1, trade: 1 }, standard: { levels: 1, walls: 1, zones: 1, range: 0, profile: 0, oi: 0, score: 1, fut: 1, trade: 1 }, full: { levels: 1, walls: 1, zones: 1, range: 1, profile: 1, oi: 1, score: 1, fut: 1, trade: 1 }, oiobv: { levels: 0, walls: 1, zones: 0, range: 0, profile: 0, oi: 1, score: 0, fut: 0, trade: 0 } };
 function _cvApplyView(v) { if (!_CV_VIEWS[v]) v = 'clean'; _CVG.view = v; Object.keys(_CV_VIEWS[v]).forEach(function (k) { _CV_LAYER_STATE[k] = _CV_VIEWS[v][k]; }); try { localStorage.setItem('GTB_CV_VIEW', v); } catch (e) {} }
 var _CVG = { view: 'clean', panes: [], layout: 1, active: 0, timer: null, slotTimer: null, stampTxt: '', updatedAt: 0, nextAt: 0, snap: undefined, pending: null };
-function _cvNewCtx(nm) { return { fb: _CV_FB, futc: _CV_FUTC, futRaw: _CV_FUTRAW, name: nm, chart: null, series: null, sig: '', data: null, layers: _CV_LAYER_STATE, hits: [], root: null, det: false }; }
+function _cvNewCtx(nm) { return { fb: _CV_FB, futc: _CV_FUTC, futRaw: _CV_FUTRAW, name: nm, chart: null, series: null, sig: '', data: null, layers: _CV_LAYER_STATE, hits: [], root: null, det: false, pan: (function () { try { return localStorage.getItem('GTB_CV_PAN') === '1'; } catch (e) { return false; } })(), psig: '' }; }
 var _CV = _cvNewCtx('NIFTY 50');      // the pane being worked on; every function reads this
 var _CV_PANE_IDS = { 'cv-chart': 1, 'cv-ov': 1, 'cv-msg': 1, 'cv-badge': 1, 'cv-checks': 1, 'cv-tip': 1 };
 function _cvEl(id) { if (_CV_PANE_IDS[id] && _CV.root) return _CV.root.isConnected ? _CV.root.querySelector('#' + id) : null; return document.getElementById(id); }
@@ -201,6 +201,7 @@ function _cvGather(nm) {
     } catch (e) {}
     // verdict + probable trade
     try { d.verdict = _gtbFinalVerdict(nm); } catch (e) {}
+    try { if (typeof _tfCompute === 'function') { window._TF_SKIP_LOAD = true; try { var _sv = _tfCompute(nm); if (_sv && _sv.v) d.verdict = _sv.v; } finally { window._TF_SKIP_LOAD = false; } } } catch (e) {}      // the badge follows the Focus gates headline for every instrument, so the two always agree
     try {
         var ol = _gtbOutlook(nm);
         if (ol && ol.ok) {
@@ -468,7 +469,41 @@ function _cvBadgeHtml(d) {
     return '<span title="' + String((v.headline || call) + (v.action ? ' - ' + v.action : '') + (v.warn && v.warn.length ? ' | ' + v.warn.join(' | ') : '')).replace(/"/g, '&quot;') + '" style="font-weight:900;font-size:15px;color:' + c + ';letter-spacing:.04em;">' + call + '</span>' + dots + ' <span style="color:' + C.muted + ';font-size:11px;">' + (_cvF(d.spot)) + '</span>' + (_cvSnapActive() ? ' <span style="color:var(--gtb-amber);font-size:11px;font-weight:700;" title="The chart is cut at the snapshot end time set on the dashboard">as of ' + (function () { try { return _gtbDataStamp(); } catch (e) { return _gtbHistTime(); } })() + '</span>' : '');
 }
 
+// ── render-scoped memo (v29.594) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// While ONE pane is being built (badge, check chips and the four Panels cards) the same heavy calls are made again and again for the same instrument
+// (Master Consensus, Final Verdict, support / resistance, Probable trade, Level Confirmation, ...). Inside a render they are answered once.
+// _CV_MEMO is only set for the duration of one synchronous _cvRender, so nothing outside the Chart View ever sees a cached value.
+var _CV_MEMO = null, _CV_MEMO_HITS = 0;
+function _cvMemoWrap(orig, tag, keyFn) {
+    if (typeof orig !== 'function' || orig.__cvm) return orig;
+    var w = function () {
+        var m = _CV_MEMO; if (!m) return orig.apply(this, arguments);
+        var k; try { k = tag + '|' + (keyFn ? keyFn.apply(null, arguments) : JSON.stringify(Array.prototype.slice.call(arguments))); } catch (e) { return orig.apply(this, arguments); }
+        if (Object.prototype.hasOwnProperty.call(m, k)) { _CV_MEMO_HITS++; return m[k]; }
+        var r = orig.apply(this, arguments); m[k] = r; return r;
+    };
+    w.__cvm = true; return w;
+}
+try { if (typeof _gtbMasterConsensus === 'function') _gtbMasterConsensus = _cvMemoWrap(_gtbMasterConsensus, 'mc'); } catch (e) {}
+try { if (typeof _gtbFinalVerdict === 'function') _gtbFinalVerdict = _cvMemoWrap(_gtbFinalVerdict, 'fv'); } catch (e) {}
+try { if (typeof _gtbSrLevels === 'function') _gtbSrLevels = _cvMemoWrap(_gtbSrLevels, 'sr'); } catch (e) {}
+try { if (typeof _gtbOutlook === 'function') _gtbOutlook = _cvMemoWrap(_gtbOutlook, 'ol'); } catch (e) {}
+try { if (typeof _lxCompute === 'function') _lxCompute = _cvMemoWrap(_lxCompute, 'lx'); } catch (e) {}
+try { if (typeof _gtbDeadZone === 'function') _gtbDeadZone = _cvMemoWrap(_gtbDeadZone, 'dz'); } catch (e) {}
+try { if (typeof _gtbLevelConfirmHtml === 'function') _gtbLevelConfirmHtml = _cvMemoWrap(_gtbLevelConfirmHtml, 'lc'); } catch (e) {}
+try { if (typeof _gtbHeadlineMarketSignal === 'function') _gtbHeadlineMarketSignal = _cvMemoWrap(_gtbHeadlineMarketSignal, 'hm'); } catch (e) {}
+try { if (typeof _cmdBuildVerdict === 'function') _cmdBuildVerdict = _cvMemoWrap(_cmdBuildVerdict, 'cb', function (nm, od, pc) { return nm + '|' + pc; }); } catch (e) {}
+
 function _cvRender() {
+    var _own = !_CV_MEMO, _t0 = (typeof performance !== 'undefined' ? performance.now() : 0);
+    if (_own) { _CV_MEMO = {}; _CV_MEMO_HITS = 0; }
+    try { _cvRenderInner(); } finally { if (_own) { _CV_MEMO = null; } }
+    try {
+        var _ms = performance.now() - _t0; _CVG.lastRender = Math.round(_ms);
+        if (_own && (_ms > 400 || localStorage.getItem('GTB_PROFILE') === '1')) console.log('[Chart View] ' + (_CV && _CV.name) + ' rendered in ' + Math.round(_ms) + ' ms (' + _CV_MEMO_HITS + ' repeated calls answered from the memo)');
+    } catch (e) {}
+}
+function _cvRenderInner() {
     var host = _cvEl('cv-chart'); if (!host) { if (!document.getElementById('cv-wrap')) _cvStop(); return; }
     var d = _CV.data = _cvGather(_CV.name);
     var msg = _cvEl('cv-msg');
@@ -501,10 +536,55 @@ function _cvRender() {
     _CV.lastN = d.candles.length;
     if (_CV.fit) { _CV.chart.timeScale().fitContent(); _CV.fit = false; }
     var b = _cvEl('cv-badge'); if (b) b.innerHTML = _cvBadgeHtml(d);
+    _cvPosUpdate(_CV);
+    try { _cvDotSet(_CV.name, d.verdict); } catch (e) {}
     var chk = _cvEl('cv-checks'); if (chk) { chk.innerHTML = _CV.det ? _cvChecksHtml(d) : _cvChecksCompactHtml(d); chk.style.display = ''; }
     var cbar = _cvEl('cv-bar'); if (cbar && _CV === _CVG.panes[_CVG.active]) { var wsig = JSON.stringify(d.why); if (_CV.wsig !== wsig) { _CV.wsig = wsig; cbar.innerHTML = _cvChipsHtml(); } }
     var nmAt = _CV.name, cxf = _CV; _cvFutSeries(nmAt).then(function (rows) { _CV = cxf; if (rows && _CV.name === nmAt && _CV.data === d) { d.fut = rows; if (!d.profile && _CV.futRaw && _CV.futRaw[nmAt] && _CV.prTried !== _CV.futRaw[nmAt]) { _CV.prTried = _CV.futRaw[nmAt]; _cvRender(); return; } _cvDraw(); } });
+    if (_CV === _CVG.panes[_CVG.active]) _cvInspRender();
     _cvDraw();
+}
+
+// Inspector (v29.602): ONE panel on the right for the selected chart, with the dashboard's own cards as tabs (Focus gates, Probable trade, Strong support and resistance,
+// Signal agreement + Entry timing, Positional verdict). Same builders the Dashboard and the Commodities popup use, so the numbers cannot differ; cached data only.
+var _CV_INSP_TABS = [['gates', 'Gates'], ['trade', 'Trade'], ['levels', 'Levels'], ['agree', 'Agreement'], ['pos', 'Positional']];
+function _cvInspOn() { try { return localStorage.getItem('GTB_CV_INSP') !== '0'; } catch (e) { return true; } }
+function _cvInspTab() { var t = _CVG.itab; if (!t) { try { t = localStorage.getItem('GTB_CV_ITAB'); } catch (e) {} } return _CV_INSP_TABS.some(function (x) { return x[0] === t; }) ? t : 'gates'; }
+function _cvVchipHtml(cx) {
+    try {
+        var v = cx && cx.data && cx.data.verdict; if (!v) return '';
+        var call = v.call || 'WAIT', c = call === 'LONG' ? 'var(--gtb-green)' : call === 'SHORT' ? 'var(--gtb-red)' : 'var(--gtb-amber)', conf = v.conf ? ({ HIGH: 3, MEDIUM: 2, LOW: 1 })[v.conf] || 0 : 0, dots = '';
+        for (var i = 0; i < 3; i++) dots += '<span style="display:inline-block;width:5px;height:5px;margin-left:2px;background:' + (i < conf ? c : 'transparent') + ';border:1px solid ' + c + ';"></span>';
+        return '<span title="' + String((v.headline || call) + (v.conf ? ' (confidence ' + v.conf + ')' : '')).replace(/<[^>]+>/g, '').replace(/"/g, '&quot;') + '" style="font-size:11px;font-weight:900;color:' + c + ';border:1px solid ' + c + ';padding:0 6px;white-space:nowrap;">' + call + dots + '</span>';
+    } catch (e) { return ''; }
+}
+function _cvInspBody(nm, tab) {
+    var err = function (t) { return '<div style="font-size:11px;color:var(--gtb-muted);padding:6px 8px;">' + t + '</div>'; };
+    try {
+        if (tab === 'gates') { window._TF_SKIP_LOAD = true; try { return _tfHtml(_tfCompute(nm), true, true); } finally { window._TF_SKIP_LOAD = false; } }
+        if (tab === 'trade') return _gtbOutlookHtml(nm);
+        if (tab === 'levels') return _gtbDashSRHtml(nm);
+        if (tab === 'agree') return _gtbDashSigAgreeHtml([nm]);
+        if (tab === 'pos') return '<div style="padding:8px 10px;"><div class="ps-detail-verdict" data-name="' + String(nm).replace(/"/g, '&quot;') + '">' + _psInstrDetailVerdictHtml(nm) + '</div></div>';
+    } catch (e) { return err('Could not be built: ' + (e && e.message || e)); }
+    return '';
+}
+function _cvInspRender() {
+    var el = document.getElementById('cv-insp'); if (!el) return;
+    if (!_cvInspOn()) { el.style.display = 'none'; el._last = ''; return; }
+    el.style.display = 'block';
+    var cx = _CVG.panes[_CVG.active] || _CVG.panes[0]; if (!cx) return;
+    var own = !_CV_MEMO; if (own) { _CV_MEMO = {}; _CV_MEMO_HITS = 0; }
+    var keep = _CV, html = '';
+    try {
+        _CV = cx;
+        var tab = _cvInspTab();
+        html = '<div style="position:sticky;top:0;z-index:2;background:var(--gtb-bg);border-bottom:1px solid var(--gtb-border);padding:6px 8px 0;">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:13px;font-weight:800;">' + cx.name + '</span>' + _cvVchipHtml(cx) + '<button class="cv-pin sv-pill-btn" data-n="' + String(cx.name).replace(/"/g, '&quot;') + '" title="' + (_cvPins().indexOf(cx.name) >= 0 ? 'Unpin from' : 'Pin to') + ' the watch list at the top of the 9:15 board (P)" style="margin-left:auto;font-size:11px;padding:2px 8px;' + (_cvPins().indexOf(cx.name) >= 0 ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);' : '') + '"><i class="bi bi-pin' + (_cvPins().indexOf(cx.name) >= 0 ? '-fill' : '') + '" style="font-size:10px;"></i> ' + (_cvPins().indexOf(cx.name) >= 0 ? 'Pinned' : 'Pin') + '</button></div>'
+            + '<div style="display:flex;gap:2px;">' + _CV_INSP_TABS.map(function (t) { var on = t[0] === tab; return '<button class="cv-itab sv-pill-btn" data-t="' + t[0] + '" style="font-size:11px;padding:3px 9px;border-bottom:2px solid ' + (on ? 'var(--gtb-accent)' : 'transparent') + ';' + (on ? 'font-weight:800;color:var(--gtb-accent);' : '') + '">' + t[1] + '</button>'; }).join('') + '</div></div>'
+            + '<div style="padding:6px 8px;">' + _cvInspBody(cx.name, tab) + '</div>';
+    } finally { _CV = keep; if (own) _CV_MEMO = null; }
+    if (html !== el._last) { var top = el.scrollTop; el.innerHTML = html; el._last = html; el.scrollTop = top; }
 }
 
 function _cvHover(param) {
@@ -521,9 +601,34 @@ function _cvHover(param) {
 function _cvStopPane(cx) { if (!cx) return; if (cx.ro) { try { cx.ro.disconnect(); } catch (e) {} cx.ro = null; } if (cx.chart) { try { cx.chart.remove(); } catch (e) {} } cx.chart = null; cx.series = null; }
 function _cvStop() { if (_CVG.slotTimer) { clearTimeout(_CVG.slotTimer); _CVG.slotTimer = null; } if (_CVG.timer) { clearInterval(_CVG.timer); _CVG.timer = null; } _CVG.panes.forEach(_cvStopPane); }
 
+// Targeted price refresh for the instruments shown (NSE names only; commodity prices come with their own load). The cards and gates read the dashboard's stored LTP, which a snapshot
+// time change or a skipped dashboard step leaves at an older moment than the chart's candles. The last close at or before the snapshot time (or now) is written to the same store
+// the price scan writes. With the live feed running and no snapshot time, the feed already keeps these current, so nothing is fetched.
+async function _cvRefreshLtp(names) {
+    try {
+        var snap = (typeof _gtbHistTime === 'function') && _gtbHistTime();
+        var live = (typeof _lfLiveAllowed === 'function') && _lfLiveAllowed();
+        if (!snap && live) return;
+        var list = (names || []).filter(function (n, i, a) { return a.indexOf(n) === i && !_cvIsMcx(n) && typeof INSTRUMENT_TOKENS !== 'undefined' && INSTRUMENT_TOKENS[n]; });
+        if (!list.length) return;
+        var to = (typeof _gtbCurrDayTo === 'function') ? _gtbCurrDayTo() : CURRENT_DAY, got = {};
+        await Promise.all(list.map(async function (n) {
+            try {
+                var r = await getHistoricalDataUsingPromise(INSTRUMENT_TOKENS[n], CURRENT_DAY, to, '5minute');
+                var cs = _gtbTrimCandles((r && r.data && r.data.candles) || []);
+                if (cs && cs.length) got[n] = { name: n, ltp: parseFloat(cs[cs.length - 1][4]).toFixed(2) };
+            } catch (e) {}
+        }));
+        var keys = Object.keys(got); if (!keys.length) return;
+        var obj = {}; try { obj = JSON.parse(localStorage.getItem('INSTRUMENT_LTP_PRICE') || '{}') || {}; } catch (e) {}
+        keys.forEach(function (k) { obj[k] = got[k]; });
+        if (typeof _gtbLsSet === 'function') _gtbLsSet('INSTRUMENT_LTP_PRICE', JSON.stringify(obj)); else localStorage.setItem('INSTRUMENT_LTP_PRICE', JSON.stringify(obj));
+    } catch (e) { console.warn('[chart view] price refresh failed', e); }
+}
 async function _cvLoad(cx) {
     cx = cx || _CV; _CV = cx;
     var n = cx.name, msg = _cvEl('cv-msg'); if (msg) { msg.style.display = 'flex'; msg.textContent = 'Loading ' + n + '...'; }
+    await _cvRefreshLtp([n]); _CV = cx;
     try { if (typeof _OSS_DATA_AT !== 'undefined') delete _OSS_DATA_AT[n]; } catch (e) {}      // a real reload, not the 4-minute shortcut
     try { if (_cvIsMcx(n) && typeof _tfMcxLoad === 'function') await _tfMcxLoad(n); else if (typeof _ossScanLoad === 'function') await _ossScanLoad(n); } catch (e) { console.warn('[chart view] load failed', e); }      // commodities: the same loader the Trade Focus gates use (strike map, futures, option chain, OI/OBV)
     _CV = cx;
@@ -568,37 +673,225 @@ function _cvOpenName(raw) {
     if (!hit) { var m = _cvEl('cv-msg'); if (m) { m.style.display = 'flex'; m.textContent = '"' + raw + '" is not in the F&O list'; } return; }
     _cvSetPaneName(_CV, hit);
 }
-function _cvChipsHtml() {      // the shared top bar: how many charts, which layers, refresh all, update stamp
-    var ap = _CVG.panes[_CVG.active], data = ap && ap.data;
-    return '<span style="font-size:11px;color:var(--gtb-muted);margin-right:4px;">View</span>'
-        + [['clean', 'Clean', 'Only the key levels: 9:15 levels, open, VWAP, nearest OI wall each side, previous day high/low, and the trade plan'], ['standard', 'Standard', 'Adds support/resistance zones and all the OI wall levels'], ['full', 'Full', 'Everything: day range, volume profile, OI change and OBV bars'], ['oiobv', 'OI / OBV only', 'Only the option-chain flow: wide OBV and OI change bars per strike, with the R1/R2/S1/S2 walls']].map(function (v) { var on = _CVG.view === v[0]; return '<button class="cv-view sv-pill-btn" data-v="' + v[0] + '" title="' + v[2] + '" style="font-size:11px;padding:2px 9px;margin-right:3px;' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : '') + '">' + v[1] + '</button>'; }).join('')
-        + '<span style="margin:0 6px;border-left:1px solid var(--gtb-border);"></span>'
-        + '<span style="font-size:11px;color:var(--gtb-muted);margin-right:4px;">Charts</span>'
-        + [1, 2, 4, 6].map(function (n) { var on = _CVG.layout === n; return '<button class="cv-layout sv-pill-btn" data-n="' + n + '" title="Show ' + n + ' chart' + (n > 1 ? 's' : '') + ' at once" style="font-size:11px;padding:2px 9px;margin-right:3px;' + (on ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : '') + '">' + n + '</button>'; }).join('')
-        + '<span style="margin:0 6px;border-left:1px solid var(--gtb-border);"></span>'
-        + _CV_LAYERS.map(function (l) { var on = _CV_LAYER_STATE[l[0]], why = data && data.why && data.why[l[0]]; return '<button class="cv-layer sv-pill-btn" data-layer="' + l[0] + '" title="' + (why ? 'Nothing to draw (selected chart): ' + why.replace(/"/g, '') : 'Shown') + '" style="' + (why ? 'font-style:italic;text-decoration:line-through;' : '') + 'font-size:11px;padding:2px 8px;margin-right:3px;opacity:' + (on ? 1 : 0.45) + ';' + (on ? 'border-color:var(--gtb-accent);' : '') + '">' + l[1] + '</button>'; }).join('')
-        + '<button id="cv-loadall" class="sv-pill-btn" style="font-size:11px;padding:2px 9px;margin-left:6px;" title="Reload candles and option chain for every chart shown">Refresh all</button>'
+// ── 9:15 board (v29.601): every scanned name grouped by where its 9:15 candle closed (AST / ASO / B/W / BSO / BST), like the dashboard's 9:15 Breakout strip.
+// Click a name to load it into the active chart. Names shown in a chart have an outline. Reads the day's 9:15 scan (VALID_BREAKOUT_NINE_FIFTEEN); nothing is fetched.
+function _cv915On() { try { return localStorage.getItem('GTB_CV_915') !== '0'; } catch (e) { return true; } }
+function _cv915Open() { var d = { AST: 1, ASO: 1, BSO: 1, BST: 1, 'B/W': 0 }; try { var o = JSON.parse(localStorage.getItem('GTB_CV_915_OPEN') || 'null'); if (o) Object.keys(o).forEach(function (k) { d[k] = o[k]; }); } catch (e) {} return d; }
+
+// ── pinned names (v29.603): the names you trade, kept at the top of the rail with their verdict. Pin / unpin from the inspector header or the P key. ──
+function _cvPins() { try { var a = JSON.parse(localStorage.getItem('GTB_CV_PINS') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function _cvPinsSave(a) { try { localStorage.setItem('GTB_CV_PINS', JSON.stringify(a)); } catch (e) {} }
+function _cvPinToggle(nm) { var a = _cvPins(), i = a.indexOf(nm); if (i >= 0) a.splice(i, 1); else a.push(nm); _cvPinsSave(a); return i < 0; }
+
+// ── verdict marks (v29.603): the call and confidence of each name's Focus gates (the wall verdict), shown on the rail chips. Free for names shown in a chart
+// (written when the pane is built); other names get one when "Scan movers" / "Scan all" / a Refresh of the pinned names loads their option chain. Kept per day and snapshot time. ──
+function _cvDots() {
+    var sig = _cvSnapSig();
+    if (!_CVG.dots || _CVG.dotsSig !== sig) {
+        _CVG.dotsSig = sig; _CVG.dots = {};
+        try { var o = JSON.parse(localStorage.getItem('GTB_CV_DOTS') || 'null'); if (o && o.sig === sig && o.d) _CVG.dots = o.d; } catch (e) {}
+    }
+    return _CVG.dots;
+}
+function _cvDotsSave() { try { if (typeof _gtbLsSet === 'function') _gtbLsSet('GTB_CV_DOTS', JSON.stringify({ sig: _CVG.dotsSig, d: _CVG.dots })); else localStorage.setItem('GTB_CV_DOTS', JSON.stringify({ sig: _CVG.dotsSig, d: _CVG.dots })); } catch (e) {} }
+function _cvDotSet(nm, v) {
+    if (!v || !nm) return;
+    var d = _cvDots(); d[nm] = { c: v.call || 'WAIT', f: v.conf || '', h: String(v.headline || '').replace(/<[^>]+>/g, '').slice(0, 140), t: Date.now() };
+    if (_CVG.dotsTimer) clearTimeout(_CVG.dotsTimer); _CVG.dotsTimer = setTimeout(_cvDotsSave, 2000);
+}
+function _cvDotGlyph(nm) {
+    var d = _cvDots()[nm]; if (!d) return null;
+    var col = d.c === 'LONG' ? 'var(--gtb-green)' : d.c === 'SHORT' ? 'var(--gtb-red)' : d.c === 'WAIT' ? 'var(--gtb-amber)' : 'var(--gtb-muted)';
+    var g = d.c === 'LONG' ? '▲' : d.c === 'SHORT' ? '▼' : d.c === 'WAIT' ? '◆' : '–', cf = d.f === 'HIGH' ? 'H' : d.f === 'MEDIUM' ? 'M' : d.f === 'LOW' ? 'L' : '';
+    var ago = Math.max(0, Math.round((Date.now() - d.t) / 60000));
+    return { d: d, col: col, txt: g + cf, tip: d.c + (d.f ? ' · confidence ' + d.f : '') + (d.h ? ' · ' + d.h : '') + ' (read ' + (ago < 1 ? 'just now' : ago + ' min ago') + ')' };
+}
+function _cvDotMatch(nm, f) {
+    var d = _cvDots()[nm]; if (!d) return false;
+    if (f === 'high') return d.f === 'HIGH' && (d.c === 'LONG' || d.c === 'SHORT');
+    if (f === 'long') return d.c === 'LONG';
+    if (f === 'short') return d.c === 'SHORT';
+    return true;
+}
+function _cvOptCapable(nm) {
+    try {
+        if (nm === 'INDIA VIX' || nm === 'GIFT NIFTY') return false;
+        if (!_CVG.optSet) { _CVG.optSet = {}; (typeof OPTION_STRIKE_LIST !== 'undefined' ? OPTION_STRIKE_LIST : []).forEach(function (o) { _CVG.optSet[o.name] = 1; }); }
+        var m = { 'NIFTY 50': 'NIFTY', 'NIFTY BANK': 'BANKNIFTY', 'NIFTY FIN SERVICE': 'FINNIFTY', 'NIFTY MID SELECT': 'MIDCPNIFTY' };
+        return !!_CVG.optSet[m[nm] || nm];
+    } catch (e) { return false; }
+}
+function _cvAdoptChain(n) {      // showPrictionProbabilty leaves the chain in stockEntry.DATA; the gates read oiData (what _cvLoad stores too)
+    try {
+        var sm1 = INSTRUMENT_SCORE_MAP[n], od = sm1 && sm1.stockEntry && sm1.stockEntry.DATA;
+        if (od && od.tableData && od.tableData.length) { sm1.oiData = od; try { sm1.oi_obv = computeOIScoreFromData(od, n); } catch (e) {} try { _gtbComputeOIExtras(n, od); } catch (e) {} return true; }
+    } catch (e) {}
+    return false;
+}
+function _cvDotCompute(nm) {
+    window._TF_SKIP_LOAD = true;
+    try { var r = _tfCompute(nm); if (r && r.v) _cvDotSet(nm, r.v); } finally { window._TF_SKIP_LOAD = false; }
+}
+function _cvBoardNames(scope) {
+    var b = null; try { b = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || 'null'); } catch (e) {}
+    var names = [];
+    if (scope === 'pins') names = _cvPins().slice();
+    else if (b) names = Object.keys(b).filter(function (n) { var z = (b[n] || {})['CLOSE_9_15'] || 'B/W'; return scope === 'all' || z !== 'B/W'; });
+    return names.filter(function (n, i, a) { return a.indexOf(n) === i && !_cvIsMcx(n) && _cvOptCapable(n); });
+}
+// Load the option chain + futures of each name (4 at a time, through the shared rate-limited queue) and read its gates. Slow for many names (minutes): it only runs when asked.
+async function _cvDotsRun(scope, namesOverride) {
+    if (_CVG.dotsRun) return;
+    var names = namesOverride || _cvBoardNames(scope); if (!names.length) { _cvCtlRender(); return; }
+    var run = _CVG.dotsRun = { n: names.length, i: 0, stop: false, scope: scope }, q = names.slice(), t0 = Date.now();
+    _cvCtlRender();
+    var worker = async function () {
+        while (q.length && !run.stop && document.getElementById('cv-wrap')) {
+            var nm = q.shift();
+            try { await _ossScanLoad(nm); _cvAdoptChain(nm); _cvDotCompute(nm); } catch (e) { console.warn('[chart view] board scan failed for ' + nm, e); }
+            run.i++;
+            if (run.i % 4 === 0) { _cvCtlRender(); _cv915ListRender(); }
+        }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    _CVG.dotsRun = null; _cvDotsSave();
+    _cvCtlRender(); _cv915ListRender();
+    try { _cvProgEnd((run.stop ? 'Board scan stopped' : 'Board scan finished') + ': ' + run.i + ' of ' + run.n + ' names read in ' + Math.round((Date.now() - t0) / 1000) + ' s', run.stop ? 'warn' : 'ok'); } catch (e) {}
+}
+
+function _cvChipHtml(nm, c, shown) {
+    var on = shown[nm.toUpperCase()], g = _cvDotGlyph(nm), q = nm.replace(/"/g, '&quot;');
+    return '<span class="cv-chip915" data-cv-chip="' + q + '" title="Load ' + q + ' into the selected chart' + (c ? ' (9:15 close: ' + c.key + ')' : '') + (g ? ' · ' + g.tip.replace(/"/g, '&quot;') : '') + '" style="display:inline-block;padding:0 5px;margin:1px;font-size:10px;font-weight:800;background:' + (c ? c.bg : 'var(--gtb-surface2)') + ';color:#fff;cursor:pointer;'
+        + (on ? 'outline:2px solid var(--gtb-accent);outline-offset:' + (on === 2 ? '1px' : '-1px') + ';' : '') + '">'
+        + (g ? '<span style="background:#fff;color:' + g.col + ';padding:0 2px;margin-right:3px;font-size:9px;font-weight:900;">' + g.txt + '</span>' : '') + nm + '</span>';
+}
+function _cv915ListHtml() {
+    var b = null; try { b = JSON.parse(localStorage.getItem('VALID_BREAKOUT_NINE_FIFTEEN') || 'null'); } catch (e) {}
+    var q = String(_CVG.q915 || '').trim().toUpperCase(), f = _CVG.dfilter || '', pins = _cvPins().filter(function (n) { return (!q || n.toUpperCase().indexOf(q) >= 0) && (!f || _cvDotMatch(n, f)); });
+    var shown = {}; _CVG.panes.forEach(function (c, i) { shown[String(c.name).toUpperCase()] = (i === _CVG.active) ? 2 : 1; });
+    var h = '';
+    // pinned names, as rows with their verdict
+    var allPins = _cvPins();
+    h += '<div style="border-bottom:1px solid var(--gtb-border);"><div style="display:flex;align-items:center;padding:5px 8px;"><span style="font-size:11px;font-weight:800;color:var(--gtb-accent);"><i class="bi bi-pin-angle-fill" style="font-size:10px;"></i> Pinned</span><span style="font-size:10px;color:var(--gtb-muted);margin-left:auto;">' + allPins.length + '</span></div>';
+    if (!allPins.length) h += '<div style="padding:0 8px 7px;font-size:10px;color:var(--gtb-muted);line-height:1.4;">Pin the names you trade with the pin button in the inspector (or the P key). They stay here with their verdict.</div>';
+    else if (!pins.length) h += '<div style="padding:0 8px 7px;font-size:10px;color:var(--gtb-muted);">No pinned name matches.</div>';
+    else h += pins.map(function (n) {
+        var g = _cvDotGlyph(n), on = shown[n.toUpperCase()], call = g ? g.d.c : '', nq = n.replace(/"/g, '&quot;');
+        return '<div class="cv-chip915 cv-pinrow" data-cv-chip="' + nq + '" title="Load ' + nq + ' into the selected chart' + (g ? ' · ' + g.tip.replace(/"/g, '&quot;') : ' · no verdict read yet: press Refresh all or Scan pinned') + '" style="display:flex;align-items:center;gap:5px;padding:2px 8px;cursor:pointer;font-size:11px;' + (on ? 'background:var(--gtb-surface2);' + (on === 2 ? 'box-shadow:inset 2px 0 0 var(--gtb-accent);' : '') : '') + '">'
+            + (g ? '<span style="background:' + g.col + ';color:#fff;padding:0 3px;font-size:9px;font-weight:900;min-width:20px;text-align:center;">' + g.txt + '</span>' : '<span style="color:var(--gtb-muted);min-width:20px;text-align:center;font-size:9px;">?</span>')
+            + '<span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + n + '</span><span style="margin-left:auto;font-size:9px;color:' + (g ? g.col : 'var(--gtb-muted)') + ';">' + (call || '') + '</span>'
+            + '<span class="cv-unpin" data-n="' + nq + '" title="Unpin ' + nq + '" style="color:var(--gtb-muted);padding:0 2px;">&times;</span></div>';
+    }).join('');
+    h += '</div>';
+    if (!b || !Object.keys(b).length) return h + '<div style="padding:8px 10px;font-size:11px;color:var(--gtb-muted);">No 9:15 scan data yet: run the 9:15 scan (button in the dashboard top bar).</div>';
+    var groups = { AST: [], ASO: [], BSO: [], BST: [], 'B/W': [] };
+    Object.keys(b).forEach(function (n) { var cl = (b[n] || {})['CLOSE_9_15'] || 'B/W'; if (groups[cl] && (!q || n.toUpperCase().indexOf(q) >= 0) && (!f || _cvDotMatch(n, f))) groups[cl].push(n); });
+    var cols = [
+        { key: 'AST', label: 'AST', hint: 'closed beyond the second strike above', color: 'var(--gtb-green)', bg: 'var(--gtb-green)' },
+        { key: 'ASO', label: 'ASO', hint: 'closed above the first strike', color: 'var(--gtb-green)', bg: '#2ea84380' },
+        { key: 'BSO', label: 'BSO', hint: 'closed below the first strike', color: 'var(--gtb-red)', bg: '#e8404080' },
+        { key: 'BST', label: 'BST', hint: 'closed beyond the second strike below', color: 'var(--gtb-red)', bg: 'var(--gtb-red)' },
+        { key: 'B/W', label: 'B/W', hint: 'closed between the first strikes', color: 'var(--gtb-muted)', bg: 'var(--gtb-muted)' }
+    ];
+    var open = _cv915Open();
+    return h + cols.map(function (c) {
+        var isOpen = (q || f) ? groups[c.key].length > 0 : !!open[c.key], n = groups[c.key].length;
+        var pills = isOpen ? groups[c.key].map(function (nm) { return _cvChipHtml(nm, c, shown); }).join('') : '';
+        return '<div style="border-bottom:1px solid var(--gtb-border);"><div class="cv-915-grp" data-g="' + c.key + '" title="' + c.key + ': ' + c.hint + '. Click to ' + (isOpen ? 'collapse' : 'expand') + '." style="display:flex;align-items:center;gap:4px;padding:5px 8px;cursor:pointer;user-select:none;">'
+            + '<i class="bi bi-chevron-' + (isOpen ? 'down' : 'right') + '" style="font-size:9px;color:var(--gtb-muted);"></i><span style="font-size:11px;font-weight:800;color:' + c.color + ';">' + c.label + '</span><span style="font-size:10px;color:var(--gtb-muted);margin-left:auto;">' + n + '</span></div>'
+            + (isOpen ? '<div style="display:flex;flex-wrap:wrap;padding:0 6px 6px;">' + (pills || '<span style="font-size:11px;color:var(--gtb-muted);padding:0 4px;">none</span>') + '</div>' : '') + '</div>';
+    }).join('');
+}
+// the scan and filter controls (no input in here, so it can be redrawn while a scan runs)
+function _cvCtlHtml() {
+    var f = _CVG.dfilter || '', run = _CVG.dotsRun, bs = 'font-size:10px;padding:1px 6px;margin-right:2px;', on = function (x) { return x ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : ''; };
+    var n = Object.keys(_cvDots()).length;
+    var h = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:5px;align-items:center;"><span style="font-size:10px;color:var(--gtb-muted);margin-right:2px;" title="Show only names whose Focus gates read: HIGH = a LONG or SHORT with HIGH confidence">Show</span>'
+        + [['', 'All'], ['high', 'HIGH'], ['long', 'Long'], ['short', 'Short']].map(function (x) { return '<button class="cv-dfilter sv-pill-btn" data-f="' + x[0] + '" style="' + bs + on(f === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    if (run) h += '<div style="display:flex;align-items:center;gap:5px;margin-top:5px;"><button class="cv-dots-stop sv-pill-btn" style="' + bs + '">Stop</button><span style="font-size:10px;color:var(--gtb-muted);">Reading ' + run.i + ' / ' + run.n + '...</span></div>';
+    else h += '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:5px;align-items:center;"><button class="cv-dots-scan sv-pill-btn" data-s="dir" style="' + bs + '" title="Load the option chain of every name that closed outside B/W at 9:15 (about 40 names, a minute or two) and read its Focus gates, so the chips show LONG / SHORT and confidence">Scan movers</button>'
+        + '<button class="cv-dots-scan sv-pill-btn" data-s="all" style="' + bs + '" title="Every name on the board, B/W included (about 230 names, several minutes, and it slows the dashboard while it runs)">Scan all</button>'
+        + '<button class="cv-dots-scan sv-pill-btn" data-s="pins" style="' + bs + '" title="Only the pinned names">Pinned</button>'
+        + '<span style="font-size:10px;color:var(--gtb-muted);" title="Names with a verdict mark for this day and snapshot time">' + n + ' read</span></div>';
+    return h;
+}
+function _cvCtlRender() { var el = document.getElementById('cv-915-ctl'); if (el) el.innerHTML = _cvCtlHtml(); }
+function _cv915ListRender() { var l = document.getElementById('cv-915-list'); if (l) { var top = l.scrollTop; l.innerHTML = _cv915ListHtml(); l.scrollTop = top; } }
+function _cv915Render() {
+    var el = document.getElementById('cv-rail'); if (!el) return;
+    if (!_cv915On()) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+    if (!document.getElementById('cv-915-q')) {
+        el.innerHTML = '<div style="flex:0 0 auto;padding:8px 8px 6px;border-bottom:1px solid var(--gtb-border);"><div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--gtb-muted);margin-bottom:5px;">9:15 board</div>'
+            + '<input id="cv-915-q" placeholder="Find a name" autocomplete="off" value="' + String(_CVG.q915 || '').replace(/"/g, '&quot;') + '" style="width:100%;box-sizing:border-box;font-size:11px;padding:3px 6px;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border);"><div id="cv-915-ctl"></div></div>'
+            + '<div id="cv-915-list" style="flex:1 1 0;min-height:0;overflow:auto;"></div>';
+    }
+    _cvCtlRender(); _cv915ListRender();
+}
+function _cvChipsHtml() {      // the shared top bar: layout, view preset, layers menu, the two side panels, refresh all, update stamp
+    var ap = _CVG.panes[_CVG.active], data = ap && ap.data, b = 'font-size:11px;padding:2px 9px;margin-right:3px;', on = function (x) { return x ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : ''; };
+    var lab = function (t) { return '<span style="font-size:11px;color:var(--gtb-muted);margin-right:4px;">' + t + '</span>'; }, sep = '<span style="margin:0 8px;border-left:1px solid var(--gtb-border);align-self:stretch;"></span>';
+    var layersOn = _CV_LAYERS.filter(function (l) { return _CV_LAYER_STATE[l[0]]; }).length;
+    return lab('Charts')
+        + [1, 2, 4, 6].map(function (n) { return '<button class="cv-layout sv-pill-btn" data-n="' + n + '" title="Show ' + n + ' chart' + (n > 1 ? 's' : '') + ' at once" style="' + b + on(_CVG.layout === n) + '">' + n + '</button>'; }).join('')
+        + sep + lab('View')
+        + [['clean', 'Clean', 'Only the key levels: 9:15 levels, open, VWAP, nearest OI wall each side, previous day high/low, and the trade plan'], ['standard', 'Standard', 'Adds support/resistance zones and all the OI wall levels'], ['full', 'Full', 'Everything: day range, volume profile, OI change and OBV bars'], ['oiobv', 'OI / OBV', 'Only the option-chain flow: wide OBV and OI change bars per strike, with the R1/R2/S1/S2 walls']].map(function (v) { return '<button class="cv-view sv-pill-btn" data-v="' + v[0] + '" title="' + v[2] + '" style="' + b + on(_CVG.view === v[0]) + '">' + v[1] + '</button>'; }).join('')
+        + '<span class="cv-layers-wrap" style="position:relative;display:inline-block;"><button class="cv-layers-btn sv-pill-btn" title="Choose which layers are drawn on the charts" style="' + b + on(_CVG.layersOpen) + '">Layers ' + layersOn + '/' + _CV_LAYERS.length + ' <i class="bi bi-chevron-down" style="font-size:9px;"></i></button>'
+        + '<div class="cv-layers-pop" style="display:' + (_CVG.layersOpen ? 'block' : 'none') + ';position:absolute;left:0;top:100%;z-index:60;min-width:190px;padding:6px;background:var(--gtb-surface2);border:1px solid var(--gtb-border);box-shadow:0 6px 18px rgba(0,0,0,0.35);">'
+        + _CV_LAYERS.map(function (l) { var lon = _CV_LAYER_STATE[l[0]], why = data && data.why && data.why[l[0]]; return '<div class="cv-layer" data-layer="' + l[0] + '" title="' + (why ? 'Nothing to draw (selected chart): ' + why.replace(/"/g, '') : 'Click to show or hide') + '" style="display:flex;align-items:center;gap:7px;padding:3px 6px;cursor:pointer;font-size:11px;' + (why ? 'font-style:italic;' : '') + '"><span style="display:inline-block;width:11px;height:11px;border:1px solid var(--gtb-accent);background:' + (lon ? 'var(--gtb-accent)' : 'transparent') + ';"></span><span style="' + (why ? 'text-decoration:line-through;' : '') + 'opacity:' + (lon ? 1 : 0.55) + ';">' + l[1] + '</span></div>'; }).join('') + '</div></span>'
+        + sep
+        + '<button class="cv-915-toggle sv-pill-btn" title="Show or hide the 9:15 board on the left: every scanned name grouped by where its 9:15 candle closed; click one to load it into the selected chart" style="' + b + on(_cv915On()) + '"><i class="bi bi-layout-sidebar" style="font-size:10px;"></i> 9:15 board</button>'
+        + '<button class="cv-insp-toggle sv-pill-btn" title="Show or hide the inspector on the right: gates, trade plan, levels, signal agreement and positional verdict of the selected chart" style="' + b + on(_cvInspOn()) + '"><i class="bi bi-layout-sidebar-reverse" style="font-size:10px;"></i> Inspector</button>'
+        + '<button id="cv-loadall" class="sv-pill-btn" style="' + b + 'margin-left:6px;" title="Refresh the dashboard data, then reload candles and option chain for every chart shown"><i class="bi bi-arrow-repeat" style="font-size:10px;"></i> Refresh all</button>'
+        + '<span title="Keyboard: 1 2 4 6 = number of charts · [ and ] = previous / next chart · B = 9:15 board · I = inspector · P = pin or unpin the selected name · / = search the board" style="margin-left:8px;font-size:11px;color:var(--gtb-muted);cursor:help;border:1px solid var(--gtb-border);padding:0 5px;"><i class="bi bi-keyboard" style="font-size:11px;"></i></span>'
         + '<span id="cv-stamp" title="Every chart reloads on each 5-minute candle close while its market is open" style="margin-left:auto;font-size:11px;color:var(--gtb-muted);font-family:var(--gtb-mono);">' + (_CVG.stampTxt || '') + '</span>';
 }
 // The small header of one pane: which instrument, search, strikes, refresh, details.
+// Positional Screener verdict for the pane instrument (daily candles, from _PS_CACHE): verdict, conviction and timing in the pane header, details on hover.
+// Not scanned yet: a link scans just this instrument (the same scan the Instrument Detail View button runs).
+function _cvPosHtml(nm) {
+    try {
+        var key = String(nm).toUpperCase(), r = (typeof _PS_CACHE !== 'undefined') ? (_PS_CACHE[key] || _PS_CACHE[nm]) : null;
+        var st = 'font-size:11px;font-weight:700;white-space:nowrap;';
+        if (!r) {
+            var can = (typeof _psPriceTokenFor === 'function') && !!_psPriceTokenFor(key);
+            return can ? '<span class="cv-pos-scan" title="The Positional Screener has not scanned ' + nm + ' yet: click to scan just this instrument (daily candles)" style="' + st + 'cursor:pointer;color:var(--gtb-muted);text-decoration:underline dotted;">Positional: not scanned (scan)</span>'
+                : '<span title="No daily price token for this instrument" style="' + st + 'color:var(--gtb-muted);">Positional: n/a</span>';
+        }
+        var conv = r.convictionPct, since = r.since && r.since.label ? r.since.label : '';
+        var tip = [(r.verdict || ''), 'Primary: ' + (r.primary && r.primary.ok ? r.primary.label : 'insufficient history'), conv != null ? 'Conviction ' + conv + '% (rule-based, not a probability)' : '', since ? 'Timing: ' + since : ''];
+        if (r.entry != null) tip.push('Entry ' + r.entry.toFixed(1) + ' · Target ' + r.target.toFixed(1) + ' · Stop ' + r.stop.toFixed(1) + (r.riskReward != null ? ' · R:R 1:' + r.riskReward.toFixed(1) : ''));
+        tip.push('Daily-candle swing view from the Positional Screener scan. Click to re-scan.');
+        return '<span class="cv-pos-scan" title="' + tip.filter(Boolean).join(' | ').replace(/"/g, '&quot;') + '" style="' + st + 'cursor:pointer;">Positional: <span style="color:' + (r.verdictColor || 'var(--gtb-text)') + ';">' + (r.verdict || '-') + '</span>'
+            + (conv != null ? ' <span style="color:var(--gtb-muted);">' + conv + '%</span>' : '') + (since ? ' <span style="color:var(--gtb-muted);">· ' + since + '</span>' : '') + '</span>';
+    } catch (e) { return ''; }
+}
+function _cvPosUpdate(cx) { try { var w = cx && cx.root && cx.root.querySelector('.cv-pos-wrap'); if (w) w.innerHTML = _cvPosHtml(cx.name); var vc = cx && cx.root && cx.root.querySelector('.cv-vchip'); if (vc) vc.innerHTML = _cvVchipHtml(cx); } catch (e) {} }
 function _cvPaneHead(cx) {
     var ph = cx.root && cx.root.querySelector('.cv-ph'); if (!ph) return;
     var nl = _CV_NAMES.indexOf(cx.name) < 0 ? _CV_NAMES.concat([cx.name]) : _CV_NAMES, st = 'font-size:11px;padding:2px 8px;';
-    ph.innerHTML = '<select class="cv-psel" title="Instrument for this chart" style="font-size:11px;padding:2px 4px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);">' + nl.map(function (n) { return '<option value="' + n + '"' + (n === cx.name ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>'
-        + '<input class="cv-search" list="cv-fo-list" placeholder="Any F&O stock" autocomplete="off" title="Type a symbol from the F&O list and press Enter" style="width:110px;font-size:11px;padding:2px 6px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);">'
-        + '<button class="cv-pstrikes sv-pill-btn" style="' + st + '" title="Open the Option Strike Search for this instrument: legs, strikes and premiums">Strikes</button>'
-        + '<button class="cv-pzoom sv-pill-btn" data-f="0.7" style="' + st + '" title="Zoom in on the time axis (keeps the latest candle in place)">+</button>'
-        + '<button class="cv-pzoom sv-pill-btn" data-f="1.4" style="' + st + '" title="Zoom out on the time axis">&minus;</button>'
-        + '<button class="cv-preset sv-pill-btn" style="' + st + '" title="Reset the chart: fit all candles and let the price axis scale itself again">Reset</button>'
-        + '<button class="cv-pload sv-pill-btn" style="' + st + '" title="Reload this chart\'s candles and option chain">Refresh</button>'
-        + (true ? '<button class="cv-pdet sv-pill-btn" style="' + st + (cx.det ? 'border-color:var(--gtb-accent);' : '') + '" title="Full check chips (timing, agreement, risk...) instead of the small squares">Details</button>' : '');
+    ph.innerHTML = '<select class="cv-psel" title="Instrument for this chart" style="font-size:12px;font-weight:800;padding:2px 4px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);max-width:130px;">' + nl.map(function (n) { return '<option value="' + n + '"' + (n === cx.name ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>'
+        + '<span class="cv-vchip"></span>'
+        + '<span class="cv-pos-wrap" style="display:block;margin-left:auto;padding-left:6px;min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>'
+        + '<span class="cv-more-wrap" style="position:relative;flex:0 0 auto;"><button class="cv-more sv-pill-btn" title="More: search any F&O stock, strikes, zoom, reset, refresh, details" style="' + st + '">&#8943;</button>'
+        + '<div class="cv-menu" style="display:' + (cx.menu ? 'block' : 'none') + ';position:absolute;right:0;top:100%;z-index:60;min-width:190px;padding:6px;background:var(--gtb-surface2);border:1px solid var(--gtb-border);box-shadow:0 6px 18px rgba(0,0,0,0.35);">'
+        +   '<input class="cv-search" list="cv-fo-list" placeholder="Any F&O stock" autocomplete="off" title="Type a symbol from the F&O list and press Enter" style="width:100%;box-sizing:border-box;font-size:11px;padding:3px 6px;margin-bottom:6px;background:var(--gtb-surface);color:var(--gtb-text);border:1px solid var(--gtb-border);">'
+        +   '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
+        +     '<button class="cv-pstrikes sv-pill-btn" style="' + st + '" title="Open the Option Strike Search for this instrument: legs, strikes and premiums">Strikes</button>'
+        +     '<button class="cv-pload sv-pill-btn" style="' + st + '" title="Refresh the dashboard data, then reload this chart\'s candles and option chain">Refresh</button>'
+        +     '<button class="cv-pzoom sv-pill-btn" data-f="0.7" style="' + st + '" title="Zoom in on the time axis (keeps the latest candle in place)">Zoom +</button>'
+        +     '<button class="cv-pzoom sv-pill-btn" data-f="1.4" style="' + st + '" title="Zoom out on the time axis">Zoom &minus;</button>'
+        +     '<button class="cv-preset sv-pill-btn" style="' + st + '" title="Reset the chart: fit all candles and let the price axis scale itself again">Reset</button>'
+        +     '<button class="cv-pdet sv-pill-btn" style="' + st + (cx.det ? 'border-color:var(--gtb-accent);' : '') + '" title="Full check chips (timing, agreement, risk...) instead of the small squares">' + (cx.det ? 'Details on' : 'Details') + '</button>'
+        +   '</div></div></span>';
+    _cvPosUpdate(cx);
 }
 function _cvSaveNames() { try { localStorage.setItem('GTB_CV_PANES', JSON.stringify(_CVG.panes.map(function (p) { return p.name; }))); localStorage.setItem('GTB_CV_LAYOUT', String(_CVG.layout)); } catch (e) {} }
 function _cvSetPaneName(cx, nm) {
-    _CV = cx; cx.name = nm; cx.fit = true; cx.lastN = null; cx.wsig = null; cx.prTried = null; cx.data = null; _cvStopPane(cx);
-    _cvPaneHead(cx); _cvRender(); if (!(cx.data && cx.data.candles.length)) _cvLoad(cx); _cvSaveNames();
+    _CV = cx; cx.name = nm; cx.menu = false; cx.fit = true; cx.lastN = null; cx.wsig = null; cx.prTried = null; cx.data = null; _cvStopPane(cx);
+    _cvPaneHead(cx); _cvRender(); if (!(cx.data && cx.data.candles.length)) _cvLoad(cx); _cvSaveNames(); _cv915Render();
 }
-function _cvMarkActive() { if (_CVG.active >= _CVG.panes.length) _CVG.active = 0; _CVG.panes.forEach(function (p, i) { if (p.root) p.root.style.borderColor = (_CVG.panes.length > 1 && i === _CVG.active) ? 'var(--gtb-accent)' : 'var(--gtb-border)'; }); }
+function _cvMarkActive() { if (_CVG.active >= _CVG.panes.length) _CVG.active = 0; _CVG.panes.forEach(function (p, i) { if (p.root) { var a = _CVG.panes.length > 1 && i === _CVG.active; p.root.style.outline = a ? '2px solid var(--gtb-accent)' : 'none'; p.root.style.outlineOffset = '-2px'; p.root.style.zIndex = a ? '1' : '0'; } }); }
 function _cvPaneFrom(el) {
     var p = jQ(el).closest('.cv-pane')[0], i = p ? parseInt(p.getAttribute('data-i'), 10) : _CVG.active, cx = _CVG.panes[i] || _CVG.panes[0];
     if (cx) { _CV = cx; _CVG.active = _CVG.panes.indexOf(cx); } return cx;
@@ -613,34 +906,110 @@ function _cvBuildPanes() {
     if (_CVG.pending) { names[0] = _CVG.pending; _CVG.pending = null; }
     for (i = 0; i < n; i++) if (!names[i]) names[i] = _CV_NAMES.filter(function (x) { return names.indexOf(x) < 0; })[0] || _CV_NAMES[i % _CV_NAMES.length];
     var cols = n === 1 ? 1 : (n === 6 ? 3 : 2), rows = Math.ceil(n / cols), h = '';
-    grid.style.cssText = 'flex:1 1 0;min-height:0;display:grid;gap:3px;grid-template-columns:repeat(' + cols + ',minmax(0,1fr));grid-template-rows:repeat(' + rows + ',minmax(0,1fr));';
+    grid.style.cssText = 'flex:1 1 0;min-width:0;min-height:0;display:grid;gap:3px;grid-template-columns:repeat(' + cols + ',minmax(0,1fr));grid-template-rows:repeat(' + rows + ',minmax(0,1fr));';
     for (i = 0; i < n; i++) h += '<div class="cv-pane" data-i="' + i + '" style="position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--gtb-border);">'
         + '<div class="cv-ph" style="display:flex;align-items:center;gap:4px;padding:3px 6px;border-bottom:1px solid var(--gtb-border);"></div>'
         + '<div style="position:relative;flex:1 1 0;min-height:0;"><div id="cv-chart" style="position:absolute;inset:0;"></div>'
         + '<div id="cv-checks" style="position:absolute;left:12px;top:50px;z-index:3;pointer-events:none;"></div>'
         + '<div id="cv-badge" style="position:absolute;left:12px;top:8px;z-index:3;background:var(--gtb-surface);border:1px solid var(--gtb-border);padding:3px 9px;"></div>'
         + '<div id="cv-msg" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;z-index:4;color:var(--gtb-muted);font-size:13px;background:var(--gtb-bg);"></div>'
-        + '<div id="cv-tip" style="display:none;position:absolute;z-index:5;pointer-events:none;background:var(--gtb-surface2);border:1px solid var(--gtb-border);color:var(--gtb-text);font-size:11px;padding:3px 8px;max-width:340px;"></div></div></div>';
+        + '<div id="cv-tip" style="display:none;position:absolute;z-index:5;pointer-events:none;background:var(--gtb-surface2);border:1px solid var(--gtb-border);color:var(--gtb-text);font-size:11px;padding:3px 8px;max-width:340px;"></div></div>'
+        + '</div>';
     grid.innerHTML = h;
     _CVG.panes = names.map(function (nm, k) { var c = _cvNewCtx(nm); c.root = grid.children[k]; return c; });
     if (_CVG.active >= n) _CVG.active = 0;
     _CVG.panes.forEach(function (c) { _CV = c; _cvPaneHead(c); _cvRender(); });
-    _CV = _CVG.panes[_CVG.active]; _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cvSaveNames();
+    _CV = _CVG.panes[_CVG.active]; _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cvSaveNames(); _cv915Render(); _cvInspRender();
     _cvLoadAll(false, true);
 }
 // Reload every chart shown (each instrument once; other panes on the same instrument redraw with it).
-async function _cvLoadAll(onlyOpen, missingOnly) {
-    var seen = {}, list = _CVG.panes.slice();
-    for (var i = 0; i < list.length; i++) {
-        var cx = list[i]; if (_CVG.panes.indexOf(cx) < 0 || seen[cx.name]) continue;
-        if (onlyOpen && !_cvInSession(cx.name)) continue;
-        if (missingOnly && cx.data && cx.data.candles.length) continue;
-        seen[cx.name] = 1;
-        try { await _cvLoad(cx); } catch (e) {}
+async function _cvLoadAll(onlyOpen, missingOnly, onStep) {
+    var seen = {}, todo = [];
+    _CVG.panes.slice().forEach(function (cx) {
+        if (seen[cx.name]) return;
+        if (onlyOpen && !_cvInSession(cx.name)) return;
+        if (missingOnly && cx.data && cx.data.candles.length) return;
+        seen[cx.name] = 1; todo.push(cx);
+    });
+    for (var k = 0; k < todo.length; k++) {
+        if (_CVG.panes.indexOf(todo[k]) < 0) continue;
+        if (onStep) { try { onStep(k, todo.length, todo[k].name); } catch (e) {} }
+        try { await _cvLoad(todo[k]); } catch (e) {}
     }
+    if (onStep) { try { onStep(todo.length, todo.length, ''); } catch (e) {} }
+    return todo.length;
 }
 
-jQ(document).on('click', '.gtb-dv-chartview', function (e) { e.preventDefault(); _cvShowPopup(jQ(this).attr('data-name')); });
+// Refresh everything the charts, cards and gates read: first the dashboard's own refresh (LTP scan + score, 9:15 plan, market signal, futures remarks, Final Verdict,
+// Live Context: autoRefreshEachTabs, or just waits for one that is already running), then the option chain and candles of the chart(s), then every view is rebuilt.
+// cx = one pane (its Refresh button), null = every pane (Refresh all, the 5-minute timer); onlyOpen = skip instruments whose market is closed (timer).
+var _CV_PROG_HIDE = null;
+function _cvProg(pct, txt, tone) {
+    var w = document.getElementById('cv-prog'); if (!w) return;
+    if (_CV_PROG_HIDE) { clearTimeout(_CV_PROG_HIDE); _CV_PROG_HIDE = null; }
+    w.style.display = 'block';
+    var b = document.getElementById('cv-prog-bar'), t = document.getElementById('cv-prog-txt'), col = tone === 'ok' ? 'var(--gtb-green)' : tone === 'warn' ? 'var(--gtb-amber)' : 'var(--gtb-accent)';
+    if (b) { b.style.width = Math.max(0, Math.min(100, pct)) + '%'; b.style.background = col; }
+    if (t) { t.textContent = txt; t.style.color = tone === 'ok' ? 'var(--gtb-green)' : tone === 'warn' ? 'var(--gtb-amber)' : 'var(--gtb-text)'; }
+}
+function _cvProgEnd(txt, tone) { _cvProg(100, txt, tone || 'ok'); _CV_PROG_HIDE = setTimeout(function () { var w = document.getElementById('cv-prog'); if (w) w.style.display = 'none'; _CV_PROG_HIDE = null; }, 12000); }
+
+async function _cvRefreshEverything(cx, onlyOpen) {
+    if (_CVG.refreshing) return;
+    _CVG.refreshing = true;
+    var keep = _CV, t0 = Date.now(), tDash = 0, tCharts = 0, loaded = 0, note = '';
+    var secs = function (ms) { return Math.round(ms / 1000) + ' s'; };
+    var what = cx ? cx.name : (onlyOpen ? 'open markets' : 'all charts');
+    try {
+        _cvSetStamp('refreshing...');
+        _cvProg(3, 'Refreshing ' + what + ': step 1 of 3, dashboard data...', 'run');
+        var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+        var busy = function () { try { return !!_GTB_REFRESH_IN_PROGRESS; } catch (e) { return false; } };
+        try { var shownNames = (cx ? [cx] : _CVG.panes).map(function (c) { return c.name; }); await _cvRefreshLtp(shownNames); } catch (e) {}      // only the shown charts' prices
+        var estMs = _CVG.dashMs || 40000, td0 = Date.now();
+        // mirror the dashboard's own progress text while its refresh runs; the bar moves with elapsed time against the last run (up to 45%)
+        var poll = setInterval(function () {
+            var el = Date.now() - td0, dt = ''; try { dt = jQ('#gtb-progress-text').text() || ''; } catch (e) {}
+            _cvProg(3 + 42 * Math.min(1, el / estMs), 'Refreshing ' + what + ': step 1 of 3, dashboard data' + (dt ? ' (' + dt + ')' : '...') + ' · ' + secs(el), 'run');
+        }, 500);
+        try {
+            if (busy()) { note = 'waited for a dashboard refresh already running'; while (busy() && Date.now() - t0 < 240000) await wait(1000); }
+            else if (window._GTB_LAST_REFRESH_AT && Date.now() - window._GTB_LAST_REFRESH_AT < 20000) { note = 'dashboard data was refreshed ' + secs(Date.now() - window._GTB_LAST_REFRESH_AT) + ' ago, not repeated'; }
+            else if (typeof commonShowPopupWindow === 'function' && jQ('#main-trade-bot-container').length) {
+                // The dashboard's own refresh WITHOUT its all-instrument price scan (autoRefreshEachTabs would fetch the price of ~215 instruments first): the prices of the
+                // shown charts are refreshed just above, every other name keeps the price it already has.
+                note = 'prices refreshed for the shown charts only';
+                try { _GTB_REFRESH_IN_PROGRESS = true; window._GTB_LAST_REFRESH_AT = Date.now(); await commonShowPopupWindow(); _CVG.dashMs = Date.now() - td0; }
+                catch (e) { note = 'dashboard refresh failed (see console)'; console.warn('[chart view] dashboard refresh failed', e); }
+                finally { _GTB_REFRESH_IN_PROGRESS = false; }
+            }
+            else note = 'dashboard not open: only the shown charts were refreshed';
+        } finally { clearInterval(poll); }
+        tDash = Date.now() - td0;
+        if (!document.getElementById('cv-wrap')) return;
+        var tc0 = Date.now();
+        _cvProg(48, 'Refreshing ' + what + ': step 2 of 3, loading charts...', 'run');
+        if (cx) { if (_CVG.panes.indexOf(cx) >= 0) { _cvProg(55, 'Refreshing ' + what + ': step 2 of 3, loading ' + cx.name + '...', 'run'); await _cvLoad(cx); loaded = 1; } }
+        else loaded = await _cvLoadAll(!!onlyOpen, false, function (k, n, nm) { _cvProg(48 + 47 * (n ? k / n : 1), 'Refreshing ' + what + ': step 2 of 3, ' + (nm ? 'loading ' + nm + ' (' + (k + 1) + ' of ' + n + ')' : 'charts loaded (' + n + ')') + '...', 'run'); });
+        tCharts = Date.now() - tc0;
+    } catch (e) { console.warn('[chart view] refresh failed', e); note = 'stopped by an error (see console)'; }
+    finally {
+        _CVG.refreshing = false;
+        _CV = keep && _CVG.panes.indexOf(keep) >= 0 ? keep : (_CVG.panes[_CVG.active] || _CV);
+        _cvSetStamp((_CVG.updatedAt ? 'updated ' + _cvHm(_CVG.updatedAt) + ' · ' : '') + (_CVG.nextAt ? 'next ' + _cvHm(_CVG.nextAt) : ''));
+    }
+    _cvProg(97, 'Refreshing ' + what + ': step 3 of 3, rebuilding the views...', 'run');
+    await _cvRefreshView(); _cv915Render();
+    try { var shownN = {}; _CVG.panes.forEach(function (c) { shownN[c.name] = 1; }); var pn = _cvPins().filter(function (n) { return !shownN[n] && !_cvIsMcx(n) && _cvOptCapable(n); }); if (pn.length) _cvDotsRun('pins', pn); } catch (e) {}      // pinned names that no chart shows: read in the background
+    _cvProgEnd('Refreshed ' + what + ' at ' + _cvHm(Date.now()) + ' · took ' + secs(Date.now() - t0) + ' (dashboard ' + secs(tDash) + ', ' + loaded + ' chart' + (loaded === 1 ? '' : 's') + ' ' + secs(tCharts) + ')' + (note ? ' · ' + note : ''), /failed|error/.test(note) ? 'warn' : 'ok');
+}
+
+// A small "open the Chart View on this instrument" button for any table or card (the .gtb-dv-chartview click below opens it). label = show the word "Chart View" next to the icon.
+function _cvLinkHtml(name, label) {
+    var n = String(name == null ? '' : name).replace(/"/g, '&quot;'); if (!n) return '';
+    return '<button type="button" class="gtb-dv-chartview oss-chart-link" data-name="' + n + '" title="Open the Chart View for ' + n + ': levels, walls, plan, gates and verdict on one chart" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--gtb-accent,#58a6ff);"><i class="bi bi-bar-chart-line"></i>' + (label ? ' <span style="font-size:0.9em;">Chart View</span>' : '') + '</button>';
+}
+jQ(document).on('click', '.gtb-dv-chartview', function (e) { e.preventDefault(); e.stopPropagation(); _cvShowPopup(jQ(this).attr('data-name')); });
 function _cvShowPopup(name) {
     _cvStop(); _CVG.panes = []; _CVG.snap = undefined;
     try { var lv = parseInt(localStorage.getItem('GTB_CV_LAYOUT'), 10); if ([1, 2, 4, 6].indexOf(lv) >= 0) _CVG.layout = lv; } catch (e) {}
@@ -648,9 +1017,14 @@ function _cvShowPopup(name) {
     try { _cvApplyView(localStorage.getItem('GTB_CV_VIEW') || 'clean'); } catch (e) { _cvApplyView('clean'); }
     var html = '<div id="cv-wrap" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--gtb-bg);color:var(--gtb-text);">'
         + '<div id="cv-bar" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:6px 10px;border-bottom:1px solid var(--gtb-border);">' + _cvChipsHtml() + '</div>'
+        + '<div id="cv-prog" style="display:none;position:relative;height:20px;border-bottom:1px solid var(--gtb-border);background:var(--gtb-surface);overflow:hidden;"><div id="cv-prog-bar" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--gtb-accent);opacity:0.28;transition:width .4s;"></div><span id="cv-prog-txt" style="position:relative;display:block;padding:2px 10px;font-size:11px;font-weight:700;line-height:16px;color:var(--gtb-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span></div>'
         + '<datalist id="cv-fo-list">' + _cvNameList().map(function (n) { return '<option value="' + n + '">'; }).join('') + '</datalist>'
-        + '<div id="cv-grid"></div></div>';
-    showPopUpWindow('chart-view', html, 'Chart View', 1240, 740);
+        + '<div id="cv-main" style="flex:1 1 0;min-height:0;display:flex;">'
+        +   '<div id="cv-rail" style="display:none;flex:0 0 190px;min-height:0;flex-direction:column;overflow:hidden;border-right:1px solid var(--gtb-border);background:var(--gtb-surface);"></div>'
+        +   '<div id="cv-grid" style="flex:1 1 0;min-width:0;"></div>'
+        +   '<div id="cv-insp" style="display:none;flex:0 0 350px;min-height:0;overflow:auto;border-left:1px solid var(--gtb-border);background:var(--gtb-bg);"></div>'
+        + '</div></div>';
+    showPopUpWindow('chart-view', html, 'Chart View', Math.min(1560, Math.max(1100, window.innerWidth - 30)), Math.min(860, Math.max(640, window.innerHeight - 50)));
     var cls = 'popup-custom-style-chart-view';
     jQ('.' + cls).find('.popupwindow_titlebar_text').html('<div style="display:flex;align-items:center;gap:6px;width:100%;"><i class="bi bi-bar-chart-line"></i><span style="font-weight:800;font-size:0.7rem;">CHART VIEW</span>' + popupWinControls(cls) + '</div>');
     hideNativePopupButtons(cls);
@@ -658,16 +1032,58 @@ function _cvShowPopup(name) {
     jQ('.' + cls).toggleClass('gtb-light', (localStorage.getItem('GTB_THEME') || 'dark') === 'light');
     jQ('.' + cls).find('.popupwindow_content').css({ overflow: 'hidden', padding: 0, position: 'relative' });
     jQ(document).off('.cv')
+        .on('click.cv', function (e) {      // outside click closes the pane menus and the layers menu
+            var t = jQ(e.target);
+            if (!t.closest('.cv-more-wrap').length) { _CVG.panes.forEach(function (c) { c.menu = false; }); jQ('.cv-menu').hide(); }
+            if (_CVG.layersOpen && !t.closest('.cv-layers-wrap').length) { _CVG.layersOpen = false; jQ('#cv-bar').html(_cvChipsHtml()); }
+        })
+        .on('click.cv', '.cv-menu .sv-pill-btn:not(.cv-pzoom)', function () { var c = _cvPaneFrom(this); c.menu = false; jQ('.cv-menu').hide(); })
+        .on('click.cv', '.cv-more', function () { var c = _cvPaneFrom(this), was = c.menu; _CVG.panes.forEach(function (o) { o.menu = false; }); jQ('.cv-menu').hide(); c.menu = !was; if (c.menu) jQ(this).siblings('.cv-menu').show(); })
+        .on('click.cv', '.cv-layers-btn', function () { _CVG.layersOpen = !_CVG.layersOpen; jQ('#cv-bar').html(_cvChipsHtml()); })
         .on('click.cv', '.cv-view', function () { _cvApplyView(this.getAttribute('data-v')); jQ('#cv-bar').html(_cvChipsHtml()); _CVG.panes.forEach(function (c) { _CV = c; _cvDraw(); }); _CV = _CVG.panes[_CVG.active] || _CV; })
         .on('click.cv', '.cv-layout', function () { _CVG.layout = parseInt(this.getAttribute('data-n'), 10) || 1; _cvBuildPanes(); })
-        .on('click.cv', '.cv-layer', function () { var k = this.getAttribute('data-layer'); _CV_LAYER_STATE[k] = _CV_LAYER_STATE[k] ? 0 : 1; jQ('#cv-bar').html(_cvChipsHtml()); _CVG.panes.forEach(function (c) { _CV = c; _cvDraw(); }); _CV = _CVG.panes[_CVG.active] || _CV; })
-        .on('click.cv', '#cv-loadall', function () { _cvLoadAll(); })
-        .on('mousedown.cv', '.cv-pane', function () { var before = _CVG.active; _cvPaneFrom(this); if (before !== _CVG.active) { _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); } })
+        .on('click.cv', '.cv-layer', function (e) { e.stopPropagation(); var k = this.getAttribute('data-layer'); _CV_LAYER_STATE[k] = _CV_LAYER_STATE[k] ? 0 : 1; jQ('#cv-bar').html(_cvChipsHtml()); _CVG.panes.forEach(function (c) { _CV = c; _cvDraw(); }); _CV = _CVG.panes[_CVG.active] || _CV; })
+        .on('click.cv', '#cv-loadall', function () { _cvRefreshEverything(null, false); })
+        .on('mousedown.cv', '.cv-pane', function () { var before = _CVG.active; _cvPaneFrom(this); if (before !== _CVG.active) { _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); _cvInspRender(); } })
         .on('change.cv', '.cv-psel', function () { _cvSetPaneName(_cvPaneFrom(this), this.value); })
         .on('click.cv', '.cv-pzoom', function () { var c = _cvPaneFrom(this); if (!c.chart) return; var f = parseFloat(this.getAttribute('data-f')) || 1; try { var r = c.chart.timeScale().getVisibleLogicalRange(); if (r) c.chart.timeScale().setVisibleLogicalRange({ from: r.to - (r.to - r.from) * f, to: r.to }); } catch (e) {} _cvDraw(); })
         .on('click.cv', '.cv-preset', function () { var c = _cvPaneFrom(this); if (!c.chart) return; try { c.chart.priceScale('right').applyOptions({ autoScale: true }); c.chart.timeScale().fitContent(); } catch (e) {} _cvDraw(); })
-        .on('click.cv', '.cv-pload', function () { _cvLoad(_cvPaneFrom(this)); })
+        .on('click.cv', '.cv-pload', function () { _cvRefreshEverything(_cvPaneFrom(this), false); })
         .on('click.cv', '.cv-pstrikes', function () { var c = _cvPaneFrom(this); try { _ossOpenFor(c.name); } catch (e) { console.warn('[chart view] strike search failed', e); } })
+        .on('click.cv', '.cv-itab', function () { _CVG.itab = this.getAttribute('data-t'); try { localStorage.setItem('GTB_CV_ITAB', _CVG.itab); } catch (e) {} _cvInspRender(); })
+        .on('click.cv', '#cv-insp .tf-crow, #cv-insp .gtb-sa-toggle, #cv-insp .gtb-sr-name', function () { setTimeout(function () { var el = document.getElementById('cv-insp'); if (el) el._last = ''; _cvInspRender(); }, 60); })
+        .on('click.cv', '.cv-insp-toggle', function () { try { localStorage.setItem('GTB_CV_INSP', _cvInspOn() ? '0' : '1'); } catch (e) {} jQ('#cv-bar').html(_cvChipsHtml()); _cvInspRender(); })
+        .on('input.cv', '#cv-915-q', function () { _CVG.q915 = this.value; var l = document.getElementById('cv-915-list'); if (l) l.innerHTML = _cv915ListHtml(); })
+        .on('click.cv', '.cv-unpin', function (e) { e.stopPropagation(); _cvPinToggle(this.getAttribute('data-n')); _cv915ListRender(); _cvInspRender(); })
+        .on('click.cv', '.cv-pin', function () { _cvPinToggle(this.getAttribute('data-n')); var el = document.getElementById('cv-insp'); if (el) el._last = ''; _cvInspRender(); _cv915ListRender(); })
+        .on('click.cv', '.cv-dfilter', function () { _CVG.dfilter = this.getAttribute('data-f') || ''; _cvCtlRender(); _cv915ListRender(); })
+        .on('click.cv', '.cv-dots-scan', function () { _cvDotsRun(this.getAttribute('data-s')); })
+        .on('click.cv', '.cv-dots-stop', function () { if (_CVG.dotsRun) _CVG.dotsRun.stop = true; })
+        .on('keydown.cv', function (e) {
+            if (!document.getElementById('cv-wrap') || e.ctrlKey || e.altKey || e.metaKey) return;
+            var t = e.target, tag = t && t.tagName ? t.tagName.toUpperCase() : '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+            var k = e.key, n = _CVG.panes.length, handled = true;
+            if (k === '1' || k === '2' || k === '4' || k === '6') { _CVG.layout = parseInt(k, 10); _cvBuildPanes(); }
+            else if (k === '[' || k === ']') { if (n > 1) { _CVG.active = (_CVG.active + (k === ']' ? 1 : n - 1)) % n; _CV = _CVG.panes[_CVG.active]; _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); _cvInspRender(); } }
+            else if (k === 'b' || k === 'B') { try { localStorage.setItem('GTB_CV_915', _cv915On() ? '0' : '1'); } catch (x) {} jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); }
+            else if (k === 'i' || k === 'I') { try { localStorage.setItem('GTB_CV_INSP', _cvInspOn() ? '0' : '1'); } catch (x) {} jQ('#cv-bar').html(_cvChipsHtml()); _cvInspRender(); }
+            else if (k === 'p' || k === 'P') { var c = _CVG.panes[_CVG.active]; if (c) { _cvPinToggle(c.name); var el = document.getElementById('cv-insp'); if (el) el._last = ''; _cvInspRender(); _cv915ListRender(); } }
+            else if (k === '/') { if (!_cv915On()) { try { localStorage.setItem('GTB_CV_915', '1'); } catch (x) {} jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); } var q = document.getElementById('cv-915-q'); if (q) q.focus(); }
+            else handled = false;
+            if (handled) { e.preventDefault(); e.stopPropagation(); }
+        })
+        .on('click.cv', '.cv-915-grp', function () { var g = this.getAttribute('data-g'), o = _cv915Open(); o[g] = o[g] ? 0 : 1; try { localStorage.setItem('GTB_CV_915_OPEN', JSON.stringify(o)); } catch (e) {} var l = document.getElementById('cv-915-list'); if (l) { var top = l.scrollTop; l.innerHTML = _cv915ListHtml(); l.scrollTop = top; } })
+        .on('click.cv', '.cv-pos-scan', async function () {
+            var c = _cvPaneFrom(this), key = String(c.name).toUpperCase(), el = this;
+            if (typeof _PS_SCANNING !== 'undefined' && (_PS_SCANNING || _PS_AUTO_SCAN_RUNNING)) { try { _gtbToast('A positional scan is already running: try again in a moment.', 'error'); } catch (e) {} return; }
+            el.textContent = 'Positional: scanning...';
+            try { await _psRunScan([key], {}); } catch (e) { console.warn('[chart view] positional scan failed', e); }
+            _CVG.panes.forEach(function (o) { if (String(o.name).toUpperCase() === key) { _CV = o; _cvPosUpdate(o); _cvRender(); } });
+            _CV = c;
+        })
+        .on('click.cv', '.cv-915-toggle', function () { try { localStorage.setItem('GTB_CV_915', _cv915On() ? '0' : '1'); } catch (e) {} jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); })
+        .on('click.cv', '.cv-chip915', function () { var nm = this.getAttribute('data-cv-chip'), c = _CVG.panes[_CVG.active] || _CVG.panes[0]; if (!c || !nm) return; _CV = c; _cvSetPaneName(c, nm); })
         .on('click.cv', '.cv-pdet', function () { var c = _cvPaneFrom(this); c.det = !c.det; _cvPaneHead(c); _cvRender(); })
         .on('change.cv', '.cv-search', function () { _cvPaneFrom(this); _cvOpenName(this.value); })
         .on('keydown.cv', '.cv-search', function (e) { if (e.key === 'Enter') { _cvPaneFrom(this); _cvOpenName(this.value); } });
@@ -678,7 +1094,9 @@ function _cvShowPopup(name) {
         var ss = _cvSnapSig();
         if (_CVG.snap !== undefined && _CVG.snap !== ss) {
             _CVG.snap = ss; [_CV_FB, _CV_FUTC, _CV_FUTRAW].forEach(function (o) { Object.keys(o).forEach(function (k) { delete o[k]; }); });
-            _CVG.panes.forEach(function (c) { c.fit = true; }); _cvLoadAll(); return;
+            _CVG.panes.forEach(function (c) { c.fit = true; });
+            _cvRefreshLtp(_CVG.panes.map(function (p) { return p.name; })).then(function () { return _cvLoadAll(); });      // prices first, so the cards agree with the charts at the new time
+            return;
         }
         _CVG.snap = ss;
         _CVG.panes.forEach(function (c) {
@@ -693,6 +1111,26 @@ function _cvShowPopup(name) {
 
 // Refresh on the 5-minute clock: 4 s after each boundary with the live feed (the candle has closed and the dashboard's own refresh uses the same offset), 10 s without it.
 // Only while the market for this instrument is open and no snapshot time is set; the instrument's candles and option chain are reloaded, then everything is redrawn.
+// Rebuild every pane's badge, check chips and Panels drawer from the cached data. The charts reload only on the 5-minute slot, but the dashboard's own refresh and its
+// light ticks keep changing what the cards and gates read; it now runs only at the end of a manual Refresh / Refresh all and the 5-minute timer refresh (_cvRefreshEverything).
+async function _cvRefreshView() {
+    try {
+        if (!document.getElementById('cv-wrap') || _CVG.viewBusy) return;
+        _CVG.viewBusy = true;
+        var keep = _CV, panes = _CVG.panes.slice(), t0 = performance.now(), per = [];
+        try {
+            for (var k = 0; k < panes.length; k++) {
+                var c = panes[k];
+                if (!c || !c.root || !c.root.isConnected || !c.data || !c.data.candles || !c.data.candles.length) continue;
+                await new Promise(function (r) { setTimeout(r, 0); });      // let the page paint and handle clicks between panes
+                if (!document.getElementById('cv-wrap') || _CVG.panes.indexOf(c) < 0) continue;
+                _CV = c; try { _cvRender(); per.push(c.name + ' ' + (_CVG.lastRender || 0) + ' ms'); } catch (e) { console.warn('[chart view] refresh failed', e); }
+            }
+        } finally { _CVG.viewBusy = false; _CV = keep && _CVG.panes.indexOf(keep) >= 0 ? keep : (_CVG.panes[_CVG.active] || _CV); }
+        var tot = performance.now() - t0;
+        if (tot > 800 || localStorage.getItem('GTB_PROFILE') === '1') console.log('[Chart View] views rebuilt in ' + Math.round(tot) + ' ms: ' + per.join(', '));
+    } catch (e) { _CVG.viewBusy = false; }
+}
 function _cvInSession(nm) {
     try {
         if (_cvIsMcx(nm)) return _tfMcxInSession();
@@ -711,7 +1149,7 @@ function _cvSchedule() {
     _cvSetStamp((_CVG.updatedAt ? 'updated ' + _cvHm(_CVG.updatedAt) + ' · ' : '') + 'next ' + _cvHm(at));
     _CVG.slotTimer = setTimeout(async function () {
         if (!document.getElementById('cv-wrap')) return;
-        if (!_cvSnapActive()) { try { await _cvLoadAll(true); } catch (e) {} }      // every chart whose market is open
+        if (!_cvSnapActive()) { try { await _cvRefreshEverything(null, true); } catch (e) {} }      // dashboard refresh, then every chart whose market is open
         _cvSchedule();
     }, at - now);
 }

@@ -729,10 +729,11 @@ function _ossScanRowsView() {
 }
 // Kite chart-page link for the underlying (same URL builder the Price Action grid uses); empty if the name has no token.
 function _ossScanChartLink(name) {
+    var cvl = (typeof _cvLinkHtml === 'function') ? ' ' + _cvLinkHtml(name) : '';
     try {
-        if (typeof INSTRUMENT_TOKENS === 'undefined' || !INSTRUMENT_TOKENS[name] || typeof _gtbDashPAChartLink !== 'function') return '';
-        return ' <a href="' + _gtbDashPAChartLink({ name: name, mcx: false }) + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open ' + name + ' chart on Kite"><i class="bi bi-graph-up"></i> Chart</a>';
-    } catch (e) { return ''; }
+        if (typeof INSTRUMENT_TOKENS === 'undefined' || !INSTRUMENT_TOKENS[name] || typeof _gtbDashPAChartLink !== 'function') return cvl;
+        return cvl + ' <a href="' + _gtbDashPAChartLink({ name: name, mcx: false }) + '" target="_blank" rel="noopener" class="oss-chart-link" title="Open ' + name + ' chart on Kite"><i class="bi bi-graph-up"></i> Chart</a>';
+    } catch (e) { return cvl; }
 }
 function _ossScanRowHtml(r, i) {
     var pctCol = function (p, good, ok) { return p == null ? 'var(--gtb-muted)' : p >= good ? 'var(--gtb-green)' : p >= ok ? 'var(--gtb-amber)' : 'var(--gtb-red)'; };

@@ -112,6 +112,7 @@ function _tfComputeMcx(name) {
     var dir = cn ? (cn.outcome === 'GO LONG' ? 1 : cn.outcome === 'GO SHORT' ? -1 : 0) : 0;
     var word = dir > 0 ? 'LONG' : dir < 0 ? 'SHORT' : '';
     var rank = !cn ? 0 : (Math.abs(cn.net) >= 0.5 && cn.voting >= 4 && !cn.thin) ? 3 : (Math.abs(cn.net) >= 0.3 && cn.voting >= 3 && !cn.thin) ? 2 : 1;
+    var lxa = _tfLiveAdjust(name, dir); if (lxa.stale) rank = Math.min(rank, 1); else if (lxa.weak && rank > 1) rank--;
     var conf = ['', 'LOW', 'MEDIUM', 'HIGH'][rank] || null;
     var lbl = _tfMcxLabel(name);
     // The commodity verdict has its own bias from the composite score alone (within +-3 = "no directional edge") and then skips its wall
@@ -131,7 +132,7 @@ function _tfComputeMcx(name) {
         // same as NIFTY / BANK NIFTY (Final Verdict): a flat consensus is NO TRADE, the instrument's own verdict does not override it
         headline = (cn && cn.voting === 0 ? 'WAIT — not enough data yet' : 'NO TRADE — no clear direction') + split; col = 'var(--gtb-muted)';
     }
-    else if (vd && (vd.label === 'LONG' || vd.label === 'SHORT') && ((vd.label === 'LONG') === (dir > 0))) { call = word; headline = word + ' — ' + (vd.trade ? 'at ' + vd.trade.entry : 'wall nearby'); col = dir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)'; }
+    else if (vd && (vd.label === 'LONG' || vd.label === 'SHORT') && ((vd.label === 'LONG') === (dir > 0))) { call = word; headline = word + ' — OI wall entry ' + (vd.trade ? 'at ' + vd.trade.entry : 'nearby'); col = dir > 0 ? 'var(--gtb-green)' : 'var(--gtb-red)'; }
     else if (vdFlat) {
         // Never actionable from here: the commodity verdict's own LONG / SHORT ("actionable": composite outside +-3, a wall within 0.35%, futures
         // and OI agreeing) is the strict condition, and this looser consensus-plus-wall read must not look as strong as it.
@@ -147,6 +148,7 @@ function _tfComputeMcx(name) {
         headline = 'WAIT — signals disagree: consensus ' + word + ', verdict ' + (/^LONG/.test(vd.label) ? 'LONG' : 'SHORT') + ' bias' + (vd.location && vd.location.label ? ' (' + vd.location.label + ')' : '');
     }
     else { call = 'WAIT'; headline = word + ' bias — WAIT' + (vd && vd.location && vd.location.label ? ' (' + vd.location.label + ')' : ''); col = 'var(--gtb-amber)'; }
+    if (lxa.stale && call === word && word) { call = 'WAIT'; headline = 'WAIT — ' + word + ' signals, but price is moving against it'; col = 'var(--gtb-amber)'; }
     res.v = { call: call, headline: headline, col: col, conf: dir ? conf : null, dir: dir, consensus: cn, action: '', why: [], warn: [] };
 
     // ── 1. Tradeable today? ──
@@ -183,7 +185,7 @@ function _tfComputeMcx(name) {
         else {
             var conflict = /LONG bias/.test(vBias) && dir < 0 || /SHORT bias/.test(vBias) && dir > 0;
             r.tone = rank >= 2 && !conflict ? 'good' : 'warn';
-            r.line = word + ' (' + conf + ' confidence): ' + stat + (conflict ? '; the commodity verdict says ' + vBias : '');
+            r.line = word + ' (' + conf + ' confidence): ' + stat + (conflict ? '; the commodity verdict says ' + vBias : '') + (lxa.note ? ' · ' + lxa.note : '');
         }
         if (cn.rows) cn.rows.forEach(function (x) { if (x.dir !== 0) r.detail.push((x.dir > 0 ? 'Long: ' : 'Short: ') + x.label + (x.note ? ' (' + x.note + ')' : '')); });
         res.rows.push(r);
@@ -223,59 +225,20 @@ function _tfComputeMcx(name) {
             if (r.line.indexOf(' · price ') === -1) r.line += ' · price ' + fm(ltp) + (Math.abs(dpts) < 0.5 ? ' (at the wall)' : ' (' + fm(Math.abs(dpts)) + ' pts ' + (dpts < 0 ? 'below' : 'above') + ' the wall)');
             r.detail.push('The verdict measures "at the wall" from the at-the-money strike, so its distance can read 0.00% while the live price is up to about half a strike step away. The price shown above is the live price, and the Actionable condition itself is unchanged.');
         }
+        if (call === word && word && vd && vd.trade && typeof _tfWhereWhen === 'function') {
+            var ww = _tfWhereWhen(dir, vd.trade.entry, ltp, vd.trade.stop);
+            if (ww) { r.line += ' · ' + ww.txt; r.detail.unshift('Where and when: ' + ww.txt + ' The entry is the wall itself, not a breakout above or below it; the stop is 0.4% beyond the wall. The 0.15% band and the close-back step are rules of thumb, not tested.'); }
+        }
         [vd.context, vd.location, vd.confirmation].forEach(function (p) { if (p && p.lines) p.lines.forEach(function (x) { r.detail.push(typeof x === 'string' ? x : x.text); }); });
         if (tmTxt) r.detail.push('Entry timing is the same checklist the Option Strike Search shows; it is for a ' + word + ' and is not an entry signal while the verdict says WAIT.');
         res.rows.push(r);
     })();
 
     // ── 4. Risk ──
-    (function () {
-        var r = { key: 'risk', n: 4, title: 'RISK', tone: 'none', line: '', detail: [] };
-        if (!dir) { r.line = 'No direction, so no stop to size against'; res.rows.push(r); return; }
-        var entry = null, stop = null, src = '';
-        if (vd && vd.trade && parseFloat(vd.trade.stop)) { entry = parseFloat(vd.trade.entry); stop = parseFloat(vd.trade.stop); src = 'the verdict stop'; }
-        else if (sm.strikeMap) {
-            entry = parseFloat(dir > 0 ? sm.strikeMap.bstrikeOne : sm.strikeMap.ustrikeOne); stop = parseFloat(dir > 0 ? sm.strikeMap.bstrikeTwo : sm.strikeMap.ustrikeTwo);
-            src = 'the ' + (dir > 0 ? 'BSO/BST' : 'ASO/AST') + ' level pair';
-        }
-        if (!entry || !stop) { r.line = 'No stop level yet: load ' + lbl; res.rows.push(r); return; }
-        var step = Math.abs(entry - stop), pctOfPrice = entry ? step / entry * 100 : 0;
-        var base = 'Stop ' + Math.round(stop).toLocaleString('en-IN') + ', ' + Math.round(step).toLocaleString('en-IN') + ' pts (' + pctOfPrice.toFixed(2) + '%) from ' + Math.round(entry).toLocaleString('en-IN');
-        r.detail.push('The stop comes from ' + src + '. A different entry changes it.');
-        var mult = _TF_MCX_MULT[name] || 0, cap = parseFloat(typeof MARGIN !== 'undefined' ? MARGIN : 0) || 0, pct = (typeof RISK_PCT_PER_TRADE !== 'undefined' ? RISK_PCT_PER_TRADE : 1);
-        if (!mult || !cap) {
-            r.tone = 'warn'; r.line = base + (!cap ? '. Set Account Capital in Settings to see the rupee risk.' : '. The rupee value per point is not known for ' + lbl + '.');
-            res.rows.push(r); return;
-        }
-        var budget = cap * pct / 100, perLot = step * mult, lots = Math.floor(budget / perLot);
-        r.tone = lots >= 1 ? 'good' : 'warn';
-        r.line = base + ' · risk budget ₹' + Math.round(budget).toLocaleString('en-IN') + ' (' + pct + '% of ₹' + Math.round(cap).toLocaleString('en-IN') + ') · ' + (lots >= 1 ? lots + ' lot' + (lots > 1 ? 's' : '') + ' fit' : 'not even 1 lot fits') + ' (futures)';
-        r.detail.push('One lot loses about ₹' + Math.round(perLot).toLocaleString('en-IN') + ' to that stop (₹' + mult + ' per 1.00 move per lot, assumed from the MCX contract size: check it against your broker\'s margin calculator).');
-        r.detail.push('This is arithmetic on your own Settings (Account Capital and risk % per trade), not sizing advice. Margin and brokerage are not included.');
-        res.rows.push(r);
-    })();
+    res.rows.push(_tfRiskRow(name, dir, word, { vd: vd, prefer: 'verdict', mcx: true, lbl: lbl }));
 
     // ── 5. Exit ──
-    (function () {
-        var r = { key: 'exit', n: 5, title: 'EXIT', tone: 'none', line: '', detail: [] };
-        if (!dir) { r.line = 'No direction, so no exit to watch'; res.rows.push(r); return; }
-        var cs = {}; try { cs = computeInstrumentScore(name); } catch (e) {}
-        var trend = cs.current_trend || 0, fut = sm.futures_trend || 0;
-        var exit = dir > 0 ? (trend < 0 || fut < 0) : (trend > 0 || fut > 0);
-        var sq = null; try { sq = _gtbShortCoveringSignal(name); } catch (e) {}
-        var advType = dir > 0 ? 'LONG_UNWINDING' : 'SHORT_COVERING';
-        var adv = !!(sq && sq.ok && sq.active && sq.type === advType);
-        var advTxt = dir < 0 ? 'short covering' : 'long unwinding';
-        if (exit || adv) {
-            r.tone = 'bad';
-            var why = [];
-            if (exit) why.push((trend * dir < 0 ? 'price has crossed against the ' + word : '') + (trend * dir < 0 && fut * dir < 0 ? ' and ' : '') + (fut * dir < 0 ? 'the futures remark has turned against it' : ''));
-            if (adv) why.push(advTxt + ' is active on ' + lbl);
-            r.line = 'Exit signal for a ' + word + ': ' + why.join('; ');
-        } else { r.tone = 'good'; r.line = 'No exit signal for a ' + word + ' (trend intact, futures not against it, no ' + advTxt + ')'; }
-        r.detail.push('Exit rule (single instrument): a LONG exits when the trend is below BSO/BST or the futures remark turns bearish; a SHORT exits when the trend is above ASO/AST or the remark turns bullish. This is more sensitive than the NIFTY rule, which needs both index futures to turn.');
-        res.rows.push(r);
-    })();
+    res.rows.push(_tfExitRow(name, dir, word));
 
     res.greens = res.rows.filter(function (x) { return x.tone === 'good'; }).length;
     return res;

@@ -10,6 +10,9 @@ app.get('/', (req, res) => {
 // Raw market-data recorder (official Kite Connect API only): see recorder.js and docs/ai-data-plan.md
 require('./recorder').mount(app, express)
 
+// Expired option contracts for the Replay Recorder, read from the separate fetch tool's files (see expired.js)
+require('./expired').mount(app)
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })

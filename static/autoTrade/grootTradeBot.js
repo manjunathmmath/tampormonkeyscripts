@@ -14964,9 +14964,10 @@ function _gtbFinalVerdictHtml() {
         + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">'
         +   '<span style="font-weight:900;font-size:1.05rem;letter-spacing:0.02em;color:' + v.col + ';">' + v.headline + '</span>'
         +   (v.conf ? '<span style="font-weight:800;font-size:0.52rem;color:' + confCol + ';border:1px solid ' + confCol + ';padding:1px 6px;" title="From how many engines agree and whether the consensus is thin; one level lower if BANK NIFTY disagrees">CONFIDENCE ' + v.conf + '</span>' : '')
-        +   '<span style="margin-left:auto;font-size:0.46rem;color:var(--gtb-muted);">as of ' + _gtbFinalAsOf() + '</span>'
+        +   '<span style="margin-left:auto;font-size:0.46rem;color:var(--gtb-muted);">' + (typeof _cvLinkHtml === 'function' ? _cvLinkHtml('NIFTY 50', true) : '') + ' &nbsp; as of ' + _gtbFinalAsOf() + '</span>'
         + '</div>'
         + '<div style="font-size:0.62rem;margin:3px 0 4px;color:var(--gtb-text);">' + v.action + '</div>'
+        + (typeof _tfWallLineHtml === 'function' ? _tfWallLineHtml('NIFTY 50', v.dir) : '')
         + _gtbGlanceHtml(v)
         + (function () {
             // Entry timing for the direction the verdict leans (even when the call itself is NO TRADE / WAIT),
@@ -23056,7 +23057,7 @@ function _gtbDashSigAgreeHtml(onlyNames) {
     var row = function (name, grp) {
         var sg = null; try { sg = _ossSuggestedKey(name, { skipMarketGate: true }); } catch (e) {}
         var open = !!_GTB_SA_OPEN[name], chev = '<i class="bi bi-chevron-' + (open ? 'down' : 'right') + '" style="font-size:0.5rem;margin-right:4px;"></i>';
-        var nameCell = '<td style="' + td + 'font-weight:700;cursor:pointer;" class="gtb-sa-toggle" data-name="' + name + '" title="Show the checks behind these numbers">' + chev + name + (grp ? ' <span class="oss-na">' + grp + '</span>' : '') + '</td>';
+        var nameCell = '<td style="' + td + 'font-weight:700;cursor:pointer;" class="gtb-sa-toggle" data-name="' + name + '" title="Show the checks behind these numbers">' + chev + name + (grp ? ' <span class="oss-na">' + grp + '</span>' : '') + ' ' + (typeof _cvLinkHtml === 'function' ? _cvLinkHtml(name) : '') + '</td>';
         var det = function (html) { return '<tr class="gtb-sa-det" data-name="' + name + '" style="' + (open ? '' : 'display:none;') + '"><td colspan="5" style="padding:2px 10px 6px 24px;background:var(--gtb-surface2);">' + html + '</td></tr>'; };
         _GTB_SA_GROUP = 'No pick';
         if (!sg || !sg.key) return '<tr>' + nameCell + '<td style="' + td + 'color:' + M + ';" colspan="4">' + ((sg && sg.why) || 'No suggestion yet (refresh the dashboard so the data loads).').replace(/</g, '&lt;') + '</td></tr>';
@@ -23685,7 +23686,18 @@ function _gtbOutlook(nm, forceDir) {
     var strong = function (z) { return z.strength >= _GTB_OL_MIN_STRENGTH; };
     var below = d.zones.filter(function (z) { return z.price <= spot + tol; }).sort(function (a, b) { return b.price - a.price; });
     var above = d.zones.filter(function (z) { return z.price >= spot - tol; }).sort(function (a, b) { return a.price - b.price; });
-    var out = { ok: true, forced: !natural && !!dir, nm: nm, spot: spot, dir: dir, rank: rank, cn: cn, lx: lx, dz: dz, plan: null, range: null };
+    // Same confidence rules the Final Verdict and the Focus gates use: STALE price view caps it at LOW, WEAKENING lowers it one level, and for the three indices it never
+    // reads higher than the Final Verdict's own rating of that direction (the verdict also looks at the other index and the 9:15 plan), so the card and the gate agree.
+    var rankNote = '';
+    try {
+        if (dir !== 0 && lx && lx.status === 'STALE' && rank > 1) { rank = 1; rankNote = 'Confidence lowered to LOW: Live Context is STALE.'; }
+        else if (dir !== 0 && lx && lx.status === 'WEAKENING' && rank > 1) { rank--; rankNote = 'Confidence lowered one level: Live Context is WEAKENING.'; }
+        if (dir !== 0 && !forceDir && (nm === 'NIFTY 50' || nm === 'NIFTY BANK' || nm === 'SENSEX')) {
+            var fvc = _gtbFinalVerdict(nm), ordc = { LOW: 1, MEDIUM: 2, HIGH: 3 };
+            if (fvc && fvc.dir === dir && ordc[fvc.conf] && ordc[fvc.conf] < rank) { rank = ordc[fvc.conf]; rankNote = 'Confidence lowered to ' + fvc.conf + ' to match the Final Verdict (it also weighs the other index and the 9:15 plan).'; }
+        }
+    } catch (eRk) {}
+    var out = { ok: true, forced: !natural && !!dir, nm: nm, spot: spot, dir: dir, rank: rank, rankNote: rankNote, cn: cn, lx: lx, dz: dz, plan: null, range: null };
     if (dir !== 0) {
         var long = dir > 0, ent = long ? (below.filter(strong)[0] || below[0]) : (above.filter(strong)[0] || above[0]);
         if (ent) {
@@ -23711,6 +23723,7 @@ function _gtbOutlook(nm, forceDir) {
                     if (P.t1) { P.reward = Math.abs(P.t1.price - entryPx); P.rr = P.risk > 0 ? P.reward / P.risk : null; }
                 }
             } catch (e) {}
+            try { _gtbOlStabilise(nm, out, !!forceDir && !natural, spot, near); } catch (eSt) { console.warn('[outlook] hold failed', eSt); }
         }
     } else {
         out.range = { sup: below.filter(strong)[0] || below[0] || null, res: above.filter(strong)[0] || above[0] || null };
@@ -23721,6 +23734,45 @@ function _gtbOutlook(nm, forceDir) {
         try { var st = (window._GTB_LC || {}).strat; if (st) out.strat = st; } catch (e) {}
     }
     return out;
+}
+// ── Probable trade plan: hold the levels (v29.607) ──────────────────────────────────────────────────────────────────────────────────────────────
+// The plan is rebuilt from the live zones at every call, so its entry (which follows price while price is at the level), its stop (a buffer of the price, or one average
+// candle range) and its targets (the next zones) moved with every refresh. Now the first plan of the day for an instrument and direction is HELD: the numbers stay fixed while the
+// setup is unchanged. They are replaced (1) at once when price reaches the stop or target 1, or the direction flips, (2) when a plan with a different entry zone (more than 0.15%
+// away) has been showing for _GTB_OL_HOLD_MIN minutes. Not applied with a snapshot time or a past day (those evaluate slots seconds apart, so the clock means nothing there).
+// Kept in memory and in localStorage for the day. The 4 minutes and the 0.15% are rules of thumb.
+var _GTB_OL_HOLD = null, _GTB_OL_HOLD_MIN = 4, _GTB_OL_HOLD_TOL_PCT = 0.15;
+function _gtbOlHoldLoad() {
+    if (_GTB_OL_HOLD) return;
+    _GTB_OL_HOLD = {};
+    try { var o = JSON.parse(localStorage.getItem('GTB_OL_HOLD') || 'null'); if (o && o.day === moment().format('YYYY-MM-DD') && o.h) _GTB_OL_HOLD = o.h; } catch (e) {}
+}
+function _gtbOlHoldSave() { try { var j = JSON.stringify({ day: moment().format('YYYY-MM-DD'), h: _GTB_OL_HOLD }); if (typeof _gtbLsSet === 'function') _gtbLsSet('GTB_OL_HOLD', j); else localStorage.setItem('GTB_OL_HOLD', j); } catch (e) {} }
+function _gtbOlStabilise(nm, out, forced, spot, near) {
+    var P = out.plan; if (!P) return;
+    try { if ((typeof _gtbHistTime === 'function' && _gtbHistTime()) || String(CURRENT_DAY).slice(0, 10) !== moment().format('YYYY-MM-DD')) return; } catch (e) { return; }
+    _gtbOlHoldLoad();
+    var key = nm + '|' + (forced ? 'f' : 'n'), now = Date.now(), H = _GTB_OL_HOLD[key], dir = P.long ? 1 : -1, tol = spot * _GTB_OL_HOLD_TOL_PCT / 100;
+    var zonePx = P.ent ? P.ent.price : P.entryPx;
+    var take = function () { return { dir: dir, zonePx: zonePx, entryPx: P.entryPx, stop: P.stop, t1: P.t1, t2: P.t2, risk: P.risk, reward: P.reward, rr: P.rr, ent: P.ent, widened: P.widened, capped: P.capped, at: now, cand: null }; };
+    var why = '';
+    if (H) {
+        if (H.dir !== dir) why = 'the direction changed';
+        else if (dir > 0 ? spot <= H.stop : spot >= H.stop) why = 'price reached the stop of the previous plan';
+        else if (H.t1 && (dir > 0 ? spot >= H.t1.price : spot <= H.t1.price)) why = 'price reached target 1 of the previous plan';
+    }
+    if (!H || why) { _GTB_OL_HOLD[key] = H = take(); if (why) P.heldNote = 'New plan: ' + why + '.'; _gtbOlHoldSave(); P.held = { since: now, pending: null }; return; }
+    if (Math.abs(zonePx - H.zonePx) > tol) {
+        var c = H.cand;
+        if (!c || Math.abs(c.zonePx - zonePx) > tol) { H.cand = c = { zonePx: zonePx, t0: now }; }
+        if (now - c.t0 >= _GTB_OL_HOLD_MIN * 60000) { _GTB_OL_HOLD[key] = H = take(); P.heldNote = 'Plan updated: a different entry zone held for ' + _GTB_OL_HOLD_MIN + ' minutes.'; _gtbOlHoldSave(); P.held = { since: now, pending: null }; return; }
+        H.pendingNote = { zonePx: zonePx, due: c.t0 + _GTB_OL_HOLD_MIN * 60000 };
+    } else { H.cand = null; H.pendingNote = null; }
+    // keep the held numbers; only "is price at the entry now" follows the live price
+    P.entryPx = H.entryPx; P.stop = H.stop; P.t1 = H.t1; P.t2 = H.t2; P.risk = H.risk; P.reward = H.reward; P.rr = H.rr; P.ent = H.ent || P.ent; P.widened = H.widened; P.capped = H.capped;
+    P.atLevel = Math.abs(spot - H.entryPx) <= near;
+    P.held = { since: H.at, pending: H.pendingNote || null };
+    _gtbOlHoldSave();
 }
 function _gtbOutlookHtml(oneName) {
     var G = 'var(--gtb-green)', R = 'var(--gtb-red)', M = 'var(--gtb-muted)', A = 'var(--gtb-amber)';
@@ -23740,13 +23792,20 @@ function _gtbOutlookHtml(oneName) {
         var p = o.plan;
         if (!p) lines.push('No support / resistance zone near price to build an entry on. Wait for a level to form.');
         else {
-            lines.push('<b>Entry:</b> ' + (p.atLevel ? 'price is at ' + (p.long ? 'support' : 'resistance') + ' now, about ' + f0(p.entryPx) : (p.long ? 'on a pullback to support ' : 'on a rally to resistance ') + f0(p.entryPx) + ' (' + f0(Math.abs(o.spot - p.entryPx)) + ' pts away)') + ' &nbsp;<span style="color:' + M + ';">(' + p.ent.items.map(function (x) { return x.src; }).join(', ') + ')</span>');
+            lines.push('<b>Zone entry:</b> ' + (p.atLevel ? 'price is at ' + (p.long ? 'support' : 'resistance') + ' now, about ' + f0(p.entryPx) : (p.long ? 'on a pullback to support ' : 'on a rally to resistance ') + f0(p.entryPx) + ' (' + f0(Math.abs(o.spot - p.entryPx)) + ' pts away)') + ' &nbsp;<span style="color:' + M + ';">(' + p.ent.items.map(function (x) { return x.src; }).join(', ') + ')</span>');
             lines.push('<b>Stop:</b> ' + f0(p.stop) + ' (' + (p.long ? 'below' : 'above') + ' that zone by ' + _GTB_OL_STOP_BUF_PCT + '% of price, ' + f0(p.risk) + ' pts risk) &nbsp; <b>Target 1:</b> ' + (p.t1 ? f0(p.t1.price) + ' (' + f0(p.reward) + ' pts, ' + p.t1.items.map(function (x) { return x.src; }).join(', ') + ')' : 'no level ahead') + (p.t2 ? ' &nbsp; <b>Target 2:</b> ' + f0(p.t2.price) : ''));
             if (p.rr != null) lines.push('<b>Reward : risk</b> ' + p.rr.toFixed(1) + ' : 1' + (p.rr < 1 ? ' <span style="color:' + A + ';font-weight:700;">below 1 : 1, so a better entry is needed</span>' : ''));
             lines.push('<b>Expect:</b> ' + lbl + ' ' + f0(o.spot) + (p.long ? ' to hold above ' : ' to stay below ') + f0(p.stop) + (p.t1 ? ' and drift ' + (p.long ? 'up' : 'down') + ' toward ' + f0(p.t1.price) : '') + '; the view is wrong if it closes ' + (p.long ? 'below ' : 'above ') + f0(p.stop) + '.');
         }
     }
     var warn = [];
+    if (o.plan && o.plan.heldNote) warn.push(o.plan.heldNote);
+    if (o.plan && o.plan.held) {
+        var hm = function (t) { var x = new Date(t + 19800000); return ('0' + x.getUTCHours()).slice(-2) + ':' + ('0' + x.getUTCMinutes()).slice(-2); };
+        warn.push('Plan held since ' + hm(o.plan.held.since) + ': the levels stay fixed while the setup is unchanged (they are replaced when price reaches the stop or target 1, the direction flips, or a different entry zone holds for ' + _GTB_OL_HOLD_MIN + ' minutes).'
+            + (o.plan.held.pending ? ' A different entry zone (' + f0(o.plan.held.pending.zonePx) + ') has been showing since ' + hm(o.plan.held.pending.due - _GTB_OL_HOLD_MIN * 60000) + '; it replaces this plan at ' + hm(o.plan.held.pending.due) + ' if it persists.' : ''));
+    }
+    if (o.rankNote) warn.push(o.rankNote);
     if (o.lx && o.dir !== 0 && o.lx.status === 'STALE') warn.push('Live Context is STALE for this ' + (o.dir > 0 ? 'LONG' : 'SHORT') + ': price is moving against it, so wait for price to confirm before using this plan.');
     else if (o.lx && o.dir !== 0 && o.lx.status === 'WEAKENING') warn.push('Live Context is WEAKENING: ' + o.lx.against + ' price checks against, ' + o.lx.agree + ' for.');
     if (o.plan && o.plan.widened) warn.push('The stop was widened to one average 5-minute candle range, because the level-based stop was inside normal noise.');
@@ -23762,7 +23821,7 @@ function _gtbOutlookHtml(oneName) {
     }
     var NAMES = { zone: '9:15 zone', trend: 'Price vs levels', futures: 'Futures', options: 'Option flow', orderflow: 'Order flow', curve: 'Curve' };
     var ev = (o.cn.families || []).filter(function (g) { return g.members; }).map(function (g) { var c = g.dir > 0 ? G : g.dir < 0 ? R : M; return '<span style="margin-right:10px;color:' + c + ';">' + (g.dir > 0 ? '&#9650;' : g.dir < 0 ? '&#9660;' : '&mdash;') + ' ' + (NAMES[g.name] || g.name) + '</span>'; }).join('');
-    return '<div style="margin-bottom:6px;">' + chips + '<span style="font-size:0.58rem;color:' + M + ';">price <b style="color:var(--gtb-text);font-family:var(--gtb-mono);">' + f0(o.spot) + '</b></span></div>'
+    return '<div style="margin-bottom:6px;">' + chips + '<span style="font-size:0.58rem;color:' + M + ';">price <b style="color:var(--gtb-text);font-family:var(--gtb-mono);">' + f0(o.spot) + '</b></span>' + (oneName ? '' : ' ' + (typeof _cvLinkHtml === 'function' ? _cvLinkHtml(o.nm, true) : '')) + '</div>'
         + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;"><span style="font-weight:900;font-size:0.95rem;color:' + hcol + ';">' + head + '</span>'
         + (o.dir !== 0 ? '<span style="font-weight:800;font-size:0.5rem;color:' + hcol + ';border:1px solid ' + hcol + ';padding:1px 6px;">CONFIDENCE ' + rankTxt + '</span>' : '')
         + '<span style="font-size:0.5rem;color:' + M + ';">net ' + (o.cn.net >= 0 ? '+' : '') + o.cn.net.toFixed(2) + ' &middot; ' + o.cn.agree + ' of ' + o.cn.voting + ' signal groups agree' + (o.cn.thin ? ' (thin)' : '') + '</span></div>'
@@ -30534,6 +30593,7 @@ function _gtbCreateFloatingBar() {
         { id: 'show-positional-screener',    icon: 'bi-funnel-fill',          title: 'Positional Screener' },
         { id: 'show-obv-breakout-test',      icon: 'bi-bar-chart-steps',      title: 'OBV + Force Breakout Test' },
         { id: 'show-chart-view',             icon: 'bi-bar-chart-line',      title: 'Chart View' },
+        { id: 'show-learn',                  icon: 'bi-lightbulb',           title: 'Learn & ideas' },
         { id: 'show-curve-compare',          icon: 'bi-graph-up',             title: 'Curve Structure Compare' },
         { id: 'show-log-viewer',             icon: 'bi-bell-fill',            title: 'Error / Warning Log' },
         { id: 'gtb-toggle-groot',            icon: 'bi-toggles',              title: 'Toggle Dashboard' },
@@ -30605,6 +30665,7 @@ function _gtbCreateFloatingBar() {
             if (id === 'show-positional-screener') { _psShowPopup(); return; }
             if (id === 'show-obv-breakout-test') { _obShowPopup(); return; }
             if (id === 'show-chart-view')        { _cvShowPopup(); return; }
+            if (id === 'show-learn')             { _lnShowPopup(); return; }
             if (id === 'show-data-load-popup')   { _dlShowPopup(); return; }
             if (id === 'show-market-trend-settings') { _gtbShowMarketTrendSettings(); return; }
             if (id === 'show-master-consensus')  { _gtbShowMasterConsensus('NIFTY 50'); return; }

@@ -61,6 +61,16 @@ function _rpPrevDay(day) {
 }
 
 // ── official API: one candle request, queued and paced ──
+// What the failed Kite calls said: message -> { n, token, from, to (one example) }. Shown in the banner / panel and written to the console once per message.
+function _rpNoteErr(msg, token, from, to) {
+    var m = _RP.errMsgs = _RP.errMsgs || {}, k = String(msg).slice(0, 120), e = m[k];
+    if (!e) { e = m[k] = { n: 0, token: token, from: from, to: to }; try { var nm = ''; try { nm = (typeof _DL_INSTRUMENTS !== 'undefined' ? _DL_INSTRUMENTS : []).filter(function (r) { return String(r.token) === String(token); }).map(function (r) { return r.tradingsymbol; })[0] || ''; } catch (x) {} e.sym = nm; console.warn('[replay] Kite call failed: ' + k + ' | token ' + token + (nm ? ' (' + nm + ')' : '') + ' | ' + from + ' .. ' + to); } catch (x) {} }
+    e.n++;
+}
+function _rpErrText() {
+    var m = _RP.errMsgs || {}, ks = Object.keys(m).sort(function (a, b) { return m[b].n - m[a].n; });
+    return ks.slice(0, 2).map(function (k) { return m[k].n + 'x ' + k + (m[k].sym ? ' (e.g. ' + m[k].sym + ')' : ''); }).join('; ');
+}
 function _rpOfficial(token, interval, from, to) {
     return new Promise(function (resolve) {
         var k = '', t = '';
@@ -81,11 +91,11 @@ function _rpOfficial(token, interval, from, to) {
                         var msg = (j && (j.message || j.error_type)) ? (j.error_type ? j.error_type + ': ' : '') + (j.message || '') : 'HTTP ' + r.status;
                         var fatal = /TokenException|Incorrect .*api_key|access_token|insufficient permission/i.test(msg);
                         if (fatal) msg += /insufficient/i.test(msg) ? ' (the Historical Data add-on may not be active)' : ' (the access token expires every morning: paste the new api_key / access_token pair in Settings)';
-                        _RP.apiErrors++;
+                        _RP.apiErrors++; _rpNoteErr(msg, token, from, to);
                         resolve({ ok: false, fatal: fatal, error: msg, status: r.status });
                     },
-                    onerror: function () { _RP.apiErrors++; resolve({ ok: false, error: 'network error contacting api.kite.trade' }); },
-                    ontimeout: function () { _RP.apiErrors++; resolve({ ok: false, error: 'api.kite.trade timed out' }); }
+                    onerror: function () { _RP.apiErrors++; _rpNoteErr('network error contacting api.kite.trade', token, from, to); resolve({ ok: false, error: 'network error contacting api.kite.trade' }); },
+                    ontimeout: function () { _RP.apiErrors++; _rpNoteErr('api.kite.trade timed out', token, from, to); resolve({ ok: false, error: 'api.kite.trade timed out' }); }
                 });
             }, wait);
         };
@@ -108,8 +118,62 @@ function _rpSrv(method, path, body) {
         });
     });
 }
+// ── expired option contracts (an index weekly that Kite no longer lists) ──
+// For a replay day that has files from the separate fetch tool, the server (expired.js) knows which expiry was the nearest that day and which strikes have data.
+// At the start of the run the dashboard's instrument list gets synthetic option rows for that expiry (made-up tokens), the expiry resolver is told to pick it
+// (a wrapper around _dlConfiguredExpiryForName, so no Settings value is touched), and history requests for those tokens are answered from the files, never from Kite.
+var _RP_EXP_BASE = 1900000000;
+(function () {
+    try {
+        if (typeof _dlConfiguredExpiryForName === 'function') {
+            var oc = _dlConfiguredExpiryForName;
+            _dlConfiguredExpiryForName = function (name, kind) {
+                try { var j = _RP.job; if (_RP.expInjected && j && j.status === 'running' && j.exp && j.exp[name] && j.exp[name].expiry) return j.exp[name].expiry; } catch (e) {}
+                return oc.apply(this, arguments);
+            };
+        }
+    } catch (e) {}
+})();
+function _rpKiteSymbol(name, iso, type, strike) {
+    var yy = iso.slice(2, 4), mm = parseInt(iso.slice(5, 7), 10), dd = iso.slice(8, 10), code = mm <= 9 ? String(mm) : ({ 10: 'O', 11: 'N', 12: 'D' })[mm];
+    return name + yy + code + dd + String(Math.round(strike * 100) / 100) + type;
+}
+async function _rpFindExpired(day) {
+    var m = await _rpSrv('GET', '/api/expired/meta?day=' + day);
+    return m && m.ok && m.underlyings && Object.keys(m.underlyings).length ? m.underlyings : null;
+}
+function _rpInjectExpired(j) {
+    if (!j.exp || _RP.expDone === j.id) return 0;
+    var rows = [], n = 0; _RP.exp = {};
+    Object.keys(j.exp).forEach(function (u) {
+        var e = j.exp[u], live = (typeof OPTION_STRIKE_LIST !== 'undefined' ? OPTION_STRIKE_LIST : []).filter(function (o) { return o.name === u; })[0] || {};
+        var lot = live.lot_size ? parseInt(live.lot_size, 10) : null, bse = u === 'SENSEX' || u === 'BANKEX';
+        ['CE', 'PE'].forEach(function (type) {
+            (e.strikes[type] || []).forEach(function (k) {
+                var token = _RP_EXP_BASE + (++n);
+                rows.push({ token: token, tradingsymbol: _rpKiteSymbol(u, e.expiry, type, k), name: u, expiry: e.expiry, strike: k, lot_size: lot, instrument_type: type, segment: bse ? 'BFO-OPT' : 'NFO-OPT', exchange: bse ? 'BFO' : 'NFO' });
+                _RP.exp[String(token)] = { u: u, expiry: e.expiry, type: type, strike: k };
+            });
+        });
+    });
+    if (!rows.length) return 0;
+    var drop = {}; Object.keys(j.exp).forEach(function (u) { drop[u + '|' + j.exp[u].expiry] = 1; });
+    var before = (_DL_INSTRUMENTS || []).length;
+    _DL_INSTRUMENTS = (_DL_INSTRUMENTS || []).filter(function (r) { return !(r.token >= _RP_EXP_BASE) && !((r.instrument_type === 'CE' || r.instrument_type === 'PE') && drop[r.name + '|' + String(r.expiry).slice(0, 10)]); }).concat(rows);
+    _RP.expDropped = before - (_DL_INSTRUMENTS.length - rows.length);
+    _RP.expInjected = true;   // the expiry override above applies only in the tab that injected the rows (a mirror tab or a stale job must not change the live expiry)
+    try { _dlRecomputeDerivedGlobals(); } catch (e) { j.errors.push('expired contracts: ' + (e && e.message || e)); }
+    _RP.expDone = j.id; _RP.expN = rows.length;
+    return rows.length;
+}
 async function _rpLoad(code, interval, from, to) {
     var j = _RP.job, day = j ? j.day : to;
+    var xm = _RP.exp && _RP.exp[String(code)];
+    if (xm) {      // a synthetic expired contract: from the fetched files, never from Kite
+        var xd = await _rpSrv('GET', '/api/expired/candles?u=' + xm.u + '&expiry=' + xm.expiry + '&type=' + xm.type + '&strike=' + xm.strike + '&interval=' + interval + '&from=' + from + '&to=' + to);
+        _RP.expHits = (_RP.expHits || 0) + 1;
+        return xd && xd.ok && xd.candles ? xd.candles : [];
+    }
     var d = await _rpSrv('GET', '/api/candles/get?day=' + day + '&token=' + code + '&interval=' + interval + '&from=' + from + '&to=' + to);
     if (d && d.ok && d.candles) { _RP.diskHits++; return d.candles; }
     var r = await _rpOfficial(code, interval, from + ' 00:00:00', to + ' 23:59:59');
@@ -395,6 +459,7 @@ function _rpMarket(errs) {
 function _rpCtx(day, slot) {
     var c = { dow: new Date(day + 'T00:00:00Z').getUTCDay(), mins: parseInt(slot.slice(0, 2), 10) * 60 + parseInt(slot.slice(3, 5), 10) };
     try { c.expiryDay = _gtbExpiryDayNames(); } catch (e) {}
+    try { var jx = _RP.job; if (jx && jx.exp) { c.expiredFiles = {}; Object.keys(jx.exp).forEach(function (u) { c.expiredFiles[u] = jx.exp[u].expiry; }); } } catch (e) {}      // option chain of these underlyings comes from the fetched expired-contract files
     try { c.dte = {}; [['NIFTY', 'NIFTY 50'], ['BANKNIFTY', 'NIFTY BANK'], ['SENSEX', 'SENSEX']].forEach(function (p) { var ex = _gtbOptionExpiryFor(p[0]); if (ex) c.dte[p[1]] = { exp: ex, days: Math.round((Date.parse(ex) - Date.parse(day)) / 86400000) }; }); } catch (e) {}
     return c;
 }
@@ -439,7 +504,9 @@ async function _rpStart(day, sessions, delaySec) {
     if (!k || !t) return { ok: false, error: 'set api_key and api_access_token in Settings first' };
     var orig = {}; _rpCfgKeys().forEach(function (key) { try { orig[key] = g_config.get(key); } catch (e) {} });
     var prev = _rpPrevDay(day);
-    _RP.job = { id: Date.now(), status: 'running', phase: 'switch', day: day, prev: prev, sessions: sessions, si: 0, slotIdx: 0, delay: Math.max(0, isNaN(delaySec) ? 0 : delaySec), orig: orig, saved: 0, failed: 0, errors: [], startedAt: Date.now(), init: false, msg: 'switching the trading dates', stop: false };
+    var expMeta = null, expState = null; try { expState = await _rpSrv('GET', '/api/expired/state'); expMeta = await _rpFindExpired(day); } catch (e) {}
+    var expWarn = !expState ? 'The recorder server does not know the expired-contract endpoints: restart node server.js if you need the fetched files for this day.' : null;
+    _RP.job = { id: Date.now(), status: 'running', phase: 'switch', day: day, prev: prev, sessions: sessions, si: 0, slotIdx: 0, delay: Math.max(0, isNaN(delaySec) ? 0 : delaySec), orig: orig, saved: 0, failed: 0, errors: [], startedAt: Date.now(), exp: expMeta, expWarn: expWarn, init: false, msg: 'switching the trading dates', stop: false };
     _rpSave();
     _rpApplyDates(day, prev);
     reloadPage();
@@ -498,24 +565,52 @@ async function _rpInit(j) {
     }
     j.init = true; _rpSave();
 }
+// Wait for the cards that chain off a refresh to finish: until no refresh is running and no history request has been answered for 500 ms (at least 700 ms, at most 2.5 s).
+// (It used to be a fixed 1.5 s after every slot.)
+async function _rpSettle() {
+    var t = Date.now(), quietSince = t, last = _RP.served;
+    while (Date.now() - t < 2500) {
+        await _rpSleep(100);
+        var busy = typeof _GTB_REFRESH_IN_PROGRESS !== 'undefined' && _GTB_REFRESH_IN_PROGRESS;
+        if (busy || _RP.served !== last) { last = _RP.served; quietSince = Date.now(); }
+        else if (Date.now() - t >= 700 && Date.now() - quietSince >= 500) break;
+    }
+}
+// Where the time of a slot goes (shown under each slot in the panel): the LTP scan and the popup refresh are timed by wrapping the two functions, the MCX loads per commodity.
+(function () {
+    try {
+        if (typeof updateStrorageLtpPrice === 'function') { var o1 = updateStrorageLtpPrice; updateStrorageLtpPrice = async function () { var t = Date.now(); try { return await o1.apply(this, arguments); } finally { if (_RP.tm) _RP.tm.ltp = (_RP.tm.ltp || 0) + Date.now() - t; } }; }
+        if (typeof commonShowPopupWindow === 'function') { var o2 = commonShowPopupWindow; commonShowPopupWindow = async function () { var t = Date.now(); try { return await o2.apply(this, arguments); } finally { if (_RP.tm) _RP.tm.popup = (_RP.tm.popup || 0) + Date.now() - t; } }; }
+    } catch (e) {}
+})();
 async function _rpSlot(j, session, slot) {
     _rpSetTime(slot);
-    var t0 = Date.now(), err = null;
+    var t0 = Date.now(), err = null, tm = _RP.tm = {}, served0 = _RP.served, calls0 = _RP.calls;
     for (var w = 0; w < 120 && typeof _GTB_REFRESH_IN_PROGRESS !== 'undefined' && _GTB_REFRESH_IN_PROGRESS; w++) await _rpSleep(1000);
+    tm.wait = Date.now() - t0;
+    var tR = Date.now();
     try {
-        var work = session === 'NSE' ? (function () { window._GTB_LAST_REFRESH_AT = 0; return autoRefreshEachTabs(null, true); })() : Promise.all(_RP_MCX.map(function (n) { return _gtbIsMcxFuture(n) ? _tfMcxLoad(n) : Promise.resolve(); }));
+        var work = session === 'NSE' ? (function () { window._GTB_LAST_REFRESH_AT = 0; return autoRefreshEachTabs(null, true); })() : Promise.all(_RP_MCX.map(function (n) { var t1 = Date.now(); return _gtbIsMcxFuture(n) ? _tfMcxLoad(n).then(function (x) { tm['mcx ' + n] = Date.now() - t1; return x; }) : Promise.resolve(); }));
         await Promise.race([work, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('the refresh took more than 5 minutes')); }, 300000); })]);
     } catch (e) { err = e && e.message ? e.message : String(e); }
-    await _rpSleep(1500);                                   // let the cards that chain off the refresh finish
+    tm.refresh = Date.now() - tR;
+    var tS = Date.now();
+    await _rpSettle();                                      // let the cards that chain off the refresh finish
+    tm.settle = Date.now() - tS;
+    var tN = Date.now();
     var snap = _rpSnapshot(j.day, session, slot);
+    tm.snap = Date.now() - tN;
     snap.refreshMs = Date.now() - t0; if (err) snap.errors.push('refresh: ' + err);
-    var r = null;
+    var r = null, tP = Date.now();
     for (var a = 0; a < 3; a++) { r = await _rpPost(snap); if (r.ok) break; await _rpSleep(3000); }
+    tm.save = Date.now() - tP;
     if (!r.ok) throw new Error('could not save the snapshot: ' + r.error);
     j.saved++; if (err) { j.failed++; j.errors.push(session + ' ' + slot + ': ' + err); }
     // what this slot looked like, so the panel can show real values changing from slot to slot
     var first = snap.inst[Object.keys(snap.inst)[0]] || {}, nm = Object.keys(snap.inst)[0] || '';
     var row = { s: session + ' ' + slot, nm: nm, px: first.px && first.px.ltp, sc: first.score && first.score.total, fut: first.fut && first.fut.remark, cons: first.cons && first.cons.out, comp: snap.mkt && snap.mkt.scores && snap.mkt.scores.composite, kb: Math.round(JSON.stringify(snap).length / 1024), ms: snap.refreshMs, er: snap.errors.length, ch: first.chain ? first.chain.length : 0 };
+    var f1 = function (ms) { return (ms / 1000).toFixed(1); };
+    row.ph = (tm.ltp != null ? 'LTP scan ' + f1(tm.ltp) + ' s, popup refresh ' + f1(tm.popup || 0) + ' s' : Object.keys(tm).filter(function (k) { return k.indexOf('mcx ') === 0; }).map(function (k) { return k.slice(4) + ' ' + f1(tm[k]) + ' s'; }).join(', ')) + ' | refresh total ' + f1(tm.refresh) + ' s, settle ' + f1(tm.settle) + ' s, snapshot ' + f1(tm.snap) + ' s, save ' + f1(tm.save) + ' s | ' + (_RP.served - served0) + ' history reads, ' + (_RP.calls - calls0) + ' Kite calls';
     (j.recent = j.recent || []).push(row); if (j.recent.length > 8) j.recent.shift();
     j.slotMs = (j.slotMs || 0) + (Date.now() - t0) + j.delay * 1000; j.slotN = (j.slotN || 0) + 1;
 }
@@ -543,6 +638,8 @@ async function _rpRun() {
     var j = _RP.job;
     try {
         if (!(await _rpReady())) { _rpFinish('error', 'the dashboard did not finish loading'); return; }
+        if (j.expWarn) { j.errors.push(j.expWarn); _rpSay(j.expWarn); }
+        if (j.exp) { var nx = _rpInjectExpired(j); if (nx) _rpSay('expired contracts from the fetched files: ' + Object.keys(j.exp).map(function (u) { return u + ' ' + j.exp[u].expiry; }).join(', ') + ' (' + nx + ' option rows' + (_RP.expDropped ? ', ' + _RP.expDropped + ' stale real rows of those expiries dropped' : '') + ')'); }
         j.phase = 'init'; _rpSave();
         if (!j.init) await _rpInit(j);
         j.phase = 'slots'; _rpSave();
@@ -623,7 +720,7 @@ function _rpBanner() {
     var pg = _rpProgress(j), total = pg.total, done = pg.done, pct = pg.pct;
     // the button is created once and never re-rendered: replacing it every second made a click (press + release) land on a new element and do nothing
     var html = '<span>REPLAY ' + _rpEsc(j.day) + ' ' + _rpEsc(j.sessions.join(' + ')) + '</span><span class="rp-bar"><i style="width:' + pct + '%"></i></span><span>' + done + ' / ' + total + ' slots &middot; saved ' + j.saved + '</span><span style="font-weight:400;">' + _rpEsc(j.stop ? 'stopping: restoring the dates and reloading' : (j.msg || _RP.msg || 'starting')) + '</span>'
-        + '<div style="flex-basis:100%;font-weight:400;font-size:11px;opacity:.95;">Kite API calls ' + _RP.calls + (_RP.apiErrors ? ' (' + _RP.apiErrors + ' failed)' : '') + ' &middot; from the server\'s disk copy ' + _RP.diskHits + ' &middot; from memory ' + _RP.hits + ' of ' + _RP.served + ' requests &middot; elapsed ' + _rpDur(pg.elapsed) + (pg.eta ? ' &middot; about ' + _rpDur(pg.eta) + ' left' : '') + '<br>' + _rpLastLine(j) + '</div>';
+        + '<div style="flex-basis:100%;font-weight:400;font-size:11px;opacity:.95;">Kite API calls ' + _RP.calls + (_RP.apiErrors ? ' (' + _RP.apiErrors + ' failed: ' + _rpEsc(_rpErrText()) + ')' : '') + ' &middot; from the server\'s disk copy ' + _RP.diskHits + ' &middot; from memory ' + _RP.hits + ' of ' + _RP.served + ' requests &middot; elapsed ' + _rpDur(pg.elapsed) + (pg.eta ? ' &middot; about ' + _rpDur(pg.eta) + ' left' : '') + '<br>' + _rpLastLine(j) + '</div>';
     if (!$b.length) jQ('body').append('<div id="gtb-rp-banner"><div id="gtb-rp-banner-info" style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;flex:1 1 auto;"></div><button id="gtb-rp-banner-stop">Stop and restore</button></div>');
     jQ('#gtb-rp-banner-info').html(html);
 }
@@ -657,10 +754,10 @@ function _rpRenderState() {
         var total = 0, done = 0; j.sessions.forEach(function (s, i) { var n = _rpSlots(s).length; total += n; done += i < j.si ? n : (i === j.si ? j.slotIdx : 0); });
         var pct = total ? Math.round(done / total * 100) : 0;
         var pg2 = _rpProgress(j);
-        var recent = (j.recent || []).slice().reverse().map(function (r) { return '<tr style="border-top:1px solid var(--gtb-border);"><td style="padding:1px 4px;">' + _rpEsc(r.s) + '</td><td style="text-align:right;font-family:var(--gtb-mono);">' + _rpFmt(r.px) + '</td><td style="text-align:right;">' + _rpFmt(r.sc, 1) + '</td><td>' + _rpEsc(r.fut || '-') + '</td><td>' + _rpEsc(r.cons || '-') + '</td><td style="text-align:right;">' + _rpFmt(r.comp, 1) + '</td><td style="text-align:right;">' + r.ch + '</td><td style="text-align:right;">' + r.kb + ' KB</td><td style="text-align:right;">' + (r.ms ? (r.ms / 1000).toFixed(1) + ' s' : '-') + '</td><td style="color:' + (r.er ? 'var(--gtb-amber)' : 'var(--gtb-muted)') + ';text-align:right;">' + r.er + '</td></tr>'; }).join('');
+        var recent = (j.recent || []).slice().reverse().map(function (r) { return '<tr style="border-top:1px solid var(--gtb-border);" title="' + _rpEsc(r.ph || '') + '"><td style="padding:1px 4px;">' + _rpEsc(r.s) + '<div style="font-size:.42rem;color:var(--gtb-muted);white-space:normal;">' + _rpEsc(r.ph || '') + '</div></td><td style="text-align:right;font-family:var(--gtb-mono);">' + _rpFmt(r.px) + '</td><td style="text-align:right;">' + _rpFmt(r.sc, 1) + '</td><td>' + _rpEsc(r.fut || '-') + '</td><td>' + _rpEsc(r.cons || '-') + '</td><td style="text-align:right;">' + _rpFmt(r.comp, 1) + '</td><td style="text-align:right;">' + r.ch + '</td><td style="text-align:right;">' + r.kb + ' KB</td><td style="text-align:right;">' + (r.ms ? (r.ms / 1000).toFixed(1) + ' s' : '-') + '</td><td style="color:' + (r.er ? 'var(--gtb-amber)' : 'var(--gtb-muted)') + ';text-align:right;">' + r.er + '</td></tr>'; }).join('');
         $s.html('<div><b style="color:var(--gtb-amber);">RUNNING</b> ' + _rpEsc(j.day) + ' ' + _rpEsc(j.sessions.join(' + ')) + ' &middot; ' + done + ' of ' + total + ' slots &middot; saved ' + j.saved + (j.failed ? ', <span style="color:var(--gtb-red);">' + j.failed + ' with a refresh error</span>' : '') + ' &middot; official API calls ' + _RP.calls + (_RP.apiErrors ? ' (' + _RP.apiErrors + ' failed)' : '') + '</div>'
             + '<div style="height:6px;background:var(--gtb-border);margin:5px 0;"><div style="height:6px;width:' + pct + '%;background:var(--gtb-amber);"></div></div><div style="color:var(--gtb-muted);font-size:.56rem;">' + _rpEsc(j.msg || _RP.msg || '') + '</div>'
-            + '<div style="font-size:.54rem;margin-top:4px;">Kite API calls <b>' + _RP.calls + '</b>' + (_RP.apiErrors ? ' (<span style="color:var(--gtb-red);">' + _RP.apiErrors + ' failed</span>)' : '') + ' &middot; from the server\'s disk copy <b>' + _RP.diskHits + '</b> &middot; from memory <b>' + _RP.hits + '</b> of ' + _RP.served + ' requests &middot; elapsed <b>' + _rpDur(pg2.elapsed) + '</b>' + (pg2.eta ? ' &middot; about <b>' + _rpDur(pg2.eta) + '</b> left' : '') + '</div>'
+            + '<div style="font-size:.54rem;margin-top:4px;">Kite API calls <b>' + _RP.calls + '</b>' + (_RP.apiErrors ? ' (<span style="color:var(--gtb-red);" title="' + _rpEsc(_rpErrText()) + '">' + _RP.apiErrors + ' failed: ' + _rpEsc(_rpErrText()) + '</span>)' : '') + ' &middot; from the server\'s disk copy <b>' + _RP.diskHits + '</b> &middot; from memory <b>' + _RP.hits + '</b> of ' + _RP.served + ' requests &middot; elapsed <b>' + _rpDur(pg2.elapsed) + '</b>' + (pg2.eta ? ' &middot; about <b>' + _rpDur(pg2.eta) + '</b> left' : '') + '</div>'
             + (recent ? '<table style="width:100%;border-collapse:collapse;font-size:.54rem;margin-top:4px;"><thead><tr style="color:var(--gtb-muted);text-align:left;font-size:.46rem;"><th>SLOT</th><th style="text-align:right;">PRICE</th><th style="text-align:right;">SCORE</th><th>FUTURES</th><th>CONSENSUS</th><th style="text-align:right;">COMPOSITE</th><th style="text-align:right;">CHAIN ROWS</th><th style="text-align:right;">SIZE</th><th style="text-align:right;">TIME</th><th style="text-align:right;">ERR</th></tr></thead><tbody>' + recent + '</tbody></table><div style="font-size:.46rem;color:var(--gtb-muted);">Last 8 saved slots: values change from slot to slot when it is working. PRICE and SCORE are for the first core instrument (NIFTY 50 for NSE, CRUDEOILM for MCX).</div>' : '')
             + (j.errors.length ? '<div style="color:var(--gtb-red);font-size:.5rem;margin-top:3px;">' + j.errors.slice(-3).map(_rpEsc).join('<br>') + '</div>' : ''));
     } else if (last) {

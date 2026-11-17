@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // News feed side panel (v29.499). Headlines only (source, time, link), pulled from free RSS feeds with GM_xmlhttpRequest:
-// Google News RSS search queries (one per topic tab) plus a few publisher feeds. Nothing here scores a headline or feeds the
+// publisher RSS feeds (Economic Times, Moneycontrol, Mint, CNBC, Yahoo Finance, MarketWatch, BBC; the Google News searches were removed in v29.609). Nothing here scores a headline or feeds the
 // consensus / verdict: it is a panel to read. Impact tags and the measured price reaction are a later step.
 // Opened from the topbar newspaper icon (#gtb-news-toggle) or the All Tools tile 'show-news-feed'.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -11,14 +11,9 @@ var _NF_MAX_AGE_MS = 36 * 3600 * 1000;      // headlines older than this are dro
 var _NF_BREAKING_MS = 30 * 60 * 1000;       // "Breaking" tab = published in the last 30 minutes
 var _NF_KW_DEFAULT = 'election, fed, tariff, opec, war, rbi, rate cut, rate hike, sanction, default';
 
-function _nfGq(q) { return 'https://news.google.com/rss/search?q=' + encodeURIComponent(q + ' when:1d') + '&hl=en-IN&gl=IN&ceid=IN:en'; }
-// id, label, url, tabs the feed's items belong to
+// id, label, url, tabs the feed's items belong to. Google News RSS searches were removed (v29.609): Google answers the RSS search endpoint with HTTP 429 after a few requests.
+// The Central banks and Commodities tabs are now filled from the headlines of the publisher feeds below by keyword (_nfTopicTabs).
 var _NF_SOURCES = [
-    { id: 'g-india',  label: 'Google News: India markets',   url: _nfGq('Sensex OR Nifty OR RBI OR SEBI OR "Indian stock market"'),                                tabs: ['india'] },
-    { id: 'g-us',     label: 'Google News: US markets',      url: _nfGq('"Wall Street" OR "Dow Jones" OR Nasdaq OR "US election" OR "US economy"'),                tabs: ['us'] },
-    { id: 'g-global', label: 'Google News: global markets',  url: _nfGq('"global markets" OR "stock market" OR tariffs OR sanctions OR geopolitics'),               tabs: ['global'] },
-    { id: 'g-cb',     label: 'Google News: central banks',   url: _nfGq('"Federal Reserve" OR RBI OR ECB OR "Bank of Japan" OR "interest rate decision"'),         tabs: ['cb'] },
-    { id: 'g-comm',   label: 'Google News: commodities',     url: _nfGq('"crude oil" OR OPEC OR "gold price" OR "silver price" OR "natural gas"'),                 tabs: ['comm'] },
     { id: 'et',       label: 'Economic Times Markets',       url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',                           tabs: ['india'] },
     { id: 'mc',       label: 'Moneycontrol',                 url: 'https://www.moneycontrol.com/rss/marketreports.xml',                                             tabs: ['india'] },
     { id: 'mint',     label: 'Mint Markets',                 url: 'https://www.livemint.com/rss/markets',                                                           tabs: ['india'] },
@@ -28,6 +23,13 @@ var _NF_SOURCES = [
     { id: 'bbc',      label: 'BBC Business',                 url: 'https://feeds.bbci.co.uk/news/business/rss.xml',                                                 tabs: ['global'] }
 ];
 
+// Topic tabs without a feed of their own: a headline joins Central banks / Commodities when it mentions them (the same words the impact tagger uses). Rule of thumb; a headline can be in several tabs.
+function _nfTopicTabs(title) {
+    var t = String(title || ''), out = [];
+    if (/\b(fed|federal reserve|fomc|rbi|ecb|boj|bank of japan|bank of england|boe|pboc|central bank|monetary policy|rate (cut|hike|decision)|interest rates?|powell|lagarde|malhotra|mpc)\b/i.test(t)) out.push('cb');
+    if (/\b(crude|oil|opec|brent|wti|gold|silver|natural gas|copper|commodit(y|ies)|bullion)\b/i.test(t)) out.push('comm');
+    return out;
+}
 var _NF = { items: {}, tab: 'all', q: '', lv: {}, view: '', lastFetch: 0, lastViewed: 0, loading: false, status: {}, timer: null, open: false };
 try { _NF.lastViewed = parseInt(localStorage.getItem('GTB_NEWS_VIEWED') || '0', 10) || 0; } catch (e) {}
 try { (JSON.parse(localStorage.getItem('GTB_NEWS_LV') || '[]') || []).forEach(function (k) { _NF.lv[k] = 1; }); } catch (e) {}
@@ -597,11 +599,15 @@ function _nfParse(xml) {
     return out;
 }
 
+// One try, and a second try after 3 s when the first one timed out or hit a network error (these feeds time out now and then, especially overnight).
 function _nfFetchOne(s) {
+    return _nfFetchTry(s).then(function (r) { return (r.err === 'timed out' || r.err === 'network error') ? new Promise(function (ok) { setTimeout(ok, 3000); }).then(function () { return _nfFetchTry(s); }) : r; });
+}
+function _nfFetchTry(s) {
     return new Promise(function (resolve) {
         if (typeof GM_xmlhttpRequest === 'undefined') { resolve({ s: s, err: 'GM_xmlhttpRequest unavailable' }); return; }
         GM_xmlhttpRequest({
-            method: 'GET', url: s.url, timeout: 15000,
+            method: 'GET', url: s.url, timeout: 25000,
             onload: function (res) {
                 if (res.status < 200 || res.status >= 300) { resolve({ s: s, err: 'HTTP ' + res.status }); return; }
                 var items = _nfParse(res.responseText);
@@ -615,7 +621,7 @@ function _nfFetchOne(s) {
     });
 }
 
-function _nfPublisher(s) { return s.id.indexOf('g-') === 0 ? '' : s.label; }
+function _nfPublisher(s) { return s.label; }
 
 async function _nfRefresh(force) {
     if (_NF.loading) return;
@@ -625,11 +631,15 @@ async function _nfRefresh(force) {
     var now = Date.now(), added = 0, ok = 0;
     results.forEach(function (r) {
         var key = 'news-' + r.s.id;
+        _NF.fails = _NF.fails || {};
         if (r.err) {
             _NF.status[r.s.id] = r.err;
-            try { _gtbApiFail(key, 'News: ' + r.s.label, r.err, 'Headlines from this source are not updated.'); } catch (e) {}
+            _NF.fails[r.s.id] = (_NF.fails[r.s.id] || 0) + 1;
+            // the red notice only after two refreshes in a row failed (a single timeout is usually the publisher being slow; the panel still shows the source status)
+            if (_NF.fails[r.s.id] >= 2) { try { _gtbApiFail(key, 'News: ' + r.s.label, r.err, 'Headlines from this source are not updated.'); } catch (e) {} }
             return;
         }
+        _NF.fails[r.s.id] = 0;
         ok++; delete _NF.status[r.s.id];
         try { _gtbApiOk(key); } catch (e) {}
         r.items.forEach(function (it) {
@@ -637,9 +647,9 @@ async function _nfRefresh(force) {
             var k = _nfKey(it.title);
             var cur = _NF.items[k];
             var src = it.src || _nfPublisher(r.s) || 'news';
-            if (!cur) { _NF.items[k] = { title: it.title, link: it.link, t: it.t, src: src, tabs: r.s.tabs.slice(), seen: now, srcs: [src] }; added++; }
+            if (!cur) { _NF.items[k] = { title: it.title, link: it.link, t: it.t, src: src, tabs: r.s.tabs.concat(_nfTopicTabs(it.title).filter(function (x) { return r.s.tabs.indexOf(x) === -1; })), seen: now, srcs: [src] }; added++; }
             else {
-                r.s.tabs.forEach(function (tb) { if (cur.tabs.indexOf(tb) === -1) cur.tabs.push(tb); });
+                r.s.tabs.concat(_nfTopicTabs(it.title)).forEach(function (tb) { if (cur.tabs.indexOf(tb) === -1) cur.tabs.push(tb); });
                 if (cur.srcs.indexOf(src) === -1) cur.srcs.push(src);
                 if (it.t < cur.t) cur.t = it.t;     // the earliest report is when the story broke
             }
@@ -663,8 +673,9 @@ function _nfSave() {
 }
 function _nfLoadCache() {
     try {
+        if (localStorage.getItem('GTB_NEWS_V') !== '2') { localStorage.removeItem('GTB_NEWS_CACHE'); localStorage.setItem('GTB_NEWS_V', '2'); }      // v29.609: the saved list held Google News headlines; start clean
         var arr = JSON.parse(localStorage.getItem('GTB_NEWS_CACHE') || '[]'), now = Date.now();
-        arr.forEach(function (it) { if (it && it.title && now - it.t <= _NF_MAX_AGE_MS) _NF.items[_nfKey(it.title)] = it; });
+        arr.forEach(function (it) { if (it && it.title && now - it.t <= _NF_MAX_AGE_MS) { _nfTopicTabs(it.title).forEach(function (tb) { if (it.tabs && it.tabs.indexOf(tb) === -1) it.tabs.push(tb); }); _NF.items[_nfKey(it.title)] = it; } });
     } catch (e) {}
 }
 
