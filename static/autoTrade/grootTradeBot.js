@@ -3142,7 +3142,13 @@ function _gtbFetchHolidays() {
             _GTB_HOLIDAYS = cached.data;
             return resolve(cached.data);
         }
+        // v29.617: NSE often blocks scripted calls. The list is a calendar year, so a saved copy stays good: after a failed try with a saved copy, do not try again for 6 hours,
+        // and raise the red notice only when there is no saved list or it is older than 60 days.
+        var _lastTry = 0; try { _lastTry = parseInt(localStorage.getItem('GTB_NSE_HOL_TRY') || '0', 10) || 0; } catch (_) {}
+        if (cached && Array.isArray(cached.data) && cached.data.length && (now - _lastTry) < 6 * 3600 * 1000) { _GTB_HOLIDAYS = cached.data; return resolve(cached.data); }
         var _holFail = function (why) {
+            try { localStorage.setItem('GTB_NSE_HOL_TRY', String(Date.now())); } catch (_) {}
+            if (cached && Array.isArray(cached.data) && cached.data.length && cached.ts && (Date.now() - cached.ts) < 60 * 24 * 3600 * 1000) { console.warn('[NSE holidays] refresh failed (' + why + '), using the saved list'); _GTB_HOLIDAYS = cached.data; resolve(cached.data); return; }
             _gtbApiFail('nse-holidays', 'NSE holiday list', why, 'Holiday checks and the squeeze scan holiday skip are ' + (cached && Array.isArray(cached.data) ? 'using an older saved list.' : 'OFF - a market holiday will not be detected.'));
             if (cached && Array.isArray(cached.data)) { _GTB_HOLIDAYS = cached.data; resolve(cached.data); } else resolve([]);
         };
@@ -9244,11 +9250,13 @@ jQ(document).on('click', '.gtb-cfg-fetch-btn', function () {
     $btn.prop('disabled', true);
     GM_xmlhttpRequest({
         method: 'GET',
-        url: 'https://cdn.cboe.com/api/global/delayed_quotes/quotes/' + symbol + '.json',
+        url: 'https://cdn-api.cboe.com/api/global/delayed_quotes/quotes/' + symbol + '.json',      // cdn.cboe.com now redirects here (v29.616)
+        headers: { 'Accept': 'application/json, text/plain, */*', 'Referer': 'https://www.cboe.com/' },
         onload: function (res) {
             $btn.prop('disabled', false);
             $icon.removeClass('bi-arrow-repeat spin').addClass('bi-cloud-download');
             try {
+                if (/^\s*</.test(res.responseText || '')) throw new Error('CBOE answered with a web page (HTTP ' + res.status + '), most likely its bot protection blocked the request');
                 var j = JSON.parse(res.responseText);
                 var prevClose = j && j.data && j.data.prev_day_close;
                 if (prevClose == null) { _gtbApiFail('cboe-' + symbol, 'CBOE ' + symbol.replace('_', ''), 'no prev_day_close in the response', 'The MCX expected-move range for that commodity will be missing until you enter the value.'); callSackBarInfo('No prev_day_close in CBOE response for ' + symbol); return; }
@@ -30594,6 +30602,9 @@ function _gtbCreateFloatingBar() {
         { id: 'show-obv-breakout-test',      icon: 'bi-bar-chart-steps',      title: 'OBV + Force Breakout Test' },
         { id: 'show-chart-view',             icon: 'bi-bar-chart-line',      title: 'Chart View' },
         { id: 'show-learn',                  icon: 'bi-lightbulb',           title: 'Learn & ideas' },
+        { id: 'show-heatmap',                icon: 'bi-grid-3x3-gap-fill',   title: 'Heatmap' },
+        { id: 'show-research-lab',           icon: 'bi-flask',               title: 'Research lab' },
+        { id: 'show-trade-shorts',           icon: 'bi-phone',               title: 'Trade Shorts' },
         { id: 'show-curve-compare',          icon: 'bi-graph-up',             title: 'Curve Structure Compare' },
         { id: 'show-log-viewer',             icon: 'bi-bell-fill',            title: 'Error / Warning Log' },
         { id: 'gtb-toggle-groot',            icon: 'bi-toggles',              title: 'Toggle Dashboard' },
@@ -30666,6 +30677,9 @@ function _gtbCreateFloatingBar() {
             if (id === 'show-obv-breakout-test') { _obShowPopup(); return; }
             if (id === 'show-chart-view')        { _cvShowPopup(); return; }
             if (id === 'show-learn')             { _lnShowPopup(); return; }
+            if (id === 'show-heatmap')           { _hmShowPopup(); return; }
+            if (id === 'show-research-lab')      { _rlShowPopup(); return; }
+            if (id === 'show-trade-shorts')      { _tsShow(); return; }
             if (id === 'show-data-load-popup')   { _dlShowPopup(); return; }
             if (id === 'show-market-trend-settings') { _gtbShowMarketTrendSettings(); return; }
             if (id === 'show-master-consensus')  { _gtbShowMasterConsensus('NIFTY 50'); return; }

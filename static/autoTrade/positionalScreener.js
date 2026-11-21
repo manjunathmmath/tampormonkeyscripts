@@ -1927,6 +1927,10 @@ function _psBuildSince(setup, candles, niftyCloses) {
     else if (moveAtr < _PS_TIMING_LATE_ATR && !extended) label = 'MID';
     else label = 'LATE';
     var isLong = sign > 0;
+    // v29.618: when the plan is a pullback entry and price is already beyond the plan's own target, "EARLY" (little move since the view began) is misleading: the planned trade can no
+    // longer be taken as written. Call it LATE.
+    var targetPassed = setup.target != null && (isLong ? ltp >= setup.target : ltp <= setup.target);
+    if (targetPassed && (label === 'EARLY' || label === 'MID')) label = 'LATE';
     var pullbackEntry = setup.entry != null && (isLong ? setup.entry < ltp * 0.995 : setup.entry > ltp * 1.005);
     var advice = {
         'EARLY': 'Good time — less than one planned target has been travelled since the view began, so most of the move is still ahead.',
@@ -1935,7 +1939,8 @@ function _psBuildSince(setup, candles, niftyCloses) {
         'NOT WORKING': 'The view is on, but price is back below where it began — it has not worked so far. Wait for it to prove itself.',
         'UNKNOWN': 'Not enough data to judge the timing.',
     }[label];
-    if (pullbackEntry && label !== 'UNKNOWN') advice += ' The plan entry (' + setup.entry.toFixed(1) + ') is ' + (isLong ? 'below' : 'above') + ' the current price — it is a ' + (isLong ? 'pullback' : 'bounce') + ' entry, not a buy-now.';
+    if (targetPassed) advice = 'Late for this plan — price is already beyond the plan target (' + setup.target.toFixed(1) + '), because the plan is a ' + (isLong ? 'pullback to' : 'bounce to') + ' ' + (setup.entry != null ? setup.entry.toFixed(1) : 'the entry') + ' and price is well ' + (isLong ? 'above' : 'below') + ' it. The view only began ' + (startK + 1) + ' session(s) ago, so the move is not what is old; the plan is. Wait for the pullback, or treat the plan levels as not tradable now.';
+    if (pullbackEntry && label !== 'UNKNOWN' && !targetPassed) advice += ' The plan entry (' + setup.entry.toFixed(1) + ') is ' + (isLong ? 'below' : 'above') + ' the current price — it is a ' + (isLong ? 'pullback' : 'bounce') + ' entry, not a buy-now.';
     return {
         days: startK + 1, startDate: dateOf(startK), startClose: startClose,
         atLeast: truncated || capped, favPct: favPct, moveAtr: moveAtr, label: label, advice: advice,

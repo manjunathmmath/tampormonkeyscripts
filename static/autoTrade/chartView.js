@@ -548,6 +548,18 @@ function _cvRenderInner() {
 // Inspector (v29.602): ONE panel on the right for the selected chart, with the dashboard's own cards as tabs (Focus gates, Probable trade, Strong support and resistance,
 // Signal agreement + Entry timing, Positional verdict). Same builders the Dashboard and the Commodities popup use, so the numbers cannot differ; cached data only.
 var _CV_INSP_TABS = [['gates', 'Gates'], ['trade', 'Trade'], ['levels', 'Levels'], ['agree', 'Agreement'], ['pos', 'Positional']];
+// v29.619 touch / narrow screens: below 900 px wide the left rail and the right inspector open over the charts as drawers instead of squeezing them, and there are on-screen
+// Prev / Next / Pin buttons (the keyboard shortcuts [ ] P need a keyboard).
+function _cvNarrow() { try { var w = document.getElementById('cv-wrap'); return (w ? w.clientWidth : window.innerWidth) < 900; } catch (e) { return false; } }
+function _cvDrawer(el, side) {
+    if (!el) return;
+    if (_cvNarrow()) { var s = el.style; s.position = 'absolute'; s.top = '0'; s.bottom = '0'; s[side] = '0'; s[side === 'left' ? 'right' : 'left'] = 'auto'; s.width = 'min(88%, ' + (side === 'left' ? '300' : '360') + 'px)'; s.flex = 'none'; s.zIndex = '50'; s.boxShadow = '0 0 18px rgba(0,0,0,.45)'; }
+    else { var t = el.style; t.position = ''; t.top = ''; t.bottom = ''; t.left = ''; t.right = ''; t.width = ''; t.zIndex = ''; t.boxShadow = ''; t.flex = side === 'left' ? '0 0 190px' : '0 0 350px'; }
+}
+function _cvStepActive(d) {
+    var n = _CVG.panes.length; if (n < 2) return;
+    _CVG.active = (_CVG.active + d + n) % n; _CV = _CVG.panes[_CVG.active]; _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); _cvInspRender();
+}
 function _cvInspOn() { try { return localStorage.getItem('GTB_CV_INSP') !== '0'; } catch (e) { return true; } }
 function _cvInspTab() { var t = _CVG.itab; if (!t) { try { t = localStorage.getItem('GTB_CV_ITAB'); } catch (e) {} } return _CV_INSP_TABS.some(function (x) { return x[0] === t; }) ? t : 'gates'; }
 function _cvVchipHtml(cx) {
@@ -572,7 +584,7 @@ function _cvInspBody(nm, tab) {
 function _cvInspRender() {
     var el = document.getElementById('cv-insp'); if (!el) return;
     if (!_cvInspOn()) { el.style.display = 'none'; el._last = ''; return; }
-    el.style.display = 'block';
+    el.style.display = 'block'; _cvDrawer(el, 'right');
     var cx = _CVG.panes[_CVG.active] || _CVG.panes[0]; if (!cx) return;
     var own = !_CV_MEMO; if (own) { _CV_MEMO = {}; _CV_MEMO_HITS = 0; }
     var keep = _CV, html = '';
@@ -820,7 +832,7 @@ function _cv915ListRender() { var l = document.getElementById('cv-915-list'); if
 function _cv915Render() {
     var el = document.getElementById('cv-rail'); if (!el) return;
     if (!_cv915On()) { el.style.display = 'none'; return; }
-    el.style.display = 'flex';
+    el.style.display = 'flex'; _cvDrawer(el, 'left');
     if (!document.getElementById('cv-915-q')) {
         el.innerHTML = '<div style="flex:0 0 auto;padding:8px 8px 6px;border-bottom:1px solid var(--gtb-border);"><div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--gtb-muted);margin-bottom:5px;">9:15 board</div>'
             + '<input id="cv-915-q" placeholder="Find a name" autocomplete="off" value="' + String(_CVG.q915 || '').replace(/"/g, '&quot;') + '" style="width:100%;box-sizing:border-box;font-size:11px;padding:3px 6px;background:var(--gtb-surface2);color:var(--gtb-text);border:1px solid var(--gtb-border);"><div id="cv-915-ctl"></div></div>'
@@ -832,8 +844,11 @@ function _cvChipsHtml() {      // the shared top bar: layout, view preset, layer
     var ap = _CVG.panes[_CVG.active], data = ap && ap.data, b = 'font-size:11px;padding:2px 9px;margin-right:3px;', on = function (x) { return x ? 'border-color:var(--gtb-accent);color:var(--gtb-accent);font-weight:800;' : ''; };
     var lab = function (t) { return '<span style="font-size:11px;color:var(--gtb-muted);margin-right:4px;">' + t + '</span>'; }, sep = '<span style="margin:0 8px;border-left:1px solid var(--gtb-border);align-self:stretch;"></span>';
     var layersOn = _CV_LAYERS.filter(function (l) { return _CV_LAYER_STATE[l[0]]; }).length;
+    var navB = _CVG.panes.length > 1 ? '<button class="cv-pnav sv-pill-btn" data-d="-1" title="Previous chart" style="' + b + 'font-size:13px;padding:2px 12px;">&#9664;</button><button class="cv-pnav sv-pill-btn" data-d="1" title="Next chart" style="' + b + 'font-size:13px;padding:2px 12px;">&#9654;</button>' : '';
+    var pinB = ap ? '<button class="cv-pinsel sv-pill-btn" title="Pin or unpin the selected name" style="' + b + on(_cvPins().indexOf(ap.name) >= 0) + '"><i class="bi bi-pin-angle" style="font-size:10px;"></i> ' + (_cvPins().indexOf(ap.name) >= 0 ? 'Pinned' : 'Pin') + '</button>' : '';
     return lab('Charts')
         + [1, 2, 4, 6].map(function (n) { return '<button class="cv-layout sv-pill-btn" data-n="' + n + '" title="Show ' + n + ' chart' + (n > 1 ? 's' : '') + ' at once" style="' + b + on(_CVG.layout === n) + '">' + n + '</button>'; }).join('')
+        + navB + pinB
         + sep + lab('View')
         + [['clean', 'Clean', 'Only the key levels: 9:15 levels, open, VWAP, nearest OI wall each side, previous day high/low, and the trade plan'], ['standard', 'Standard', 'Adds support/resistance zones and all the OI wall levels'], ['full', 'Full', 'Everything: day range, volume profile, OI change and OBV bars'], ['oiobv', 'OI / OBV', 'Only the option-chain flow: wide OBV and OI change bars per strike, with the R1/R2/S1/S2 walls']].map(function (v) { return '<button class="cv-view sv-pill-btn" data-v="' + v[0] + '" title="' + v[2] + '" style="' + b + on(_CVG.view === v[0]) + '">' + v[1] + '</button>'; }).join('')
         + '<span class="cv-layers-wrap" style="position:relative;display:inline-block;"><button class="cv-layers-btn sv-pill-btn" title="Choose which layers are drawn on the charts" style="' + b + on(_CVG.layersOpen) + '">Layers ' + layersOn + '/' + _CV_LAYERS.length + ' <i class="bi bi-chevron-down" style="font-size:9px;"></i></button>'
@@ -1019,12 +1034,12 @@ function _cvShowPopup(name) {
         + '<div id="cv-bar" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:6px 10px;border-bottom:1px solid var(--gtb-border);">' + _cvChipsHtml() + '</div>'
         + '<div id="cv-prog" style="display:none;position:relative;height:20px;border-bottom:1px solid var(--gtb-border);background:var(--gtb-surface);overflow:hidden;"><div id="cv-prog-bar" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--gtb-accent);opacity:0.28;transition:width .4s;"></div><span id="cv-prog-txt" style="position:relative;display:block;padding:2px 10px;font-size:11px;font-weight:700;line-height:16px;color:var(--gtb-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span></div>'
         + '<datalist id="cv-fo-list">' + _cvNameList().map(function (n) { return '<option value="' + n + '">'; }).join('') + '</datalist>'
-        + '<div id="cv-main" style="flex:1 1 0;min-height:0;display:flex;">'
+        + '<div id="cv-main" style="flex:1 1 0;min-height:0;display:flex;position:relative;">'
         +   '<div id="cv-rail" style="display:none;flex:0 0 190px;min-height:0;flex-direction:column;overflow:hidden;border-right:1px solid var(--gtb-border);background:var(--gtb-surface);"></div>'
         +   '<div id="cv-grid" style="flex:1 1 0;min-width:0;"></div>'
         +   '<div id="cv-insp" style="display:none;flex:0 0 350px;min-height:0;overflow:auto;border-left:1px solid var(--gtb-border);background:var(--gtb-bg);"></div>'
         + '</div></div>';
-    showPopUpWindow('chart-view', html, 'Chart View', Math.min(1560, Math.max(1100, window.innerWidth - 30)), Math.min(860, Math.max(640, window.innerHeight - 50)));
+    showPopUpWindow('chart-view', html, 'Chart View', Math.min(1560, Math.max(Math.min(1100, window.innerWidth - 10), window.innerWidth - 30)), Math.min(860, Math.max(Math.min(640, window.innerHeight - 10), window.innerHeight - 50)));
     var cls = 'popup-custom-style-chart-view';
     jQ('.' + cls).find('.popupwindow_titlebar_text').html('<div style="display:flex;align-items:center;gap:6px;width:100%;"><i class="bi bi-bar-chart-line"></i><span style="font-weight:800;font-size:0.7rem;">CHART VIEW</span>' + popupWinControls(cls) + '</div>');
     hideNativePopupButtons(cls);
@@ -1044,7 +1059,7 @@ function _cvShowPopup(name) {
         .on('click.cv', '.cv-layout', function () { _CVG.layout = parseInt(this.getAttribute('data-n'), 10) || 1; _cvBuildPanes(); })
         .on('click.cv', '.cv-layer', function (e) { e.stopPropagation(); var k = this.getAttribute('data-layer'); _CV_LAYER_STATE[k] = _CV_LAYER_STATE[k] ? 0 : 1; jQ('#cv-bar').html(_cvChipsHtml()); _CVG.panes.forEach(function (c) { _CV = c; _cvDraw(); }); _CV = _CVG.panes[_CVG.active] || _CV; })
         .on('click.cv', '#cv-loadall', function () { _cvRefreshEverything(null, false); })
-        .on('mousedown.cv', '.cv-pane', function () { var before = _CVG.active; _cvPaneFrom(this); if (before !== _CVG.active) { _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); _cvInspRender(); } })
+        .on('mousedown.cv pointerdown.cv touchstart.cv', '.cv-pane', function () { var before = _CVG.active; _cvPaneFrom(this); if (before !== _CVG.active) { _cvMarkActive(); jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); _cvInspRender(); } })
         .on('change.cv', '.cv-psel', function () { _cvSetPaneName(_cvPaneFrom(this), this.value); })
         .on('click.cv', '.cv-pzoom', function () { var c = _cvPaneFrom(this); if (!c.chart) return; var f = parseFloat(this.getAttribute('data-f')) || 1; try { var r = c.chart.timeScale().getVisibleLogicalRange(); if (r) c.chart.timeScale().setVisibleLogicalRange({ from: r.to - (r.to - r.from) * f, to: r.to }); } catch (e) {} _cvDraw(); })
         .on('click.cv', '.cv-preset', function () { var c = _cvPaneFrom(this); if (!c.chart) return; try { c.chart.priceScale('right').applyOptions({ autoScale: true }); c.chart.timeScale().fitContent(); } catch (e) {} _cvDraw(); })
@@ -1083,10 +1098,13 @@ function _cvShowPopup(name) {
             _CV = c;
         })
         .on('click.cv', '.cv-915-toggle', function () { try { localStorage.setItem('GTB_CV_915', _cv915On() ? '0' : '1'); } catch (e) {} jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); })
-        .on('click.cv', '.cv-chip915', function () { var nm = this.getAttribute('data-cv-chip'), c = _CVG.panes[_CVG.active] || _CVG.panes[0]; if (!c || !nm) return; _CV = c; _cvSetPaneName(c, nm); })
+        .on('click.cv', '.cv-chip915', function () { var nm = this.getAttribute('data-cv-chip'), c = _CVG.panes[_CVG.active] || _CVG.panes[0]; if (!c || !nm) return; _CV = c; _cvSetPaneName(c, nm); if (_cvNarrow()) { try { localStorage.setItem('GTB_CV_915', '0'); } catch (e) {} jQ('#cv-bar').html(_cvChipsHtml()); _cv915Render(); } })
+        .on('click.cv', '.cv-pnav', function () { _cvStepActive(parseInt(this.getAttribute('data-d'), 10) || 1); })
+        .on('click.cv', '.cv-pinsel', function () { var c = _CVG.panes[_CVG.active]; if (!c) return; _cvPinToggle(c.name); var el = document.getElementById('cv-insp'); if (el) el._last = ''; jQ('#cv-bar').html(_cvChipsHtml()); _cvInspRender(); _cv915ListRender(); })
         .on('click.cv', '.cv-pdet', function () { var c = _cvPaneFrom(this); c.det = !c.det; _cvPaneHead(c); _cvRender(); })
         .on('change.cv', '.cv-search', function () { _cvPaneFrom(this); _cvOpenName(this.value); })
         .on('keydown.cv', '.cv-search', function (e) { if (e.key === 'Enter') { _cvPaneFrom(this); _cvOpenName(this.value); } });
+    if (_cvNarrow()) { try { localStorage.setItem('GTB_CV_915', '0'); localStorage.setItem('GTB_CV_INSP', '0'); } catch (e) {} _CVG.layout = 1; jQ('#cv-bar').html(_cvChipsHtml()); }     // phone / tablet: one chart, side panels closed (open them with the buttons)
     _cvBuildPanes();
     // redraw each pane when its scales move; reload everything when the snapshot time or day changes
     _CVG.timer = setInterval(function () {

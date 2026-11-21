@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Groot Bot
 // @namespace    Groot Bot
-// @version      29.609
+// @version      29.620
 // @description  Groot Bot
 // @author       Manjunath
 // @match        https://kite.zerodha.com/*
@@ -135,6 +135,9 @@
 // @require      http://localhost:3000/autoTrade/obvBreakout.js
 // @require      http://localhost:3000/autoTrade/newsFeed.js
 // @require      http://localhost:3000/autoTrade/learnFeed.js
+// @require      http://localhost:3000/autoTrade/heatmap.js
+// @require      http://localhost:3000/autoTrade/researchLab.js
+// @require      http://localhost:3000/autoTrade/tradeShorts.js
 // @require      http://localhost:3000/autoTrade/outlookWatch.js
 // @require      http://localhost:3000/autoTrade/focusBrief.js
 // @require      http://localhost:3000/autoTrade/chartView.js
