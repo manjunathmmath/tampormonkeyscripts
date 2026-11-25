@@ -4,7 +4,9 @@
   "private": true,
   "description": "Groot backend: Kite Connect gateway, market data, engine and API (read-only, no order placement)",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
@@ -12,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "parity:futures": "tsx scripts/parity-futures.ts"
   },
   "dependencies": {
     "fastify": "^4.28.1",
